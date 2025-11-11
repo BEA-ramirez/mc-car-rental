@@ -1,4 +1,5 @@
 import Image from "next/image";
+import Scheduler from "@/components/scheduler";
 
 export default function Home() {
   return (
@@ -98,6 +99,7 @@ export default function Home() {
           Go to nextjs.org →
         </a>
       </footer>
+      <Scheduler />
     </div>
   );
 }
