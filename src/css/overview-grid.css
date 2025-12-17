@@ -1,0 +1,81 @@
+/* Status Colors */
+.statustemp {
+  position: relative;
+  height: 19px;
+  border-radius: 5px;
+  text-align: center;
+  width: 100px;
+}
+
+.statustemp.e-activecolor {
+  background-color: #d7f0ca;
+  color: #2b7d2b;
+}
+
+.statustemp.e-inactivecolor {
+  background-color: #fcebd3;
+  color: #a85422;
+}
+
+.statustxt {
+  font-size: 13px;
+  position: relative;
+  top: -2px;
+}
+
+/* Rating */
+.custom-rating.e-rating-container .e-rating-item-container .e-rating-icon {
+  -webkit-text-fill-color: lightgrey;
+  -webkit-text-stroke: 1px lightgrey;
+  font-size: 14px;
+}
+
+.custom-rating.e-rating-container
+  .e-rating-item-container.e-rating-selected
+  .e-rating-icon {
+  background: linear-gradient(
+    to right,
+    #ffa600 var(--rating-value),
+    transparent var(--rating-value)
+  );
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  -webkit-text-stroke: 1px #ffa600;
+}
+
+/* Progress Bar */
+.pbar {
+  background-color: #e9ecef;
+  border-radius: 4px;
+  width: 100%;
+  height: 16px;
+  position: relative;
+}
+
+.bar {
+  height: 100%;
+  border-radius: 4px;
+  text-align: center;
+  color: white;
+  font-size: 10px;
+  line-height: 16px;
+  background: linear-gradient(90deg, #4aa4ea 0%, #2b7d2b 100%);
+}
+
+.progressdisable {
+  background: linear-gradient(90deg, #ea4a4a 0%, #a85422 100%);
+}
+
+/* Employee Image Placeholder */
+.empimg {
+  height: 30px;
+  width: 30px;
+  border-radius: 50%;
+  background-color: #eee;
+  display: inline-block;
+  vertical-align: middle;
+  margin-right: 10px;
+  text-align: center;
+  line-height: 30px;
+  color: #888;
+}

@@ -11,23 +11,9 @@ import "@syncfusion/ej2-navigations/styles/material.css";
 import "@syncfusion/ej2-popups/styles/material.css";
 import "@syncfusion/ej2-splitbuttons/styles/material.css";
 import "@syncfusion/ej2-react-schedule/styles/material.css";
-import SyncfusionProvider from "@/components/syncfusion-provider";
-import {
-  SidebarProvider,
-  SidebarTrigger,
-  SidebarInset,
-} from "@/components/ui/sidebar";
-import { Separator } from "@/components/ui/separator";
-import { AppSidebar } from "@/components/app-sidebar";
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-} from "@/components/ui/breadcrumb";
+import "@syncfusion/ej2-react-grids/styles/material.css";
 import { Roboto } from "next/font/google";
+import SyncfusionProvider from "@/components/syncfusion-provider";
 
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
@@ -56,34 +42,7 @@ export default function RootLayout({
       <body
         className={`${roboto.variable} ${geistMono.variable} font-sans antialiased`}
       >
-        <SyncfusionProvider>
-          <SidebarProvider>
-            <AppSidebar />
-            <SidebarInset>
-              <main>
-                <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4">
-                  <SidebarTrigger className="-ml-1" />
-                  <Separator
-                    orientation="vertical"
-                    className="mr-2 data-[orientation=vertical]:h-4"
-                  />
-                  <Breadcrumb>
-                    <BreadcrumbList>
-                      <BreadcrumbItem className="hidden md:block">
-                        <BreadcrumbLink href="#">Financials</BreadcrumbLink>
-                      </BreadcrumbItem>
-                      <BreadcrumbSeparator className="hidden md:block" />
-                      <BreadcrumbItem>
-                        <BreadcrumbPage>Income</BreadcrumbPage>
-                      </BreadcrumbItem>
-                    </BreadcrumbList>
-                  </Breadcrumb>
-                </header>
-                {children}
-              </main>
-            </SidebarInset>
-          </SidebarProvider>
-        </SyncfusionProvider>
+        <SyncfusionProvider>{children}</SyncfusionProvider>
       </body>
     </html>
   );

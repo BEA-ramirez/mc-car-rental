@@ -39,48 +39,48 @@ export const sidebarData = {
   navMain: [
     {
       title: "Dashboard",
-      url: "#",
+      url: "/admin/dashboard",
       icon: LayoutDashboard,
       isActive: true,
     },
     {
       title: "Bookings",
-      url: "#",
+      url: "/admin/bookings",
       icon: ListCheck,
     },
     {
       title: "Calendar",
-      url: "#",
+      url: "/admin/calendar",
       icon: Calendar,
     },
     {
       title: "Clients",
-      url: "#",
+      url: "/admin/clients",
       icon: SquareUser,
     },
     {
       title: "Units",
-      url: "#",
+      url: "/admin/units",
       icon: CarFront,
     },
     {
       title: "Engagements",
-      url: "#",
+      url: "/admin/engagements",
       icon: Users,
     },
     {
       title: "Tracking",
-      url: "#",
+      url: "/admin/tracking",
       icon: Route,
     },
     {
       title: "Drivers",
-      url: "#",
+      url: "/admin/drivers",
       icon: LifeBuoy,
     },
     {
       title: "Financials",
-      url: "#",
+      url: "/admin/financials",
       icon: ChartColumnBig,
       items: [
         {
@@ -95,17 +95,17 @@ export const sidebarData = {
     },
     {
       title: "Documents Management",
-      url: "#",
+      url: "/admin/docs-mngmt",
       icon: FileText,
     },
     {
       title: "Reports",
-      url: "#",
+      url: "/admin/reports",
       icon: ChartPie,
     },
     {
       title: "Settings",
-      url: "#",
+      url: "/admin/settings",
       icon: Settings,
     },
   ],

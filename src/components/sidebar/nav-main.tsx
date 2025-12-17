@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 import { ChevronRight, type LucideIcon } from "lucide-react";
 import {
   Collapsible,
@@ -57,10 +58,9 @@ function NavMain({
                     {item.items?.map((subItem) => (
                       <SidebarMenuSubItem key={subItem.title}>
                         <SidebarMenuSubButton asChild>
-                          <a href={subItem.url}>
-                            {" "}
+                          <Link href={subItem.url}>
                             <span>{subItem.title}</span>
-                          </a>
+                          </Link>
                         </SidebarMenuSubButton>
                       </SidebarMenuSubItem>
                     ))}
@@ -68,13 +68,14 @@ function NavMain({
                 </CollapsibleContent>
               </SidebarMenuItem>
             ) : (
-              <SidebarMenuButton tooltip={item.title}>
-                {item.icon && <item.icon />}
-                <span>{item.title}</span>
-                {item.items && (
-                  <ChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
-                )}
-              </SidebarMenuButton>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild tooltip={item.title}>
+                  <Link href={item.url}>
+                    {item.icon && <item.icon />}
+                    <span>{item.title}</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
             )}
           </Collapsible>
         ))}
