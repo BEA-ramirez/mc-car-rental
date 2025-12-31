@@ -11,7 +11,6 @@ function SyncfusionProvider({ children }: { children: React.ReactNode }) {
 
     // 2. Register the license ONLY here (inside the browser)
     const licenseKey = process.env.NEXT_PUBLIC_SYNCFUSION_LICENSE_KEY;
-
     if (licenseKey) {
       try {
         registerLicense(licenseKey);
