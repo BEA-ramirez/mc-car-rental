@@ -1,3 +1,5 @@
+"use client";
+
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -9,12 +11,25 @@ import {
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 
+import { useActionState } from "react";
+import { login, LoginState } from "@/actions/login";
+
+const initialState: LoginState = {
+  errors: {},
+  message: null,
+};
+
 export function LoginForm({
   className,
   ...props
 }: React.ComponentProps<"form">) {
+  const [state, formAction, isPending] = useActionState(login, initialState);
   return (
-    <form className={cn("flex flex-col gap-6", className)} {...props}>
+    <form
+      action={formAction}
+      className={cn("flex flex-col gap-6", className)}
+      {...props}
+    >
       <FieldGroup>
         <div className="flex flex-col items-center gap-1 text-center">
           <h1 className="text-2xl font-bold">Login to your account</h1>
@@ -22,9 +37,24 @@ export function LoginForm({
             Enter your email below to login to your account
           </p>
         </div>
+        {state.message && (
+          <div className="p-3 text-sm text-red-500 bg-red-50 border border-red-200 rounded-md text-center">
+            {state.message}
+          </div>
+        )}
         <Field>
           <FieldLabel htmlFor="email">Email</FieldLabel>
-          <Input id="email" type="email" placeholder="m@example.com" required />
+          <Input
+            id="email"
+            name="email"
+            type="email"
+            placeholder="m@example.com"
+            required
+            className={state.errors?.email ? "border-red-500" : ""}
+          />
+          {state.errors?.email && (
+            <p className="text-xs text-red-500 mt-1">{state.errors.email[0]}</p>
+          )}
         </Field>
         <Field>
           <div className="flex items-center">
@@ -36,10 +66,23 @@ export function LoginForm({
               Forgot your password?
             </a>
           </div>
-          <Input id="password" type="password" required />
+          <Input
+            id="password"
+            name="password"
+            type="password"
+            required
+            className={state.errors?.password ? "border-red-500" : ""}
+          />
+          {state.errors?.password && (
+            <p className="text-xs text-red-500 mt-1">
+              {state.errors.password[0]}
+            </p>
+          )}
         </Field>
         <Field>
-          <Button type="submit">Login</Button>
+          <Button type="submit" disabled={isPending}>
+            {isPending ? "Loggin in..." : "Login"}
+          </Button>
         </Field>
         <FieldSeparator>Or continue with</FieldSeparator>
         <Field>
@@ -54,7 +97,7 @@ export function LoginForm({
           </Button>
           <FieldDescription className="text-center">
             Don&apos;t have an account?{" "}
-            <a href="#" className="underline underline-offset-4">
+            <a href="/auth/signup" className="underline underline-offset-4">
               Sign up
             </a>
           </FieldDescription>

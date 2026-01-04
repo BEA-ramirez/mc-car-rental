@@ -62,7 +62,6 @@ export async function signup(
 
     console.log("Supabase SignUp Successful");
   } catch (err) {
-    // 2. THIS IS THE IMPORTANT PART
     // If we catch an error, we log it to see what it really is
     console.error("UNEXPECTED ERROR CAUGHT:", err);
     return {
