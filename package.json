@@ -25,6 +25,7 @@
     "@syncfusion/ej2-react-dropdowns": "^31.2.16",
     "@syncfusion/ej2-react-grids": "^31.2.16",
     "@syncfusion/ej2-react-inputs": "^31.2.15",
+    "@syncfusion/ej2-react-navigations": "^32.1.19",
     "@syncfusion/ej2-react-schedule": "^31.2.3",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",

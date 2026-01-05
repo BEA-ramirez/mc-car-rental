@@ -64,8 +64,8 @@ export const sidebarData = {
       icon: CarFront,
     },
     {
-      title: "Engagements",
-      url: "/admin/engagements",
+      title: "Fleet Partners",
+      url: "/admin/fleet-partners",
       icon: Users,
     },
     {
