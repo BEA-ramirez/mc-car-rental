@@ -1,10 +1,12 @@
 import React from "react";
-import OverviewGrid from "@/components/overview-grid";
+import ClientsDataGrid from "@/components/clients/clients-datagrid";
+import { getUsers } from "@/actions/helper/get-users";
 
-function Client() {
+async function Client() {
+  const users = await getUsers();
   return (
     <div>
-      <OverviewGrid />
+      <ClientsDataGrid users={users} />
     </div>
   );
 }

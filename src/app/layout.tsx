@@ -40,6 +40,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
+        suppressHydrationWarning={true}
         className={`${roboto.variable} ${geistMono.variable} font-sans antialiased`}
       >
         <SyncfusionProvider>{children}</SyncfusionProvider>

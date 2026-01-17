@@ -25,21 +25,109 @@ import {
   SelectionSettingsModel,
   Selection,
   RecordClickEventArgs,
+  DialogEditEventArgs,
 } from "@syncfusion/ej2-react-grids";
-import { DropDownListComponent } from "@syncfusion/ej2-react-dropdowns";
+import { Browser } from "@syncfusion/ej2-base"; // for responsiveness check
+import { managePartner } from "@/actions/manage-partner";
 import { FleetPartnerProfileType } from "@/lib/schemas/car-owner";
+import { UserType } from "@/lib/schemas/user";
+import { PartnerForm } from "./partner-form";
 
-function FleetPartnersDataGrid({
-  dummyFleetPartners,
-}: {
-  dummyFleetPartners: FleetPartnerProfileType[];
-}) {
-  const [isOpen, setIsOpen] = useState(false);
+interface GridProps {
+  fleetPartners: FleetPartnerProfileType[];
+  availableUsers: UserType[];
+}
+
+function FleetPartnersDataGrid({ fleetPartners, availableUsers }: GridProps) {
+  const [isOpen, setIsOpen] = useState<boolean>(false);
   const [selectedPartner, setSelectedPartner] =
     useState<FleetPartnerProfileType | null>(null);
 
+  let grid: GridComponent | null = null;
+
+  // TEMPLATE: Syncfusion passes 'props' (the row data + isAdd flag) here
+  function dialogTemplate(props: any) {
+    return (
+      <PartnerForm
+        data={props}
+        availableUsers={availableUsers}
+        closeDialog={() => {
+          if (grid) grid.closeEdit();
+        }}
+      />
+    );
+  }
+
+  // ACTION COMPLETE: Copied from Syncfusion's demo for better Dialog handling
+  function actionComplete(args: DialogEditEventArgs): void {
+    if (
+      (args.requestType === "beginEdit" || args.requestType === "add") &&
+      args.dialog
+    ) {
+      // Customize Dialog Title based on action
+      if (args.requestType === "add") {
+        args.dialog.header = "Add New Fleet Partner";
+      } else {
+        args.dialog.header = "Edit Partner Details";
+      }
+
+      // Responsive Height Logic from Demo
+      if (Browser.isDevice) {
+        args.dialog.height = window.innerHeight - 90 + "px";
+        (args.dialog as any).dataBind();
+      }
+    }
+  }
+
+  // THE KEY HANDLER
+  const actionBegin = async (args: any) => {
+    // Intercept the SAVE action
+    if (args.requestType === "save") {
+      // Stop Syncfusion from doing its default internal save
+      args.cancel = true;
+
+      // Prepare FormData for your Server Action
+      // 'args.data' contains the values we updated in PartnerForm via 'handleChange'
+      const formData = new FormData();
+
+      // Loop through the data object and append to FormData
+      Object.keys(args.data).forEach((key) => {
+        const value = args.data[key];
+        if (value !== undefined && value !== null) {
+          // Convert booleans/numbers to string for FormData
+          formData.append(key, value.toString());
+        }
+      });
+
+      try {
+        // Call Server Action
+        const result = await managePartner(
+          { message: "", success: false },
+          formData
+        );
+
+        if (result.success) {
+          // Close the dialog manually on success
+          if (args.grid) {
+            args.grid.closeEdit();
+          }
+          // Optionally show a toast here
+          console.log("Success:", result.message);
+        } else {
+          // Handle Validation Errors
+          alert("Error: " + result.message);
+          // If you want to show field errors, you'd need to pass state back to the form
+          // or simple alert them for now since we removed useActionState
+          console.error(result.errors);
+        }
+      } catch (err) {
+        console.error("Server Action Failed", err);
+      }
+    }
+  };
+
   // data grid settings
-  const filterOptions: FilterSettingsModel = { type: "Excel" };
+  const filterOptions: FilterSettingsModel = { type: "Menu" };
   const toolbarOptions: ToolbarItems[] = [
     "Search",
     "Add",
@@ -53,6 +141,7 @@ function FleetPartnersDataGrid({
     showDeleteConfirmDialog: true,
     showConfirmDialog: true,
     mode: "Dialog",
+    template: dialogTemplate,
   };
   const selectionsettings: SelectionSettingsModel = {
     type: "Multiple",
@@ -129,8 +218,15 @@ function FleetPartnersDataGrid({
           )}
         </SheetContent>
       </Sheet>
+      {/* 
+          Hide Syncfusion's footer because I want to add my own "Save" button in the form 
+      */}
+      <style>{`
+        .e-dialog .e-footer-content { display: none !important; }
+      `}</style>
+
       <GridComponent
-        dataSource={dummyFleetPartners}
+        dataSource={fleetPartners}
         recordClick={handleRecordClick}
         allowPaging={true}
         allowSorting={true}
@@ -142,6 +238,8 @@ function FleetPartnersDataGrid({
         editSettings={editSettings}
         selectionSettings={selectionsettings}
         loadingIndicator={{ indicatorType: "Shimmer" }}
+        actionComplete={actionComplete}
+        actionBegin={actionBegin}
         height="390"
       >
         <ColumnsDirective>
