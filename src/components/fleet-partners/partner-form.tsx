@@ -46,7 +46,7 @@ export function PartnerForm({
   const handleChange = (
     e: React.ChangeEvent<
       HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
-    >
+    >,
   ) => {
     const { name, value, type } = e.target;
     let finalValue: any = value;
@@ -81,7 +81,7 @@ export function PartnerForm({
     try {
       const result = await managePartner(
         { message: "", success: false },
-        submitData
+        submitData,
       );
 
       if (result.success) {
