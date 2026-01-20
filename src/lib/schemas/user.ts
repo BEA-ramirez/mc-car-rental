@@ -13,7 +13,13 @@ export const userSchema = z.object({
     .string()
     .min(2, { message: "Last name must be at least 2 characters." }),
   role: z.enum(["admin", "customer", "car_owner", "staff"]).default("customer"),
-  phone_number: z.string().optional().nullable(),
+  phone_number: z
+    .string()
+    .regex(/^[0-9]+$/, { message: "Phone number must contain only numbers." })
+    .min(10, { message: "Phone number is too short." })
+    .max(15, "Phone number is too long.")
+    .optional()
+    .nullable(),
   address: z.string().optional().nullable(),
   valid_id_url: z.string().url().optional().nullable(),
   license_id_url: z.string().url().optional().nullable(),

@@ -47,7 +47,11 @@ export async function manageUser(
     phone_number: rawData.phone_number === "" ? null : rawData.phone_number,
     address: rawData.address === "" ? null : rawData.address,
   };
-  console.log(processedData);
+
+  // remove file fields to avoid validation issues in zod, as it expects string urls
+  delete (processedData as any).profile_picture_url;
+  delete (processedData as any).valid_id_url;
+  delete (processedData as any).license_id_url;
 
   //validate the form data
   const validateFields = manageUserSchema.safeParse(processedData);
