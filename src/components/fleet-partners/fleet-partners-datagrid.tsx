@@ -103,7 +103,7 @@ function FleetPartnersDataGrid({ fleetPartners, availableUsers }: GridProps) {
         // Call Server Action
         const result = await managePartner(
           { message: "", success: false },
-          formData
+          formData,
         );
 
         if (result.success) {

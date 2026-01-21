@@ -16,7 +16,10 @@ import {
   SaveEventArgs,
   FilterSettingsModel,
   Freeze,
+  ExcelExport,
+  PdfExport,
 } from "@syncfusion/ej2-react-grids";
+import { ClickEventArgs } from "@syncfusion/ej2-navigations";
 import { Browser } from "@syncfusion/ej2-base"; // Import for mobile check
 import { UserType } from "@/lib/schemas/user";
 import { ClientForm } from "./client-form";
@@ -107,7 +110,29 @@ export default function ClientsDataGrid({ users }: GridProps) {
     template: dialogTemplate,
   };
 
-  const toolbarOptions: ToolbarItems[] = ["Add", "Search"];
+  const toolbarOptions: ToolbarItems[] = [
+    "Add",
+    "Search",
+    "ExcelExport",
+    "PdfExport",
+    "CsvExport",
+  ];
+
+  const toolbarClick = (args: ClickEventArgs): void => {
+    if (gridRef.current) {
+      switch (args.item.id) {
+        case "clientsGrid_excelexport":
+          gridRef.current.excelExport();
+          break;
+        case "clientsGrid_pdfexport":
+          gridRef.current.pdfExport();
+          break;
+        case "clientsGrid_csvexport":
+          gridRef.current.csvExport();
+          break;
+      }
+    }
+  };
 
   // Helper for Role Badges
   function roleTemplate(props: UserType) {
@@ -240,6 +265,9 @@ export default function ClientsDataGrid({ users }: GridProps) {
         actionComplete={actionComplete}
         actionBegin={actionBegin}
         height={400} // Optional height
+        allowExcelExport={true}
+        allowPdfExport={true}
+        toolbarClick={toolbarClick}
       >
         <ColumnsDirective>
           <ColumnDirective
@@ -320,7 +348,17 @@ export default function ClientsDataGrid({ users }: GridProps) {
           />
         </ColumnsDirective>
         <Inject
-          services={[Page, Sort, Filter, Toolbar, Edit, CommandColumn, Freeze]}
+          services={[
+            Page,
+            Sort,
+            Filter,
+            Toolbar,
+            Edit,
+            CommandColumn,
+            Freeze,
+            ExcelExport,
+            PdfExport,
+          ]}
         />
       </GridComponent>
     </>
