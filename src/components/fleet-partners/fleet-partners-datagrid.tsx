@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useRef } from "react";
 import {
   Sheet,
   SheetContent,
@@ -26,12 +26,19 @@ import {
   Selection,
   RecordClickEventArgs,
   DialogEditEventArgs,
+  ExcelExport,
+  PdfExport,
 } from "@syncfusion/ej2-react-grids";
+import { ClickEventArgs } from "@syncfusion/ej2-navigations";
 import { Browser } from "@syncfusion/ej2-base"; // for responsiveness check
 import { managePartner } from "@/actions/manage-partner";
 import { FleetPartnerProfileType } from "@/lib/schemas/car-owner";
 import { UserType } from "@/lib/schemas/user";
 import { PartnerForm } from "./partner-form";
+import { CarFront, Phone } from "lucide-react";
+import Image from "next/image";
+import FleetPartnerReview from "./fleet-review";
+import { deletePartner } from "@/actions/helper/delete-partner";
 
 interface GridProps {
   fleetPartners: FleetPartnerProfileType[];
@@ -39,6 +46,7 @@ interface GridProps {
 }
 
 function FleetPartnersDataGrid({ fleetPartners, availableUsers }: GridProps) {
+  const gridRef = useRef<GridComponent | null>(null);
   const [isOpen, setIsOpen] = useState<boolean>(false);
   const [selectedPartner, setSelectedPartner] =
     useState<FleetPartnerProfileType | null>(null);
@@ -124,6 +132,26 @@ function FleetPartnersDataGrid({ fleetPartners, availableUsers }: GridProps) {
         console.error("Server Action Failed", err);
       }
     }
+    if (args.requestType === "delete") {
+      // stop syncfusion's default delete action
+      args.cancel = true;
+      // get the data of the rows being deleted
+      const selectedRecords: FleetPartnerProfileType[] =
+        args.data as FleetPartnerProfileType[];
+      const record = selectedRecords[0];
+      if (!record) return;
+      try {
+        const result = await deletePartner(record.car_owner_id, record.user_id);
+        if (result.success) {
+          alert(result.message);
+        } else {
+          alert("Error: " + result.message);
+        }
+      } catch (error) {
+        console.error(error);
+        alert("An unexpected error occurred.");
+      }
+    }
   };
 
   // data grid settings
@@ -131,9 +159,12 @@ function FleetPartnersDataGrid({ fleetPartners, availableUsers }: GridProps) {
   const toolbarOptions: ToolbarItems[] = [
     "Search",
     "Add",
-    "Delete",
-    "ColumnChooser",
+
+    "ExcelExport",
+    "PdfExport",
+    "CsvExport",
   ];
+
   const editSettings: EditSettingsModel = {
     allowEditing: true,
     allowAdding: true,
@@ -143,11 +174,12 @@ function FleetPartnersDataGrid({ fleetPartners, availableUsers }: GridProps) {
     mode: "Dialog",
     template: dialogTemplate,
   };
+
   const selectionsettings: SelectionSettingsModel = {
     type: "Multiple",
-    checkboxOnly: true,
     persistSelection: true,
   };
+
   const commands: any = [
     {
       type: "Edit",
@@ -185,6 +217,57 @@ function FleetPartnersDataGrid({ fleetPartners, availableUsers }: GridProps) {
     return <span>{`${props.revenue_share_percentage}%`}</span>;
   }
 
+  function unitCountTemplate(props: FleetPartnerProfileType) {
+    return props.total_units >= 0 ? (
+      <div className="flex justify-center items-center gap-2 text-gray-700">
+        <CarFront className="w-4 h-4 text-gray-500 shrink-0" />
+        <span className="truncate">{props.total_units}</span>
+      </div>
+    ) : (
+      <span className="text-gray-400 bold text-center ">- -</span>
+    );
+  }
+
+  function profileTemplate(props: FleetPartnerProfileType) {
+    const profilePicture = props.profile_picture_url
+      ? props.profile_picture_url
+      : `https://ui-avatars.com/api/?name=${props.first_name}+${props.last_name}&background=random&color=fff`;
+    return (
+      <div className="flex justify-start items-center gap-2">
+        <div
+          className={`w-2 h-2 rounded-full ${props.active_status ? "bg-green-400" : "bg-gray-400"}`}
+        ></div>
+        <div className="relative w-8 h-8">
+          <Image
+            key={profilePicture}
+            src={profilePicture}
+            alt="Profile"
+            fill /* Fills the relative parent above */
+            className="rounded-full object-cover border"
+            sizes="40px"
+          />
+        </div>
+        <div className="flex flex-col justify-start items-start">
+          <h3 className="text-[0.8rem] bold mb-[-0.3rem] p-0">
+            {props.full_name}
+          </h3>
+          <h4 className="text-[0.6rem]">{props.email}</h4>
+        </div>
+      </div>
+    );
+  }
+
+  function phoneTemplate(props: UserType) {
+    return props.phone_number ? (
+      <div className="flex items-center gap-2 text-gray-700">
+        <Phone className="w-4 h-4 text-gray-500 shrink-0" />
+        <span className="truncate">{props.phone_number}</span>
+      </div>
+    ) : (
+      <span className="text-gray-400 bold text-center ">- -</span>
+    );
+  }
+
   //when clicking a row
   const handleRecordClick = (args: RecordClickEventArgs) => {
     // Prevent opening if the user clicked on a command button
@@ -193,7 +276,27 @@ function FleetPartnersDataGrid({ fleetPartners, availableUsers }: GridProps) {
     setIsOpen(true);
   };
 
-  const closeSidebar = () => setIsOpen(false);
+  const handleOpenDialog = (isOpen: boolean) => {
+    setIsOpen(isOpen);
+  };
+
+  const toolbarClick = (args: ClickEventArgs): void => {
+    if (gridRef.current) {
+      switch (args.item.id) {
+        case "fleetPartnersGrid_excelexport":
+          gridRef.current.excelExport();
+          break;
+        case "fleetPartnersGrid_pdfexport":
+          gridRef.current.pdfExport();
+          break;
+        case "fleetPartnersGrid_csvexport":
+          gridRef.current.csvExport();
+          break;
+      }
+    }
+  };
+
+  // sheet partner details not displaying
 
   return (
     <>
@@ -206,13 +309,10 @@ function FleetPartnersDataGrid({ fleetPartners, availableUsers }: GridProps) {
             </SheetDescription>
           </SheetHeader>
           {selectedPartner ? (
-            <div className="p-4 flex flex-col gap-4">
-              <div className="border border-black h-40">User Information</div>
-              <div className="border border-black h-40">
-                Car Owner Information
-              </div>
-              <div className="border border-black h-40">Car Units Owned</div>
-            </div>
+            <FleetPartnerReview
+              selectedPartner={selectedPartner}
+              setIsOpen={handleOpenDialog}
+            />
           ) : (
             <div>Select a row to view details</div>
           )}
@@ -221,11 +321,23 @@ function FleetPartnersDataGrid({ fleetPartners, availableUsers }: GridProps) {
       {/* 
           Hide Syncfusion's footer because I want to add my own "Save" button in the form 
       */}
-      <style>{`
-        .e-dialog .e-footer-content { display: none !important; }
-      `}</style>
+      <style>
+        {`
+    /* Hide footer ONLY for the custom Add/Edit form */
+    #fleetPartnersGrid_dialogEdit_wrapper.e-dialog .e-footer-content { 
+      display: none !important; 
+    }
+    
+    /* Force the footer to show up for the Delete Confirmation (Alert) */
+    .e-alert-dialog .e-footer-content {
+      display: flex !important;
+    }
+  `}
+      </style>
 
       <GridComponent
+        ref={gridRef}
+        id="fleetPartnersGrid"
         dataSource={fleetPartners}
         recordClick={handleRecordClick}
         allowPaging={true}
@@ -240,35 +352,38 @@ function FleetPartnersDataGrid({ fleetPartners, availableUsers }: GridProps) {
         loadingIndicator={{ indicatorType: "Shimmer" }}
         actionComplete={actionComplete}
         actionBegin={actionBegin}
+        clipMode="EllipsisWithTooltip"
+        allowExcelExport={true}
+        allowPdfExport={true}
+        toolbarClick={toolbarClick}
         height="390"
       >
         <ColumnsDirective>
-          <ColumnDirective type="checkbox" width="50"></ColumnDirective>
           <ColumnDirective
             isPrimaryKey={true}
             field="car_owner_id"
-            headerText="Car Owner ID"
-            width="120"
             visible={false}
           />
           <ColumnDirective
             headerText="Partner Name"
-            field="partner_name"
-            width="120"
+            field="full_name"
+            width="200"
+            template={profileTemplate}
           />
           <ColumnDirective
             field="business_name"
-            headerText="Business Name"
-            width="120"
+            headerText="Business"
+            width="150"
           />
           <ColumnDirective
             field="phone_number"
             headerText="Contact"
-            width="120"
+            width="150"
+            template={phoneTemplate}
           />
           <ColumnDirective
             field="verification_status"
-            headerText="Verification Status"
+            headerText="Status"
             width="120"
             template={verificationStatusTemplate}
             textAlign="Center"
@@ -276,20 +391,23 @@ function FleetPartnersDataGrid({ fleetPartners, availableUsers }: GridProps) {
           <ColumnDirective
             field="revenue_share_percentage"
             headerText="Rev. Share"
-            width="120"
+            width="130"
             template={revenueTemplate}
             textAlign="Center"
           />
           <ColumnDirective
             field="total_units"
             headerText="Unit Count"
-            width="120"
+            width="130"
             textAlign="Center"
+            template={unitCountTemplate}
           />
           <ColumnDirective
-            headerText="Actions"
-            width="120"
+            headerText="Manage"
+            width="90"
             commands={commands}
+            allowFiltering={false}
+            allowSorting={false}
             textAlign="Center"
           ></ColumnDirective>
         </ColumnsDirective>
@@ -303,6 +421,8 @@ function FleetPartnersDataGrid({ fleetPartners, availableUsers }: GridProps) {
             Toolbar,
             Edit,
             Selection,
+            PdfExport,
+            ExcelExport,
           ]}
         />
       </GridComponent>

@@ -59,7 +59,7 @@ function NavMain({
                       <SidebarMenuSubItem key={subItem.title}>
                         <SidebarMenuSubButton asChild>
                           <Link href={subItem.url}>
-                            <span>{subItem.title}</span>
+                            <span className="text-[14px]">{subItem.title}</span>
                           </Link>
                         </SidebarMenuSubButton>
                       </SidebarMenuSubItem>
@@ -72,7 +72,7 @@ function NavMain({
                 <SidebarMenuButton asChild tooltip={item.title}>
                   <Link href={item.url}>
                     {item.icon && <item.icon />}
-                    <span>{item.title}</span>
+                    <span className="text-[14px]">{item.title}</span>
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>

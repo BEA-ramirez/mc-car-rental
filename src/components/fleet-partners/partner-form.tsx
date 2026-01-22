@@ -2,12 +2,12 @@
 
 import { UserType } from "@/lib/schemas/user";
 import { useState } from "react";
-import { managePartner } from "@/actions/manage-partner"; // Import your action
-import { Button } from "@/components/ui/button"; // Optional: Use standard button if you prefer
+import { managePartner } from "@/actions/manage-partner";
+import { Button } from "@/components/ui/button";
 
 // Helper to sanitize/default data
 function sanitizeData(props: any) {
-  // CLONE the object using spread syntax to avoid "Object is not extensible" error
+  // Clone the object using spread syntax to avoid "Object is not extensible" error
   const data = { ...props };
   if (data.isAdd) {
     if (data.active_status === undefined) data.active_status = false;
@@ -78,6 +78,8 @@ export function PartnerForm({
       }
     });
 
+    console.log("Sumbitted data", submitData);
+
     try {
       const result = await managePartner(
         { message: "", success: false },
@@ -116,8 +118,7 @@ export function PartnerForm({
   };
 
   return (
-    // DIV instead of FORM to prevent Hydration Error
-    <div className="grid gap-4 py-2 px-1">
+    <div className="w-[30rem] grid gap-4 py-2 px-1">
       {/* --- USER SELECTION --- */}
       <div className="grid gap-2">
         <label className={labelClass}>Account Owner</label>
@@ -126,7 +127,7 @@ export function PartnerForm({
             <input
               className={inputClass}
               disabled
-              value={formData.partner_name || "Unknown"}
+              value={`${formData.full_name} (${formData.email}) ` || "Unknown"}
             />
             {/* Store ID in state, no need for hidden input if we use formData state */}
           </>
@@ -185,6 +186,7 @@ export function PartnerForm({
             className={inputClass}
             value={formData.verification_status}
             onChange={handleChange}
+            disabled
           >
             <option value="pending">Pending</option>
             <option value="verified">Verified</option>
@@ -209,6 +211,17 @@ export function PartnerForm({
         </label>
       </div>
 
+      {/* --- PAYMENT DETAILS --- */}
+      <div className="grid gap-2">
+        <label className={labelClass}>Payment Details</label>
+        <textarea
+          name="payment_details"
+          className={`${inputClass} min-h-[80px] py-2`}
+          value={formData.payment_details || ""}
+          onChange={handleChange}
+        />
+        <ErrorMsg field="payment_details" />
+      </div>
       {/* --- NOTES --- */}
       <div className="grid gap-2">
         <label className={labelClass}>Notes</label>

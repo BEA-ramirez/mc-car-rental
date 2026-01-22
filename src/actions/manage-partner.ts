@@ -4,6 +4,7 @@ import z from "zod";
 import { carOwnerSchema } from "@/lib/schemas/car-owner";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/utils/supabase/server";
+import { UserType } from "@/lib/schemas/user";
 
 // define the state shape for useactionstate
 export type ActionState = {
@@ -14,7 +15,7 @@ export type ActionState = {
 
 export async function managePartner(
   prevState: ActionState,
-  formData: FormData
+  formData: FormData,
 ): Promise<ActionState> {
   const rawData = Object.fromEntries(formData.entries());
 
@@ -58,13 +59,11 @@ export async function managePartner(
         };
       }
 
-      const { error } = await supabase
-        .from("car_owner")
-        .insert({
-          ...dataToSave,
-          created_at: new Date(),
-          last_updated_at: new Date(),
-        });
+      const { error } = await supabase.from("car_owner").insert({
+        ...dataToSave,
+        created_at: new Date(),
+        last_updated_at: new Date(),
+      });
       if (error) throw error;
       revalidatePath("/admin/fleet-partners");
       return { success: true, message: "Fleet partner created successfully." };
@@ -78,4 +77,37 @@ export async function managePartner(
         "An error occurred while saving the fleet partner. Please try again.",
     };
   }
+}
+
+export async function getUnassignedCarOwners(): Promise<UserType[]> {
+  const supabase = await createClient();
+
+  const { data: existingPartners, error: partnersError } = await supabase
+    .from("car_owner")
+    .select("user_id");
+
+  if (partnersError) {
+    console.error("Error fetching existing partners:", partnersError);
+    return [];
+  }
+
+  const assignedUserIds = existingPartners?.map((p) => p.user_id) || [];
+
+  let query = supabase
+    .from("users")
+    .select("*")
+    .eq("role", "customer")
+    .order("created_at", { ascending: true });
+
+  if (assignedUserIds.length > 0) {
+    query = query.not("user_id", "in", `(${assignedUserIds.join(",")})`);
+  }
+
+  const { data: availableUsers, error: usersError } = await query;
+  if (usersError) {
+    console.error("Error fetching available users:", usersError);
+    return [];
+  }
+
+  return availableUsers as UserType[];
 }

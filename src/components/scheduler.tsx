@@ -62,7 +62,7 @@ function Scheduler() {
 
   return (
     <>
-      <h2>Syncfusion React Schedule Component</h2>
+      <h2>Schedule</h2>
       <ScheduleComponent
         width="100%"
         height="550px"

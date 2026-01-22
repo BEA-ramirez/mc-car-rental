@@ -1,6 +1,6 @@
 import "./globals.css";
 import type { Metadata } from "next";
-import { Geist_Mono } from "next/font/google";
+import { Geist, Geist_Mono } from "next/font/google";
 import "@syncfusion/ej2-base/styles/material.css";
 import "@syncfusion/ej2-buttons/styles/material.css";
 import "@syncfusion/ej2-calendars/styles/material.css";
@@ -14,10 +14,29 @@ import "@syncfusion/ej2-react-schedule/styles/material.css";
 import "@syncfusion/ej2-react-grids/styles/material.css";
 import { Roboto } from "next/font/google";
 import SyncfusionProvider from "@/components/syncfusion-provider";
+import { Inter } from "next/font/google";
+import { Onest } from "next/font/google";
 
+// 2. Define Geist Sans (The main UI font)
+const geistSans = Geist({
+  variable: "--font-geist",
+  subsets: ["latin"],
+});
+
+// 3. Define Geist Mono (For code/numbers)
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
+});
+
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-inter", // Optional: If you want to use it in Tailwind
+});
+
+const onest = Onest({
+  subsets: ["latin"],
+  variable: "--font-onest",
 });
 
 export const metadata: Metadata = {
@@ -41,7 +60,7 @@ export default function RootLayout({
     <html lang="en">
       <body
         suppressHydrationWarning={true}
-        className={`${roboto.variable} ${geistMono.variable} font-sans antialiased`}
+        className={`${geistSans.variable} ${onest.variable}  font-sans antialiased`}
       >
         <SyncfusionProvider>{children}</SyncfusionProvider>
       </body>
