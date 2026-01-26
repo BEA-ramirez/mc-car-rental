@@ -1,6 +1,5 @@
 import React from "react";
 import FleetPartnersDataGrid from "@/components/fleet-partners/fleet-partners-datagrid";
-import { dummyFleetPartners } from "@/constants/datasource";
 import { getCarOwners } from "@/actions/helper/get-car-owners";
 import { getUnassignedCarOwners } from "@/actions/manage-partner";
 

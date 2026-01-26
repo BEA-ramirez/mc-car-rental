@@ -6,7 +6,7 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-roboto);
+  --font-sans: var(--font-inter);
   --font-mono: var(--font-geist-mono);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
@@ -45,7 +45,7 @@
 
 :root {
   --radius: 0.625rem;
-  --background: oklch(1 0 0);
+  --background: oklch(97.41% 0 0);
   --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.145 0 0);
@@ -68,15 +68,17 @@
   --chart-3: oklch(0.398 0.07 227.392);
   --chart-4: oklch(0.828 0.189 84.429);
   --chart-5: oklch(0.769 0.188 70.08);
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
+  --sidebar: oklch(97.41% 0 0);
+  --sidebar-foreground: oklch(58.29% 0 0);
   --sidebar-primary: oklch(0.205 0 0);
   --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
+  --sidebar-accent: oklch(100% 0 0);
+  --sidebar-accent-foreground: oklch(61.964% 0.10559 189.096);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
-  font-family: var(--font-onest), ui-sans-serif, system-ui, sans-serif;
+  --sidebar-width: 10rem;
+  --sidebar-width-icon: 3rem;
+  font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
 }
 
 .dark {
@@ -114,7 +116,7 @@
 }
 
 body {
-  font-family: var(--font-geist), ui-sans-serif, system-ui, sans-serif;
+  font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
 }
 
 @layer base {
@@ -123,6 +125,62 @@ body {
   }
   body {
     @apply bg-background text-foreground;
-    font-family: var(--font-geist), sans-serif;
+    font-family: var(--font-inter), sans-serif;
   }
+}
+
+.e-grid {
+  font-family:
+    var(--font-noto), ui-sans-serif, system-ui, sans-serif !important;
+  border-radius: var(--radius) !important;
+  border: 1px solid var(--border) !important;
+  box-shadow: none !important; /* Remove default shadow */
+}
+
+.e-grid {
+  border: none !important;
+}
+
+.e-grid .e-content,
+.e-grid .e-headercontent,
+.e-grid .e-headercell,
+.e-grid .e-rowcell {
+  border-right: none !important;
+  border-left: none !important;
+  border-bottom: none !important;
+  border-top: none !important;
+}
+
+/* 3. Header Styling: Bold & Larger */
+.e-grid .e-headercell {
+  font-weight: 800 !important; /* Extra Bold */
+  font-size: 1.3rem !important; /* Larger text (approx 16px) */
+  color: var(--foreground) !important; /* Darker text color */
+  background-color: #fff !important; /* Optional: Makes it blend with page bg */
+  padding: 0px;
+}
+
+.e-grid .e-headercelldiv span.e-headertext {
+  margin: 0px !important;
+  padding: 12px !important;
+  font-size: 0.75rem !important;
+}
+
+.e-grid .e-row td.e-rowcell.e-templatecell.e-ellipsistooltip {
+  padding: 8px 8px !important;
+}
+
+.e-grid
+  .e-columnheader
+  th.e-headercell.e-fltr-icon.e-ellipsistooltip.e-mousepointer {
+  padding: 0px 15px !important;
+}
+
+.e-grid
+  th.e-headercell.e-lastcell.e-centeralign.e-ellipsistooltip.e-defaultcursor {
+  padding: 0px 15px !important;
+}
+
+.e-grid div.e-gridheader.e-lib.e-droppable {
+  background-color: #fff !important;
 }

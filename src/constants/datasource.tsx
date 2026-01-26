@@ -1,60 +1,6 @@
 import { BookingType } from "@/lib/schemas/booking";
 import { FleetPartnerProfileType } from "@/lib/schemas/car-owner";
 
-export const dummyFleetPartners: FleetPartnerProfileType[] = [
-  {
-    car_owner_id: "co-101",
-    user_id: "u-001",
-    business_name: "Ormoc City Transport Co.",
-    partner_name: "Juan Dela Cruz",
-    email: "juan@ormoctransport.com",
-    phone_number: "0917-123-4567",
-
-    verification_status: "verified",
-    active_status: true,
-    revenue_share_percentage: 70, // 70% to owner
-    total_units: 5,
-
-    payment_details: "GCash: 0917-123-4567",
-    owner_notes: "Preferred partner for airport transfers.",
-    created_at: new Date("2024-01-15"),
-  },
-  {
-    car_owner_id: "co-102",
-    user_id: "u-002",
-    business_name: "Lina's Rentals",
-    partner_name: "Lina Santos  ",
-    email: "lina.santos@gmail.com",
-    phone_number: "0918-987-6543",
-
-    verification_status: "pending",
-    active_status: false,
-    revenue_share_percentage: 60,
-    total_units: 1,
-
-    payment_details: "BDO: 0012-3456-7890",
-    owner_notes: "Pending updated vehicle registration documents.",
-    created_at: new Date("2025-10-05"),
-  },
-  {
-    car_owner_id: "co-103",
-    user_id: "u-003",
-    business_name: "Speedy Wheels",
-    partner_name: "Mark Uy",
-    email: "mark.uy@speedy.ph",
-    phone_number: "0920-555-4444",
-
-    verification_status: "rejected",
-    active_status: false,
-    revenue_share_percentage: 65,
-    total_units: 0,
-
-    payment_details: "Maya: 0920-555-4444",
-    owner_notes: "Rejected due to expired business permit.",
-    created_at: new Date("2025-08-20"),
-  },
-];
-
 export let timelineResourceData: Object[] = [
   {
     Id: 1,

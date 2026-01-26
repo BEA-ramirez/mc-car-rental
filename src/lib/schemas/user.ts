@@ -12,7 +12,9 @@ export const userSchema = z.object({
   last_name: z
     .string()
     .min(2, { message: "Last name must be at least 2 characters." }),
-  role: z.enum(["admin", "customer", "car_owner", "staff"]).default("customer"),
+  role: z
+    .enum(["admin", "customer", "car_owner", "staff", "driver"])
+    .default("customer"),
   phone_number: z
     .string()
     .regex(/^[0-9]+$/, { message: "Phone number must contain only numbers." })

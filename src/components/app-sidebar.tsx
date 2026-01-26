@@ -8,6 +8,8 @@ import {
   SidebarMenu,
   SidebarMenuItem,
   SidebarMenuButton,
+  SidebarTrigger,
+  useSidebar,
 } from "@/components/ui/sidebar";
 
 import { GalleryVerticalEnd, KeySquare } from "lucide-react";
@@ -25,6 +27,8 @@ import {
   FileText,
   ChartPie,
   Settings,
+  Bell,
+  SwatchBook,
 } from "lucide-react";
 
 import NavMain from "./sidebar/nav-main";
@@ -33,10 +37,11 @@ import NavUser from "./sidebar/nav-user";
 export const sidebarData = {
   user: {
     name: "Admin User",
-    email: "admin_user@gmail.com",
+    email: "admin@rentals.com",
     avatar: "/vercel.svg",
   },
-  navMain: [
+  // Group 1: Overview
+  overview: [
     {
       title: "Dashboard",
       url: "/admin/dashboard",
@@ -44,14 +49,17 @@ export const sidebarData = {
       isActive: true,
     },
     {
-      title: "Bookings",
-      url: "/admin/bookings",
-      icon: ListCheck,
-    },
-    {
       title: "Calendar",
       url: "/admin/calendar",
       icon: Calendar,
+    },
+  ],
+  // Group 2: Operations
+  operations: [
+    {
+      title: "Bookings",
+      url: "/admin/bookings",
+      icon: ListCheck,
     },
     {
       title: "Clients",
@@ -59,14 +67,17 @@ export const sidebarData = {
       icon: SquareUser,
     },
     {
-      title: "Units",
+      title: "Drivers",
+      url: "/admin/drivers",
+      icon: LifeBuoy,
+    },
+  ],
+  // Group 3: Fleet
+  fleet: [
+    {
+      title: "Units (Cars)",
       url: "/admin/units",
       icon: CarFront,
-    },
-    {
-      title: "Fleet Partners",
-      url: "/admin/fleet-partners",
-      icon: Users,
     },
     {
       title: "Tracking",
@@ -74,27 +85,24 @@ export const sidebarData = {
       icon: Route,
     },
     {
-      title: "Drivers",
-      url: "/admin/drivers",
-      icon: LifeBuoy,
+      title: "Fleet Partners",
+      url: "/admin/fleet-partners",
+      icon: Users,
     },
+  ],
+  // Group 4: Business
+  business: [
     {
       title: "Financials",
       url: "/admin/financials",
       icon: ChartColumnBig,
       items: [
-        {
-          title: "Income",
-          url: "#",
-        },
-        {
-          title: "Expenses",
-          url: "#",
-        },
+        { title: "Income", url: "/admin/financials/income" },
+        { title: "Expenses", url: "/admin/financials/expenses" },
       ],
     },
     {
-      title: "Documents Management",
+      title: "Documents",
       url: "/admin/docs-mngmt",
       icon: FileText,
     },
@@ -103,40 +111,43 @@ export const sidebarData = {
       url: "/admin/reports",
       icon: ChartPie,
     },
-    {
-      title: "Settings",
-      url: "/admin/settings",
-      icon: Settings,
-    },
   ],
 };
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+  const { toggleSidebar } = useSidebar();
   return (
-    <Sidebar collapsible="icon" {...props}>
-      <SidebarHeader className="mt-2">
+    <Sidebar collapsible="icon" {...props} className="bg-[#f8f8f8]">
+      <SidebarHeader className="bg-transparent">
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton size="lg" asChild>
-              <a href="#">
-                <div className="bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg">
-                  <GalleryVerticalEnd className="size-4" />
-                </div>
-                <div className="flex flex-col gap-0.5 leading-none">
-                  <span className="font-medium">MC ORMOC CAR RENTAL</span>
-                  <span className="">v0.0.0</span>
-                </div>
-              </a>
+            {/* 3. Add onClick to your MenuButton */}
+            <SidebarMenuButton
+              size="lg"
+              onClick={toggleSidebar}
+              className="hover:bg-accent cursor-pointer"
+            >
+              <div className="bg-[#00ddd2] text-sidebar-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg shrink-0">
+                <SwatchBook className="size-4" />
+              </div>
+              <div className="flex flex-col gap-0.5 leading-none overflow-hidden">
+                <span className="font-bold text-md text-[#222] truncate">
+                  MC
+                </span>
+              </div>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarHeader>
       <SidebarContent>
-        <NavMain items={sidebarData.navMain} />
+        <NavMain items={sidebarData.overview} label="Overview" />
+        <NavMain items={sidebarData.operations} label="Operations" />
+        <NavMain items={sidebarData.fleet} label="Fleet Management" />
+        <NavMain items={sidebarData.business} label="Business Hub" />
       </SidebarContent>
-      <SidebarFooter>
+      {/* <SidebarFooter>
         <NavUser user={sidebarData.user} />
-      </SidebarFooter>
+      </SidebarFooter> */}
       <SidebarRail />
     </Sidebar>
   );

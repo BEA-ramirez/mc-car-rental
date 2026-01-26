@@ -1,6 +1,7 @@
 "use client";
 import Link from "next/link";
 import { ChevronRight, type LucideIcon } from "lucide-react";
+import { usePathname } from "next/navigation"; // Already imported
 import {
   Collapsible,
   CollapsibleContent,
@@ -18,8 +19,10 @@ import {
 } from "@/components/ui/sidebar";
 
 function NavMain({
+  label,
   items,
 }: {
+  label?: string;
   items: {
     title: string;
     url: string;
@@ -31,54 +34,106 @@ function NavMain({
     }[];
   }[];
 }) {
+  const pathname = usePathname();
+
   return (
     <SidebarGroup>
-      {/* <SidebarGroupLabel className="uppercase mt-2">General</SidebarGroupLabel> */}
-      <SidebarMenu className="mt-4">
-        {items.map((item) => (
-          <Collapsible
-            key={item.title}
-            asChild
-            defaultOpen={item.isActive}
-            className="group/collapsible"
-          >
-            {item.items ? (
-              <SidebarMenuItem>
-                <CollapsibleTrigger asChild>
-                  <SidebarMenuButton tooltip={item.title}>
-                    {item.icon && <item.icon />}
-                    <span>{item.title}</span>
-                    {item.items && (
+      {label && (
+        <SidebarGroupLabel className="uppercase text-[0.7rem]">
+          {label}
+        </SidebarGroupLabel>
+      )}
+      <SidebarMenu className="mt-[-0.2rem]">
+        {items.map((item) => {
+          // Logic: Is this specific item or any of its children active?
+          const isParentActive =
+            pathname === item.url || pathname.startsWith(item.url + "/");
+          const hasActiveChild = item.items?.some(
+            (sub) => pathname === sub.url,
+          );
+
+          return (
+            <Collapsible
+              key={item.title}
+              asChild
+              // Automatically open the dropdown if a child is active
+              defaultOpen={item.isActive || hasActiveChild}
+              className="group/collapsible"
+            >
+              {item.items ? (
+                <SidebarMenuItem>
+                  <CollapsibleTrigger asChild>
+                    <SidebarMenuButton
+                      tooltip={item.title}
+                      className="gap-3 hover:shadow-sm"
+                      variant={"outline"}
+                      // shadcn isActive prop
+                      isActive={isParentActive || hasActiveChild}
+                    >
+                      {item.icon && (
+                        <item.icon
+                          className={`stroke-[0.16rem] size-2 ${isParentActive || hasActiveChild ? "text-[#53967C]" : ""}`}
+                        />
+                      )}
+                      <span
+                        className={`text-[13px] font-[500] ${isParentActive || hasActiveChild ? "text-[#222]" : ""}`}
+                      >
+                        {item.title}
+                      </span>
                       <ChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
-                    )}
+                    </SidebarMenuButton>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    <SidebarMenuSub>
+                      {item.items?.map((subItem) => {
+                        const isSubActive = pathname === subItem.url;
+                        return (
+                          <SidebarMenuSubItem key={subItem.title}>
+                            <SidebarMenuSubButton
+                              asChild
+                              className="gap-3 hover:shadow-sm"
+                              isActive={isSubActive}
+                            >
+                              <Link href={subItem.url}>
+                                <span
+                                  className={`text-[13px] font-[500] ${isSubActive ? "text-[#53967C]" : ""}`}
+                                >
+                                  {subItem.title}
+                                </span>
+                              </Link>
+                            </SidebarMenuSubButton>
+                          </SidebarMenuSubItem>
+                        );
+                      })}
+                    </SidebarMenuSub>
+                  </CollapsibleContent>
+                </SidebarMenuItem>
+              ) : (
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    asChild
+                    tooltip={item.title}
+                    className="gap-2 hover:shadow-sm"
+                    isActive={isParentActive}
+                  >
+                    <Link href={item.url} className="flex items-center">
+                      {item.icon && (
+                        <item.icon
+                          className={`stroke-[0.16rem] size-2 ${isParentActive ? "text-[#53967C]" : ""}`}
+                        />
+                      )}
+                      <span
+                        className={`text-[13px] font-[500] ${isParentActive ? "text-[#222]" : ""}`}
+                      >
+                        {item.title}
+                      </span>
+                    </Link>
                   </SidebarMenuButton>
-                </CollapsibleTrigger>
-                <CollapsibleContent>
-                  <SidebarMenuSub>
-                    {item.items?.map((subItem) => (
-                      <SidebarMenuSubItem key={subItem.title}>
-                        <SidebarMenuSubButton asChild>
-                          <Link href={subItem.url}>
-                            <span className="text-[14px]">{subItem.title}</span>
-                          </Link>
-                        </SidebarMenuSubButton>
-                      </SidebarMenuSubItem>
-                    ))}
-                  </SidebarMenuSub>
-                </CollapsibleContent>
-              </SidebarMenuItem>
-            ) : (
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild tooltip={item.title}>
-                  <Link href={item.url}>
-                    {item.icon && <item.icon />}
-                    <span className="text-[14px]">{item.title}</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            )}
-          </Collapsible>
-        ))}
+                </SidebarMenuItem>
+              )}
+            </Collapsible>
+          );
+        })}
       </SidebarMenu>
     </SidebarGroup>
   );

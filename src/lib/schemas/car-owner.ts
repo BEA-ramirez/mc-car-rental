@@ -15,6 +15,7 @@ export const carOwnerSchema = z.object({
   created_at: z.coerce.date().optional(),
   last_updated_at: z.coerce.date().optional(),
 });
+
 export const fleetPartnerDisplaySchema = userSchema
   .merge(carOwnerSchema)
   .extend({ total_units: z.number().default(0) });

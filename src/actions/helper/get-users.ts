@@ -15,3 +15,18 @@ export async function getUsers(): Promise<UserType[]> {
   }
   return data as UserType[];
 }
+
+export async function getUserById(userId: string): Promise<UserType | null> {
+  const supabase = await createClient();
+  const { data: user, error } = await supabase
+    .from("users")
+    .select("*")
+    .eq("user_id", userId)
+    .single();
+
+  if (error) {
+    console.error("Error fetching user by ID:", error);
+    return null;
+  }
+  return user as UserType;
+}

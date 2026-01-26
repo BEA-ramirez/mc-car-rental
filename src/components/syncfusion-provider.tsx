@@ -1,31 +1,37 @@
 "use client";
+
 import { registerLicense } from "@syncfusion/ej2-base";
 import { useState, useEffect } from "react";
 
-function SyncfusionProvider({ children }: { children: React.ReactNode }) {
+export default function SyncfusionProvider({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   const [isClient, setIsClient] = useState(false);
 
   useEffect(() => {
-    // 1. This signals that we are now running in the browser
-    setIsClient(true);
-
-    // 2. Register the license ONLY here (inside the browser)
+    // 1. Get the key
     const licenseKey = process.env.NEXT_PUBLIC_SYNCFUSION_LICENSE_KEY;
+
+    // 2. Register it immediately inside the effect (Safe from "window is not defined")
     if (licenseKey) {
       try {
         registerLicense(licenseKey);
       } catch (error) {
-        console.error("Failed to register Syncfusion license:", error);
+        console.error("License registration failed:", error);
       }
-    } else {
-      console.warn("Syncfusion License Key not found in .env.local");
     }
+
+    // 3. ONLY after attempting to register, allow the app to show
+    setIsClient(true);
   }, []);
 
+  // 4. While we are waiting for the browser to be ready, show NOTHING.
+  // This prevents the "Trial" banner from ever having a chance to appear.
   if (!isClient) {
     return null;
   }
+
   return <>{children}</>;
 }
-
-export default SyncfusionProvider;
