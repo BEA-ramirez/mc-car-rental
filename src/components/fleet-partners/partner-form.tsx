@@ -4,16 +4,51 @@ import { UserType } from "@/lib/schemas/user";
 import { useState } from "react";
 import { managePartner } from "@/actions/manage-partner";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  User,
+  Landmark,
+  CreditCard,
+  CalendarDays,
+  Briefcase,
+  Percent,
+} from "lucide-react";
+import { Input } from "../ui/input";
+import { Textarea } from "../ui/textarea";
+import { Switch } from "../ui/switch";
+import {
+  Field,
+  FieldContent,
+  FieldDescription,
+  FieldError,
+  FieldLabel,
+} from "@/components/ui/field";
 
 // Helper to sanitize/default data
 function sanitizeData(props: any) {
+  const { car_owner_id, full_name, ...rest } = props;
   // Clone the object using spread syntax to avoid "Object is not extensible" error
-  const data = { ...props };
+  const data = { ...rest };
+  data.business_name = data.business_name || "";
+  data.bank_name = data.bank_name || "";
+  data.bank_account_name = data.bank_account_name || "";
+  data.bank_account_number = data.bank_account_number || "";
+  data.owner_notes = data.owner_notes || "";
+  data.contract_expiry_date = data.contract_expiry_date || "";
+
   if (data.isAdd) {
-    if (data.active_status === undefined) data.active_status = false;
-    if (data.verification_status === undefined)
-      data.verification_status = "pending";
-    if (!data.revenue_share_percentage) data.revenue_share_percentage = 70;
+    data.user_id = data.user_id || "";
+    data.active_status = data.active_status ?? false;
+    data.verification_status = data.verification_status ?? "pending";
+    data.revenue_share_percentage = data.revenue_share_percentage ?? 70;
   }
   return data;
 }
@@ -21,7 +56,7 @@ function sanitizeData(props: any) {
 interface PartnerFormProps {
   data: any;
   availableUsers: UserType[];
-  closeDialog: () => void; // <--- NEW PROP to close the grid
+  closeDialog: () => void;
 }
 
 export function PartnerForm({
@@ -29,11 +64,9 @@ export function PartnerForm({
   availableUsers,
   closeDialog,
 }: PartnerFormProps) {
-  // 1. Sanitize and Clone (Fixes "Not Extensible" error)
   const initialData = sanitizeData(rawData);
   const isAdd = !!initialData.isAdd;
 
-  // 2. Local State
   const [formData, setFormData] = useState(initialData);
   const [isSaving, setIsSaving] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<
@@ -42,25 +75,20 @@ export function PartnerForm({
   > | null>(null);
   const [globalError, setGlobalError] = useState<string | null>(null);
 
-  // 3. Handle Input Changes (Updates Local State Only)
-  const handleChange = (
-    e: React.ChangeEvent<
-      HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
-    >,
-  ) => {
-    const { name, value, type } = e.target;
-    let finalValue: any = value;
+  console.log("form data:", formData);
 
-    if (type === "checkbox") {
-      finalValue = (e.target as HTMLInputElement).checked;
-    }
+  const handleChange = (e: any) => {
+    const { name, value, type, checked } = e.target;
+    const finalValue = type === "checkbox" ? checked : value;
 
-    // Clear error for this field when user starts typing
     if (fieldErrors?.[name]) {
       setFieldErrors((prev) => ({ ...prev!, [name]: [] }));
     }
-
     setFormData((prev: any) => ({ ...prev, [name]: finalValue }));
+  };
+
+  const handleSelectChange = (name: string, value: string) => {
+    setFormData((prev: any) => ({ ...prev, [name]: value }));
   };
 
   // 4. Custom Save Handler
@@ -74,7 +102,11 @@ export function PartnerForm({
     Object.keys(formData).forEach((key) => {
       const val = formData[key];
       if (val !== undefined && val !== null) {
-        submitData.append(key, val.toString());
+        if (typeof val === "boolean") {
+          submitData.append(key, val ? "true" : "false");
+        } else {
+          submitData.append(key, val.toString());
+        }
       }
     });
 
@@ -118,135 +150,225 @@ export function PartnerForm({
   };
 
   return (
-    <div className="w-[30rem] grid gap-4 py-2 px-1">
-      {/* --- USER SELECTION --- */}
-      <div className="grid gap-2">
-        <label className={labelClass}>Account Owner</label>
-        {!isAdd ? (
-          <>
-            <input
-              className={inputClass}
-              disabled
-              value={`${formData.full_name} (${formData.email}) ` || "Unknown"}
+    <div className="w-137.5 bg-card">
+      <Tabs defaultValue="profile" className="w-full">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="profile">Partner Profile</TabsTrigger>
+          <TabsTrigger value="financials">Financials & Legal</TabsTrigger>
+        </TabsList>
+
+        {/* --- TAB 1: PROFILE --- */}
+        <TabsContent value="profile" className="space-y-4 py-4">
+          <Field>
+            <FieldLabel>Link Account</FieldLabel>
+            <FieldContent>
+              {isAdd ? (
+                <Select
+                  value={formData.user_id} // This links the state back to the UI
+                  onValueChange={(v) => handleSelectChange("user_id", v)}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select a user applicant" />
+                  </SelectTrigger>
+                  <SelectGroup>
+                    <SelectContent position="popper" className="z-999999">
+                      {availableUsers.length > 0 ? (
+                        availableUsers.map((user) => (
+                          <SelectItem key={user.user_id} value={user.user_id}>
+                            {user.full_name} - {user.email}
+                          </SelectItem>
+                        ))
+                      ) : (
+                        <p className="p-2 text-xs text-muted-foreground text-center">
+                          No applicants found
+                        </p>
+                      )}
+                    </SelectContent>
+                  </SelectGroup>
+                </Select>
+              ) : (
+                <div className="flex items-center gap-2 p-2 bg-muted rounded-md border border-dashed">
+                  <User className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm font-medium">
+                    {formData.full_name}
+                  </span>
+                </div>
+              )}
+            </FieldContent>
+            <FieldDescription>
+              Select the user who applied to be a partner.
+            </FieldDescription>
+            <FieldError>{fieldErrors?.user_id?.[0]}</FieldError>
+          </Field>
+
+          <Field>
+            <FieldLabel>Business Name</FieldLabel>
+            <FieldContent>
+              <div className="relative">
+                <Briefcase className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  name="business_name"
+                  value={formData.business_name}
+                  onChange={handleChange}
+                  className="pl-9"
+                  placeholder="Enter official business name"
+                />
+              </div>
+            </FieldContent>
+            <FieldError>{fieldErrors?.business_name?.[0]}</FieldError>
+          </Field>
+
+          <div className="grid grid-cols-2 gap-4">
+            <Field>
+              <FieldLabel>Verification</FieldLabel>
+              <Select
+                value={formData.verification_status}
+                onValueChange={(v) =>
+                  handleSelectChange("verification_status", v)
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="z-999999">
+                  <SelectItem value="pending">Pending</SelectItem>
+                  <SelectItem value="verified">Verified</SelectItem>
+                  <SelectItem value="rejected">Rejected</SelectItem>
+                </SelectContent>
+              </Select>
+              <FieldError>{fieldErrors?.verification_status?.[0]}</FieldError>
+            </Field>
+
+            <Field className="flex flex-col justify-end pb-2">
+              <div className="flex items-center justify-between space-x-2 rounded-md border p-2 h-10">
+                <FieldLabel className="mb-0">Active Status</FieldLabel>
+                <Switch
+                  checked={formData.active_status}
+                  onCheckedChange={(checked) =>
+                    setFormData((prev: any) => ({
+                      ...prev,
+                      active_status: checked,
+                    }))
+                  }
+                />
+              </div>
+            </Field>
+          </div>
+
+          <Field>
+            <FieldLabel>Internal Notes</FieldLabel>
+            <Textarea
+              name="owner_notes"
+              value={formData.owner_notes || ""}
+              onChange={handleChange}
+              placeholder="Private admin notes..."
+              className="resize-none h-20"
             />
-            {/* Store ID in state, no need for hidden input if we use formData state */}
-          </>
-        ) : (
-          <select
-            name="user_id"
-            className={inputClass}
-            onChange={handleChange}
-            value={formData.user_id || ""}
-          >
-            <option value="" disabled>
-              Select a user...
-            </option>
-            {availableUsers.map((user) => (
-              <option key={user.user_id} value={user.user_id}>
-                {user.full_name} ({user.email})
-              </option>
-            ))}
-          </select>
+            <FieldDescription>
+              Visible only to administrative staff.
+            </FieldDescription>
+          </Field>
+        </TabsContent>
+
+        {/* --- TAB 2: FINANCIALS --- */}
+        <TabsContent value="financials" className="space-y-4 py-4">
+          <Field>
+            <FieldLabel>Revenue Share (%)</FieldLabel>
+            <div className="relative">
+              <Percent className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                type="number"
+                name="revenue_share_percentage"
+                value={formData.revenue_share_percentage}
+                onChange={handleChange}
+                className="pl-9"
+                max={100}
+                min={0}
+              />
+            </div>
+            <FieldDescription>
+              The percentage of revenue assigned to the partner.
+            </FieldDescription>
+            <FieldError>
+              {fieldErrors?.revenue_share_percentage?.[0]}
+            </FieldError>
+          </Field>
+
+          <div className="grid grid-cols-2 gap-4">
+            <Field>
+              <FieldLabel>Bank Name</FieldLabel>
+              <div className="relative">
+                <Landmark className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  name="bank_name"
+                  value={formData.bank_name || ""}
+                  onChange={handleChange}
+                  className="pl-9"
+                  placeholder="e.g. BDO"
+                />
+              </div>
+              <FieldError>{fieldErrors?.bank_name?.[0]}</FieldError>
+            </Field>
+            <Field>
+              <FieldLabel>Account Holder</FieldLabel>
+              <Input
+                name="bank_account_name"
+                value={formData.bank_account_name || ""}
+                onChange={handleChange}
+                placeholder="Account Name"
+              />
+              <FieldError>{fieldErrors?.bank_account_name?.[0]}</FieldError>
+            </Field>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <Field>
+              <FieldLabel>Account Number</FieldLabel>
+              <div className="relative">
+                <CreditCard className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  name="bank_account_number"
+                  value={formData.bank_account_number || ""}
+                  onChange={handleChange}
+                  className="pl-9"
+                />
+              </div>
+              <FieldError>{fieldErrors?.bank_account_number?.[0]}</FieldError>
+            </Field>
+            <Field>
+              <FieldLabel>Contract Expiry</FieldLabel>
+              <div className="relative">
+                <CalendarDays className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  type="date"
+                  name="contract_expiry_date"
+                  value={formData.contract_expiry_date || ""}
+                  onChange={handleChange}
+                  className="pl-9"
+                />
+              </div>
+            </Field>
+          </div>
+        </TabsContent>
+      </Tabs>
+
+      {/* Footer Actions */}
+      <div className="flex justify-between items-center mt-6 pt-4 border-t">
+        {globalError && (
+          <p className="text-xs text-red-500 font-medium">{globalError}</p>
         )}
-        {/* Display Error for User ID */}
-        <ErrorMsg field="user_id" />
-      </div>
-
-      {/* --- BUSINESS NAME --- */}
-      <div className="grid gap-2">
-        <label className={labelClass}>Business Name</label>
-        <input
-          name="business_name"
-          className={inputClass}
-          value={formData.business_name || ""}
-          onChange={handleChange}
-          placeholder="e.g. Prestige Rentals"
-        />
-        <ErrorMsg field="business_name" />
-      </div>
-
-      {/* --- REVENUE & STATUS --- */}
-      <div className="grid grid-cols-2 gap-4">
-        <div className="grid gap-2">
-          <label className={labelClass}>Rev. Share (%)</label>
-          <input
-            name="revenue_share_percentage"
-            type="number"
-            className={inputClass}
-            value={formData.revenue_share_percentage}
-            onChange={handleChange}
-          />
-          <ErrorMsg field="revenue_share_percentage" />
-        </div>
-
-        <div className="grid gap-2">
-          <label className={labelClass}>Status</label>
-          <select
-            name="verification_status"
-            className={inputClass}
-            value={formData.verification_status}
-            onChange={handleChange}
-            disabled
+        <div className="flex gap-2 ml-auto">
+          <Button variant="outline" onClick={closeDialog} disabled={isSaving}>
+            Cancel
+          </Button>
+          <Button
+            onClick={handleSave}
+            disabled={isSaving}
+            className="bg-[#00ddd2] hover:bg-[#00c4ba] text-black border-none font-bold"
           >
-            <option value="pending">Pending</option>
-            <option value="verified">Verified</option>
-            <option value="rejected">Rejected</option>
-          </select>
-          <ErrorMsg field="verification_status" />
+            {isSaving ? "Saving..." : "Save Fleet Partner"}
+          </Button>
         </div>
-      </div>
-
-      {/* --- CHECKBOX --- */}
-      <div className="flex items-center space-x-2 border p-3 rounded-md">
-        <input
-          type="checkbox"
-          id="active_status"
-          name="active_status"
-          className="h-4 w-4"
-          checked={!!formData.active_status}
-          onChange={handleChange}
-        />
-        <label htmlFor="active_status" className={labelClass}>
-          Active Partner (Visible)
-        </label>
-      </div>
-
-      {/* --- PAYMENT DETAILS --- */}
-      <div className="grid gap-2">
-        <label className={labelClass}>Payment Details</label>
-        <textarea
-          name="payment_details"
-          className={`${inputClass} min-h-[80px] py-2`}
-          value={formData.payment_details || ""}
-          onChange={handleChange}
-        />
-        <ErrorMsg field="payment_details" />
-      </div>
-      {/* --- NOTES --- */}
-      <div className="grid gap-2">
-        <label className={labelClass}>Notes</label>
-        <textarea
-          name="owner_notes"
-          className={`${inputClass} min-h-[80px] py-2`}
-          value={formData.owner_notes || ""}
-          onChange={handleChange}
-        />
-        <ErrorMsg field="owner_notes" />
-      </div>
-
-      {/* --- ERROR MESSAGE --- */}
-      {globalError && (
-        <div className="p-2 bg-red-100 text-red-700 text-sm rounded">
-          {globalError}
-        </div>
-      )}
-
-      {/* --- CUSTOM SAVE BUTTON --- */}
-      <div className="flex justify-end gap-2 mt-2">
-        {/* We add our own button since we are hiding Syncfusion's footer */}
-        <Button onClick={handleSave} disabled={isSaving}>
-          {isSaving ? "Saving..." : "Save Partner"}
-        </Button>
       </div>
     </div>
   );

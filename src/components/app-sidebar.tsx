@@ -117,7 +117,7 @@ export const sidebarData = {
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { toggleSidebar } = useSidebar();
   return (
-    <Sidebar collapsible="icon" {...props} className="bg-[#f8f8f8]">
+    <Sidebar collapsible="icon" {...props}>
       <SidebarHeader className="bg-transparent">
         <SidebarMenu>
           <SidebarMenuItem>
@@ -127,11 +127,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               onClick={toggleSidebar}
               className="hover:bg-accent cursor-pointer"
             >
-              <div className="bg-[#00ddd2] text-sidebar-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg shrink-0">
+              <div className="bg-primary text-foreground flex aspect-square size-8 items-center justify-center rounded-lg shrink-0">
                 <SwatchBook className="size-4" />
               </div>
               <div className="flex flex-col gap-0.5 leading-none overflow-hidden">
-                <span className="font-bold text-md text-[#222] truncate">
+                <span className="font-bold text-md text-foreground truncate">
                   MC
                 </span>
               </div>

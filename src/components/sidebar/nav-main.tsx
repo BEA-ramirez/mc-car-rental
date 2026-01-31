@@ -72,11 +72,11 @@ function NavMain({
                     >
                       {item.icon && (
                         <item.icon
-                          className={`stroke-[0.16rem] size-2 ${isParentActive || hasActiveChild ? "text-[#53967C]" : ""}`}
+                          className={`stroke-[0.16rem] size-2 ${isParentActive || hasActiveChild ? "text-primary" : ""}`}
                         />
                       )}
                       <span
-                        className={`text-[13px] font-[500] ${isParentActive || hasActiveChild ? "text-[#222]" : ""}`}
+                        className={`text-[13px] font-[500] ${isParentActive || hasActiveChild ? "text-primary" : ""}`}
                       >
                         {item.title}
                       </span>
@@ -96,7 +96,7 @@ function NavMain({
                             >
                               <Link href={subItem.url}>
                                 <span
-                                  className={`text-[13px] font-[500] ${isSubActive ? "text-[#53967C]" : ""}`}
+                                  className={`text-[13px] font-[500] ${isSubActive ? "text-primary" : ""}`}
                                 >
                                   {subItem.title}
                                 </span>
@@ -119,11 +119,11 @@ function NavMain({
                     <Link href={item.url} className="flex items-center">
                       {item.icon && (
                         <item.icon
-                          className={`stroke-[0.16rem] size-2 ${isParentActive ? "text-[#53967C]" : ""}`}
+                          className={`stroke-[0.16rem] size-2 ${isParentActive ? "text-primary" : ""}`}
                         />
                       )}
                       <span
-                        className={`text-[13px] font-[500] ${isParentActive ? "text-[#222]" : ""}`}
+                        className={`text-[13px] font-[500] ${isParentActive ? "text-primary" : ""}`}
                       >
                         {item.title}
                       </span>

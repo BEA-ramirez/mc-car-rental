@@ -1,13 +1,6 @@
 "use client";
 import { useState, useRef } from "react";
 import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetDescription,
-} from "@/components/ui/sheet";
-import {
   GridComponent,
   ColumnsDirective,
   ColumnDirective,
@@ -32,35 +25,40 @@ import {
 import { ClickEventArgs } from "@syncfusion/ej2-navigations";
 import { Browser } from "@syncfusion/ej2-base"; // for responsiveness check
 import { managePartner } from "@/actions/manage-partner";
-import { FleetPartnerProfileType } from "@/lib/schemas/car-owner";
-import { UserType } from "@/lib/schemas/user";
 import { PartnerForm } from "./partner-form";
 import { CarFront, Phone } from "lucide-react";
 import Image from "next/image";
 import FleetPartnerReview from "./fleet-review";
 import { deletePartner } from "@/actions/helper/delete-partner";
+import { Input } from "../ui/input";
+import { Button } from "../ui/button";
+import { Search, Plus, Funnel, Star } from "lucide-react";
+import { FleetPartnerType, CarOwnerType } from "@/lib/schemas/car-owner";
+import { UserType } from "@/lib/schemas/user";
 
-interface GridProps {
-  fleetPartners: FleetPartnerProfileType[];
-  availableUsers: UserType[];
-}
-
-function FleetPartnersDataGrid({ fleetPartners, availableUsers }: GridProps) {
+function FleetPartnersDataGrid({
+  fleetPartners,
+  onSelectPartner,
+  carOwnerApplicants,
+}: {
+  fleetPartners: FleetPartnerType[];
+  onSelectPartner: (partner: FleetPartnerType | null) => void;
+  carOwnerApplicants: UserType[];
+}) {
   const gridRef = useRef<GridComponent | null>(null);
-  const [isOpen, setIsOpen] = useState<boolean>(false);
-  const [selectedPartner, setSelectedPartner] =
-    useState<FleetPartnerProfileType | null>(null);
+  const applicantsRef = useRef(carOwnerApplicants);
+  applicantsRef.current = carOwnerApplicants;
 
-  let grid: GridComponent | null = null;
-
-  // TEMPLATE: Syncfusion passes 'props' (the row data + isAdd flag) here
+  //TEMPLATE: Syncfusion passes 'props' (the row data + isAdd flag) here
   function dialogTemplate(props: any) {
     return (
       <PartnerForm
         data={props}
-        availableUsers={availableUsers}
+        availableUsers={applicantsRef.current}
         closeDialog={() => {
-          if (grid) grid.closeEdit();
+          if (gridRef.current) {
+            gridRef.current.closeEdit();
+          }
         }}
       />
     );
@@ -72,14 +70,10 @@ function FleetPartnersDataGrid({ fleetPartners, availableUsers }: GridProps) {
       (args.requestType === "beginEdit" || args.requestType === "add") &&
       args.dialog
     ) {
-      // Customize Dialog Title based on action
-      if (args.requestType === "add") {
-        args.dialog.header = "Add New Fleet Partner";
-      } else {
-        args.dialog.header = "Edit Partner Details";
-      }
-
-      // Responsive Height Logic from Demo
+      args.dialog.header =
+        args.requestType === "add"
+          ? "Add New Fleet Partner"
+          : "Edit Partner Details";
       if (Browser.isDevice) {
         args.dialog.height = window.innerHeight - 90 + "px";
         (args.dialog as any).dataBind();
@@ -89,81 +83,33 @@ function FleetPartnersDataGrid({ fleetPartners, availableUsers }: GridProps) {
 
   // THE KEY HANDLER
   const actionBegin = async (args: any) => {
-    // Intercept the SAVE action
     if (args.requestType === "save") {
-      // Stop Syncfusion from doing its default internal save
-      args.cancel = true;
-
-      // Prepare FormData for your Server Action
-      // 'args.data' contains the values we updated in PartnerForm via 'handleChange'
+      args.cancel = true; // Stop internal save
       const formData = new FormData();
-
-      // Loop through the data object and append to FormData
       Object.keys(args.data).forEach((key) => {
         const value = args.data[key];
         if (value !== undefined && value !== null) {
-          // Convert booleans/numbers to string for FormData
           formData.append(key, value.toString());
         }
       });
 
       try {
-        // Call Server Action
         const result = await managePartner(
           { message: "", success: false },
           formData,
         );
-
         if (result.success) {
-          // Close the dialog manually on success
-          if (args.grid) {
-            args.grid.closeEdit();
-          }
-          // Optionally show a toast here
-          console.log("Success:", result.message);
+          gridRef.current?.closeEdit();
+          // Refresh data if needed (usually handled by parent props updating)
         } else {
-          // Handle Validation Errors
           alert("Error: " + result.message);
-          // If you want to show field errors, you'd need to pass state back to the form
-          // or simple alert them for now since we removed useActionState
-          console.error(result.errors);
         }
       } catch (err) {
-        console.error("Server Action Failed", err);
+        console.error(err);
       }
     }
-    if (args.requestType === "delete") {
-      // stop syncfusion's default delete action
-      args.cancel = true;
-      // get the data of the rows being deleted
-      const selectedRecords: FleetPartnerProfileType[] =
-        args.data as FleetPartnerProfileType[];
-      const record = selectedRecords[0];
-      if (!record) return;
-      try {
-        const result = await deletePartner(record.car_owner_id, record.user_id);
-        if (result.success) {
-          alert(result.message);
-        } else {
-          alert("Error: " + result.message);
-        }
-      } catch (error) {
-        console.error(error);
-        alert("An unexpected error occurred.");
-      }
-    }
+    // Delete logic goes here...
   };
-
-  // data grid settings
-  const filterOptions: FilterSettingsModel = { type: "Menu" };
-  const toolbarOptions: ToolbarItems[] = [
-    "Search",
-    "Add",
-
-    "ExcelExport",
-    "PdfExport",
-    "CsvExport",
-  ];
 
   const editSettings: EditSettingsModel = {
     allowEditing: true,
@@ -175,149 +121,66 @@ function FleetPartnersDataGrid({ fleetPartners, availableUsers }: GridProps) {
     template: dialogTemplate,
   };
 
-  const selectionsettings: SelectionSettingsModel = {
-    type: "Multiple",
-    persistSelection: true,
-  };
-
-  const commands: any = [
-    {
-      type: "Edit",
-      buttonOption: { iconCss: " e-icons e-edit", cssClass: "e-flat" },
-    },
-    {
-      type: "Delete",
-      buttonOption: { iconCss: "e-icons e-delete", cssClass: "e-flat" },
-    },
-    {
-      type: "Save",
-      buttonOption: { iconCss: "e-icons e-update", cssClass: "e-flat" },
-    },
-    {
-      type: "Cancel",
-      buttonOption: { iconCss: "e-icons e-cancel-icon", cssClass: "e-flat" },
-    },
-  ];
-
-  function verificationStatusTemplate(props: FleetPartnerProfileType) {
-    const colors = {
-      verified: "text-green-600 bg-green-100",
-      pending: "text-yellow-600 bg-yellow-100",
-      rejected: "text-red-600 bg-red-100",
-    };
-    const colorClass = colors[props.verification_status] || "text-gray-500";
-    return (
-      <span className={`statustemp ${colorClass}`}>
-        {props.verification_status}
-      </span>
-    );
-  }
-
-  function revenueTemplate(props: FleetPartnerProfileType) {
-    return <span>{`${props.revenue_share_percentage}%`}</span>;
-  }
-
-  function unitCountTemplate(props: FleetPartnerProfileType) {
-    return props.total_units >= 0 ? (
-      <div className="flex justify-center items-center gap-2 text-gray-700">
-        <CarFront className="w-4 h-4 text-gray-500 shrink-0" />
-        <span className="truncate">{props.total_units}</span>
-      </div>
-    ) : (
-      <span className="text-gray-400 bold text-center ">- -</span>
-    );
-  }
-
-  function profileTemplate(props: FleetPartnerProfileType) {
+  function profileTemplate(props: FleetPartnerType) {
     const profilePicture = props.profile_picture_url
       ? props.profile_picture_url
       : `https://ui-avatars.com/api/?name=${props.first_name}+${props.last_name}&background=random&color=fff`;
     return (
-      <div className="flex justify-start items-center gap-2">
-        <div
-          className={`w-2 h-2 rounded-full ${props.active_status ? "bg-green-400" : "bg-gray-400"}`}
-        ></div>
-        <div className="relative w-8 h-8">
-          <Image
-            key={profilePicture}
-            src={profilePicture}
-            alt="Profile"
-            fill /* Fills the relative parent above */
-            className="rounded-full object-cover border"
-            sizes="40px"
-          />
-        </div>
-        <div className="flex flex-col justify-start items-start">
-          <h3 className="text-[0.8rem] bold mb-[-0.3rem] p-0">
-            {props.full_name}
-          </h3>
-          <h4 className="text-[0.6rem]">{props.email}</h4>
+      <div>
+        <div className="flex justify-start items-center gap-4">
+          <div className="relative w-14 h-14">
+            <Image
+              key={profilePicture}
+              src={profilePicture}
+              alt="Profile"
+              fill /* Fills the relative parent above */
+              className="rounded-full object-cover border"
+              sizes="40px"
+            />
+          </div>
+          <div className="flex flex-col justify-center items-start">
+            <h3 className="text-[0.9rem] font-semibold p-0 truncate max-w-37.5">
+              {props.business_name ? props.business_name : props.full_name}
+            </h3>
+            <div className="flex items-center gap-2">
+              <Star className="text-amber-400 fill-amber-400 w-4 h-4" />
+              <h4 className="text-[0.8rem] font-medium text-foreground/50">
+                4.8
+              </h4>
+              <div className="w-2 h-2 rounded-full bg-foreground/70"></div>
+              <h4 className="text-[0.8rem] font-medium text-foreground/60">
+                8 cars
+              </h4>
+            </div>
+          </div>
         </div>
       </div>
     );
   }
 
-  function phoneTemplate(props: UserType) {
-    return props.phone_number ? (
-      <div className="flex items-center gap-2 text-gray-700">
-        <Phone className="w-4 h-4 text-gray-500 shrink-0" />
-        <span className="truncate">{props.phone_number}</span>
-      </div>
-    ) : (
-      <span className="text-gray-400 bold text-center ">- -</span>
-    );
-  }
-
-  //when clicking a row
+  // Triggered when a row is clicked (To open side panel)
   const handleRecordClick = (args: RecordClickEventArgs) => {
-    // Prevent opening if the user clicked on a command button
+    // Prevent opening if clicking a command column/button
     if ((args.target as HTMLElement).closest(".e-unboundcell")) return;
-    setSelectedPartner(args.rowData as FleetPartnerProfileType);
-    setIsOpen(true);
+    onSelectPartner(args.rowData as FleetPartnerType);
   };
 
-  const handleOpenDialog = (isOpen: boolean) => {
-    setIsOpen(isOpen);
+  const handleCloseDetail = () => {
+    onSelectPartner(null);
+    gridRef.current?.clearSelection();
   };
 
-  const toolbarClick = (args: ClickEventArgs): void => {
-    if (gridRef.current) {
-      switch (args.item.id) {
-        case "fleetPartnersGrid_excelexport":
-          gridRef.current.excelExport();
-          break;
-        case "fleetPartnersGrid_pdfexport":
-          gridRef.current.pdfExport();
-          break;
-        case "fleetPartnersGrid_csvexport":
-          gridRef.current.csvExport();
-          break;
-      }
-    }
+  // The Add Function (Programmatic)
+  const handleAdd = () => {
+    gridRef.current?.addRecord();
   };
 
-  // sheet partner details not displaying
+  const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
+    gridRef.current?.search(e.target.value);
+  };
 
   return (
     <>
-      <Sheet open={isOpen} onOpenChange={setIsOpen}>
-        <SheetContent>
-          <SheetHeader>
-            <SheetTitle>Partner Details</SheetTitle>
-            <SheetDescription>
-              View and manage fleet partner information.
-            </SheetDescription>
-          </SheetHeader>
-          {selectedPartner ? (
-            <FleetPartnerReview
-              selectedPartner={selectedPartner}
-              setIsOpen={handleOpenDialog}
-            />
-          ) : (
-            <div>Select a row to view details</div>
-          )}
-        </SheetContent>
-      </Sheet>
       {/* 
           Hide Syncfusion's footer because I want to add my own "Save" button in the form 
       */}
@@ -334,98 +197,63 @@ function FleetPartnersDataGrid({ fleetPartners, availableUsers }: GridProps) {
     }
   `}
       </style>
-
-      <GridComponent
-        ref={gridRef}
-        id="fleetPartnersGrid"
-        dataSource={fleetPartners}
-        recordClick={handleRecordClick}
-        allowPaging={true}
-        allowSorting={true}
-        allowFiltering={true}
-        allowSelection={true}
-        showColumnChooser={true}
-        filterSettings={filterOptions}
-        toolbar={toolbarOptions}
-        editSettings={editSettings}
-        selectionSettings={selectionsettings}
-        loadingIndicator={{ indicatorType: "Shimmer" }}
-        actionComplete={actionComplete}
-        actionBegin={actionBegin}
-        clipMode="EllipsisWithTooltip"
-        allowExcelExport={true}
-        allowPdfExport={true}
-        toolbarClick={toolbarClick}
-        height="390"
-      >
-        <ColumnsDirective>
-          <ColumnDirective
-            isPrimaryKey={true}
-            field="car_owner_id"
-            visible={false}
+      <div className="flex flex-row-reverse px-4 pt-4">
+        <Button
+          onClick={handleAdd}
+          className="bg-primary hover:bg-primary/60 shadow-md cursor-pointer h-7! text-[0.7rem] rounded-sm! p-1! px-2! mb-2 gap-1!"
+        >
+          <Plus className="text-secondary stroke-3" />
+          Fleet Partner
+        </Button>
+      </div>
+      <div className="flex items-center justify-between gap-2 mb-2 px-4">
+        <div className="relative w-[90%] flex items-center gap-2">
+          <Search className="absolute left-2 top-2.4 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search user..."
+            className="pl-8 border-gray-300 rounded-sm text-xs! h-8"
+            onChange={handleSearch}
           />
-          <ColumnDirective
-            headerText="Partner Name"
-            field="full_name"
-            width="200"
-            template={profileTemplate}
-          />
-          <ColumnDirective
-            field="business_name"
-            headerText="Business"
-            width="150"
-          />
-          <ColumnDirective
-            field="phone_number"
-            headerText="Contact"
-            width="150"
-            template={phoneTemplate}
-          />
-          <ColumnDirective
-            field="verification_status"
-            headerText="Status"
-            width="120"
-            template={verificationStatusTemplate}
-            textAlign="Center"
-          />
-          <ColumnDirective
-            field="revenue_share_percentage"
-            headerText="Rev. Share"
-            width="130"
-            template={revenueTemplate}
-            textAlign="Center"
-          />
-          <ColumnDirective
-            field="total_units"
-            headerText="Unit Count"
-            width="130"
-            textAlign="Center"
-            template={unitCountTemplate}
-          />
-          <ColumnDirective
-            headerText="Manage"
-            width="90"
-            commands={commands}
-            allowFiltering={false}
-            allowSorting={false}
-            textAlign="Center"
-          ></ColumnDirective>
-        </ColumnsDirective>
-        <Inject
-          services={[
-            Page,
-            Sort,
-            Filter,
-            ColumnChooser,
-            CommandColumn,
-            Toolbar,
-            Edit,
-            Selection,
-            PdfExport,
-            ExcelExport,
-          ]}
-        />
-      </GridComponent>
+        </div>
+        <Button variant="outline" className="bg-transparent! " size={"icon-sm"}>
+          <Funnel className="text-foreground" />
+        </Button>
+      </div>
+      <div className="h-[90%]">
+        <GridComponent
+          ref={gridRef}
+          id="fleetPartnersGrid"
+          dataSource={fleetPartners}
+          editSettings={editSettings}
+          allowSorting={true}
+          allowSelection={true}
+          selectionSettings={{ type: "Single", mode: "Row" }}
+          recordClick={handleRecordClick} // <--- Triggers split view
+          actionComplete={actionComplete}
+          actionBegin={actionBegin}
+          height="100%"
+        >
+          <ColumnsDirective>
+            <ColumnDirective
+              isPrimaryKey={true}
+              field="car_owner_id"
+              visible={false}
+            />
+            <ColumnDirective
+              field="full_name"
+              width="200"
+              template={profileTemplate}
+            />
+            <ColumnDirective
+              field="business_name"
+              headerText="Business"
+              width="150"
+              visible={false}
+            />
+          </ColumnsDirective>
+          <Inject services={[Sort, Filter, Edit, Selection, Page, Toolbar]} />
+        </GridComponent>
+      </div>
     </>
   );
 }

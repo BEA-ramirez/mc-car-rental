@@ -28,17 +28,21 @@ import { deleteUser } from "@/actions/helper/delete-user";
 import {
   MapPin,
   Phone,
-  File,
+  Mail,
   Plus,
-  Pencil,
   Trash2,
-  Eye,
   FileSearchCorner,
   EllipsisVertical,
   History,
   UserStar,
   SquarePen,
-  X,
+  Download,
+  FileText,
+  FileSpreadsheet,
+  Sheet,
+  ArrowRightFromLine,
+  Send,
+  SquarePlus,
 } from "lucide-react";
 import Image from "next/image";
 import { Input } from "@/components/ui/input";
@@ -54,7 +58,9 @@ import {
   DropdownMenuShortcut,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useState } from "react";
+import { toTitleCase, toTitleCaseLine } from "@/actions/helper/format-text";
 
 interface GridProps {
   users: UserType[];
@@ -63,6 +69,28 @@ interface GridProps {
 export default function ClientsDataGrid({ users }: GridProps) {
   const gridRef = useRef<GridComponent | null>(null);
   const [selectedUser, setSelectedUser] = useState<UserType | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+  // Toggle single row
+  const toggleSelection = (id: string) => {
+    const newSet = new Set(selectedIds);
+    if (newSet.has(id)) {
+      newSet.delete(id);
+    } else {
+      newSet.add(id);
+    }
+    setSelectedIds(newSet);
+  };
+
+  // Helper: Select All / Deselect All
+  const toggleSelectAll = (checked: boolean) => {
+    if (checked) {
+      // Select all IDs currently in the data
+      setSelectedIds(new Set(users.map((u) => u.user_id)));
+    } else {
+      setSelectedIds(new Set());
+    }
+  };
 
   // Triggered when a row is clicked
   const handleRowSelected = (args: any) => {
@@ -214,31 +242,21 @@ export default function ClientsDataGrid({ users }: GridProps) {
   // Helper for Role Badges
   function roleTemplate(props: UserType) {
     const colors: Record<string, string> = {
-      admin: "bg-red-300 text-red-700",
-      staff: "bg-blue-300 text-blue-700",
-      car_owner: "bg-purple-300 text-purple-700",
-      customer: "bg-orange-200 text-orange-700",
+      admin: "bg-rose-100 text-rose-600 ",
+      staff: "bg-blue-100 text-blue-600 ",
+      car_owner: "bg-purple-100 text-purple-600 ",
+      customer: "bg-emerald-100 text-emerald-600 ",
+      driver: "bg-orange-100 text-orange-600 ",
     };
     // Default to 'customer' color if role is unknown
     const colorClass = colors[props.role] || colors.customer;
 
     return (
       <span
-        className={`px-2 py-1 rounded-full text-[12px] font-medium ${colorClass}`}
+        className={`px-2 py-[0.2rem] rounded-sm text-[11px] font-semibold ${colorClass} shadow-md`}
       >
-        {props.role}
+        {toTitleCaseLine(props.role)}
       </span>
-    );
-  }
-
-  function addressTemplate(props: UserType) {
-    return props.address ? (
-      <div className="flex items-center gap-2 ">
-        <MapPin className="w-4 h-4 text-gray-500 shrink-0" />
-        <span className="truncate text-[12px]">{props.address}</span>
-      </div>
-    ) : (
-      <span className="text-gray-400 bold text-center ">- -</span>
     );
   }
 
@@ -246,8 +264,19 @@ export default function ClientsDataGrid({ users }: GridProps) {
     const profilePicture = props.profile_picture_url
       ? props.profile_picture_url
       : `https://ui-avatars.com/api/?name=${props.first_name}+${props.last_name}&background=random&color=fff`;
+    const isSelected = selectedIds.has(props.user_id);
     return (
       <div className="flex justify-start items-center gap-2">
+        <div
+          onClick={(e) => e.stopPropagation()}
+          className="flex items-center justify-center pr-2"
+        >
+          <Checkbox
+            checked={isSelected}
+            onCheckedChange={() => toggleSelection(props.user_id)}
+            className="border-foreground/40 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+          />
+        </div>
         <div className="relative w-8 h-8">
           <Image
             key={profilePicture}
@@ -259,23 +288,12 @@ export default function ClientsDataGrid({ users }: GridProps) {
           />
         </div>
         <div className="flex flex-col justify-start items-start">
-          <h3 className="text-[0.8rem] bold mb-[-0.3rem] p-0">
-            {props.full_name}
+          <h3 className="text-[0.8rem] font-semibold mb-[-0.3rem] p-0">
+            {toTitleCase(props.full_name)}
           </h3>
-          <h4 className="text-[0.6rem]">{props.email}</h4>
+          <h4 className="text-[0.6rem] font-medium">{props.email}</h4>
         </div>
       </div>
-    );
-  }
-
-  function phoneTemplate(props: UserType) {
-    return props.phone_number ? (
-      <div className="flex items-center gap-2">
-        <Phone className="w-3 h-3 shrink-0" />
-        <span className="truncate text-[12px]">{props.phone_number}</span>
-      </div>
-    ) : (
-      <span className="text-gray-400 bold text-center ">- -</span>
     );
   }
 
@@ -285,40 +303,40 @@ export default function ClientsDataGrid({ users }: GridProps) {
         <DropdownMenuTrigger asChild>
           <Button
             variant="outline"
-            className="!bg-transparent !border-none !shadow-none "
+            className="bg-transparent! border-none! shadow-none! "
             size={"icon-sm"}
           >
-            <EllipsisVertical className="text-black" />
+            <EllipsisVertical className="text-foreground" />
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-[10rem]">
+        <DropdownMenuContent align="end" className="w-40">
           <DropdownMenuGroup>
-            <DropdownMenuItem className="!text-xs">
+            <DropdownMenuItem className="text-xs!">
               <div className="flex items-center gap-2">
                 <FileSearchCorner className="size-4" />
                 <p>View Details</p>
               </div>
             </DropdownMenuItem>
-            <DropdownMenuItem className="!text-xs">
+            <DropdownMenuItem className="text-xs!">
               <div className="flex items-center gap-2 ">
                 <History className="size-4" />
                 <p>Item History</p>
               </div>
             </DropdownMenuItem>
 
-            <DropdownMenuItem className="!text-xs">
+            <DropdownMenuItem className="text-xs!">
               <div className="flex items-center gap-2 ">
                 <UserStar className="size-4" />
                 <p>Make as Admin</p>
               </div>
             </DropdownMenuItem>
-            <DropdownMenuItem className="!text-xs">
+            <DropdownMenuItem className="text-xs!">
               <div className="flex items-center gap-2 ">
                 <SquarePen className="size-4" />
                 <p>Edit User</p>
               </div>
             </DropdownMenuItem>
-            <DropdownMenuItem className="!text-xs">
+            <DropdownMenuItem className="text-xs!">
               <div className="flex items-center gap-2 ">
                 <Trash2 className="size-4" />
                 <p>Delete User</p>
@@ -329,6 +347,21 @@ export default function ClientsDataGrid({ users }: GridProps) {
       </DropdownMenu>
     );
   }
+
+  const headerTemplate = () => {
+    const isAllSelected = users.length > 0 && selectedIds.size === users.length;
+
+    return (
+      <div className="flex items-center gap-3">
+        <Checkbox
+          checked={isAllSelected}
+          onCheckedChange={(c) => toggleSelectAll(!!c)}
+          className="border-gray-400 data-[state=checked]:bg-[#00ddd2]"
+        />
+        <span className="text-foreground/50 font-semibold">Client</span>
+      </div>
+    );
+  };
 
   return (
     <>
@@ -348,31 +381,88 @@ export default function ClientsDataGrid({ users }: GridProps) {
       <div className="h-full space-y-2 mb-6 flex gap-4 w-full relative ">
         <div
           className={`
-            bg-white rounded-md shadow-sm flex flex-col
+            bg-card rounded-md shadow-sm flex flex-col
             /* THE SMOOTH MAGIC: */
-            transition-[width] duration-500 ease-[cubic-bezier(0.4,0,0.2,1)]
+            transition-[width] duration-500 ease-in-out
             overflow-hidden min-w-0 px-3 py-3
             ${selectedUser ? "w-[70%]" : "w-full"} 
           `}
         >
-          <div className="flex justify-between items-center">
-            <div>
-              <h3 className="text-sm font-[600]">Clients ({users.length})</h3>
-            </div>
-            <div className="relative w-60 flex items-center gap-2">
-              <Search className="absolute left-2 top-2.4 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search user..."
-                className="pl-8 border-gray-300 rounded-sm !text-xs h-8"
-                onChange={handleSearch}
-              />
+          <div className="flex flex-row-reverse px-2">
+            <Button
+              onClick={handleAdd}
+              className="bg-primary hover:bg-primary/60 shadow-md cursor-pointer h-7! text-[0.7rem] rounded-sm! p-1! px-2! mb-2 gap-1!"
+            >
+              <Plus className="text-secondary stroke-3" />
+              New User
+            </Button>
+          </div>
+          <div className="flex justify-between items-center px-2">
+            <div className="flex items-center gap-2">
+              <h3 className="text-lg font-semibold">
+                Clients ({users.length})
+              </h3>
+              <h4 className="text-[0.7rem] text-foreground/50 font-medium border-l-2 border-gray-300 pl-2">
+                {selectedIds.size} users selected
+              </h4>
               <Button
-                onClick={handleAdd}
-                className="h-8 bg-[#20CE8B] hover:bg-primary/90 text-xs rounded-sm p-0" // Uses your theme color
+                variant="outline"
+                className="bg-transparent! "
                 size={"icon-sm"}
               >
-                <Plus />
+                <Trash2 className="text-foreground" />
               </Button>
+              <Button
+                variant="outline"
+                className="bg-transparent! "
+                size={"icon-sm"}
+              >
+                <EllipsisVertical className="text-foreground" />
+              </Button>
+            </div>
+            <div className="flex items-center gap-2">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className="bg-transparent! "
+                    size={"icon-sm"}
+                  >
+                    <Download className="text-foreground" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-20 min-w-24">
+                  <DropdownMenuGroup>
+                    <DropdownMenuItem className="text-xs! ">
+                      <div className="flex items-center gap-2">
+                        <FileText className="size-4" />
+                        <p>PDF</p>
+                      </div>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem className="text-xs! ">
+                      <div className="flex items-center gap-2 ">
+                        <FileSpreadsheet className="size-4" />
+                        <p>CSV</p>
+                      </div>
+                    </DropdownMenuItem>
+
+                    <DropdownMenuItem className="text-xs!">
+                      <div className="flex items-center gap-2 ">
+                        <Sheet className="size-4" />
+                        <p>Excel</p>
+                      </div>
+                    </DropdownMenuItem>
+                  </DropdownMenuGroup>
+                </DropdownMenuContent>
+              </DropdownMenu>
+              <div className="relative w-60 flex items-center gap-2">
+                <Search className="absolute left-2 top-2.4 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search user..."
+                  className="pl-8 border-gray-300 rounded-sm text-xs! h-8"
+                  onChange={handleSearch}
+                />
+              </div>
             </div>
           </div>
           <div className="flex-1 overflow-hidden p-2">
@@ -404,7 +494,8 @@ export default function ClientsDataGrid({ users }: GridProps) {
                 <ColumnDirective
                   field="full_name"
                   headerText="Client"
-                  width={140}
+                  headerTemplate={headerTemplate}
+                  width={220}
                   template={profileTemplate}
                 />
                 <ColumnDirective
@@ -419,7 +510,6 @@ export default function ClientsDataGrid({ users }: GridProps) {
                   width={100}
                   template={roleTemplate}
                   textAlign="Center"
-                  visible={false}
                 />
                 <ColumnDirective
                   headerText="Status"
@@ -435,16 +525,12 @@ export default function ClientsDataGrid({ users }: GridProps) {
                   field="phone_number"
                   headerText="Phone"
                   width={120}
-                  textAlign="Center"
-                  template={phoneTemplate}
                   visible={false}
                 />
                 <ColumnDirective
                   field="address"
                   headerText="Address"
                   width={200}
-                  textAlign="Center"
-                  template={addressTemplate}
                   visible={false}
                 />
                 <ColumnDirective
@@ -475,75 +561,109 @@ export default function ClientsDataGrid({ users }: GridProps) {
         </div>
         <div
           className={`
-            bg-white rounded-md shadow-md flex flex-col overflow-hidden 
+            bg-card rounded-md shadow-md flex flex-col overflow-hidden 
             transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)]
             ${selectedUser ? "w-[30%] opacity-100 translate-x-0" : "w-0 opacity-0 translate-x-10 border-0"}
           `}
         >
           {selectedUser && (
-            <>
-              {/* Detail Header */}
-              <div className="p-4 border-b flex justify-between items-center bg-gray-50">
-                <h3 className="font-bold text-lg text-gray-800">
-                  Client Details
-                </h3>
+            <div className="h-full p-1">
+              <div className="w-full p-4 bg-gradient-to-br from-primary to-foreground/60 relative rounded-md h-26">
+                <div className="flex justify-start items-center gap-3">
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    onClick={handleCloseDetail}
+                  >
+                    <ArrowRightFromLine className="h-4 w-4" />
+                  </Button>
+                  <h3 className="font-bold text-[0.9rem]">Client Detail</h3>
+                </div>
+                <div className="w-20 h-20 absolute top-14 left-4 border-4 border-card rounded-full overflow-hidden">
+                  <Image
+                    key={selectedUser.profile_picture_url}
+                    src={
+                      selectedUser.profile_picture_url ||
+                      `https://ui-avatars.com/api/?name=${selectedUser.first_name}+${selectedUser.last_name}&background=random&color=fff`
+                    }
+                    alt="Profile"
+                    fill /* Fills the relative parent above */
+                    className="rounded-full object-cover"
+                    sizes="80px"
+                  />
+                </div>
+              </div>
+              <div className="w-full mt-9 px-5">
+                <h2 className="text-lg text-foreground font-semibold">
+                  {toTitleCase(selectedUser.full_name)}
+                </h2>
+                <div className="w-full flex items-end justify-between mt-[-0.4rem]">
+                  <p className="text-[0.8rem] font-medium px-[0.7rem] border bg-foreground/30 rounded-full">
+                    {selectedUser.role}
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="icon-sm"
+                      onClick={handleCloseDetail}
+                      className="!bg-transparent !py-2"
+                    >
+                      <SquarePen className="h-4 w-4 stroke-2" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="icon-sm"
+                      onClick={handleCloseDetail}
+                      className="!bg-transparent !py-2"
+                    >
+                      <EllipsisVertical className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              </div>
+              <div className="w-full flex items-center justify-evenly gap-1 mt-4 border-b-2 pb-4 border-foreground/20">
                 <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  onClick={handleCloseDetail}
+                  onClick={handleAdd}
+                  className="w-[45%] !h-9 bg-card border border-primary text-primary text-[0.8rem] !rounded-sm !p-1 !px-2 !gap-2"
                 >
-                  <X className="h-4 w-4" />{" "}
-                  {/* Make sure to import X from icons */}
+                  <SquarePlus className="text-primary  stroke-2" />
+                  Add Booking
+                </Button>
+                <Button
+                  onClick={handleAdd}
+                  className="w-[45%] !h-9 bg-primary/20 text-primary text-[0.8rem] !rounded-sm !p-1 !px-2 !gap-2"
+                >
+                  <Send className=" text-primary stroke-2" />
+                  Message
                 </Button>
               </div>
-
-              {/* Detail Content (Scrollable) */}
-              <div className="flex-1 overflow-y-auto p-6 space-y-6">
-                {/* Profile Header */}
-                <div className="flex items-center gap-4">
-                  {/* Large Avatar */}
-                  <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-2xl">
-                    {selectedUser.full_name?.charAt(0)}
-                  </div>
-                  <div>
-                    <h2 className="text-xl font-bold">
-                      {selectedUser.full_name}
-                    </h2>
-                    <span className="bg-blue-100 text-blue-700 text-xs px-2 py-1 rounded-full uppercase font-bold">
-                      {selectedUser.role}
-                    </span>
-                  </div>
+              <div className="flex-1 overflow-y-auto px-3 py-3 border-b-2 border-foreground/20">
+                <h3 className="mb-3 text-[0.9rem] font-semibold">
+                  Contact Information
+                </h3>
+                <div className="flex items-center gap-2 text-foreground/40 text-[0.8rem] font-medium mb-1">
+                  <Mail className="w-4 h-4 text-foreground/40" />
+                  <h4>E-mail</h4>
                 </div>
-
-                <div className="border-t pt-4">
-                  <h4 className="text-sm font-semibold text-gray-500 mb-3 uppercase tracking-wider">
-                    Contact Info
-                  </h4>
-                  <div className="grid grid-cols-1 gap-4 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-gray-500">Email:</span>
-                      <span className="font-medium">{selectedUser.email}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-500">Phone:</span>
-                      <span className="font-medium">
-                        {selectedUser.phone_number || "N/A"}
-                      </span>
-                    </div>
-                  </div>
+                <p className="mb-3 text-[0.8rem] font-medium">
+                  {selectedUser.email}
+                </p>
+                <div className="flex items-center gap-2 text-foreground/40 text-[0.8rem] font-medium mb-1">
+                  <Phone className="w-4 h-4 text-foreground/40" />
+                  <h4>Phone</h4>
                 </div>
-
-                {/* Add your Tabs here (Overview, Documents, History) if you want! */}
+                <p className="mb-3 text-[0.8rem] font-medium">
+                  {selectedUser.phone_number}
+                </p>
+                <div className="flex items-center gap-2 text-foreground/40 text-[0.8rem] font-medium mb-1">
+                  <MapPin className="w-4 h-4 text-foreground/40" />
+                  <h4>Address</h4>
+                </div>
+                <p className="mb-3 text-[0.8rem] font-medium">
+                  {selectedUser.address || "- -"}
+                </p>
               </div>
-
-              {/* Detail Footer Actions */}
-              <div className="p-4 border-t bg-gray-50 flex gap-2 justify-end">
-                <Button variant="outline" onClick={handleCloseDetail}>
-                  Cancel
-                </Button>
-                <Button className="bg-[#20CE8B]">Edit Record</Button>
-              </div>
-            </>
+            </div>
           )}
         </div>
       </div>

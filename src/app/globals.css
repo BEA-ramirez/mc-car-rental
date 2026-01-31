@@ -45,74 +45,114 @@
 
 :root {
   --radius: 0.625rem;
+
+  /* --- LIGHT MODE --- */
+
+  /* Background: The soft gray you wanted */
   --background: oklch(97.41% 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
+
+  /* Foreground: #222 (Soft Black) */
+  --foreground: oklch(23.5% 0 0);
+
+  /* Cards: Pure White (So they pop against the gray bg) */
+  --card: oklch(100% 0 0);
+  --card-foreground: oklch(23.5% 0 0);
+
+  /* Popovers: Pure White */
+  --popover: oklch(100% 0 0);
+  --popover-foreground: oklch(23.5% 0 0);
+
+  /* PRIMARY: #028e87 (Dark Teal) */
+  --primary: oklch(52.5% 0.13 182);
+  --primary-foreground: oklch(100% 0 0); /* White Text */
+
+  --secondary: oklch(97% 0 0);
+  --secondary-foreground: oklch(23.5% 0 0);
+
+  --muted: oklch(97% 0 0);
+  --muted-foreground: oklch(55.6% 0 0);
+
+  --accent: oklch(97% 0 0);
+  --accent-foreground: oklch(23.5% 0 0);
+
+  --destructive: oklch(57.7% 0.245 27.325);
+
+  /* Borders: Slightly darker than BG to be visible on white cards */
+  --border: oklch(92.2% 0 0);
+  --input: oklch(92.2% 0 0);
+  --ring: oklch(52.5% 0.13 182);
+
+  /* Sidebar: Matches Background (Invisible blend) */
   --sidebar: oklch(97.41% 0 0);
-  --sidebar-foreground: oklch(58.29% 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(100% 0 0);
-  --sidebar-accent-foreground: oklch(61.964% 0.10559 189.096);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  --sidebar-foreground: oklch(23.5% 0 0);
+  --sidebar-primary: oklch(52.5% 0.13 182);
+  --sidebar-primary-foreground: oklch(100% 0 0);
+  --sidebar-accent: oklch(100% 0 0); /* White on hover */
+  --sidebar-accent-foreground: oklch(23.5% 0 0);
+  --sidebar-border: oklch(92.2% 0 0);
+  --sidebar-ring: oklch(52.5% 0.13 182);
+
+  /* Your Chart Colors */
+  --chart-1: oklch(52.5% 0.13 182);
+  --chart-2: oklch(60% 0.118 184);
+  --chart-3: oklch(39.8% 0.07 227);
+  --chart-4: oklch(82.8% 0.189 84);
+  --chart-5: oklch(76.9% 0.188 70);
+
   --sidebar-width: 10rem;
   --sidebar-width-icon: 3rem;
   font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.488 0.243 264.376);
-  --chart-2: oklch(0.696 0.17 162.48);
-  --chart-3: oklch(0.769 0.188 70.08);
-  --chart-4: oklch(0.627 0.265 303.9);
-  --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  /* --- DARK MODE --- */
+
+  /* Background: Rich Dark Slate */
+  --background: oklch(14.5% 0 0);
+
+  --foreground: oklch(98.5% 0 0); /* White Text */
+
+  /* Cards: Slightly lighter than BG to stand out */
+  --card: oklch(20.5% 0 0);
+  --card-foreground: oklch(98.5% 0 0);
+
+  --popover: oklch(20.5% 0 0);
+  --popover-foreground: oklch(98.5% 0 0);
+
+  /* PRIMARY: #00ddd2 (Bright Cyan) */
+  --primary: oklch(79.3% 0.15 185);
+  --primary-foreground: oklch(23.5% 0 0); /* #222 Text */
+
+  --secondary: oklch(26.9% 0 0);
+  --secondary-foreground: oklch(98.5% 0 0);
+
+  --muted: oklch(26.9% 0 0);
+  --muted-foreground: oklch(70.8% 0 0);
+
+  --accent: oklch(26.9% 0 0);
+  --accent-foreground: oklch(98.5% 0 0);
+
+  --destructive: oklch(70.4% 0.191 22.216);
+  --border: oklch(100% 0 0 / 10%);
+  --input: oklch(100% 0 0 / 15%);
+  --ring: oklch(79.3% 0.15 185);
+
+  /* Sidebar: Matches Dark Background (Invisible blend) */
+  --sidebar: oklch(14.5% 0 0);
+  --sidebar-foreground: oklch(98.5% 0 0);
+  --sidebar-primary: oklch(79.3% 0.15 185);
+  --sidebar-primary-foreground: oklch(23.5% 0 0);
+  --sidebar-accent: oklch(26.9% 0 0);
+  --sidebar-accent-foreground: oklch(98.5% 0 0);
+  --sidebar-border: oklch(100% 0 0 / 10%);
+  --sidebar-ring: oklch(79.3% 0.15 185);
+
+  /* Dark Mode Charts */
+  --chart-1: oklch(79.3% 0.15 185);
+  --chart-2: oklch(69.6% 0.17 162.48);
+  --chart-3: oklch(76.9% 0.188 70.08);
+  --chart-4: oklch(62.7% 0.265 303.9);
+  --chart-5: oklch(64.5% 0.246 16.439);
 }
 
 body {
@@ -130,57 +170,157 @@ body {
 }
 
 .e-grid {
+  /* Changed from --font-noto to --font-inter to match your app */
   font-family:
-    var(--font-noto), ui-sans-serif, system-ui, sans-serif !important;
+    var(--font-inter), ui-sans-serif, system-ui, sans-serif !important;
   border-radius: var(--radius) !important;
+
+  /* Use your theme border variable */
   border: 1px solid var(--border) !important;
-  box-shadow: none !important; /* Remove default shadow */
+
+  /* Use theme background (White in Light Mode, Dark Slate in Dark Mode) */
+  background-color: var(--card) !important;
+  color: var(--foreground) !important;
+  box-shadow: none !important;
 }
 
-.e-grid {
-  border: none !important;
+/* 2. Header Styling */
+/* This controls the top bar. We replaced #fff with var(--card) */
+.e-grid .e-gridheader {
+  background-color: var(--card) !important;
+  border-bottom: 1px solid var(--border) !important; /* Adds a subtle separator */
+  color: var(--foreground) !important;
 }
 
-.e-grid .e-content,
-.e-grid .e-headercontent,
-.e-grid .e-headercell,
-.e-grid .e-rowcell {
-  border-right: none !important;
-  border-left: none !important;
-  border-bottom: none !important;
-  border-top: none !important;
-}
-
-/* 3. Header Styling: Bold & Larger */
 .e-grid .e-headercell {
-  font-weight: 800 !important; /* Extra Bold */
-  font-size: 1.3rem !important; /* Larger text (approx 16px) */
-  color: var(--foreground) !important; /* Darker text color */
-  background-color: #fff !important; /* Optional: Makes it blend with page bg */
-  padding: 0px;
+  background-color: var(--card) !important; /* Replaces #fff */
+  color: var(--foreground) !important;
+  font-weight: 800 !important;
+  font-size: 0.85rem !important; /* Adjusted to standard size (1.3rem is huge for a grid) */
+  border: none !important;
+  padding: 0px !important;
 }
 
+/* 3. Header Text Alignment (Your custom padding logic) */
 .e-grid .e-headercelldiv span.e-headertext {
   margin: 0px !important;
   padding: 12px !important;
   font-size: 0.75rem !important;
+  color: var(
+    --muted-foreground
+  ) !important; /* Makes header text slightly softer than data */
+  text-transform: uppercase; /* Optional: Looks cleaner for headers */
+  letter-spacing: 0.05em;
 }
 
-.e-grid .e-row td.e-rowcell.e-templatecell.e-ellipsistooltip {
-  padding: 8px 8px !important;
+/* 4. Content Area (The Rows) */
+.e-grid .e-gridcontent {
+  background-color: var(--card) !important;
 }
 
-.e-grid
-  .e-columnheader
-  th.e-headercell.e-fltr-icon.e-ellipsistooltip.e-mousepointer {
-  padding: 0px 15px !important;
+.e-grid .e-rowcell {
+  background-color: var(--card) !important; /* Replaces #fff */
+  color: var(--foreground) !important;
+  border-bottom: 1px solid var(--border) !important; /* Adds row separators */
+  border-top: none !important;
+  border-left: none !important;
+  border-right: none !important;
+  font-size: 0.85rem !important;
+  padding: 12px !important; /* Added breathing room */
 }
 
-.e-grid
-  th.e-headercell.e-lastcell.e-centeralign.e-ellipsistooltip.e-defaultcursor {
-  padding: 0px 15px !important;
+/* 5. Interactive States (Hover & Selection) */
+.e-grid .e-row:hover .e-rowcell {
+  /* Uses your Primary color (Teal/Cyan) with 10% opacity */
+  background-color: oklch(from var(--primary) l c h / 0.1) !important;
+  color: var(--foreground) !important;
 }
 
-.e-grid div.e-gridheader.e-lib.e-droppable {
-  background-color: #fff !important;
+.e-grid .e-row.e-selectionbackground {
+  /* Uses your Primary color with 20% opacity */
+  background-color: oklch(from var(--primary) l c h / 0.2) !important;
+  color: var(--foreground) !important;
+}
+
+/* 6. Pager (Bottom Navigation) */
+.e-grid .e-pager {
+  background-color: var(--card) !important;
+  border-top: 1px solid var(--border) !important;
+  color: var(--foreground) !important;
+}
+
+/* 7. Empty Record Message */
+.e-grid .e-emptyrow {
+  background-color: var(--card) !important;
+  color: var(--muted-foreground) !important;
+}
+
+.e-grid .e-row:hover .e-rowcell {
+  /* Uses your --muted variable (Light Gray in Light Mode, Dark Gray in Dark Mode) */
+  background-color: var(--muted) !important;
+  color: var(--foreground) !important;
+  cursor: pointer;
+}
+
+#fleetPartnersGrid .e-gridheader {
+  display: none;
+}
+
+#fleetPartnersGrid .e-gridcontent .e-table {
+  border-collapse: separate !important;
+  border-spacing: 0px 10px !important; /* The second value (10px) defines the vertical gap */
+}
+
+#fleetPartnersGrid div.e-content {
+  padding: 1rem;
+  border: none !important;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
+#fleetPartnersGrid div.e-content::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+#fleetPartnersGrid div.e-content::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+#fleetPartnersGrid div.e-content::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: var(--radius);
+}
+
+#fleetPartnersGrid div.e-content::-webkit-scrollbar-thumb:hover {
+  background: var(--muted-foreground);
+}
+
+#fleetPartnersGrid,
+#fleetPartnersGrid .e-rowcell,
+#fleetPartnersGrid .e-pager {
+  border: none !important;
+}
+
+#fleetPartnersGrid td.e-rowcell.e-templatecell {
+  border: 1px solid var(--border) !important;
+  border-radius: var(--radius) !important;
+}
+
+#fleetPartnersGrid_dialogEdit_wrapper {
+  border-radius: 12px !important;
+  overflow: hidden !important; /* Critical to prevent sharp corners of children from leaking out */
+  border: 1px solid #e2e8f0; /* Optional: adds a soft border matching Shadcn */
+}
+
+/* 2. Round the top corners of the Header */
+#fleetPartnersGrid_dialogEdit_wrapper .e-dlg-header-content {
+  border-top-left-radius: 15px !important;
+  border-top-right-radius: 15px !important;
+}
+
+/* 3. Round the bottom corners of the Footer (if you use it) */
+#fleetPartnersGrid_dialogEdit_wrapper .e-footer-content {
+  border-bottom-left-radius: 15px !important;
+  border-bottom-right-radius: 15px !important;
 }

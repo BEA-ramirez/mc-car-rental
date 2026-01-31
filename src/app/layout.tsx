@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter, Geist_Mono } from "next/font/google";
 import SyncfusionProvider from "@/components/syncfusion-provider";
+import { ThemeProvider } from "@/components/theme-provider";
 
 // 1. Unified Style Imports
 import "./globals.css";
@@ -41,9 +42,20 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${inter.variable} ${geistMono.variable}`}>
-      <body className="font-sans antialiased" suppressHydrationWarning>
-        <SyncfusionProvider>{children}</SyncfusionProvider>
+    <html
+      lang="en"
+      className={`${inter.variable} ${geistMono.variable}`}
+      suppressHydrationWarning
+    >
+      <body className="font-sans antialiased">
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem={false}
+          disableTransitionOnChange
+        >
+          <SyncfusionProvider>{children}</SyncfusionProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

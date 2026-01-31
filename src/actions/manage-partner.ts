@@ -21,8 +21,12 @@ export async function managePartner(
 
   const processedData = {
     ...rawData,
-    active_status: rawData.active_status === "true",
+    active_status: String(rawData.active_status) === "true",
     revenue_share_percentage: Number(rawData.revenue_share_percentage),
+    owner_notes: rawData.owner_notes || null,
+    contract_expiry_date: rawData.contract_expiry_date
+      ? new Date(String(rawData.contract_expiry_date))
+      : null,
   };
 
   const validateFields = carOwnerSchema
@@ -39,13 +43,14 @@ export async function managePartner(
 
   const { car_owner_id, ...dataToSave } = validateFields.data;
   const supabase = await createClient();
+  const now = new Date().toISOString();
 
   try {
     if (car_owner_id) {
       // update
       const { error } = await supabase
         .from("car_owner")
-        .update({ ...dataToSave, last_updated_at: new Date() })
+        .update({ ...dataToSave, last_updated_at: now })
         .eq("car_owner_id", car_owner_id);
       if (error) throw error;
       revalidatePath("/admin/fleet-partners");
@@ -61,8 +66,8 @@ export async function managePartner(
 
       const { error } = await supabase.from("car_owner").insert({
         ...dataToSave,
-        created_at: new Date(),
-        last_updated_at: new Date(),
+        created_at: now,
+        last_updated_at: now,
       });
       if (error) throw error;
       revalidatePath("/admin/fleet-partners");

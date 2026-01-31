@@ -15,6 +15,10 @@ export const userSchema = z.object({
   role: z
     .enum(["admin", "customer", "car_owner", "staff", "driver"])
     .default("customer"),
+  account_status: z
+    .enum(["pending", "verified", "rejected", "banned", "archived"])
+    .default("pending"),
+  last_active_at: z.coerce.date().optional().nullable(),
   phone_number: z
     .string()
     .regex(/^[0-9]+$/, { message: "Phone number must contain only numbers." })
@@ -23,9 +27,17 @@ export const userSchema = z.object({
     .optional()
     .nullable(),
   address: z.string().optional().nullable(),
-  valid_id_url: z.string().url().optional().nullable(),
-  license_id_url: z.string().url().optional().nullable(),
   profile_picture_url: z.string().url().optional().nullable(),
+  license_number: z.string().optional().nullable(),
+  license_expiry_date: z.coerce.date().optional().nullable(),
+  trust_score: z.coerce
+    .number()
+    .min(0)
+    .max(5)
+    .optional()
+    .nullable()
+    .default(5.0),
+  rejection_reason: z.string().optional().nullable(),
   created_at: z.coerce.date().optional(),
   last_updated_at: z.coerce.date().optional(),
 });
