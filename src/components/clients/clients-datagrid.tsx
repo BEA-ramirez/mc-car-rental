@@ -62,11 +62,12 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useState } from "react";
 import { toTitleCase, toTitleCaseLine } from "@/actions/helper/format-text";
 
-interface GridProps {
-  users: UserType[];
-}
+import { useClients } from "../../../hooks/use-clients";
 
-export default function ClientsDataGrid({ users }: GridProps) {
+export default function ClientsDataGrid() {
+  const { data: users = [], isLoading, deleteClient } = useClients();
+  console.log("Users", users);
+
   const gridRef = useRef<GridComponent | null>(null);
   const [selectedUser, setSelectedUser] = useState<UserType | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -104,12 +105,12 @@ export default function ClientsDataGrid({ users }: GridProps) {
     gridRef.current?.clearSelection();
   };
 
-  // ensures the grid updates when the server action finishes and sends new props
-  useEffect(() => {
-    if (gridRef.current) {
-      gridRef.current.refresh();
-    }
-  }, [users]);
+  // // ensures the grid updates when the server action finishes and sends new props
+  // useEffect(() => {
+  //   if (gridRef.current) {
+  //     gridRef.current.refresh();
+  //   }
+  // }, [users]);
 
   function dialogTemplate(props: any) {
     return (
@@ -155,22 +156,13 @@ export default function ClientsDataGrid({ users }: GridProps) {
       const deletedRecord = args.data[0] as UserType;
 
       if (deletedRecord && deletedRecord.user_id) {
-        try {
-          const result = await deleteUser(deletedRecord.user_id);
-          if (!result.success) {
-            alert("Error deleting user: " + result.message);
-          }
-        } catch (error) {
-          console.error(error);
-          alert("An unexpected error occurred while deleting the user.");
-        }
+        deleteClient(deletedRecord.user_id);
       }
     }
   };
 
-  const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) =>
     gridRef.current?.search(e.target.value);
-  };
 
   const handleExcelExport = () => {
     gridRef.current?.excelExport();
@@ -180,9 +172,7 @@ export default function ClientsDataGrid({ users }: GridProps) {
     gridRef.current?.pdfExport();
   };
 
-  const handleAdd = () => {
-    gridRef.current?.addRecord();
-  };
+  const handleAdd = () => gridRef.current?.addRecord();
 
   const handleView = (props: UserType) => {
     window.location.href = `/admin/clients/${props.user_id}`;
@@ -378,17 +368,27 @@ export default function ClientsDataGrid({ users }: GridProps) {
     }
   `}
       </style>
-      <div className="h-full space-y-2 mb-6 flex gap-4 w-full relative ">
+      <div className="h-full space-y-2 mb-6 flex gap-4 w-fullrelative ">
+        {isLoading && (
+          <div className="absolute inset-0 z-50 bg-white/60 flex items-center justify-center backdrop-blur-[1px] rounded-md border">
+            <div className="flex flex-col items-center gap-2">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+              <span className="text-xs font-medium text-muted-foreground">
+                Loading Clients...
+              </span>
+            </div>
+          </div>
+        )}
+
         <div
           className={`
             bg-card rounded-md shadow-sm flex flex-col
-            /* THE SMOOTH MAGIC: */
             transition-[width] duration-500 ease-in-out
-            overflow-hidden min-w-0 px-3 py-3
+            overflow-hidden min-w-0 px-3 py-3 
             ${selectedUser ? "w-[70%]" : "w-full"} 
           `}
         >
-          <div className="flex flex-row-reverse px-2">
+          <div className="flex flex-row-reverse px-2 ">
             <Button
               onClick={handleAdd}
               className="bg-primary hover:bg-primary/60 shadow-md cursor-pointer h-7! text-[0.7rem] rounded-sm! p-1! px-2! mb-2 gap-1!"
@@ -562,13 +562,13 @@ export default function ClientsDataGrid({ users }: GridProps) {
         <div
           className={`
             bg-card rounded-md shadow-md flex flex-col overflow-hidden 
-            transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)]
+            transition-all duration-500 ease-in-out border
             ${selectedUser ? "w-[30%] opacity-100 translate-x-0" : "w-0 opacity-0 translate-x-10 border-0"}
           `}
         >
           {selectedUser && (
             <div className="h-full p-1">
-              <div className="w-full p-4 bg-gradient-to-br from-primary to-foreground/60 relative rounded-md h-26">
+              <div className="w-full p-4 bg-linear-to-br from-primary to-foreground/60 relative rounded-md h-26">
                 <div className="flex justify-start items-center gap-3">
                   <Button
                     variant="ghost"

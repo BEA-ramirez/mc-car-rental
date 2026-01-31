@@ -1,19 +1,51 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { Button } from "../ui/button";
-import { Loader2 } from "lucide-react";
 import { manageUser } from "@/actions/manage-user";
 import {
   UploaderComponent,
-  FilesPropModel,
   RemovingEventArgs,
 } from "@syncfusion/ej2-react-inputs";
 import Image from "next/image";
+import { useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
+import {
+  User,
+  Mail,
+  Phone,
+  MapPin,
+  Lock,
+  Shield,
+  FileBadge,
+  CalendarDays,
+  ShieldCheck,
+  UploadCloud,
+} from "lucide-react";
 
-// helper to sanitize/default data
+// UI Components
+import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Field,
+  FieldContent,
+  FieldDescription,
+  FieldError,
+  FieldLabel,
+} from "@/components/ui/field";
+
+// Helper to sanitize/default data
 function sanitizeData(props: any) {
+  // Clone to avoid mutation
   const data = { ...props };
+
   if (data.isAdd) {
     data.role = "customer";
     data.email = "";
@@ -22,13 +54,28 @@ function sanitizeData(props: any) {
     data.phone_number = "";
     data.address = "";
     data.profile_picture_url = "";
-    data.valid_id_url = "";
-    data.license_id_url = "";
+
+    // New Fields Defaults
+    data.license_number = "";
+    data.license_expiry_date = "";
+    data.valid_id_expiry_date = "";
+    data.trust_score = 5.0;
+    data.account_status = "pending";
   } else {
+    // Handling Edit Mode Defaults
     const fullName = data.full_name || "";
     const parts = fullName.split(" ");
     data.first_name = data.first_name || parts[0] || "";
     data.last_name = data.last_name || parts.slice(1).join(" ") || "";
+
+    data.license_number = data.license_number || "";
+    data.trust_score = data.trust_score || 5.0;
+
+    // Format dates for HTML Input type="date" (YYYY-MM-DD)
+    data.license_expiry_date = data.license_expiry_date
+      ? new Date(data.license_expiry_date).toISOString().split("T")[0]
+      : "";
+    data.valid_id_expiry_date = ""; // Not loaded from user table, so empty
   }
   return data;
 }
@@ -39,31 +86,14 @@ interface ClientFormProps {
 }
 
 export function ClientForm({ data: rawData, closeDialog }: ClientFormProps) {
+  const queryClient = useQueryClient();
   const initialData = sanitizeData(rawData);
   const isAdd = !!initialData.isAdd;
 
-  // to manually cleanup uploaders
+  // Refs for manual uploader cleanup
   const validIdUploaderRef = useRef<UploaderComponent>(null);
   const licenseUploaderRef = useRef<UploaderComponent>(null);
 
-  useEffect(() => {
-    setIsLoading(true);
-    setFormData(sanitizeData(rawData));
-    setFiles({});
-    setPreviewUrl(null);
-    setPassword("");
-    setFieldErrors(null);
-    setGlobalError(null);
-
-    // clear the file lists visually in the UI if refs exist
-    validIdUploaderRef.current?.clearAll();
-    licenseUploaderRef.current?.clearAll();
-
-    const timer = setTimeout(() => setIsLoading(false), 200);
-    return () => clearTimeout(timer);
-  }, [rawData]);
-
-  const [isLoading, setIsLoading] = useState(true);
   const [formData, setFormData] = useState(initialData);
   const [files, setFiles] = useState<{
     profile_picture_url?: File;
@@ -79,21 +109,35 @@ export function ClientForm({ data: rawData, closeDialog }: ClientFormProps) {
   const [globalError, setGlobalError] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
+  // Reset form when data changes (e.g. re-opening dialog)
+  useEffect(() => {
+    setFormData(sanitizeData(rawData));
+    setFiles({});
+    setPreviewUrl(null);
+    setPassword("");
+    setFieldErrors(null);
+    setGlobalError(null);
+
+    validIdUploaderRef.current?.clearAll();
+    licenseUploaderRef.current?.clearAll();
+  }, [rawData]);
+
+  // Cleanup preview URL
   useEffect(() => {
     return () => {
-      // Cleanup preview URL when closing dialog
       if (previewUrl) URL.revokeObjectURL(previewUrl);
     };
   }, [previewUrl]);
 
-  const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
-  ) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    //clear specific field error when typing
     if (fieldErrors?.[name]) {
       setFieldErrors((prev) => ({ ...prev!, [name]: [] }));
     }
+    setFormData((prev: any) => ({ ...prev, [name]: value }));
+  };
+
+  const handleSelectChange = (name: string, value: string) => {
     setFormData((prev: any) => ({ ...prev, [name]: value }));
   };
 
@@ -106,22 +150,44 @@ export function ClientForm({ data: rawData, closeDialog }: ClientFormProps) {
 
     if (formData.user_id) submitData.append("user_id", formData.user_id);
 
-    const constructedFullName = `${formData.first_name || ""} ${
-      formData.last_name || ""
-    }`.trim();
+    const constructedFullName =
+      `${formData.first_name || ""} ${formData.last_name || ""}`.trim();
     submitData.append("full_name", constructedFullName);
+
+    // Basic Info
     submitData.append("email", formData.email || "");
     submitData.append("first_name", formData.first_name || "");
     submitData.append("last_name", formData.last_name || "");
     submitData.append("role", formData.role || "customer");
+    submitData.append("account_status", formData.account_status || "pending");
+
+    // Contact
     submitData.append("phone_number", formData.phone_number || "");
     submitData.append("address", formData.address || "");
+
+    // Compliance
+    submitData.append("license_number", formData.license_number || "");
+    submitData.append("trust_score", formData.trust_score?.toString() || "5");
+
+    // Dates
+    if (formData.license_expiry_date) {
+      submitData.append(
+        "license_expiry_date",
+        new Date(formData.license_expiry_date).toISOString(),
+      );
+    }
+    if (formData.valid_id_expiry_date) {
+      submitData.append(
+        "valid_id_expiry_date",
+        new Date(formData.valid_id_expiry_date).toISOString(),
+      );
+    }
 
     if (isAdd && password) {
       submitData.append("password", password);
     }
 
-    // only append files if a new file was selected
+    // Files
     if (files.profile_picture_url)
       submitData.append("profile_picture_url", files.profile_picture_url);
     if (files.valid_id_url)
@@ -129,57 +195,39 @@ export function ClientForm({ data: rawData, closeDialog }: ClientFormProps) {
     if (files.license_id_url)
       submitData.append("license_id_url", files.license_id_url);
 
-    // Debug: log what we're sending
-    console.log("Submitting data:", Object.fromEntries(submitData.entries()));
+    // Use Toast Promise for better UX (matching PartnerForm style)
+    const promise = manageUser({ message: "", success: false }, submitData);
 
-    try {
-      const result = await manageUser(
-        { success: false, message: "" },
-        submitData,
-      );
-
-      console.log("Result:", result);
-
-      if (result.success) {
-        closeDialog();
-      } else {
-        if (result.errors) setFieldErrors(result.errors);
-        if (result.message) setGlobalError(result.message);
-      }
-    } catch (error) {
-      console.error("Error saving user:", error);
-      setGlobalError("An unexpected error occurred. Please try again.");
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, files: fileList } = e.target;
-    if (fileList && fileList.length > 0) {
-      setFiles((prev) => ({ ...prev, [name]: fileList[0] }));
-    }
+    toast.promise(promise, {
+      loading: isAdd ? "Creating user..." : "Updating user...",
+      success: (result) => {
+        if (result.success) {
+          queryClient.invalidateQueries({ queryKey: ["clients"] });
+          closeDialog();
+          return isAdd
+            ? "User created successfully!"
+            : "User updated successfully!";
+        } else {
+          setIsSaving(false);
+          if (result.errors) setFieldErrors(result.errors);
+          if (result.message) setGlobalError(result.message);
+          throw new Error(result.message || "Failed to save");
+        }
+      },
+      error: (err) => {
+        setIsSaving(false);
+        return "An unexpected error occurred.";
+      },
+    });
   };
 
   const onFileSelect = (args: any, fieldName: string) => {
-    // Ensure we have files
     if (args.filesData && args.filesData.length > 0) {
-      console.log("File Selected:", args.filesData[0]);
-      console.log("Raw File:", args.filesData[0]?.rawFile);
-      // Syncfusion sometimes nests the file in 'rawFile', strictly type it
       const selectedFile = args.filesData[0].rawFile as File;
-
       if (selectedFile) {
-        // 1. Update the 'files' state for the form submission
         setFiles((prev) => ({ ...prev, [fieldName]: selectedFile }));
-
-        // 2. Generate Preview (Explicitly check field name)
         if (fieldName === "profile_picture_url") {
-          // Revoke old URL to avoid memory leaks if they select multiple times
-          if (previewUrl) {
-            URL.revokeObjectURL(previewUrl);
-          }
-
+          if (previewUrl) URL.revokeObjectURL(previewUrl);
           const objectURL = URL.createObjectURL(selectedFile);
           setPreviewUrl(objectURL);
         }
@@ -187,13 +235,9 @@ export function ClientForm({ data: rawData, closeDialog }: ClientFormProps) {
     }
   };
 
-  // helper to determine which image to show: preview, existing, or default
   const getProfileImageSrc = () => {
-    // the new file selected
     if (previewUrl) return previewUrl;
-    // existing image url
     if (formData.profile_picture_url) return formData.profile_picture_url;
-    // default avatar
     return `https://ui-avatars.com/api/?name=${formData.first_name}+${formData.last_name}&background=random&color=fff`;
   };
 
@@ -203,224 +247,362 @@ export function ClientForm({ data: rawData, closeDialog }: ClientFormProps) {
       delete (newState as any)[fieldName];
       return newState;
     });
-    args.postRawFile = false; // prevent Syncfusion from removing the file from its internal list, or sending a delete request to the server
-  };
-
-  // Styles
-  const inputClass =
-    "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50";
-  const labelClass = "text-sm font-medium leading-none mb-2 block";
-  const ErrorMsg = ({ field }: { field: string }) => {
-    if (!fieldErrors?.[field]) return null;
-    return <p className="text-red-500 text-xs mt-1">{fieldErrors[field][0]}</p>;
+    args.postRawFile = false;
   };
 
   return (
-    <div className="grid gap-4 py-2 px-1 w-[30rem] relative">
-      {isLoading && (
-        <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-background">
-          <Loader2 className="h-10 w-10 animate-spin text-violet-600" />
-          <p className="text-xs text-gray-500 font-medium mt-2">
-            Loading details...
-          </p>
-        </div>
-      )}
-      <div
-        className={
-          isLoading
-            ? "opacity-0"
-            : "opacity-100 transition-opacity duration-200"
-        }
-      >
-        <div className="space-y-4">
-          <label className={labelClass}>Profile Picture</label>
-          <div className="flex items-center gap-4">
-            <div className="relative w-10 h-10">
+    <div className="w-[40rem] bg-card">
+      <Tabs defaultValue="account" className="w-full">
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="account">Account Info</TabsTrigger>
+          <TabsTrigger value="contact">Contact</TabsTrigger>
+          <TabsTrigger value="compliance">Compliance</TabsTrigger>
+        </TabsList>
+
+        {/* ================= TAB 1: ACCOUNT INFO ================= */}
+        <TabsContent value="account" className="space-y-4 py-4">
+          {/* Profile Picture Header */}
+          <div className="flex items-center gap-4 p-3 border rounded-lg bg-muted/20">
+            <div className="relative w-16 h-16 rounded-full overflow-hidden border-2 border-background shadow-sm shrink-0">
               <Image
-                key={previewUrl || formData.profile_picture_url || "default"}
                 src={getProfileImageSrc()}
                 alt="Profile"
-                fill /* Fills the relative parent above */
-                className="rounded-full object-cover border"
-                sizes="40px"
+                fill
+                className="object-cover"
               />
             </div>
-
             <div className="flex-1">
-              <UploaderComponent
-                id="profile-upload"
-                type="file"
-                multiple={false}
-                autoUpload={false}
-                allowedExtensions=".jpg, .png, .jpeg"
-                buttons={{ browse: "Change Photo" }}
-                showFileList={false}
-                selected={(args) => onFileSelect(args, "profile_picture_url")}
-              />
-              <p className="text-xs text-gray-500 mt-1">
-                Allowed: JPG, PNG. Max 5MB.
-              </p>
+              <FieldLabel className="mb-2">Profile Photo</FieldLabel>
+              <div className="h-8">
+                <UploaderComponent
+                  id="profile-upload-mini"
+                  type="file"
+                  multiple={false}
+                  autoUpload={false}
+                  allowedExtensions=".jpg,.png,.jpeg"
+                  buttons={{ browse: "Upload New Photo" }}
+                  showFileList={false}
+                  selected={(args) => onFileSelect(args, "profile_picture_url")}
+                />
+              </div>
             </div>
           </div>
-        </div>
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className={labelClass}>First Name</label>
-            <input
-              name="first_name"
-              className={inputClass}
-              value={formData.first_name || ""}
-              onChange={handleChange}
-              placeholder="first name"
-            />
 
-            <ErrorMsg field="first_name" />
-          </div>
-          <div>
-            <label className={labelClass}>Last Name</label>
+          <div className="grid grid-cols-2 gap-4">
+            <Field>
+              <FieldLabel>First Name</FieldLabel>
+              <FieldContent>
+                <div className="relative">
+                  <User className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    name="first_name"
+                    className="pl-9"
+                    value={formData.first_name}
+                    onChange={handleChange}
+                    placeholder="John"
+                  />
+                </div>
+              </FieldContent>
+              <FieldError>{fieldErrors?.first_name?.[0]}</FieldError>
+            </Field>
 
-            <input
-              name="last_name"
-              className={inputClass}
-              value={formData.last_name || ""}
-              onChange={handleChange}
-              placeholder="last name"
-            />
+            <Field>
+              <FieldLabel>Last Name</FieldLabel>
+              <FieldContent>
+                <div className="relative">
+                  <User className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    name="last_name"
+                    className="pl-9"
+                    value={formData.last_name}
+                    onChange={handleChange}
+                    placeholder="Doe"
+                  />
+                </div>
+              </FieldContent>
+              <FieldError>{fieldErrors?.last_name?.[0]}</FieldError>
+            </Field>
+          </div>
 
-            <ErrorMsg field="last_name" />
-          </div>
-        </div>
-        <div>
-          <label className={labelClass}>Email</label>
-          <input
-            name="email"
-            type="email"
-            className={inputClass}
-            value={formData.email || ""}
-            onChange={handleChange}
-            disabled={!isAdd}
-          />
-          <ErrorMsg field="email" />
-        </div>
-        {isAdd && (
-          <div>
-            <label className={labelClass}>Temporary Password</label>
-            <input
-              type="password"
-              className={inputClass}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="Min 6 characters"
-            />
-            <ErrorMsg field="password" />
-          </div>
-        )}
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className={labelClass}>System Role</label>
-            <select
-              name="role"
-              className={inputClass}
-              value={formData.role || "customer"}
-              onChange={handleChange}
-            >
-              <option value="customer">Customer</option>
-              <option value="staff">Staff</option>
-              <option value="car_owner">Car Owner</option>
-              <option value="admin">Admin</option>
-            </select>
-            <ErrorMsg field="role" />
-          </div>
-          <div>
-            <label className={labelClass}>Phone Number</label>
-            <input
-              name="phone_number"
-              className={inputClass}
-              value={formData.phone_number || ""}
-              onChange={handleChange}
-            />
-            <ErrorMsg field="phone_number" />
-          </div>
-        </div>
-        <div>
-          <label className={labelClass}>Address</label>
-          <input
-            name="address"
-            className={inputClass}
-            value={formData.address || ""}
-            onChange={handleChange}
-            placeholder="City, Street..."
-          />
-          <ErrorMsg field="address" />
-        </div>
-        <div className="border-t pt-4 mt-2">
-          <h3 className="font-semibold mb-3 text-sm">Documents & Images</h3>
+          <Field>
+            <FieldLabel>Email Address</FieldLabel>
+            <FieldContent>
+              <div className="relative">
+                <Mail className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  name="email"
+                  type="email"
+                  className="pl-9"
+                  value={formData.email}
+                  onChange={handleChange}
+                  disabled={!isAdd}
+                  placeholder="john.doe@example.com"
+                />
+              </div>
+            </FieldContent>
+            <FieldError>{fieldErrors?.email?.[0]}</FieldError>
+          </Field>
 
-          <div>
-            <label className={labelClass}>Valid ID</label>
-            {formData.valid_id_url && !files.valid_id_url && (
-              <a
-                href={formData.valid_id_url}
-                target="_blank"
-                className="text-xs text-blue-500 underline mb-1 block"
-              >
-                View Current ID
-              </a>
+          <div className="grid grid-cols-2 gap-4">
+            {isAdd ? (
+              <Field>
+                <FieldLabel>Temporary Password</FieldLabel>
+                <FieldContent>
+                  <div className="relative">
+                    <Lock className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      type="password"
+                      className="pl-9"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder="••••••"
+                    />
+                  </div>
+                </FieldContent>
+                <FieldError>{fieldErrors?.password?.[0]}</FieldError>
+              </Field>
+            ) : (
+              <Field>
+                <FieldLabel>Account Status</FieldLabel>
+                <Select
+                  value={formData.account_status}
+                  onValueChange={(v) => handleSelectChange("account_status", v)}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="z-999999">
+                    <SelectItem value="pending">Pending</SelectItem>
+                    <SelectItem value="verified">Verified</SelectItem>
+                    <SelectItem value="rejected">Rejected</SelectItem>
+                    <SelectItem value="banned">Banned</SelectItem>
+                  </SelectContent>
+                </Select>
+              </Field>
             )}
-            <div className="flex-1">
-              <UploaderComponent
-                ref={validIdUploaderRef}
-                id="valid-id-upload"
-                type="file"
-                multiple={false}
-                autoUpload={false}
-                allowedExtensions=".jpg, .png, .jpeg, .pdf"
-                showFileList={true} // Visible file list!
-                selected={(args) => onFileSelect(args, "valid_id_url")}
-                removing={(args) => onFileRemove(args, "valid_id_url")}
-              />
-              <p className="text-xs text-gray-500 mt-1">
-                Allowed: JPG, PNG. Max 5MB.
-              </p>
-            </div>
-          </div>
-          <div>
-            <label className={labelClass}>Driver's License</label>
-            {formData.license_id_url && !files.license_id_url && (
-              <a
-                href={formData.license_id_url}
-                target="_blank"
-                className="text-xs text-blue-500 underline mb-1 block"
+
+            <Field>
+              <FieldLabel>System Role</FieldLabel>
+              <Select
+                value={formData.role}
+                onValueChange={(v) => handleSelectChange("role", v)}
               >
-                View Current License
-              </a>
-            )}
-            <div className="flex-1">
-              <UploaderComponent
-                ref={licenseUploaderRef}
-                id="license-upload"
-                type="file"
-                multiple={false}
-                autoUpload={false}
-                allowedExtensions=".jpg, .png, .jpeg, .pdf"
-                showFileList={true} // Visible file list!
-                selected={(args) => onFileSelect(args, "license_id_url")}
-                removing={(args) => onFileRemove(args, "license_id_url")}
-              />
-              <p className="text-xs text-gray-500 mt-1">
-                Allowed: JPG, PNG. Max 5MB.
-              </p>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="z-999999">
+                  <SelectItem value="customer">Customer</SelectItem>
+                  <SelectItem value="driver">Driver</SelectItem>
+                  <SelectItem value="car_owner">Car Owner</SelectItem>
+                  <SelectItem value="staff">Staff</SelectItem>
+                  <SelectItem value="admin">Admin</SelectItem>
+                </SelectContent>
+              </Select>
+              <FieldError>{fieldErrors?.role?.[0]}</FieldError>
+            </Field>
+          </div>
+        </TabsContent>
+
+        {/* ================= TAB 2: CONTACT ================= */}
+        <TabsContent value="contact" className="space-y-4 py-4 min-h-[300px]">
+          <Field>
+            <FieldLabel>Phone Number</FieldLabel>
+            <FieldContent>
+              <div className="relative">
+                <Phone className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  name="phone_number"
+                  className="pl-9"
+                  value={formData.phone_number}
+                  onChange={handleChange}
+                  placeholder="0912 345 6789"
+                />
+              </div>
+            </FieldContent>
+            <FieldDescription>
+              Enter a valid active mobile number.
+            </FieldDescription>
+            <FieldError>{fieldErrors?.phone_number?.[0]}</FieldError>
+          </Field>
+
+          <Field>
+            <FieldLabel>Complete Address</FieldLabel>
+            <FieldContent>
+              <div className="relative">
+                <MapPin className="absolute left-2.5 top-3 h-4 w-4 text-muted-foreground" />
+                <textarea
+                  name="address"
+                  className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 pl-9 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  value={formData.address || ""}
+                  onChange={(e) =>
+                    setFormData({ ...formData, address: e.target.value })
+                  }
+                  placeholder="House No., Street Name, Barangay, City, Province"
+                />
+              </div>
+            </FieldContent>
+            <FieldError>{fieldErrors?.address?.[0]}</FieldError>
+          </Field>
+        </TabsContent>
+
+        {/* ================= TAB 3: COMPLIANCE ================= */}
+        <TabsContent
+          value="compliance"
+          className="space-y-4 py-4 min-h-[300px]"
+        >
+          <Field>
+            <FieldLabel>Trust Score (0 - 5)</FieldLabel>
+            <FieldContent>
+              <div className="relative">
+                <ShieldCheck className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  type="number"
+                  step="0.1"
+                  max="5"
+                  min="0"
+                  className="pl-9"
+                  value={formData.trust_score}
+                  onChange={(e) =>
+                    setFormData({ ...formData, trust_score: e.target.value })
+                  }
+                />
+              </div>
+            </FieldContent>
+          </Field>
+
+          <div className="border-t pt-4 mt-2">
+            <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3">
+              Driver's License
+            </h4>
+            <div className="grid grid-cols-2 gap-4">
+              <Field>
+                <FieldLabel>License Number</FieldLabel>
+                <FieldContent>
+                  <div className="relative">
+                    <FileBadge className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      name="license_number"
+                      className="pl-9"
+                      value={formData.license_number}
+                      onChange={handleChange}
+                      placeholder="L02-XX-XXXXXX"
+                    />
+                  </div>
+                </FieldContent>
+                <FieldError>{fieldErrors?.license_number?.[0]}</FieldError>
+              </Field>
+
+              <Field>
+                <FieldLabel>Expiry Date</FieldLabel>
+                <FieldContent>
+                  <div className="relative">
+                    <CalendarDays className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      type="date"
+                      className="pl-9"
+                      value={formData.license_expiry_date || ""}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          license_expiry_date: e.target.value,
+                        })
+                      }
+                    />
+                  </div>
+                </FieldContent>
+                <FieldError>{fieldErrors?.license_expiry_date?.[0]}</FieldError>
+              </Field>
+            </div>
+
+            <Field className="mt-2">
+              <FieldLabel>License Image</FieldLabel>
+              <FieldContent>
+                <div className="border border-dashed rounded-md p-2 flex items-center gap-2">
+                  <UploadCloud className="h-4 w-4 text-muted-foreground" />
+                  <div className="flex-1">
+                    <UploaderComponent
+                      ref={licenseUploaderRef}
+                      id="license-upload"
+                      type="file"
+                      multiple={false}
+                      autoUpload={false}
+                      allowedExtensions=".jpg,.png,.pdf"
+                      showFileList={true}
+                      selected={(args) => onFileSelect(args, "license_id_url")}
+                      removing={(args) => onFileRemove(args, "license_id_url")}
+                    />
+                  </div>
+                </div>
+              </FieldContent>
+            </Field>
+          </div>
+
+          <div className="border-t pt-4 mt-2">
+            <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3">
+              Valid ID (Secondary)
+            </h4>
+            <div className="grid grid-cols-2 gap-4">
+              <Field>
+                <FieldLabel>ID Expiry Date</FieldLabel>
+                <FieldContent>
+                  <div className="relative">
+                    <CalendarDays className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      type="date"
+                      className="pl-9"
+                      value={formData.valid_id_expiry_date || ""}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          valid_id_expiry_date: e.target.value,
+                        })
+                      }
+                    />
+                  </div>
+                </FieldContent>
+              </Field>
+
+              <Field>
+                <FieldLabel>ID Image</FieldLabel>
+                <FieldContent>
+                  <div className="border border-dashed rounded-md p-2 flex items-center gap-2 h-[40px]">
+                    <Shield className="h-4 w-4 text-muted-foreground" />
+                    <div className="flex-1 -mt-1">
+                      <UploaderComponent
+                        ref={validIdUploaderRef}
+                        id="valid-id-upload"
+                        type="file"
+                        multiple={false}
+                        autoUpload={false}
+                        allowedExtensions=".jpg,.png,.pdf"
+                        showFileList={true}
+                        selected={(args) => onFileSelect(args, "valid_id_url")}
+                        removing={(args) => onFileRemove(args, "valid_id_url")}
+                      />
+                    </div>
+                  </div>
+                </FieldContent>
+              </Field>
             </div>
           </div>
-        </div>
+        </TabsContent>
+      </Tabs>
+
+      {/* Footer Actions */}
+      <div className="flex justify-between items-center mt-6 pt-4 border-t">
         {globalError && (
-          <div className="p-2 bg-red-100 text-red-700 text-sm rounded">
-            {globalError}
-          </div>
+          <p className="text-xs text-red-500 font-medium">{globalError}</p>
         )}
-        <div className="flex justify-end mt-4">
-          <Button onClick={handleSave} disabled={isSaving}>
-            {isSaving ? "Saving..." : isAdd ? "Create User" : "Save Changes"}
+        <div className="flex gap-2 ml-auto">
+          <Button variant="outline" onClick={closeDialog} disabled={isSaving}>
+            Cancel
+          </Button>
+          <Button
+            onClick={handleSave}
+            disabled={isSaving}
+            className="bg-[#00ddd2] hover:bg-[#00c4ba] text-black border-none font-bold"
+          >
+            {isSaving ? "Saving..." : isAdd ? "Create Client" : "Save Changes"}
           </Button>
         </div>
       </div>

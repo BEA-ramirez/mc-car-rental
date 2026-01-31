@@ -127,7 +127,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               onClick={toggleSidebar}
               className="hover:bg-accent cursor-pointer"
             >
-              <div className="bg-primary text-foreground flex aspect-square size-8 items-center justify-center rounded-lg shrink-0">
+              <div className="bg-primary text-card flex aspect-square size-8 items-center justify-center rounded-lg shrink-0">
                 <SwatchBook className="size-4" />
               </div>
               <div className="flex flex-col gap-0.5 leading-none overflow-hidden">

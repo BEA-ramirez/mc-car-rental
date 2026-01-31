@@ -324,3 +324,18 @@ body {
   border-bottom-left-radius: 15px !important;
   border-bottom-right-radius: 15px !important;
 }
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-family: var(--font-inter), sans-serif;
+
+    /* 👇 ADD THESE 3 LINES TO FIX THE QUALITY */
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+}

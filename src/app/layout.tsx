@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { Inter, Geist_Mono } from "next/font/google";
 import SyncfusionProvider from "@/components/syncfusion-provider";
 import { ThemeProvider } from "@/components/theme-provider";
+import { Toaster } from "@/components/ui/sonner";
+import QueryProvider from "@/components/providers/query-provider";
 
 // 1. Unified Style Imports
 import "./globals.css";
@@ -54,7 +56,10 @@ export default function RootLayout({
           enableSystem={false}
           disableTransitionOnChange
         >
-          <SyncfusionProvider>{children}</SyncfusionProvider>
+          <QueryProvider>
+            <SyncfusionProvider>{children}</SyncfusionProvider>
+            <Toaster richColors position="top-right" />
+          </QueryProvider>
         </ThemeProvider>
       </body>
     </html>

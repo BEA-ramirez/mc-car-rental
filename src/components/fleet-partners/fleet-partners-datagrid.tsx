@@ -35,19 +35,27 @@ import { Button } from "../ui/button";
 import { Search, Plus, Funnel, Star } from "lucide-react";
 import { FleetPartnerType, CarOwnerType } from "@/lib/schemas/car-owner";
 import { UserType } from "@/lib/schemas/user";
+import useSWR from "swr";
+
+const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
 function FleetPartnersDataGrid({
-  fleetPartners,
   onSelectPartner,
   carOwnerApplicants,
 }: {
-  fleetPartners: FleetPartnerType[];
   onSelectPartner: (partner: FleetPartnerType | null) => void;
   carOwnerApplicants: UserType[];
 }) {
   const gridRef = useRef<GridComponent | null>(null);
   const applicantsRef = useRef(carOwnerApplicants);
   applicantsRef.current = carOwnerApplicants;
+
+  const { data, error, isLoading } = useSWR("/api/fleet-partners", fetcher, {
+    refreshInterval: 5000,
+    revalidateOnFocus: true,
+  });
+
+  console.log("Data", data);
 
   //TEMPLATE: Syncfusion passes 'props' (the row data + isAdd flag) here
   function dialogTemplate(props: any) {
@@ -223,7 +231,7 @@ function FleetPartnersDataGrid({
         <GridComponent
           ref={gridRef}
           id="fleetPartnersGrid"
-          dataSource={fleetPartners}
+          dataSource={data.fleetPartners || []}
           editSettings={editSettings}
           allowSorting={true}
           allowSelection={true}
@@ -231,6 +239,7 @@ function FleetPartnersDataGrid({
           recordClick={handleRecordClick} // <--- Triggers split view
           actionComplete={actionComplete}
           actionBegin={actionBegin}
+          loadingIndicator={{ indicatorType: "Shimmer" }}
           height="100%"
         >
           <ColumnsDirective>

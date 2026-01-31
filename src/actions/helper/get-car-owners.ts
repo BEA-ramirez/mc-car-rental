@@ -1,8 +1,8 @@
 import { createClient } from "@/utils/supabase/server";
 
-import { FleetPartnerProfileType } from "@/lib/schemas/car-owner";
+import { FleetPartnerType } from "@/lib/schemas/car-owner";
 
-export async function getCarOwners(): Promise<FleetPartnerProfileType[]> {
+export async function getCarOwners(): Promise<FleetPartnerType[]> {
   const supabase = await createClient();
   const { data: rawData, error } = await supabase
     .from("car_owner")
@@ -14,13 +14,11 @@ export async function getCarOwners(): Promise<FleetPartnerProfileType[]> {
     return [];
   }
 
-  const formattedData: FleetPartnerProfileType[] = (rawData || []).map(
-    (row: any) => {
-      const userObj = row.users || {};
+  const formattedData: FleetPartnerType[] = (rawData || []).map((row: any) => {
+    const userObj = row.users || {};
 
-      return { ...userObj, ...row, total_units: 0 };
-    },
-  );
+    return { ...userObj, ...row, total_units: 0 };
+  });
 
   return formattedData;
 }

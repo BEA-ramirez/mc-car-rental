@@ -10,10 +10,8 @@ import { FleetPartnerType } from "@/lib/schemas/car-owner";
 import { UserType } from "@/lib/schemas/user";
 
 function ActivePartners({
-  fleetPartners,
   carOwnerApplicants,
 }: {
-  fleetPartners: FleetPartnerType[];
   carOwnerApplicants: UserType[];
 }) {
   const [selectedPartner, setSelectedPartner] =
@@ -29,7 +27,6 @@ function ActivePartners({
     <div className="h-240 flex items-center gap-3 border rounded-md mb-6">
       <div className="w-[30%] border h-full bg-card rounded-md">
         <FleetPartnersDataGrid
-          fleetPartners={fleetPartners}
           carOwnerApplicants={carOwnerApplicants}
           onSelectPartner={handleSelectPartner}
         />

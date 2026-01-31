@@ -1,5 +1,5 @@
 import React from "react";
-import { FleetPartnerProfileType } from "@/lib/schemas/car-owner";
+import { FleetPartnerType } from "@/lib/schemas/car-owner";
 import { updatePartnerStatus } from "@/actions/helper/approve-partner";
 import { toast } from "sonner";
 import { CheckCircle, XCircle, AlertCircle } from "lucide-react";
@@ -9,7 +9,7 @@ function FleetPartnerReview({
   selectedPartner,
   setIsOpen,
 }: {
-  selectedPartner: FleetPartnerProfileType | null;
+  selectedPartner: FleetPartnerType | null;
   setIsOpen: (open: boolean) => void;
 }) {
   return (

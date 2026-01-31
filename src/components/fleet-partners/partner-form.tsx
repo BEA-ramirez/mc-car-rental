@@ -32,6 +32,9 @@ import {
   FieldLabel,
 } from "@/components/ui/field";
 
+import { useSWRConfig } from "swr";
+import { toast } from "sonner";
+
 // Helper to sanitize/default data
 function sanitizeData(props: any) {
   const { car_owner_id, full_name, ...rest } = props;
@@ -74,6 +77,7 @@ export function PartnerForm({
     string[]
   > | null>(null);
   const [globalError, setGlobalError] = useState<string | null>(null);
+  const { mutate } = useSWRConfig();
 
   console.log("form data:", formData);
 
@@ -112,31 +116,27 @@ export function PartnerForm({
 
     console.log("Sumbitted data", submitData);
 
-    try {
-      const result = await managePartner(
-        { message: "", success: false },
-        submitData,
-      );
+    const promise = managePartner({ message: "", success: false }, submitData);
 
-      if (result.success) {
-        // SUCCESS: Close the dialog
-        closeDialog();
-      } else {
-        // ERROR: Show message
-        // If validation fails, result.errors contains { business_name: ["Too short"], ... }
-        if (result.errors) {
-          setFieldErrors(result.errors);
+    toast.promise(promise, {
+      loading: "Saving fleet partner...",
+      success: (result) => {
+        if (result.success) {
+          mutate("/api/fleet-partners"); // Sync the grid
+          closeDialog();
+          return `${formData.business_name || "Partner"} added successfully!`;
+        } else {
+          // This part handles "Logical" errors (like validation)
+          setIsSaving(false);
+          if (result.errors) setFieldErrors(result.errors);
+          throw new Error(result.message || "Failed to save");
         }
-        if (result.message) {
-          setGlobalError(result.message);
-        }
-      }
-    } catch (err) {
-      console.error(err);
-      setGlobalError("An unexpected error occurred.");
-    } finally {
-      setIsSaving(false);
-    }
+      },
+      error: (err) => {
+        setIsSaving(false);
+        return err.message || "An unexpected error occurred.";
+      },
+    });
   };
 
   // Styles

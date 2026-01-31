@@ -4,10 +4,8 @@ import { FleetPartnerType } from "@/lib/schemas/car-owner";
 import { UserType } from "@/lib/schemas/user";
 
 function FleetPartnerData({
-  fleetPartners,
   carOwnerApplicants,
 }: {
-  fleetPartners: FleetPartnerType[];
   carOwnerApplicants: UserType[];
 }) {
   const tabsTriggerClasses =
@@ -27,10 +25,7 @@ function FleetPartnerData({
           </TabsList>
 
           <TabsContent value="active-partners" className="mt-4">
-            <ActivePartners
-              fleetPartners={fleetPartners}
-              carOwnerApplicants={carOwnerApplicants}
-            />
+            <ActivePartners carOwnerApplicants={carOwnerApplicants} />
           </TabsContent>
           <TabsContent value="app-requests" className="mt-6">
             <div>hello</div>
