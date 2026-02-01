@@ -20,12 +20,14 @@ import {
   CalendarDays,
   ShieldCheck,
   UploadCloud,
+  Briefcase,
 } from "lucide-react";
 
 // UI Components
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -43,7 +45,6 @@ import {
 
 // Helper to sanitize/default data
 function sanitizeData(props: any) {
-  // Clone to avoid mutation
   const data = { ...props };
 
   if (data.isAdd) {
@@ -54,15 +55,12 @@ function sanitizeData(props: any) {
     data.phone_number = "";
     data.address = "";
     data.profile_picture_url = "";
-
-    // New Fields Defaults
     data.license_number = "";
     data.license_expiry_date = "";
     data.valid_id_expiry_date = "";
     data.trust_score = 5.0;
     data.account_status = "pending";
   } else {
-    // Handling Edit Mode Defaults
     const fullName = data.full_name || "";
     const parts = fullName.split(" ");
     data.first_name = data.first_name || parts[0] || "";
@@ -75,7 +73,7 @@ function sanitizeData(props: any) {
     data.license_expiry_date = data.license_expiry_date
       ? new Date(data.license_expiry_date).toISOString().split("T")[0]
       : "";
-    data.valid_id_expiry_date = ""; // Not loaded from user table, so empty
+    data.valid_id_expiry_date = "";
   }
   return data;
 }
@@ -109,7 +107,7 @@ export function ClientForm({ data: rawData, closeDialog }: ClientFormProps) {
   const [globalError, setGlobalError] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
-  // Reset form when data changes (e.g. re-opening dialog)
+  // Reset form when data changes
   useEffect(() => {
     setFormData(sanitizeData(rawData));
     setFiles({});
@@ -129,7 +127,9 @@ export function ClientForm({ data: rawData, closeDialog }: ClientFormProps) {
     };
   }, [previewUrl]);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
+  ) => {
     const { name, value } = e.target;
     if (fieldErrors?.[name]) {
       setFieldErrors((prev) => ({ ...prev!, [name]: [] }));
@@ -195,7 +195,6 @@ export function ClientForm({ data: rawData, closeDialog }: ClientFormProps) {
     if (files.license_id_url)
       submitData.append("license_id_url", files.license_id_url);
 
-    // Use Toast Promise for better UX (matching PartnerForm style)
     const promise = manageUser({ message: "", success: false }, submitData);
 
     toast.promise(promise, {
@@ -216,7 +215,7 @@ export function ClientForm({ data: rawData, closeDialog }: ClientFormProps) {
       },
       error: (err) => {
         setIsSaving(false);
-        return "An unexpected error occurred.";
+        return err.message || "An unexpected error occurred.";
       },
     });
   };
@@ -238,7 +237,12 @@ export function ClientForm({ data: rawData, closeDialog }: ClientFormProps) {
   const getProfileImageSrc = () => {
     if (previewUrl) return previewUrl;
     if (formData.profile_picture_url) return formData.profile_picture_url;
-    return `https://ui-avatars.com/api/?name=${formData.first_name}+${formData.last_name}&background=random&color=fff`;
+
+    // 👇 FIX: Provide a fallback so the URL is never empty/broken
+    const fname = formData.first_name || "New";
+    const lname = formData.last_name || "User";
+
+    return `https://ui-avatars.com/api/?name=${fname}+${lname}&background=random&color=fff`;
   };
 
   const onFileRemove = (args: RemovingEventArgs, fieldName: string) => {
@@ -251,19 +255,19 @@ export function ClientForm({ data: rawData, closeDialog }: ClientFormProps) {
   };
 
   return (
-    <div className="w-[40rem] bg-card">
+    <div className="w-137.5 bg-card">
       <Tabs defaultValue="account" className="w-full">
         <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="account">Account Info</TabsTrigger>
+          <TabsTrigger value="account">Account</TabsTrigger>
           <TabsTrigger value="contact">Contact</TabsTrigger>
           <TabsTrigger value="compliance">Compliance</TabsTrigger>
         </TabsList>
 
-        {/* ================= TAB 1: ACCOUNT INFO ================= */}
+        {/* ================= TAB 1: ACCOUNT ================= */}
         <TabsContent value="account" className="space-y-4 py-4">
-          {/* Profile Picture Header */}
-          <div className="flex items-center gap-4 p-3 border rounded-lg bg-muted/20">
-            <div className="relative w-16 h-16 rounded-full overflow-hidden border-2 border-background shadow-sm shrink-0">
+          {/* Profile Picture Section */}
+          <div className="flex items-center gap-4 p-3 border rounded-md bg-muted/30">
+            <div className="relative w-14 h-14 rounded-full overflow-hidden border-2 border-background shadow-sm shrink-0">
               <Image
                 src={getProfileImageSrc()}
                 alt="Profile"
@@ -272,7 +276,7 @@ export function ClientForm({ data: rawData, closeDialog }: ClientFormProps) {
               />
             </div>
             <div className="flex-1">
-              <FieldLabel className="mb-2">Profile Photo</FieldLabel>
+              <FieldLabel className="mb-1">Profile Photo</FieldLabel>
               <div className="h-8">
                 <UploaderComponent
                   id="profile-upload-mini"
@@ -280,7 +284,7 @@ export function ClientForm({ data: rawData, closeDialog }: ClientFormProps) {
                   multiple={false}
                   autoUpload={false}
                   allowedExtensions=".jpg,.png,.jpeg"
-                  buttons={{ browse: "Upload New Photo" }}
+                  buttons={{ browse: "Change Photo" }}
                   showFileList={false}
                   selected={(args) => onFileSelect(args, "profile_picture_url")}
                 />
@@ -419,9 +423,7 @@ export function ClientForm({ data: rawData, closeDialog }: ClientFormProps) {
                 />
               </div>
             </FieldContent>
-            <FieldDescription>
-              Enter a valid active mobile number.
-            </FieldDescription>
+            <FieldDescription>Enter valid mobile number.</FieldDescription>
             <FieldError>{fieldErrors?.phone_number?.[0]}</FieldError>
           </Field>
 
@@ -430,13 +432,11 @@ export function ClientForm({ data: rawData, closeDialog }: ClientFormProps) {
             <FieldContent>
               <div className="relative">
                 <MapPin className="absolute left-2.5 top-3 h-4 w-4 text-muted-foreground" />
-                <textarea
+                <Textarea
                   name="address"
-                  className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 pl-9 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="pl-9 resize-none min-h-[100px]"
                   value={formData.address || ""}
-                  onChange={(e) =>
-                    setFormData({ ...formData, address: e.target.value })
-                  }
+                  onChange={handleChange}
                   placeholder="House No., Street Name, Barangay, City, Province"
                 />
               </div>
@@ -462,88 +462,78 @@ export function ClientForm({ data: rawData, closeDialog }: ClientFormProps) {
                   min="0"
                   className="pl-9"
                   value={formData.trust_score}
-                  onChange={(e) =>
-                    setFormData({ ...formData, trust_score: e.target.value })
-                  }
+                  onChange={handleChange}
                 />
               </div>
             </FieldContent>
           </Field>
 
-          <div className="border-t pt-4 mt-2">
-            <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3">
-              Driver's License
-            </h4>
-            <div className="grid grid-cols-2 gap-4">
-              <Field>
-                <FieldLabel>License Number</FieldLabel>
-                <FieldContent>
-                  <div className="relative">
-                    <FileBadge className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      name="license_number"
-                      className="pl-9"
-                      value={formData.license_number}
-                      onChange={handleChange}
-                      placeholder="L02-XX-XXXXXX"
-                    />
-                  </div>
-                </FieldContent>
-                <FieldError>{fieldErrors?.license_number?.[0]}</FieldError>
-              </Field>
-
-              <Field>
-                <FieldLabel>Expiry Date</FieldLabel>
-                <FieldContent>
-                  <div className="relative">
-                    <CalendarDays className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      type="date"
-                      className="pl-9"
-                      value={formData.license_expiry_date || ""}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          license_expiry_date: e.target.value,
-                        })
-                      }
-                    />
-                  </div>
-                </FieldContent>
-                <FieldError>{fieldErrors?.license_expiry_date?.[0]}</FieldError>
-              </Field>
-            </div>
-
-            <Field className="mt-2">
-              <FieldLabel>License Image</FieldLabel>
+          <div className="grid grid-cols-2 gap-4">
+            <Field>
+              <FieldLabel>License Number</FieldLabel>
               <FieldContent>
-                <div className="border border-dashed rounded-md p-2 flex items-center gap-2">
-                  <UploadCloud className="h-4 w-4 text-muted-foreground" />
-                  <div className="flex-1">
-                    <UploaderComponent
-                      ref={licenseUploaderRef}
-                      id="license-upload"
-                      type="file"
-                      multiple={false}
-                      autoUpload={false}
-                      allowedExtensions=".jpg,.png,.pdf"
-                      showFileList={true}
-                      selected={(args) => onFileSelect(args, "license_id_url")}
-                      removing={(args) => onFileRemove(args, "license_id_url")}
-                    />
-                  </div>
+                <div className="relative">
+                  <FileBadge className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    name="license_number"
+                    className="pl-9"
+                    value={formData.license_number}
+                    onChange={handleChange}
+                    placeholder="L02-XX-XXXXXX"
+                  />
                 </div>
               </FieldContent>
+              <FieldError>{fieldErrors?.license_number?.[0]}</FieldError>
+            </Field>
+
+            <Field>
+              <FieldLabel>License Expiry</FieldLabel>
+              <FieldContent>
+                <div className="relative">
+                  <CalendarDays className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    type="date"
+                    className="pl-9"
+                    value={formData.license_expiry_date || ""}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        license_expiry_date: e.target.value,
+                      })
+                    }
+                  />
+                </div>
+              </FieldContent>
+              <FieldError>{fieldErrors?.license_expiry_date?.[0]}</FieldError>
             </Field>
           </div>
 
+          <Field>
+            <FieldLabel>License Image</FieldLabel>
+            <FieldContent>
+              <div className="border border-input rounded-md p-1 flex items-center gap-2">
+                <UploadCloud className="h-4 w-4 ml-2 text-muted-foreground" />
+                <div className="flex-1">
+                  <UploaderComponent
+                    ref={licenseUploaderRef}
+                    id="license-upload"
+                    type="file"
+                    multiple={false}
+                    autoUpload={false}
+                    allowedExtensions=".jpg,.png,.pdf"
+                    showFileList={true}
+                    selected={(args) => onFileSelect(args, "license_id_url")}
+                    removing={(args) => onFileRemove(args, "license_id_url")}
+                  />
+                </div>
+              </div>
+            </FieldContent>
+          </Field>
+
           <div className="border-t pt-4 mt-2">
-            <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3">
-              Valid ID (Secondary)
-            </h4>
             <div className="grid grid-cols-2 gap-4">
               <Field>
-                <FieldLabel>ID Expiry Date</FieldLabel>
+                <FieldLabel>Valid ID Expiry</FieldLabel>
                 <FieldContent>
                   <div className="relative">
                     <CalendarDays className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -563,10 +553,10 @@ export function ClientForm({ data: rawData, closeDialog }: ClientFormProps) {
               </Field>
 
               <Field>
-                <FieldLabel>ID Image</FieldLabel>
+                <FieldLabel>Valid ID Image</FieldLabel>
                 <FieldContent>
-                  <div className="border border-dashed rounded-md p-2 flex items-center gap-2 h-[40px]">
-                    <Shield className="h-4 w-4 text-muted-foreground" />
+                  <div className="border border-input rounded-md p-1 flex items-center gap-2 h-[40px]">
+                    <Shield className="h-4 w-4 ml-2 text-muted-foreground" />
                     <div className="flex-1 -mt-1">
                       <UploaderComponent
                         ref={validIdUploaderRef}

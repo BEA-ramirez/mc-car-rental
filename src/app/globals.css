@@ -313,6 +313,18 @@ body {
   border: 1px solid #e2e8f0; /* Optional: adds a soft border matching Shadcn */
 }
 
+#clientsGrid_dialogEdit_wrapper {
+  border-radius: 12px !important;
+  overflow: hidden !important; /* Critical to prevent sharp corners of children from leaking out */
+  border: 1px solid #e2e8f0;
+}
+
+#clientsGrid_dialogEdit_wrapper .e-dlg-content {
+  padding: 10px !important;
+  height: auto !important;
+  display: block !important;
+}
+
 /* 2. Round the top corners of the Header */
 #fleetPartnersGrid_dialogEdit_wrapper .e-dlg-header-content {
   border-top-left-radius: 15px !important;
@@ -329,6 +341,10 @@ body {
   * {
     @apply border-border outline-ring/50;
   }
+  html {
+    /* Always reserve space for the scrollbar to prevent layout shift */
+    scrollbar-gutter: stable;
+  }
   body {
     @apply bg-background text-foreground;
     font-family: var(--font-inter), sans-serif;
@@ -338,4 +354,106 @@ body {
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
   }
+}
+
+.e-dialog.e-popup {
+  position: fixed !important; /* Force fixed positioning */
+  top: 50% !important;
+  left: 50% !important;
+  transform: translate(-50%, -50%) !important;
+  z-index: 99999 !important; /* Ensure it's on top of everything */
+}
+
+/* 2. The Backdrop (The dark overlay behind the dialog) */
+.e-dlg-overlay {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  z-index: 99998 !important; /* Just below the dialog */
+  background-color: oklch(0 0 0 / 0.5) !important; /* Transparent Black */
+  backdrop-filter: blur(2px); /* Optional: Nice blur effect */
+}
+
+.e-alert-dialog,
+.e-confirm-dialog {
+  border-radius: var(--radius) !important;
+  background-color: var(--card) !important;
+  border: 1px solid var(--border) !important;
+  box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1) !important;
+  font-family: var(--font-inter), sans-serif !important; /* Enforce Inter */
+  max-width: 400px !important;
+  padding: 0 !important;
+}
+
+/* 4. Header Styling */
+.e-alert-dialog .e-dlg-header-content,
+.e-confirm-dialog .e-dlg-header-content {
+  background-color: transparent !important;
+  border-bottom: none !important;
+  padding: 1.5rem 1.5rem 0.5rem 1.5rem !important;
+}
+
+.e-alert-dialog .e-dlg-header,
+.e-confirm-dialog .e-dlg-header {
+  font-weight: 600 !important;
+  font-size: 1.125rem !important; /* 18px */
+  color: var(--foreground) !important;
+}
+
+/* 5. Content/Body Styling */
+.e-alert-dialog .e-dlg-content,
+.e-confirm-dialog .e-dlg-content {
+  padding: 0.5rem 1.5rem 1.5rem 1.5rem !important;
+  color: var(--muted-foreground) !important;
+  font-size: 0.875rem !important; /* 14px */
+  line-height: 1.5 !important;
+  background-color: transparent !important;
+}
+
+/* 6. Footer/Buttons Styling */
+.e-alert-dialog .e-footer-content,
+.e-confirm-dialog .e-footer-content {
+  border-top: none !important;
+  padding: 0 1.5rem 1.5rem 1.5rem !important;
+  background-color: transparent !important;
+  display: flex !important;
+  justify-content: flex-end !important;
+  gap: 0.5rem !important;
+}
+
+/* 7. The Buttons specifically */
+.e-alert-dialog button.e-btn,
+.e-confirm-dialog button.e-btn {
+  border-radius: var(--radius-md) !important;
+  font-weight: 500 !important;
+  font-size: 0.875rem !important;
+  padding: 0.5rem 1rem !important;
+  height: auto !important;
+  text-transform: none !important;
+  transition: all 0.2s !important;
+  font-family: var(--font-inter) !important;
+}
+
+/* Cancel Button */
+.e-alert-dialog button.e-btn:not(.e-primary),
+.e-confirm-dialog button.e-btn:not(.e-primary) {
+  background-color: transparent !important;
+  border: 1px solid var(--border) !important;
+  color: var(--foreground) !important;
+}
+.e-alert-dialog button.e-btn:not(.e-primary):hover {
+  background-color: var(--muted) !important;
+}
+
+/* OK / Delete Button */
+.e-alert-dialog button.e-btn.e-primary,
+.e-confirm-dialog button.e-btn.e-primary {
+  background-color: var(--destructive) !important; /* Red for delete */
+  border: 1px solid var(--destructive) !important;
+  color: white !important;
+}
+.e-alert-dialog button.e-btn.e-primary:hover {
+  opacity: 0.9;
 }

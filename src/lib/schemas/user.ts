@@ -40,6 +40,7 @@ export const userSchema = z.object({
   rejection_reason: z.string().optional().nullable(),
   created_at: z.coerce.date().optional(),
   last_updated_at: z.coerce.date().optional(),
+  is_archived: z.boolean().optional().default(false),
 });
 
 export type UserType = z.infer<typeof userSchema>;

@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { UserType } from "@/lib/schemas/user";
-import { deleteUser } from "@/actions/helper/delete-user";
+import { deleteUser, bulkDeleteUsers } from "@/actions/helper/delete-user";
 import { toast } from "sonner";
 
 const fetchClients = async (): Promise<UserType[]> => {
@@ -39,5 +39,31 @@ export const useClients = () => {
     },
   });
 
-  return { ...query, deleteClient: deleteMutation.mutate };
+  const bulkDeleteMutation = useMutation({
+    mutationFn: async (userIds: string[]) => {
+      const result = await bulkDeleteUsers(userIds);
+      if (!result.success) {
+        throw new Error(result.message);
+      }
+      return result;
+    },
+    onMutate: () => {
+      const toastId = toast.loading("Deleting clients...");
+      return { toastId };
+    },
+    onSuccess: (data, variables, context) => {
+      toast.success(data.message, { id: context?.toastId });
+      queryClient.invalidateQueries({ queryKey: ["clients"] });
+    },
+    onError: (error: Error, variables, context) => {
+      toast.error(error.message, { id: context?.toastId });
+    },
+  });
+
+  return {
+    ...query,
+    deleteClient: deleteMutation.mutate,
+    bulkDelete: bulkDeleteMutation.mutate,
+    isDeleting: deleteMutation.isPending || bulkDeleteMutation.isPending,
+  };
 };

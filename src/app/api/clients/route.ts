@@ -6,6 +6,7 @@ export async function GET(request: NextRequest) {
   const { data, error } = await supabase
     .from("users")
     .select("*")
+    .eq("is_archived", false)
     .order("created_at", { ascending: false });
 
   if (error) {

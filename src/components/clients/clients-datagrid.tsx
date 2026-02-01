@@ -18,12 +18,14 @@ import {
   Freeze,
   ExcelExport,
   PdfExport,
+  SelectionSettingsModel,
+  RecordClickEventArgs,
 } from "@syncfusion/ej2-react-grids";
 import { ClickEventArgs } from "@syncfusion/ej2-navigations";
 import { Browser } from "@syncfusion/ej2-base"; // Import for mobile check
 import { UserType } from "@/lib/schemas/user";
 import { ClientForm } from "./client-form";
-import { useRef, useEffect } from "react";
+import { useRef, useEffect, useMemo, useState, useCallback } from "react";
 import { deleteUser } from "@/actions/helper/delete-user";
 import {
   MapPin,
@@ -58,38 +60,147 @@ import {
   DropdownMenuShortcut,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Checkbox } from "@/components/ui/checkbox";
-import { useState } from "react";
 import { toTitleCase, toTitleCaseLine } from "@/actions/helper/format-text";
+import { DialogUtility } from "@syncfusion/ej2-popups";
 
 import { useClients } from "../../../hooks/use-clients";
 
+const selectionSettings: SelectionSettingsModel = {
+  type: "Multiple",
+  checkboxOnly: true,
+  persistSelection: true,
+};
+
+const editSettings: EditSettingsModel = {
+  allowEditing: true,
+  allowAdding: true,
+  allowDeleting: true,
+  mode: "Dialog",
+  // We can't define the template here easily because it's a component,
+  // but we will fix that inside.
+};
+
+const filterOptions: FilterSettingsModel = { type: "Menu" };
+
+// Helper for Role Badges
+function roleTemplate(props: UserType) {
+  const colors: Record<string, string> = {
+    admin: "bg-rose-100 text-rose-600 ",
+    staff: "bg-blue-100 text-blue-600 ",
+    car_owner: "bg-purple-100 text-purple-600 ",
+    customer: "bg-emerald-100 text-emerald-600 ",
+    driver: "bg-orange-100 text-orange-600 ",
+  };
+  // Default to 'customer' color if role is unknown
+  const colorClass = colors[props.role] || colors.customer;
+
+  return (
+    <span
+      className={`px-2 py-[0.2rem] rounded-sm text-[11px] font-semibold ${colorClass} shadow-md`}
+    >
+      {toTitleCaseLine(props.role)}
+    </span>
+  );
+}
+
+function profileTemplate(props: UserType) {
+  const fname = props.first_name || "New";
+  const lname = props.last_name || "User";
+  const profilePicture =
+    props.profile_picture_url ||
+    `https://ui-avatars.com/api/?name=${fname}+${lname}&background=random&color=fff`;
+
+  return (
+    <div className="flex justify-start items-center gap-2">
+      <div className="relative w-8 h-8">
+        <Image
+          key={profilePicture}
+          src={profilePicture}
+          alt="Profile"
+          fill
+          className="rounded-full object-cover border"
+          unoptimized
+        />
+      </div>
+      <div className="flex flex-col justify-start items-start">
+        <h3 className="text-[0.8rem] font-semibold mb-[-0.3rem] p-0">
+          {toTitleCase(props.full_name)}
+        </h3>
+        <h4 className="text-[0.6rem] font-medium">{props.email}</h4>
+      </div>
+    </div>
+  );
+}
+
 export default function ClientsDataGrid() {
-  const { data: users = [], isLoading, deleteClient } = useClients();
-  console.log("Users", users);
+  const {
+    data: rawUsers = [],
+    isLoading,
+    deleteClient,
+    bulkDelete,
+  } = useClients();
+  console.log("Users", rawUsers);
 
   const gridRef = useRef<GridComponent | null>(null);
   const [selectedUser, setSelectedUser] = useState<UserType | null>(null);
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [selectedCount, setSelectedCount] = useState(0);
 
-  // Toggle single row
-  const toggleSelection = (id: string) => {
-    const newSet = new Set(selectedIds);
-    if (newSet.has(id)) {
-      newSet.delete(id);
-    } else {
-      newSet.add(id);
+  const users = useMemo(() => rawUsers, [rawUsers]);
+
+  const handleRecordClick = (args: RecordClickEventArgs) => {
+    // Optional: Prevent opening if they clicked a button/action inside the row
+    if (
+      (args.target as HTMLElement).closest("button, a, .e-checkbox-wrapper")
+    ) {
+      return;
     }
-    setSelectedIds(newSet);
+    setSelectedUser(args.rowData as UserType);
   };
 
-  // Helper: Select All / Deselect All
-  const toggleSelectAll = (checked: boolean) => {
-    if (checked) {
-      // Select all IDs currently in the data
-      setSelectedIds(new Set(users.map((u) => u.user_id)));
-    } else {
-      setSelectedIds(new Set());
+  // Update count when selection changes
+  const handleSelectionChange = () => {
+    if (gridRef.current) {
+      setSelectedCount(gridRef.current.getSelectedRecords().length);
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (gridRef.current) {
+      const selectedRecords =
+        gridRef.current.getSelectedRecords() as UserType[];
+      const idsToDelete = selectedRecords.map((record) => record.user_id);
+
+      if (idsToDelete.length === 0) return;
+
+      let dialogObj: any;
+
+      dialogObj = DialogUtility.confirm({
+        title: "Delete users",
+        content: `Are you sure you want to delete ${idsToDelete.length} user(s)? This action cannot be undone.`,
+        okButton: {
+          text: "Delete",
+          cssClass: "e-primary",
+          click: async () => {
+            await bulkDelete(idsToDelete);
+            if (gridRef.current) {
+              gridRef.current.clearSelection();
+              setSelectedCount(0);
+            }
+            dialogObj.hide();
+          },
+        },
+        cancelButton: {
+          text: "Cancel",
+          click: () => {
+            dialogObj.hide();
+          },
+          cssClass: "e-flat",
+        },
+        showCloseIcon: false,
+        closeOnEscape: true,
+        animationSettings: { effect: "Zoom" },
+        cssClass: "e-confirm-dialog",
+      });
     }
   };
 
@@ -101,29 +212,29 @@ export default function ClientsDataGrid() {
   // Triggered when closing the side panel
   const handleCloseDetail = () => {
     setSelectedUser(null);
-    // Optional: clear selection in grid visually
-    gridRef.current?.clearSelection();
   };
 
-  // // ensures the grid updates when the server action finishes and sends new props
-  // useEffect(() => {
-  //   if (gridRef.current) {
-  //     gridRef.current.refresh();
-  //   }
-  // }, [users]);
-
-  function dialogTemplate(props: any) {
+  const dialogTemplate = useCallback((props: any) => {
     return (
       <ClientForm
         data={props}
-        closeDialog={() => {
-          if (gridRef.current) {
-            gridRef.current.closeEdit();
-          }
-        }}
+        closeDialog={() => gridRef.current?.closeEdit()}
       />
     );
-  }
+  }, []);
+
+  const editSettings = useMemo<EditSettingsModel>(
+    () => ({
+      allowEditing: true,
+      allowAdding: true,
+      allowDeleting: true,
+      showDeleteConfirmDialog: true,
+      showConfirmDialog: true,
+      mode: "Dialog",
+      template: dialogTemplate, // Uses the stable function above
+    }),
+    [dialogTemplate],
+  );
 
   function actionComplete(args: DialogEditEventArgs): void {
     if (
@@ -139,11 +250,18 @@ export default function ClientsDataGrid() {
         args.dialog.header = `Edit Client: ${name}`;
       }
 
-      // B. Mobile Responsiveness
+      args.dialog.width = "auto";
       if (Browser.isDevice) {
         args.dialog.height = window.innerHeight - 90 + "px";
-        (args.dialog as any).dataBind();
       }
+      const dialogInstance = args.dialog as any;
+
+      setTimeout(() => {
+        // Check if method exists (safety) and call it
+        if (dialogInstance.refreshPosition) {
+          dialogInstance.refreshPosition();
+        }
+      }, 50);
     }
   }
 
@@ -201,18 +319,6 @@ export default function ClientsDataGrid() {
     }
   };
 
-  const filterOptions: FilterSettingsModel = { type: "Menu" };
-
-  const editSettings: EditSettingsModel = {
-    allowEditing: true,
-    allowAdding: true,
-    allowDeleting: true, // Note: You'll need a separate delete action logic for this later
-    showDeleteConfirmDialog: true,
-    showConfirmDialog: true,
-    mode: "Dialog",
-    template: dialogTemplate,
-  };
-
   const toolbarClick = (args: ClickEventArgs): void => {
     if (gridRef.current) {
       switch (args.item.id) {
@@ -229,77 +335,25 @@ export default function ClientsDataGrid() {
     }
   };
 
-  // Helper for Role Badges
-  function roleTemplate(props: UserType) {
-    const colors: Record<string, string> = {
-      admin: "bg-rose-100 text-rose-600 ",
-      staff: "bg-blue-100 text-blue-600 ",
-      car_owner: "bg-purple-100 text-purple-600 ",
-      customer: "bg-emerald-100 text-emerald-600 ",
-      driver: "bg-orange-100 text-orange-600 ",
-    };
-    // Default to 'customer' color if role is unknown
-    const colorClass = colors[props.role] || colors.customer;
-
+  const actionTemplate = useCallback((props: UserType) => {
     return (
-      <span
-        className={`px-2 py-[0.2rem] rounded-sm text-[11px] font-semibold ${colorClass} shadow-md`}
-      >
-        {toTitleCaseLine(props.role)}
-      </span>
-    );
-  }
-
-  function profileTemplate(props: UserType) {
-    const profilePicture = props.profile_picture_url
-      ? props.profile_picture_url
-      : `https://ui-avatars.com/api/?name=${props.first_name}+${props.last_name}&background=random&color=fff`;
-    const isSelected = selectedIds.has(props.user_id);
-    return (
-      <div className="flex justify-start items-center gap-2">
-        <div
-          onClick={(e) => e.stopPropagation()}
-          className="flex items-center justify-center pr-2"
-        >
-          <Checkbox
-            checked={isSelected}
-            onCheckedChange={() => toggleSelection(props.user_id)}
-            className="border-foreground/40 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
-          />
-        </div>
-        <div className="relative w-8 h-8">
-          <Image
-            key={profilePicture}
-            src={profilePicture}
-            alt="Profile"
-            fill /* Fills the relative parent above */
-            className="rounded-full object-cover border"
-            sizes="40px"
-          />
-        </div>
-        <div className="flex flex-col justify-start items-start">
-          <h3 className="text-[0.8rem] font-semibold mb-[-0.3rem] p-0">
-            {toTitleCase(props.full_name)}
-          </h3>
-          <h4 className="text-[0.6rem] font-medium">{props.email}</h4>
-        </div>
-      </div>
-    );
-  }
-
-  function actionTemplate(props: UserType) {
-    return (
-      <DropdownMenu>
+      <DropdownMenu modal={false}>
         <DropdownMenuTrigger asChild>
           <Button
             variant="outline"
-            className="bg-transparent! border-none! shadow-none! "
+            className="bg-transparent! border-none! shadow-none! cursor-pointer"
             size={"icon-sm"}
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={(e) => e.stopPropagation()}
           >
             <EllipsisVertical className="text-foreground" />
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-40">
+        <DropdownMenuContent
+          align="end"
+          className="w-40"
+          onCloseAutoFocus={(e) => e.preventDefault()}
+        >
           <DropdownMenuGroup>
             <DropdownMenuItem className="text-xs!">
               <div className="flex items-center gap-2">
@@ -320,13 +374,39 @@ export default function ClientsDataGrid() {
                 <p>Make as Admin</p>
               </div>
             </DropdownMenuItem>
-            <DropdownMenuItem className="text-xs!">
+            <DropdownMenuItem
+              className="text-xs!"
+              onClick={(e) => {
+                e.stopPropagation();
+                if (gridRef.current) {
+                  gridRef.current.clearSelection();
+                  const index = gridRef.current.getRowIndexByPrimaryKey(
+                    props.user_id,
+                  );
+                  gridRef.current.selectRow(index);
+                  gridRef.current.startEdit();
+                }
+              }}
+            >
               <div className="flex items-center gap-2 ">
                 <SquarePen className="size-4" />
                 <p>Edit User</p>
               </div>
             </DropdownMenuItem>
-            <DropdownMenuItem className="text-xs!">
+            <DropdownMenuItem
+              className="text-xs!"
+              onClick={(e) => {
+                e.stopPropagation();
+                if (gridRef.current) {
+                  gridRef.current.clearSelection();
+                  const index = gridRef.current.getRowIndexByPrimaryKey(
+                    props.user_id,
+                  );
+                  gridRef.current.selectRow(index);
+                  gridRef.current.deleteRecord("user_id", props);
+                }
+              }}
+            >
               <div className="flex items-center gap-2 ">
                 <Trash2 className="size-4" />
                 <p>Delete User</p>
@@ -336,22 +416,7 @@ export default function ClientsDataGrid() {
         </DropdownMenuContent>
       </DropdownMenu>
     );
-  }
-
-  const headerTemplate = () => {
-    const isAllSelected = users.length > 0 && selectedIds.size === users.length;
-
-    return (
-      <div className="flex items-center gap-3">
-        <Checkbox
-          checked={isAllSelected}
-          onCheckedChange={(c) => toggleSelectAll(!!c)}
-          className="border-gray-400 data-[state=checked]:bg-[#00ddd2]"
-        />
-        <span className="text-foreground/50 font-semibold">Client</span>
-      </div>
-    );
-  };
+  }, []);
 
   return (
     <>
@@ -368,7 +433,9 @@ export default function ClientsDataGrid() {
     }
   `}
       </style>
-      <div className="h-full space-y-2 mb-6 flex gap-4 w-fullrelative ">
+      <div
+        className={`h-full mb-6 flex w-full relative ${selectedUser ? "gap-4" : "gap-0"}`}
+      >
         {isLoading && (
           <div className="absolute inset-0 z-50 bg-white/60 flex items-center justify-center backdrop-blur-[1px] rounded-md border">
             <div className="flex flex-col items-center gap-2">
@@ -403,12 +470,13 @@ export default function ClientsDataGrid() {
                 Clients ({users.length})
               </h3>
               <h4 className="text-[0.7rem] text-foreground/50 font-medium border-l-2 border-gray-300 pl-2">
-                {selectedIds.size} users selected
+                {selectedCount} users selected
               </h4>
               <Button
                 variant="outline"
-                className="bg-transparent! "
+                className="bg-transparent! cursor-pointer"
                 size={"icon-sm"}
+                onClick={handleBulkDelete}
               >
                 <Trash2 className="text-foreground" />
               </Button>
@@ -421,11 +489,11 @@ export default function ClientsDataGrid() {
               </Button>
             </div>
             <div className="flex items-center gap-2">
-              <DropdownMenu>
+              <DropdownMenu modal={false}>
                 <DropdownMenuTrigger asChild>
                   <Button
                     variant="outline"
-                    className="bg-transparent! "
+                    className="bg-transparent! cursor-pointer"
                     size={"icon-sm"}
                   >
                     <Download className="text-foreground" />
@@ -473,6 +541,7 @@ export default function ClientsDataGrid() {
               dataSource={users}
               editSettings={editSettings}
               filterSettings={filterOptions}
+              selectionSettings={selectionSettings}
               allowPaging={true}
               allowSorting={true}
               allowFiltering={true}
@@ -483,7 +552,9 @@ export default function ClientsDataGrid() {
               allowExcelExport={true}
               allowPdfExport={true}
               toolbarClick={toolbarClick}
-              rowSelected={handleRowSelected}
+              rowSelected={handleSelectionChange}
+              rowDeselected={handleSelectionChange}
+              recordClick={handleRecordClick}
             >
               <ColumnsDirective>
                 <ColumnDirective
@@ -491,10 +562,10 @@ export default function ClientsDataGrid() {
                   isPrimaryKey={true}
                   visible={false}
                 />
+                <ColumnDirective type="Checkbox" width="40" />
                 <ColumnDirective
                   field="full_name"
                   headerText="Client"
-                  headerTemplate={headerTemplate}
                   width={220}
                   template={profileTemplate}
                 />
