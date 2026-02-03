@@ -127,7 +127,7 @@ export async function manageUser(
           user_id,
         );
         if (url) {
-          // <--- SAFETY CHECK: Only create record if upload succeeded
+          // Only create record if upload succeeded
           await createDocumentRecord(
             supabaseAdmin,
             user_id,

@@ -50,7 +50,7 @@ export default function AdminLayout({
       <AppSidebar />
       <SidebarInset>
         <main className="bg-background flex-1 h-screen overflow-auto">
-          <header className="flex justify-between items-center py-2 px-3">
+          <header className="flex justify-between items-center pt-3 pb-1 px-3">
             <Breadcrumb>
               <BreadcrumbList>
                 {breadcrumbs.map((crumb, index) => {
@@ -61,7 +61,7 @@ export default function AdminLayout({
                     <React.Fragment key={crumb.href}>
                       <BreadcrumbItem className="hidden md:block ">
                         {crumb.isLast ? (
-                          <BreadcrumbPage className="!font-[600]">
+                          <BreadcrumbPage className="font-semibold text-foreground/80">
                             {crumb.label}
                           </BreadcrumbPage>
                         ) : (
@@ -78,31 +78,31 @@ export default function AdminLayout({
                 })}
               </BreadcrumbList>
             </Breadcrumb>
-            <div className="flex gap-1">
+            <div className="flex gap-2">
               <Button
                 size={"icon-sm"}
                 variant={"outline"}
                 className="bg-white cursor-pointer"
               >
-                <Bell className="stroke-[0.15rem] " />
+                <Bell className="stroke-2 w-3 h-3" />
               </Button>
               <Button
                 size={"icon-sm"}
                 variant={"outline"}
                 className="bg-white cursor-pointer"
               >
-                <MessageCircleMore className="stroke-[0.15rem]" />
+                <MessageCircleMore className="stroke-2 w-3 h-3" />
               </Button>
               <Button
                 size={"icon-sm"}
                 variant={"outline"}
                 className="bg-white cursor-pointer"
               >
-                <User className="stroke-[0.15rem]" />
+                <User className="stroke-2 w-3 h-3" />
               </Button>
             </div>
           </header>
-          <div className="pr-3 bg-background">{children}</div>
+          <div className="p-3 bg-background">{children}</div>
         </main>
       </SidebarInset>
     </SidebarProvider>

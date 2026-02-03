@@ -39,7 +39,7 @@ function NavMain({
   return (
     <SidebarGroup>
       {label && (
-        <SidebarGroupLabel className="uppercase text-[0.7rem]">
+        <SidebarGroupLabel className="uppercase text-[11px] text-foreground/50">
           {label}
         </SidebarGroupLabel>
       )}
@@ -72,11 +72,11 @@ function NavMain({
                     >
                       {item.icon && (
                         <item.icon
-                          className={`stroke-[0.16rem] size-2 ${isParentActive || hasActiveChild ? "text-primary" : ""}`}
+                          className={`stroke-[2px] size-1 ${isParentActive || hasActiveChild ? "text-primary" : ""}`}
                         />
                       )}
                       <span
-                        className={`text-[13px] font-[500] ${isParentActive || hasActiveChild ? "text-primary" : ""}`}
+                        className={`text-[13px] text-foreground/70 font-medium ${isParentActive || hasActiveChild ? "text-primary" : ""}`}
                       >
                         {item.title}
                       </span>
@@ -96,7 +96,7 @@ function NavMain({
                             >
                               <Link href={subItem.url}>
                                 <span
-                                  className={`text-[13px] font-[500] ${isSubActive ? "text-primary" : ""}`}
+                                  className={`text-[13px] font-medium ${isSubActive ? "text-primary" : ""}`}
                                 >
                                   {subItem.title}
                                 </span>
@@ -119,11 +119,11 @@ function NavMain({
                     <Link href={item.url} className="flex items-center">
                       {item.icon && (
                         <item.icon
-                          className={`stroke-[0.16rem] size-2 ${isParentActive ? "text-primary" : ""}`}
+                          className={`stroke-[2px] size-1 ${isParentActive ? "text-primary" : ""}`}
                         />
                       )}
                       <span
-                        className={`text-[13px] font-[500] ${isParentActive ? "text-primary" : ""}`}
+                        className={`text-[13px] font-medium text-foreground/70 ${isParentActive ? "text-primary" : ""}`}
                       >
                         {item.title}
                       </span>

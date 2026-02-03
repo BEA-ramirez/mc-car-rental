@@ -9,8 +9,7 @@ module.exports = {
   theme: {
     extend: {
       fontFamily: {
-        // This is the magic line
-        sans: ["var(--font-geist)", "sans-serif"],
+        general: ["var(--font-general)", "sans-serif"],
       },
     },
   },

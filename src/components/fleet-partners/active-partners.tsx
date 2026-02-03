@@ -24,17 +24,17 @@ function ActivePartners({
   };
 
   return (
-    <div className="h-240 flex items-center gap-3 border rounded-md mb-6">
+    <div className="h-240 flex items-center gap-3 rounded-md mb-6">
       <div className="w-[30%] border h-full bg-card rounded-md">
         <FleetPartnersDataGrid
           carOwnerApplicants={carOwnerApplicants}
           onSelectPartner={handleSelectPartner}
         />
       </div>
-      <div className="w-[70%] border h-full flex flex-col gap-3">
+      <div className="w-[70%] h-full flex flex-col gap-3">
         {selectedPartner ? (
           <>
-            <PartnerHeader />
+            <PartnerHeader selectedPartner={selectedPartner} />
             <div className="flex items-center gap-3">
               <PartnerRevenueChart />
               <PartnerCarUtil />

@@ -7,6 +7,7 @@ import QueryProvider from "@/components/providers/query-provider";
 
 // 1. Unified Style Imports
 import "./globals.css";
+import localFont from "next/font/local";
 
 // Syncfusion Base & Component Styles
 import "@syncfusion/ej2-base/styles/material.css";
@@ -37,6 +38,21 @@ export const metadata: Metadata = {
   title: "MC Car Rental Admin",
   description: "Management System for MC Car Rental",
 };
+
+const generalSans = localFont({
+  src: [
+    {
+      path: "./fonts/GeneralSans-Variable.woff2",
+      style: "normal",
+    },
+    {
+      path: "./fonts/GeneralSans-VariableItalic.woff2",
+      style: "italic",
+    },
+  ],
+  variable: "--font-general", // The CSS variable for Tailwind
+  display: "swap",
+});
 
 export default function RootLayout({
   children,

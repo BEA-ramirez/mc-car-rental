@@ -36,6 +36,18 @@ import { Search, Plus, Funnel, Star } from "lucide-react";
 import { FleetPartnerType, CarOwnerType } from "@/lib/schemas/car-owner";
 import { UserType } from "@/lib/schemas/user";
 import useSWR from "swr";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuShortcut,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { toTitleCase, toTitleCaseLine } from "@/actions/helper/format-text";
+import { EllipsisVertical, Trash, SquarePen } from "lucide-react";
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
@@ -231,7 +243,7 @@ function FleetPartnersDataGrid({
         <GridComponent
           ref={gridRef}
           id="fleetPartnersGrid"
-          dataSource={data.fleetPartners || []}
+          dataSource={data?.fleetPartners || []}
           editSettings={editSettings}
           allowSorting={true}
           allowSelection={true}

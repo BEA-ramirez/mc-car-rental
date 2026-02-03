@@ -21,6 +21,7 @@ import {
   ShieldCheck,
   UploadCloud,
   Briefcase,
+  Plus,
 } from "lucide-react";
 
 // UI Components
@@ -91,6 +92,7 @@ export function ClientForm({ data: rawData, closeDialog }: ClientFormProps) {
   // Refs for manual uploader cleanup
   const validIdUploaderRef = useRef<UploaderComponent>(null);
   const licenseUploaderRef = useRef<UploaderComponent>(null);
+  const profileInputRef = useRef<HTMLInputElement>(null);
 
   const [formData, setFormData] = useState(initialData);
   const [files, setFiles] = useState<{
@@ -106,6 +108,8 @@ export function ClientForm({ data: rawData, closeDialog }: ClientFormProps) {
   > | null>(null);
   const [globalError, setGlobalError] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+
+  console.log("Form Data:", formData);
 
   // Reset form when data changes
   useEffect(() => {
@@ -234,6 +238,21 @@ export function ClientForm({ data: rawData, closeDialog }: ClientFormProps) {
     }
   };
 
+  // a specific handler for the native profile input
+  const handleProfileFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      const selectedFile = e.target.files[0];
+
+      // Update State
+      setFiles((prev) => ({ ...prev, profile_picture_url: selectedFile }));
+
+      // Update Preview
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+      const objectURL = URL.createObjectURL(selectedFile);
+      setPreviewUrl(objectURL);
+    }
+  };
+
   const getProfileImageSrc = () => {
     if (previewUrl) return previewUrl;
     if (formData.profile_picture_url) return formData.profile_picture_url;
@@ -254,9 +273,13 @@ export function ClientForm({ data: rawData, closeDialog }: ClientFormProps) {
     args.postRawFile = false;
   };
 
+  const triggerProfileUpload = () => {
+    // Directly click the native input using React Ref
+    profileInputRef.current?.click();
+  };
   return (
-    <div className="w-137.5 bg-card">
-      <Tabs defaultValue="account" className="w-full">
+    <div className="w-120 bg-card border border-foreground/10 p-3 rounded-md">
+      <Tabs defaultValue="account" className="w-full text-[14px] bg-card!">
         <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="account">Account</TabsTrigger>
           <TabsTrigger value="contact">Contact</TabsTrigger>
@@ -266,36 +289,43 @@ export function ClientForm({ data: rawData, closeDialog }: ClientFormProps) {
         {/* ================= TAB 1: ACCOUNT ================= */}
         <TabsContent value="account" className="space-y-4 py-4">
           {/* Profile Picture Section */}
-          <div className="flex items-center gap-4 p-3 border rounded-md bg-muted/30">
-            <div className="relative w-14 h-14 rounded-full overflow-hidden border-2 border-background shadow-sm shrink-0">
+          <div className="flex flex-col items-center justify-center gap-2 mb-6">
+            <div
+              className="relative w-20 h-20 rounded-full border-2 border-dashed border-muted-foreground/30 hover:border-primary cursor-pointer group transition-all overflow-hidden"
+              onClick={triggerProfileUpload}
+            >
+              {/* Profile Image */}
               <Image
                 src={getProfileImageSrc()}
                 alt="Profile"
                 fill
-                className="object-cover"
+                className="object-cover transition-opacity group-hover:opacity-60"
               />
-            </div>
-            <div className="flex-1">
-              <FieldLabel className="mb-1">Profile Photo</FieldLabel>
-              <div className="h-8">
-                <UploaderComponent
-                  id="profile-upload-mini"
-                  type="file"
-                  multiple={false}
-                  autoUpload={false}
-                  allowedExtensions=".jpg,.png,.jpeg"
-                  buttons={{ browse: "Change Photo" }}
-                  showFileList={false}
-                  selected={(args) => onFileSelect(args, "profile_picture_url")}
-                />
+
+              {/* Overlay with Plus Icon */}
+              <div className="absolute inset-0 flex items-center justify-center bg-black/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                <div className="bg-white/20 backdrop-blur-[2px] p-2 rounded-full shadow-sm">
+                  <Plus className="w-6 h-6 text-white stroke-[3]" />
+                </div>
               </div>
             </div>
+            <p className="text-xs text-muted-foreground font-medium">
+              Click to upload photo
+            </p>
+
+            <input
+              type="file"
+              ref={profileInputRef}
+              className="hidden"
+              accept=".jpg,.png,.jpeg"
+              onChange={handleProfileFileChange}
+            />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-            <Field>
+            <Field className="gap-2">
               <FieldLabel>First Name</FieldLabel>
-              <FieldContent>
+              <FieldContent className="gap-0!">
                 <div className="relative">
                   <User className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                   <Input
@@ -307,12 +337,14 @@ export function ClientForm({ data: rawData, closeDialog }: ClientFormProps) {
                   />
                 </div>
               </FieldContent>
-              <FieldError>{fieldErrors?.first_name?.[0]}</FieldError>
+              <FieldError className="text-[12px] font-medium ml-2">
+                {fieldErrors?.first_name?.[0]}
+              </FieldError>
             </Field>
 
-            <Field>
-              <FieldLabel>Last Name</FieldLabel>
-              <FieldContent>
+            <Field className="gap-2">
+              <FieldLabel className="text-[14px]">Last Name</FieldLabel>
+              <FieldContent className="gap-0!">
                 <div className="relative">
                   <User className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                   <Input
@@ -324,13 +356,15 @@ export function ClientForm({ data: rawData, closeDialog }: ClientFormProps) {
                   />
                 </div>
               </FieldContent>
-              <FieldError>{fieldErrors?.last_name?.[0]}</FieldError>
+              <FieldError className="text-[12px] font-medium ml-2">
+                {fieldErrors?.last_name?.[0]}
+              </FieldError>
             </Field>
           </div>
 
-          <Field>
+          <Field className="gap-2">
             <FieldLabel>Email Address</FieldLabel>
-            <FieldContent>
+            <FieldContent className="gap-0!">
               <div className="relative">
                 <Mail className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input
@@ -344,12 +378,14 @@ export function ClientForm({ data: rawData, closeDialog }: ClientFormProps) {
                 />
               </div>
             </FieldContent>
-            <FieldError>{fieldErrors?.email?.[0]}</FieldError>
+            <FieldError className="text-[12px] font-medium ml-2">
+              {fieldErrors?.email?.[0]}
+            </FieldError>
           </Field>
 
           <div className="grid grid-cols-2 gap-4">
             {isAdd ? (
-              <Field>
+              <Field className="gap-2">
                 <FieldLabel>Temporary Password</FieldLabel>
                 <FieldContent>
                   <div className="relative">
@@ -363,10 +399,12 @@ export function ClientForm({ data: rawData, closeDialog }: ClientFormProps) {
                     />
                   </div>
                 </FieldContent>
-                <FieldError>{fieldErrors?.password?.[0]}</FieldError>
+                <FieldError className="text-[12px] font-medium ml-2">
+                  {fieldErrors?.password?.[0]}
+                </FieldError>
               </Field>
             ) : (
-              <Field>
+              <Field className="gap-2">
                 <FieldLabel>Account Status</FieldLabel>
                 <Select
                   value={formData.account_status}
@@ -385,7 +423,7 @@ export function ClientForm({ data: rawData, closeDialog }: ClientFormProps) {
               </Field>
             )}
 
-            <Field>
+            <Field className="gap-2">
               <FieldLabel>System Role</FieldLabel>
               <Select
                 value={formData.role}
@@ -402,14 +440,16 @@ export function ClientForm({ data: rawData, closeDialog }: ClientFormProps) {
                   <SelectItem value="admin">Admin</SelectItem>
                 </SelectContent>
               </Select>
-              <FieldError>{fieldErrors?.role?.[0]}</FieldError>
+              <FieldError className="text-[12px] font-medium ml-2">
+                {fieldErrors?.role?.[0]}
+              </FieldError>
             </Field>
           </div>
         </TabsContent>
 
         {/* ================= TAB 2: CONTACT ================= */}
         <TabsContent value="contact" className="space-y-4 py-4 min-h-[300px]">
-          <Field>
+          <Field className="gap-2">
             <FieldLabel>Phone Number</FieldLabel>
             <FieldContent>
               <div className="relative">
@@ -423,11 +463,15 @@ export function ClientForm({ data: rawData, closeDialog }: ClientFormProps) {
                 />
               </div>
             </FieldContent>
-            <FieldDescription>Enter valid mobile number.</FieldDescription>
-            <FieldError>{fieldErrors?.phone_number?.[0]}</FieldError>
+            <FieldDescription className="text-[12px] ml-2">
+              Enter valid mobile number.
+            </FieldDescription>
+            <FieldError className="text-[12px] font-medium ml-2">
+              {fieldErrors?.phone_number?.[0]}
+            </FieldError>
           </Field>
 
-          <Field>
+          <Field className="gap-2">
             <FieldLabel>Complete Address</FieldLabel>
             <FieldContent>
               <div className="relative">
@@ -441,7 +485,9 @@ export function ClientForm({ data: rawData, closeDialog }: ClientFormProps) {
                 />
               </div>
             </FieldContent>
-            <FieldError>{fieldErrors?.address?.[0]}</FieldError>
+            <FieldError className="text-[12px] font-medium ml-2">
+              {fieldErrors?.address?.[0]}
+            </FieldError>
           </Field>
         </TabsContent>
 
@@ -579,7 +625,7 @@ export function ClientForm({ data: rawData, closeDialog }: ClientFormProps) {
       </Tabs>
 
       {/* Footer Actions */}
-      <div className="flex justify-between items-center mt-6 pt-4 border-t">
+      <div className="flex justify-between items-center pt-4">
         {globalError && (
           <p className="text-xs text-red-500 font-medium">{globalError}</p>
         )}
@@ -590,7 +636,7 @@ export function ClientForm({ data: rawData, closeDialog }: ClientFormProps) {
           <Button
             onClick={handleSave}
             disabled={isSaving}
-            className="bg-[#00ddd2] hover:bg-[#00c4ba] text-black border-none font-bold"
+            className="bg-primary hover:bg-primary/60 text-card border-none font-medium text-[12px] px-3! py-2!"
           >
             {isSaving ? "Saving..." : isAdd ? "Create Client" : "Save Changes"}
           </Button>

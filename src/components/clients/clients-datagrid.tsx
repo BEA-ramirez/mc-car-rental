@@ -26,7 +26,6 @@ import { Browser } from "@syncfusion/ej2-base"; // Import for mobile check
 import { UserType } from "@/lib/schemas/user";
 import { ClientForm } from "./client-form";
 import { useRef, useEffect, useMemo, useState, useCallback } from "react";
-import { deleteUser } from "@/actions/helper/delete-user";
 import {
   MapPin,
   Phone,
@@ -290,6 +289,10 @@ export default function ClientsDataGrid() {
     gridRef.current?.pdfExport();
   };
 
+  const handleCsvExport = () => {
+    gridRef.current?.csvExport();
+  };
+
   const handleAdd = () => gridRef.current?.addRecord();
 
   const handleView = (props: UserType) => {
@@ -434,7 +437,7 @@ export default function ClientsDataGrid() {
   `}
       </style>
       <div
-        className={`h-full mb-6 flex w-full relative ${selectedUser ? "gap-4" : "gap-0"}`}
+        className={`h-full mb-6 rounded-lg flex w-full relative ${selectedUser ? "gap-4" : "gap-0"}`}
       >
         {isLoading && (
           <div className="absolute inset-0 z-50 bg-white/60 flex items-center justify-center backdrop-blur-[1px] rounded-md border">
@@ -449,9 +452,9 @@ export default function ClientsDataGrid() {
 
         <div
           className={`
-            bg-card rounded-md shadow-sm flex flex-col
+            bg-card rounded-lg shadow-sm flex flex-col
             transition-[width] duration-500 ease-in-out
-            overflow-hidden min-w-0 px-3 py-3 
+            overflow-hidden min-w-0 px-3 py-4 
             ${selectedUser ? "w-[70%]" : "w-full"} 
           `}
         >
@@ -460,7 +463,7 @@ export default function ClientsDataGrid() {
               onClick={handleAdd}
               className="bg-primary hover:bg-primary/60 shadow-md cursor-pointer h-7! text-[0.7rem] rounded-sm! p-1! px-2! mb-2 gap-1!"
             >
-              <Plus className="text-secondary stroke-3" />
+              <Plus className="text-secondary stroke-3 w-1 h-1" />
               New User
             </Button>
           </div>
@@ -477,6 +480,7 @@ export default function ClientsDataGrid() {
                 className="bg-transparent! cursor-pointer"
                 size={"icon-sm"}
                 onClick={handleBulkDelete}
+                disabled={selectedCount === 0}
               >
                 <Trash2 className="text-foreground" />
               </Button>
@@ -501,21 +505,30 @@ export default function ClientsDataGrid() {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-20 min-w-24">
                   <DropdownMenuGroup>
-                    <DropdownMenuItem className="text-xs! ">
-                      <div className="flex items-center gap-2">
+                    <DropdownMenuItem
+                      className="text-xs!"
+                      onClick={handlePdfExport}
+                    >
+                      <div className="flex items-center gap-2 cursor-pointer">
                         <FileText className="size-4" />
                         <p>PDF</p>
                       </div>
                     </DropdownMenuItem>
-                    <DropdownMenuItem className="text-xs! ">
-                      <div className="flex items-center gap-2 ">
+                    <DropdownMenuItem
+                      className="text-xs!"
+                      onClick={handleCsvExport}
+                    >
+                      <div className="flex items-center gap-2 cursor-pointer">
                         <FileSpreadsheet className="size-4" />
                         <p>CSV</p>
                       </div>
                     </DropdownMenuItem>
 
-                    <DropdownMenuItem className="text-xs!">
-                      <div className="flex items-center gap-2 ">
+                    <DropdownMenuItem
+                      className="text-xs!"
+                      onClick={handleExcelExport}
+                    >
+                      <div className="flex items-center gap-2 cursor-pointer">
                         <Sheet className="size-4" />
                         <p>Excel</p>
                       </div>
@@ -586,11 +599,13 @@ export default function ClientsDataGrid() {
                   headerText="Status"
                   width={100}
                   textAlign="Center"
+                  field="account_status"
                 />
                 <ColumnDirective
                   headerText="Condition"
                   width={100}
                   textAlign="Center"
+                  field={"last_active_at"}
                 />
                 <ColumnDirective
                   field="phone_number"
@@ -646,9 +661,11 @@ export default function ClientsDataGrid() {
                     size="icon-sm"
                     onClick={handleCloseDetail}
                   >
-                    <ArrowRightFromLine className="h-4 w-4" />
+                    <ArrowRightFromLine className="h-4 w-4 text-primary-foreground" />
                   </Button>
-                  <h3 className="font-bold text-[0.9rem]">Client Detail</h3>
+                  <h3 className="font-bold text-[14px] text-primary-foreground">
+                    Client Detail
+                  </h3>
                 </div>
                 <div className="w-20 h-20 absolute top-14 left-4 border-4 border-card rounded-full overflow-hidden">
                   <Image
@@ -677,7 +694,7 @@ export default function ClientsDataGrid() {
                       variant="outline"
                       size="icon-sm"
                       onClick={handleCloseDetail}
-                      className="!bg-transparent !py-2"
+                      className="bg-transparent! py-2!"
                     >
                       <SquarePen className="h-4 w-4 stroke-2" />
                     </Button>
@@ -685,7 +702,7 @@ export default function ClientsDataGrid() {
                       variant="outline"
                       size="icon-sm"
                       onClick={handleCloseDetail}
-                      className="!bg-transparent !py-2"
+                      className="bg-transparent! py-2!"
                     >
                       <EllipsisVertical className="h-4 w-4" />
                     </Button>
@@ -695,14 +712,14 @@ export default function ClientsDataGrid() {
               <div className="w-full flex items-center justify-evenly gap-1 mt-4 border-b-2 pb-4 border-foreground/20">
                 <Button
                   onClick={handleAdd}
-                  className="w-[45%] !h-9 bg-card border border-primary text-primary text-[0.8rem] !rounded-sm !p-1 !px-2 !gap-2"
+                  className="w-[45%] h-9! bg-card border border-primary text-primary text-[0.8rem] rounded-sm! p-1! px-2! gap-2!"
                 >
                   <SquarePlus className="text-primary  stroke-2" />
                   Add Booking
                 </Button>
                 <Button
                   onClick={handleAdd}
-                  className="w-[45%] !h-9 bg-primary/20 text-primary text-[0.8rem] !rounded-sm !p-1 !px-2 !gap-2"
+                  className="w-[45%] h-9! bg-primary/20 text-primary text-[0.8rem] rounded-sm! p-1! px-2! gap-2!"
                 >
                   <Send className=" text-primary stroke-2" />
                   Message
