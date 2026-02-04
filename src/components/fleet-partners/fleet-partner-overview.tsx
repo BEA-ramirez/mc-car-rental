@@ -28,11 +28,11 @@ function FleetPartnersOverview() {
         <div className="flex items-center justify-end gap-2 text-[0.7rem] text-card-foreground/40 font-medium">
           <p>Last Updated: </p>
           <p>Today, 14:32 PM</p>
-          <DropdownMenu>
+          <DropdownMenu modal={false}>
             <DropdownMenuTrigger asChild>
               <Button
                 variant="outline"
-                className="bg-transparent! border-none! shadow-none! "
+                className="bg-transparent! border-none! shadow-none! cursor-pointer"
                 size={"icon-sm"}
               >
                 <EllipsisVertical className="text-card-foreground" />
