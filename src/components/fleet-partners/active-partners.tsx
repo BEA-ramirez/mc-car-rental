@@ -8,6 +8,7 @@ import PartnerCarUtil from "./partner-car-util";
 import { useState } from "react";
 import { FleetPartnerType } from "@/lib/schemas/car-owner";
 import { UserType } from "@/lib/schemas/user";
+import PartnerUnits from "./partner-units";
 
 function ActivePartners({
   carOwnerApplicants,
@@ -60,7 +61,7 @@ function ActivePartners({
                 </TabsList>
 
                 <TabsContent value="units" className="mt-4">
-                  <div className="border h-80 bg-card">Units</div>
+                  <PartnerUnits selectedPartner={selectedPartner} />
                 </TabsContent>
                 <TabsContent value="financials" className="mt-4">
                   <div className="border h-80 bg-card">Financials</div>

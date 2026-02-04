@@ -1,30 +1,80 @@
 import { z } from "zod";
 
-export const insertCarSchema = z.object({
-  // Model: Must be a string, at least 2 characters
-  model: z
-    .string()
-    .min(2, { message: "Model name is too short" })
-    .max(50, { message: "Model name is too long" }),
+// --- Enums ---
+export const TransmissionEnum = z.enum(["Automatic", "Manual", "CVT"]);
+export const FuelTypeEnum = z.enum([
+  "Gasoline",
+  "Diesel",
+  "Electric",
+  "Hybrid",
+]);
+export const BodyTypeEnum = z.enum([
+  "Sedan",
+  "SUV",
+  "Hatchback",
+  "Coupe",
+  "Van",
+  "Truck",
+]);
+export const CarStatusEnum = z.enum([
+  "Available",
+  "Rented",
+  "Maintenance",
+  "Reserved",
+]);
 
-  // Plate Number: Enforce uppercase and specific format
-  // Regex Explanation: 3 Letters, space, 3 or 4 digits (Standard PH Format)
-  plate_number: z
-    .string()
-    .regex(/^[A-Z]{3} \d{3,4}$/, {
-      message: "Format must be 'ABC 123' or 'ABC 1234'",
-    }),
-
-  // Price: Ensure it's a number and positive
-  // z.coerce.number() handles the HTML input being a string ("500" -> 500)
-  price_per_day: z.coerce
-    .number()
-    .positive({ message: "Price must be greater than 0" })
-    .min(500, { message: "Minimum price is 500" }),
-
-  // Optional: We'll add the image URL later, but it's good to prep for it
-  image_url: z.string().optional(),
+// --- Features ---
+export const featureSchema = z.object({
+  feature_id: z.string().uuid().optional(),
+  name: z.string().min(2, "Feature name is too short"),
+  description: z.string().optional(),
 });
 
-// TypeScript Magic: Automatically create a type from the schema
-export type InsertCarType = z.infer<typeof insertCarSchema>;
+// --- Car Specification ---
+export const carSpecificationSchema = z.object({
+  spec_id: z.string().uuid().optional(),
+  engine_type: z.string().min(2, "Engine type required"),
+  transmission: TransmissionEnum,
+  fuel_type: FuelTypeEnum,
+  body_type: BodyTypeEnum,
+  passenger_capacity: z.coerce.number().min(1).max(20),
+  luggage_capacity: z.coerce.number().min(0),
+  buffer_hours: z.coerce.number().min(0).default(12),
+});
+
+// --- Car Images ---
+export const carImageSchema = z.object({
+  image_id: z.string().uuid().optional(),
+  car_id: z.string().uuid(),
+  image_url: z.string().url(),
+  storage_path: z.string().optional(),
+  is_primary: z.boolean().default(false),
+});
+
+// --- Main Car Schema ---
+export const carSchema = z.object({
+  car_id: z.string().uuid().optional(),
+  car_owner_id: z.string().uuid(),
+  spec_id: z.string().uuid(),
+
+  plate_number: z
+    .string()
+    .min(3)
+    .regex(/^[A-Z0-9\s-]+$/),
+  brand: z.string().min(2),
+  model: z.string().min(2),
+  year: z.coerce
+    .number()
+    .min(1990)
+    .max(new Date().getFullYear() + 1),
+  color: z.string().min(2),
+  vin: z.string().length(17).optional(),
+
+  rental_rate_per_day: z.coerce.number().positive(),
+  availability_status: CarStatusEnum.default("Available"),
+  current_mileage: z.coerce.number().min(0).optional(),
+
+  created_at: z.string().datetime().optional(),
+  last_updated_at: z.string().datetime().optional(),
+  is_archived: z.boolean().default(false),
+});

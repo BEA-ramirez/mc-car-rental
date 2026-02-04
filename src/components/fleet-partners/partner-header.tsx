@@ -46,39 +46,35 @@ function PartnerHeader({
       <div className="flex items-center justify-between">
         <div className="flex items-center justify-start gap-3">
           <div className="flex flex-col items-start justify-center gap-1 border-r pr-6">
-            <h3 className="text-2xl font-bold">
-              {toTitleCase(selectedPartner?.business_name || "New Partner")}
-            </h3>
+            <div className="flex items-center gap-3">
+              <h3 className="text-2xl font-bold">
+                {toTitleCase(selectedPartner?.business_name || "New Partner")}
+              </h3>
+              <p className="border px-2 rounded-md text-sm uppercase font-medium bg-foreground/60 text-background ">
+                {selectedPartner?.verification_status}
+              </p>
+            </div>
             <p className="text-xs text-foreground/80 bg-foreground/10 px-2 rounded-lg">
               {selectedPartner?.car_owner_id}
             </p>
           </div>
-          <div className="flex flex-col items-start justify-center gap-1">
-            <h5 className="text-xs font-semibold text-foreground/80 flex items-center gap-1">
-              <UserRound className="w-4 h-4 stroke-2" />
-              {toTitleCase(
-                selectedPartner?.full_name ||
-                  selectedPartner?.first_name +
-                    " " +
-                    selectedPartner?.last_name,
-              )}
-            </h5>
+          <h5 className="text-xs w-12 h-12 rounded-full bg-foreground/20 font-semibold text-foreground/80 flex flex-col items-center gap-1 border-r pr-3"></h5>
+          <div className="flex flex-col items-start justify-center gap-1 6">
             <h5 className="flex items-center gap-1 ">
               <Star className="text-amber-400 fill-amber-400 w-4 h-4" />
-              <span className="text-xs font-semibold text-foreground/80">
+              <span className="text-md font-semibold text-foreground/80">
                 {selectedPartner?.trust_score}
               </span>
             </h5>
-            <h5 className="text-xs font-semibold text-foreground/80 flex items-center gap-1">
-              <BadgePercent className="w-4 h-4" />
-              <span>{selectedPartner?.revenue_share_percentage}/30</span>
-            </h5>
+            <div className="flex flex-col items-start justify-center gap-1">
+              <h5 className="text-xs font-semibold text-foreground/80 flex items-center gap-1">
+                <BadgePercent className="w-4 h-4" />
+                <span>{selectedPartner?.revenue_share_percentage}/30</span>
+              </h5>
+            </div>
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <p className="border px-2 py-1 rounded-md text-sm uppercase font-medium bg-foreground/80 text-background ">
-            {selectedPartner?.verification_status}
-          </p>
           <DropdownMenu modal={false}>
             <DropdownMenuTrigger asChild>
               <Button
@@ -127,7 +123,7 @@ function PartnerHeader({
         </div>
       </div>
 
-      <div className="flex flex-col justify-center items-end mt-3 border-t p-3 pb-6 gap-2">
+      <div className="flex flex-col justify-center items-end mt-3 border-t p-3 pb-3 gap-2">
         <div className="flex items-center justify-between w-full">
           <div className="flex items-center gap-2">
             <div className="flex items-center gap-2 border-r-2 pr-2">
