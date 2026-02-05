@@ -22,10 +22,10 @@ import {
 
 function FleetPartnersOverview() {
   return (
-    <div className="px-3 py-3 shadow-sm bg-card rounded-md w-full">
-      <div className="flex items-center justify-between mb-3">
-        <h2 className="text-[0.9rem] font-[500]">Fleet Partners Overview</h2>
-        <div className="flex items-center justify-end gap-2 text-[0.7rem] text-card-foreground/40 font-medium">
+    <div className="px-3 pb-3 shadow-sm bg-card rounded-md w-full">
+      <div className="flex items-center justify-between mb-1">
+        <h2 className="text-[14px] font-semibold">Fleet Partners Overview</h2>
+        <div className="flex items-center justify-end gap-2 text-xs text-card-foreground/40 font-medium">
           <p>Last Updated: </p>
           <p>Today, 14:32 PM</p>
           <DropdownMenu modal={false}>

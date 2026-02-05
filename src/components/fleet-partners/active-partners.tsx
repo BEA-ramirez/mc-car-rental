@@ -18,7 +18,7 @@ function ActivePartners({
   const [selectedPartner, setSelectedPartner] =
     useState<FleetPartnerType | null>(null);
   const tabsTriggerClasses =
-    "relative h-10 rounded-none border-b-2 border-b-transparent bg-transparent px-4 pb-2 pt-2 font-semibold text-muted-foreground shadow-none transition-none data-[state=active]:border-b-primary data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none";
+    "relative h-10 rounded-none cursor-pointer border-b-2 border-b-transparent bg-transparent px-4 pb-2 pt-2 font-semibold text-muted-foreground shadow-none transition-none data-[state=active]:border-b-primary data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none";
 
   const handleSelectPartner = (partner: FleetPartnerType | null) => {
     setSelectedPartner(partner);
@@ -41,7 +41,10 @@ function ActivePartners({
               <PartnerCarUtil />
             </div>
             <div>
-              <Tabs defaultValue="units" className="w-full">
+              <Tabs
+                defaultValue="units"
+                className="w-full rounded-md bg-card shadow-md p-3"
+              >
                 <TabsList className="w-full justify-start rounded-none border-b bg-transparent p-0">
                   <TabsTrigger value="units" className={tabsTriggerClasses}>
                     Units
@@ -60,16 +63,16 @@ function ActivePartners({
                   </TabsTrigger>
                 </TabsList>
 
-                <TabsContent value="units" className="mt-4">
+                <TabsContent value="units">
                   <PartnerUnits selectedPartner={selectedPartner} />
                 </TabsContent>
-                <TabsContent value="financials" className="mt-4">
+                <TabsContent value="financials">
                   <div className="border h-80 bg-card">Financials</div>
                 </TabsContent>
-                <TabsContent value="documents" className="mt-4">
+                <TabsContent value="documents">
                   <div className="border h-80 bg-card">Documents</div>
                 </TabsContent>
-                <TabsContent value="logs" className="mt-4">
+                <TabsContent value="logs">
                   <div className="border h-80 bg-card">Logs</div>
                 </TabsContent>
               </Tabs>

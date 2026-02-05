@@ -9,13 +9,13 @@ function FleetPartnerData({
   carOwnerApplicants: UserType[];
 }) {
   const tabsTriggerClasses =
-    "relative h-10 rounded-none border-b-2 border-b-transparent bg-transparent px-4 pb-2 pt-2 font-semibold text-muted-foreground shadow-none transition-none data-[state=active]:border-b-primary data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none";
+    "relative rounded-md p-3 py-4 font-semibold text-card shadow-none transition-none  data-[state=active]:bg-primary-foreground/30 data-[state=active]:text-card data-[state=active]:shadow-none";
 
   return (
     <div>
       <div className="mt-4">
         <Tabs defaultValue="active-partners" className="w-full">
-          <TabsList className="w-full justify-start rounded-none border-b bg-transparent p-0">
+          <TabsList className="w-full justify-start border-b bg-primary/90 rounded-md py-6 px-2">
             <TabsTrigger value="active-partners" className={tabsTriggerClasses}>
               Active Partners
             </TabsTrigger>

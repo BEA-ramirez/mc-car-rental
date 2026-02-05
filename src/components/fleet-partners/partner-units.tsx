@@ -16,10 +16,10 @@ function PartnerUnits({
   selectedPartner: FleetPartnerType | null;
 }) {
   return (
-    <div className="w-full bg-card shadow-md rounded-md p-3 h-84">
-      <div>
+    <div className="w-full rounded-md h-84">
+      {/* <div>
         <h4 className="font-semibold text-md text-foreground/90">Units</h4>
-      </div>
+      </div> */}
       <div className="h-[90%] p-3 flex flex-col overflow-y-auto mt-2">
         {dummyCar.map((car) => (
           <div
@@ -35,13 +35,16 @@ function PartnerUnits({
               </p>
             </div>
             <div className="flex items-center gap-2 text-xs text-foreground/60">
-              <a href="" className="hover:text-foreground/90">
+              <a href="" className="hover:text-foreground/90 hover:font-medium">
                 [View]
               </a>
-              <a href="" className="hover:text-foreground/90">
+              <a href="" className="hover:text-foreground/90 hover:font-medium">
                 [Edit]
               </a>
-              <a href="" className="hover:text-destructive/90">
+              <a
+                href=""
+                className="hover:text-destructive/90 hover:font-medium"
+              >
                 [Offboard/Pull-out]
               </a>
             </div>
