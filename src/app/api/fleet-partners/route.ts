@@ -6,7 +6,10 @@ export async function GET() {
     const supabase = await createClient();
     const { data: rawData, error } = await supabase
       .from("car_owner")
-      .select(`*, users!inner(*)`)
+      .select(
+        `*,partner_is_archived: is_archived,
+         users!inner(*, user_is_archived: is_archived)`,
+      )
       .order("created_at", { ascending: false });
 
     if (error) {
@@ -17,16 +20,7 @@ export async function GET() {
       );
     }
 
-    const formattedData = (rawData || []).map((row: any) => {
-      const { users, ...partnerData } = row;
-      return {
-        ...partnerData,
-        ...users, // Now full_name, email, etc. are at the top level
-        total_units: 0,
-      };
-    });
-
-    return NextResponse.json({ fleetPartners: formattedData }, { status: 200 });
+    return NextResponse.json({ fleetPartners: rawData }, { status: 200 });
   } catch (error) {
     console.error("Unexpected error:", error);
     return NextResponse.json(

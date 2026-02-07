@@ -30,16 +30,35 @@ import {
   DatePickerComponent,
   CalendarView,
 } from "@syncfusion/ej2-react-calendars";
+import { useFleetPartners } from "../../../hooks/use-fleetPartners";
 
 function PartnerHeader({
   selectedPartner,
+  onEdit,
 }: {
   selectedPartner: FleetPartnerType | null;
+  onEdit: () => void;
 }) {
   const start: CalendarView = "Year";
   const depth: CalendarView = "Year";
   const format: string = "MMMM y";
   const dateValue: Date = new Date();
+
+  const { deletePartner } = useFleetPartners();
+
+  const handleDeletePartner = async () => {
+    if (!selectedPartner) return;
+    const confirm = window.confirm(
+      `Are you sure you want to archive ${selectedPartner.business_name}?`,
+    );
+
+    if (confirm) {
+      deletePartner({
+        carOwnerId: selectedPartner.car_owner_id,
+        userId: selectedPartner.users.user_id,
+      });
+    }
+  };
 
   return (
     <div className="rounded-lg bg-card shadow-md p-3 px-4">
@@ -111,7 +130,10 @@ function PartnerHeader({
                     <p>Edit Fleet</p>
                   </div>
                 </DropdownMenuItem>
-                <DropdownMenuItem className="text-xs!">
+                <DropdownMenuItem
+                  className="text-xs!"
+                  onClick={handleDeletePartner}
+                >
                   <div className="flex items-center gap-2 ">
                     <Trash2 className="size-4" />
                     <p>Delete User</p>

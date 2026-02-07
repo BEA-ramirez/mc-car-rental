@@ -5,16 +5,15 @@ import { CarOwnerType } from "@/lib/schemas/car-owner";
 import PartnerHeader from "./partner-header";
 import PartnerRevenueChart from "./partner-revenue-chart";
 import PartnerCarUtil from "./partner-car-util";
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { FleetPartnerType } from "@/lib/schemas/car-owner";
 import { UserType } from "@/lib/schemas/user";
 import PartnerUnits from "./partner-units";
+import { GridComponent } from "@syncfusion/ej2-react-grids";
+import { getRedirectTypeFromError } from "next/dist/client/components/redirect";
 
-function ActivePartners({
-  carOwnerApplicants,
-}: {
-  carOwnerApplicants: UserType[];
-}) {
+function ActivePartners() {
+  const gridRef = useRef<GridComponent>(null);
   const [selectedPartner, setSelectedPartner] =
     useState<FleetPartnerType | null>(null);
   const tabsTriggerClasses =
@@ -24,18 +23,28 @@ function ActivePartners({
     setSelectedPartner(partner);
   };
 
+  //trigger edit on the grid
+  const handleEdit = () => {
+    if (gridRef.current) {
+      gridRef.current.startEdit();
+    }
+  };
+
   return (
     <div className="h-240 flex items-center gap-3 rounded-md mb-6">
       <div className="w-[30%] border h-full bg-card rounded-md">
         <FleetPartnersDataGrid
-          carOwnerApplicants={carOwnerApplicants}
+          ref={gridRef}
           onSelectPartner={handleSelectPartner}
         />
       </div>
       <div className="w-[70%] h-full flex flex-col gap-3">
         {selectedPartner ? (
           <>
-            <PartnerHeader selectedPartner={selectedPartner} />
+            <PartnerHeader
+              selectedPartner={selectedPartner}
+              onEdit={handleEdit}
+            />
             <div className="flex items-center gap-3">
               <PartnerRevenueChart />
               <PartnerCarUtil />

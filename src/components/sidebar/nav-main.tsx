@@ -76,7 +76,7 @@ function NavMain({
                         />
                       )}
                       <span
-                        className={`text-[13px] text-foreground/70 font-medium ${isParentActive || hasActiveChild ? "text-primary" : ""}`}
+                        className={`text-[12px] text-foreground/70 font-medium ${isParentActive || hasActiveChild ? "text-primary" : ""}`}
                       >
                         {item.title}
                       </span>
@@ -96,7 +96,7 @@ function NavMain({
                             >
                               <Link href={subItem.url}>
                                 <span
-                                  className={`text-[13px] font-medium ${isSubActive ? "text-primary" : ""}`}
+                                  className={`text-[12px] font-medium ${isSubActive ? "text-primary" : ""}`}
                                 >
                                   {subItem.title}
                                 </span>
@@ -113,7 +113,7 @@ function NavMain({
                   <SidebarMenuButton
                     asChild
                     tooltip={item.title}
-                    className="gap-2 hover:shadow-sm"
+                    className="gap-2 hover:shadow-sm "
                     isActive={isParentActive}
                   >
                     <Link href={item.url} className="flex items-center">
@@ -123,7 +123,7 @@ function NavMain({
                         />
                       )}
                       <span
-                        className={`text-[13px] font-medium text-foreground/70 ${isParentActive ? "text-primary" : ""}`}
+                        className={`text-[12px] font-medium text-foreground/70 ${isParentActive ? "text-primary" : ""}`}
                       >
                         {item.title}
                       </span>

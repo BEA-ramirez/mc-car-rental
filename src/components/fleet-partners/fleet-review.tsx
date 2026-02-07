@@ -19,15 +19,20 @@ function FleetPartnerReview({
         <div className="h-16 w-16 rounded-full bg-slate-200 overflow-hidden relative">
           {/* Use your Image component here */}
           <img
-            src={selectedPartner?.profile_picture_url || "/default-avatar.png"}
+            src={
+              selectedPartner?.users.profile_picture_url ||
+              "/default-avatar.png"
+            }
             alt="Profile"
             className="object-cover w-full h-full"
           />
         </div>
         <div>
-          <h3 className="font-bold text-lg">{selectedPartner?.full_name}</h3>
+          <h3 className="font-bold text-lg">
+            {selectedPartner?.users.full_name}
+          </h3>
           <p className="text-sm text-muted-foreground">
-            {selectedPartner?.email}
+            {selectedPartner?.users.email}
           </p>
           <div className="flex gap-2 mt-1">
             {/* Re-use your status badge logic here */}
@@ -59,7 +64,7 @@ function FleetPartnerReview({
           <label className="text-xs text-muted-foreground uppercase font-bold">
             Phone
           </label>
-          <p className="font-medium">{selectedPartner?.phone_number}</p>
+          <p className="font-medium">{selectedPartner?.users.phone_number}</p>
         </div>
         <div>
           <label className="text-xs text-muted-foreground uppercase font-bold">

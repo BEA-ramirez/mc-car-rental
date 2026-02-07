@@ -32,7 +32,8 @@ import {
   FieldLabel,
 } from "@/components/ui/field";
 
-import { useSWRConfig } from "swr";
+import { useQueryClient } from "@tanstack/react-query";
+import { useUnassignedCarOwners } from "../../../hooks/use-fleetPartners";
 import { toast } from "sonner";
 
 // Helper to sanitize/default data
@@ -45,7 +46,13 @@ function sanitizeData(props: any) {
   data.bank_account_name = data.bank_account_name || "";
   data.bank_account_number = data.bank_account_number || "";
   data.owner_notes = data.owner_notes || "";
-  data.contract_expiry_date = data.contract_expiry_date || "";
+  if (data.contract_expiry_date) {
+    data.contract_expiry_date = new Date(data.contract_expiry_date)
+      .toISOString()
+      .split("T")[0];
+  } else {
+    data.contract_expiry_date = "";
+  }
 
   if (data.isAdd) {
     data.user_id = data.user_id || "";
@@ -58,17 +65,19 @@ function sanitizeData(props: any) {
 
 interface PartnerFormProps {
   data: any;
-  availableUsers: UserType[];
   closeDialog: () => void;
 }
 
 export function PartnerForm({
   data: rawData,
-  availableUsers,
+
   closeDialog,
 }: PartnerFormProps) {
   const initialData = sanitizeData(rawData);
   const isAdd = !!initialData.isAdd;
+
+  const { data: availableUsers = [], isLoading: isLoadingUsers } =
+    useUnassignedCarOwners();
 
   const [formData, setFormData] = useState(initialData);
   const [isSaving, setIsSaving] = useState(false);
@@ -77,7 +86,8 @@ export function PartnerForm({
     string[]
   > | null>(null);
   const [globalError, setGlobalError] = useState<string | null>(null);
-  const { mutate } = useSWRConfig();
+
+  const queryClient = useQueryClient();
 
   console.log("form data:", formData);
 
@@ -122,7 +132,8 @@ export function PartnerForm({
       loading: "Saving fleet partner...",
       success: (result) => {
         if (result.success) {
-          mutate("/api/fleet-partners"); // Sync the grid
+          queryClient.invalidateQueries({ queryKey: ["fleet-partners"] });
+          queryClient.invalidateQueries({ queryKey: ["unassigned-owners"] });
           closeDialog();
           return `${formData.business_name || "Partner"} added successfully!`;
         } else {

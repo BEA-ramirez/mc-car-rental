@@ -33,14 +33,17 @@ export const carOwnerSchema = z.object({
 
   // --- CONTRACT FIELD ---
   contract_expiry_date: z.coerce.date().optional().nullable(),
+  trust_score: z.number().min(0).max(5).default(0),
 
   created_at: z.coerce.date().optional(),
   last_updated_at: z.coerce.date().optional(),
+  is_archived: z.boolean().optional().default(false),
 });
 
-export const fleetPartnerSchema = userSchema
-  .merge(carOwnerSchema)
-  .extend({ total_units: z.number().default(0) });
+export const fleetPartnerSchema = carOwnerSchema.extend({
+  users: userSchema,
+  total_units: z.number().default(0),
+});
 
 // Export both types
 export type CarOwnerType = z.infer<typeof carOwnerSchema>;
