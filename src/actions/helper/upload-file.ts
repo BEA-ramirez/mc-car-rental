@@ -1,11 +1,17 @@
+"use server";
 import { createAdminClient } from "@/utils/supabase/admin";
+
+type UploadResult = {
+  url: string;
+  path: string;
+};
 
 export async function uploadFile(
   file: File,
   bucket: string,
   folder: string,
-  userId: string
-): Promise<string | null> {
+  userId: string,
+): Promise<UploadResult | null> {
   try {
     if (!file || file.size === 0) return null;
 
@@ -36,7 +42,10 @@ export async function uploadFile(
       .from(bucket)
       .getPublicUrl(filePath);
 
-    return publicUrlData.publicUrl;
+    return {
+      url: publicUrlData.publicUrl,
+      path: filePath,
+    };
   } catch (error) {
     console.error("Upload helper failed", error);
     return null;

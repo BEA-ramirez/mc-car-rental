@@ -28,51 +28,94 @@ import {
   Eye,
   ToolCase,
 } from "lucide-react";
+import { CompleteCarType } from "@/lib/schemas/car";
 
-export default function UnitsCard() {
+interface UnitsCardProps {
+  unit: CompleteCarType;
+  onRequestDelete: (unit: CompleteCarType) => void;
+  onEdit: () => void;
+}
+
+export default function UnitsCard({
+  unit,
+  onRequestDelete,
+  onEdit,
+}: UnitsCardProps) {
+  const specifications = unit.specifications;
+  const primaryImage =
+    unit.images?.find((img) => img.is_primary)?.image_url ||
+    unit.images?.[0]?.image_url || //fallback to first pic
+    "https://placehold.co/600x400?text=No+Image";
+
+  const getStatusColor = (status: string) => {
+    switch (status.toLowerCase()) {
+      case "available":
+        return "bg-emerald-600 hover:bg-emerald-700";
+      case "maintenance":
+        return "bg-orange-600 hover:bg-orange-700";
+      case "rented":
+        return "bg-blue-600 hover:bg-blue-700";
+      default:
+        return "bg-gray-600";
+    }
+  };
+
   return (
     <Card className="relative w-80 border gap-3 pt-0!">
       <div className="relative w-full aspect-video h-40">
         <div className="absolute inset-0 z-30 bg-black/10 rounded-t-xl" />
         <img
-          src="https://avatar.vercel.sh/shadcn1"
-          alt="Unit cover"
+          src={primaryImage}
+          alt={`${unit.brand} ${unit.model}`}
           className="h-full w-full object-cover rounded-t-xl brightness-90"
         />
         <Badge className="absolute top-3 right-3 z-40 bg-emerald-600 hover:bg-emerald-700 border-none">
-          Available
+          {unit.availability_status}
         </Badge>
       </div>
       <CardHeader className="border-b border-foreground/20">
         <CardTitle className="flex items-center justify-between">
-          <h3 className="text-foreground font-semibold text-xl">Toyota Vios</h3>
-          <p className="text-md font-medium text-foreground/80">2024</p>
+          <h3 className="text-foreground font-semibold text-xl">
+            {unit.brand} {unit.model}
+          </h3>
+          <p className="text-md font-medium text-foreground/80">{unit.year}</p>
         </CardTitle>
         <Badge variant={"secondary"} className="mb-3">
-          NAB-4421
+          {unit.plate_number}
         </Badge>
         <CardDescription className="flex items-center justify-evenly gap-3">
           <div className="flex items-center gap-2">
             <Settings className="w-4 h-4" />
-            <p className="text-medium text-foreground-muted">Auto</p>
+            <p className="text-medium text-foreground-muted">
+              {specifications?.transmission || "N/A"}
+            </p>
           </div>
           <div className="flex items-center gap-2">
             <Fuel className="w-4 h-4" />
-            <p className="text-medium text-foreground-muted">Gas</p>
+            <p className="text-medium text-foreground-muted">
+              {specifications?.fuel_type || "N/A"}
+            </p>
           </div>
           <div className="flex items-center gap-2">
             <Users className="w-4 h-4" />
-            <p className="text-medium text-foreground-muted">5 Seats</p>
+            <p className="text-medium text-foreground-muted">
+              {specifications?.passenger_capacity
+                ? `${specifications.passenger_capacity} Seats`
+                : "N/A"}
+            </p>
           </div>
         </CardDescription>
       </CardHeader>
       <CardFooter className="flex items-center justify-between">
         <div className="flex flex-col items-start gap-1">
           <h6 className="text-md font-semibold text-foreground/90">
-            ₱2,500/day
+            ₱{unit.rental_rate_per_day.toLocaleString()}
+            <span className="text-xs font-normal text-muted-foreground">
+              /day
+            </span>
           </h6>
           <p className="text-xs font-medium text-foreground/60">
-            Owner: J. Dela Cruz
+            {unit.owner?.full_name || "Unknown Owner"}
           </p>
         </div>
         <DropdownMenu modal={false}>
@@ -83,7 +126,7 @@ export default function UnitsCard() {
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-20">
             <DropdownMenuGroup>
-              <DropdownMenuItem className="text-xs!">
+              <DropdownMenuItem className="text-xs!" onClick={onEdit}>
                 <div className="flex items-center gap-2">
                   <Pen className="size-4" />
                   <p>Edit details</p>
@@ -102,7 +145,13 @@ export default function UnitsCard() {
                 </div>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem className="text-xs!">
+              <DropdownMenuItem
+                className="text-xs!"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onRequestDelete(unit);
+                }}
+              >
                 <div className="flex items-center gap-2 ">
                   <Trash2 className="size-4" />
                   <p>Delete Unit</p>

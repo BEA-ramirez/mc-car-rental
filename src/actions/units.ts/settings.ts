@@ -33,10 +33,12 @@ export async function saveFeature(data: FeatureType): Promise<ActionResponse> {
     if (feature_id) {
       query = supabase
         .from("features")
-        .update(payload)
+        .update({ ...payload, last_updated_at: new Date().toISOString() })
         .eq("feature_id", feature_id);
     } else {
-      query = supabase.from("features").insert([payload]);
+      query = supabase
+        .from("features")
+        .insert([{ ...payload, last_updated_at: new Date().toISOString() }]);
     }
 
     const { error } = await query;

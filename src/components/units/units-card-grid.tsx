@@ -1,13 +1,4 @@
 "use client";
-import {
-  Card,
-  CardAction,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Input } from "../ui/input";
 import { Button } from "../ui/button";
 import {
@@ -18,6 +9,8 @@ import {
   LayoutList,
   Sheet,
   Plus,
+  Loader2,
+  AlertTriangle,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -29,17 +22,69 @@ import {
   DropdownMenuShortcut,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { FleetSettingsDialog } from "./settings-dialog";
 import { useState } from "react";
 import UnitsCard from "./units-card";
+import { useUnits } from "../../../hooks/use-units";
+import { CompleteCarType } from "@/lib/schemas/car";
+import { UnitsForm } from "./units-form";
 
 export default function UnitsCardGrid() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isAddUnitOpen, setIsAddUnitOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [unitToDelete, setUnitToDelete] = useState<CompleteCarType | null>(
+    null,
+  );
+
+  const [editingUnit, setEditingUnit] = useState<CompleteCarType | null>(null);
+  const [isEditOpen, setIsEditOpen] = useState(false);
+
+  const { units, isUnitsLoading, deleteUnit, isDeleting } = useUnits();
+  const filteredUnits = units.filter((unit) => {
+    const query = searchQuery.toLowerCase();
+    return (
+      unit.plate_number.toLowerCase().includes(query) ||
+      unit.brand.toLowerCase().includes(query) ||
+      unit.model.toLowerCase().includes(query) ||
+      unit.color.toLowerCase().includes(query)
+    );
+  });
+
+  const handleEdit = (unit: CompleteCarType) => {
+    setEditingUnit(unit);
+    setIsEditOpen(true);
+  };
+
+  const handleFormOpenChange = (open: boolean) => {
+    setIsAddUnitOpen(open);
+    setIsEditOpen(open);
+    if (!open) setEditingUnit(null);
+  };
+
+  const confirmDelete = async () => {
+    if (unitToDelete?.car_id) {
+      await deleteUnit(unitToDelete.car_id);
+      setUnitToDelete(null);
+    }
+  };
+
   return (
-    <div className="bg-card p-3 w-full shadow-sm rounded-md">
+    <div className="bg-card p-3 w-full shadow-sm rounded-md min-h-screen">
       <div className="flex flex-row-reverse mb-2">
         <Button
           variant="default"
+          onClick={() => setIsAddUnitOpen(true)}
           className=" flex items-center gap-2 bg-primary border rounded-sm text-xs! shadow-none! cursor-pointer text-card"
         >
           <Plus />
@@ -54,7 +99,8 @@ export default function UnitsCardGrid() {
             <Input
               placeholder="Search unit..."
               className="pl-8 border-gray-300 rounded-sm text-xs!"
-              //   onChange={handleSearch}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
           <DropdownMenu modal={false}>
@@ -126,7 +172,78 @@ export default function UnitsCardGrid() {
           />
         </div>
       </div>
-      <UnitsCard />
+
+      {isUnitsLoading ? (
+        <div className="flex h-[90%] items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      ) : filteredUnits.length === 0 ? (
+        <div className="flex min-h-180 flex-col items-center justify-center border border-dashed rounded-lg text-muted-foreground">
+          <p>No units found.</p>
+          {searchQuery && <p className="text-xs">Try adjusting your search.</p>}
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          {filteredUnits.map((unit) => (
+            <UnitsCard
+              key={unit.car_id}
+              unit={unit}
+              onRequestDelete={(u) => setUnitToDelete(u)}
+              onEdit={() => handleEdit(unit)}
+            />
+          ))}
+        </div>
+      )}
+
+      <AlertDialog
+        open={!!unitToDelete}
+        onOpenChange={(open) => !open && setUnitToDelete(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-destructive">
+              <AlertTriangle className="h-5 w-5" />
+              Delete Unit?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete the{" "}
+              <strong>
+                {unitToDelete?.brand} {unitToDelete?.model}
+              </strong>{" "}
+              ({unitToDelete?.plate_number})?
+              <br />
+              <br />
+              This action will archive the unit and it will no longer be
+              available for rentals.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault(); // Prevent auto-close to show loading state if needed
+                confirmDelete();
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={isDeleting}
+            >
+              {isDeleting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                "Delete Unit"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      <UnitsForm
+        open={isAddUnitOpen || isEditOpen}
+        onOpenChange={handleFormOpenChange}
+        initialData={editingUnit}
+      />
     </div>
   );
 }

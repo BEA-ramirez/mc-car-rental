@@ -19,6 +19,7 @@ export const featureSchema = z.object({
   name: z.string().min(2, "Feature name is too short"),
   description: z.string().optional(),
   is_archived: z.boolean().default(false),
+  last_updated_at: z.string().datetime().optional().nullable(),
 });
 
 export const carFeatureSchema = z.object({
@@ -45,7 +46,7 @@ export const carSpecificationSchema = z.object({
 // --- Car Images ---
 export const carImageSchema = z.object({
   image_id: z.string().uuid().optional(),
-  car_id: z.string().uuid(),
+  car_id: z.string().uuid().optional(),
   image_url: z.string().url(),
   storage_path: z.string().optional(),
   is_primary: z.boolean().default(false),
@@ -55,8 +56,8 @@ export const carImageSchema = z.object({
 // --- Main Car Schema ---
 export const carSchema = z.object({
   car_id: z.string().uuid().optional(),
-  car_owner_id: z.string().uuid(),
-  spec_id: z.string().uuid(),
+  car_owner_id: z.string().min(1, "Owner is required"),
+  spec_id: z.string().min(1, "Configuration is required"),
 
   plate_number: z
     .string()
@@ -66,12 +67,12 @@ export const carSchema = z.object({
   model: z.string().min(2),
   year: z.coerce
     .number()
-    .min(1990)
-    .max(new Date().getFullYear() + 1),
-  color: z.string().min(2),
-  vin: z.string().length(17).optional(),
+    .min(1990, "Year must be 1990 or later")
+    .max(new Date().getFullYear() + 1, "Year cannot be in the far future"),
+  color: z.string().min(2, "Color is required"),
+  vin: z.string().max(17).optional().or(z.literal("")),
 
-  rental_rate_per_day: z.coerce.number().positive(),
+  rental_rate_per_day: z.coerce.number().min(0, "Rate is required"),
   availability_status: z.string().min(1, "Required"),
   current_mileage: z.coerce.number().min(0).optional(),
 
@@ -81,14 +82,17 @@ export const carSchema = z.object({
 });
 
 export const completeCarSchema = carSchema.extend({
-  specifications: carSpecificationSchema,
+  specifications: carSpecificationSchema.optional().nullable(),
   features: z.array(featureSchema).optional(),
   images: z.array(carImageSchema).optional(),
-  owner: z.object({
-    car_owner_id: z.string().uuid(),
-    business_name: z.string(),
-    full_name: z.string(),
-  }),
+  owner: z
+    .object({
+      car_owner_id: z.string().uuid(),
+      business_name: z.string(),
+      full_name: z.string(),
+    })
+    .optional()
+    .nullable(),
 });
 
 export type FeatureType = z.infer<typeof featureSchema>;
