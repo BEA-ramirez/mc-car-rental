@@ -11,7 +11,7 @@ function DriverDashboard() {
   console.log("Selected driver", selectedDriver);
 
   return (
-    <div className="w-full h-[100vh] flex items-center justify-center gap-3">
+    <div className="w-full h-[calc(100vh+140px)] flex items-stretch justify-center gap-3 mb-8">
       <DriverList selectedDriver={selectedDriver} onClick={setSelectedDriver} />
       <DriverProfile driver={selectedDriver} />
     </div>

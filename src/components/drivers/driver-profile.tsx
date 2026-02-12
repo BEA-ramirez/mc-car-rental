@@ -17,12 +17,13 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarImage, AvatarFallback, AvatarBadge } from "../ui/avatar";
 import { Button } from "../ui/button";
 import { Menu, Phone, Send, SquarePen, MapPin } from "lucide-react";
 import { toTitleCase, getInitials } from "@/actions/helper/format-text";
 import { Badge } from "../ui/badge";
-import MediumCalendar from "./big-calendar";
+import DriverSchedule from "./big-calendar";
 
 function DriverProfile({ driver }: { driver: CompleteDriverType | null }) {
   return (
@@ -140,8 +141,29 @@ function DriverProfile({ driver }: { driver: CompleteDriverType | null }) {
           </div>
         </CardHeader>
       </Card>
-      <Card className="mt-3 rounded-none shadow-sm border-none p-3 w-full h-[20rem]">
-        <MediumCalendar />
+      <Tabs defaultValue="sched" className="mt-3">
+        <TabsList>
+          <TabsTrigger value="sched">Schedule & Trips</TabsTrigger>
+          <TabsTrigger value="docs">Documents</TabsTrigger>
+        </TabsList>
+        <TabsContent value="sched">
+          <div className="w-full flex items-center justify-between gap-3 bg-card shadow-sm mt-1 p-3">
+            <DriverSchedule />
+            <div className="flex-1 h-[20rem] border border-black">
+              List of Trips
+            </div>
+          </div>
+        </TabsContent>
+      </Tabs>
+
+      <Card className="mt-3 rounded-none shadow-sm border-none p-3">
+        <CardHeader>
+          <CardTitle>Upcoming Trip Details</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p>Vios (ABC-1234)</p>
+          <p>Pickup: Airport Terminal 3</p>
+        </CardContent>
       </Card>
     </div>
   );
