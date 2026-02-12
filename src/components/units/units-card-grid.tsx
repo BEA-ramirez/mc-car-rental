@@ -183,7 +183,7 @@ export default function UnitsCardGrid() {
           {searchQuery && <p className="text-xs">Try adjusting your search.</p>}
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+        <div className="flex items-center gap-3">
           {filteredUnits.map((unit) => (
             <UnitsCard
               key={unit.car_id}
