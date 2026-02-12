@@ -3,7 +3,6 @@
 import React, { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
 import {
   Dialog,
   DialogContent,
@@ -72,6 +71,7 @@ export function UnitsForm({ open, onOpenChange, initialData }: UnitsFormProp) {
     isLoading: loadingSpecs,
     setSearchQuery: setSpecSearch,
   } = useSpecifications();
+
   const {
     features,
     isLoading: loadingFeatures,
@@ -150,8 +150,6 @@ export function UnitsForm({ open, onOpenChange, initialData }: UnitsFormProp) {
       }
     }
   }, [open, initialData, form]);
-
-  console.log("Unit form data: ", form.watch());
 
   // 3. Submit Handler
   const onSubmit = async (data: any) => {

@@ -142,6 +142,37 @@ body {
   }
 }
 
+@layer utilities {
+  /* 1. Chrome, Edge, and Safari */
+  ::-webkit-scrollbar {
+    width: 8px; /* Width of the vertical scrollbar */
+    height: 8px; /* Height of the horizontal scrollbar */
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent; /* The background of the bar */
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: hsl(var(--border)); /* Color of the handle */
+    border-radius: 9999px; /* Rounded corners */
+    border: 2px solid transparent; /* Creates padding around the thumb */
+    background-clip: content-box; /* Makes the border act as padding */
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--muted-foreground)); /* Darker on hover */
+    border: 2px solid transparent;
+    background-clip: content-box;
+  }
+
+  /* 2. Firefox (Standard CSS) */
+  * {
+    scrollbar-width: thin; /* Options: auto, thin, none */
+    scrollbar-color: hsl(var(--border)) transparent; /* thumb track */
+  }
+}
+
 .e-grid {
   /* Changed from --font-noto to --font-inter to match your app */
   font-family:

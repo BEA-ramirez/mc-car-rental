@@ -1,7 +1,12 @@
 import React from "react";
+import DriverDashboard from "@/components/drivers/driver-dashboard";
 
 function Driver() {
-  return <div>Driver</div>;
+  return (
+    <>
+      <DriverDashboard />
+    </>
+  );
 }
 
 export default Driver;
