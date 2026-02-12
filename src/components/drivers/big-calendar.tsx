@@ -86,7 +86,7 @@ export default function DriverSchedule() {
   };
 
   return (
-    <div className="p-3 border rounded-xl shadow-sm bg-card w-fit h-[100%] flex flex-col">
+    <div className="p-3 border rounded-xl shadow-sm bg-card w-fit h-full flex flex-col">
       <div className="flex items-center gap-2 mb-2 px-1 shrink-0">
         <CalendarDays className="w-4 h-4 text-primary" />
         <h3 className="font-semibold text-sm">Driver Schedule</h3>

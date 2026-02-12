@@ -176,7 +176,7 @@ function DriverForm({ open, onOpenChange, initialData }: DriverFormProp) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-200 max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
             {initialData ? "Edit Driver" : "Add New Driver"}
@@ -214,6 +214,7 @@ function DriverForm({ open, onOpenChange, initialData }: DriverFormProp) {
                                     "w-full justify-between",
                                     !field.value && "text-muted-foreground",
                                   )}
+                                  onClick={(e) => e.stopPropagation()}
                                 >
                                   {field.value
                                     ? availableUsers?.find(
@@ -224,7 +225,7 @@ function DriverForm({ open, onOpenChange, initialData }: DriverFormProp) {
                                 </Button>
                               </FormControl>
                             </PopoverTrigger>
-                            <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0">
+                            <PopoverContent className="w-(--radix-popover-trigger-width) p-0">
                               <Command>
                                 <CommandInput placeholder="Search name or email..." />
                                 <CommandList>

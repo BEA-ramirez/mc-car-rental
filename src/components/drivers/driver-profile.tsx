@@ -149,9 +149,7 @@ function DriverProfile({ driver }: { driver: CompleteDriverType | null }) {
         <TabsContent value="sched">
           <div className="w-full flex items-center justify-between gap-3 bg-card shadow-sm mt-1 p-3">
             <DriverSchedule />
-            <div className="flex-1 h-[20rem] border border-black">
-              List of Trips
-            </div>
+            <div className="flex-1 h-80 border border-black">List of Trips</div>
           </div>
         </TabsContent>
       </Tabs>
