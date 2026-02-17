@@ -1,39 +1,108 @@
 "use server";
 
 import { createClient } from "@/utils/supabase/server";
-import { ServiceAreaSchema, type ServiceArea } from "@/lib/schemas/settings";
 import { revalidatePath } from "next/cache";
+import {
+  BookingFeesSchema,
+  BusinessHubsSchema,
+  TaxSettingsSchema,
+  PaymentMethodsSchema,
+  CompanyProfileSchema,
+  ServiceAreaSchema,
+  type ServiceArea,
+} from "@/lib/schemas/settings";
 
+// --- 1. GET SETTINGS (Generic) ---
+export async function getSystemSettings(keys: string[]) {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("settings")
+    .select("key, value")
+    .in("key", keys);
+
+  if (error) {
+    console.error("Error fetching system settings:", error);
+    return {};
+  }
+
+  const settingsMap = data.reduce(
+    (acc, curr) => {
+      acc[curr.key] = curr.value;
+      return acc;
+    },
+    {} as Record<string, any>,
+  );
+
+  return settingsMap;
+}
+
+// --- 2. UPDATE SETTING (Generic) ---
+export async function updateSystemSetting(key: string, rawValue: unknown) {
+  const supabase = await createClient();
+
+  let schema;
+  switch (key) {
+    case "booking_fees":
+      schema = BookingFeesSchema;
+      break;
+    case "business_hubs":
+      schema = BusinessHubsSchema;
+      break;
+    case "tax_settings":
+      schema = TaxSettingsSchema;
+      break;
+    case "payment_methods":
+      schema = PaymentMethodsSchema;
+      break;
+    case "company_profile":
+      schema = CompanyProfileSchema;
+      break;
+    default:
+      return { success: false, message: "Invalid settings key" };
+  }
+
+  const result = schema.safeParse(rawValue);
+  if (!result.success) {
+    return {
+      success: false,
+      message: "Invalid Data",
+      errors: result.error.flatten(),
+    };
+  }
+
+  const { error } = await supabase
+    .from("settings")
+    .upsert({ key, value: result.data }, { onConflict: "key" });
+
+  if (error) return { success: false, message: error.message };
+
+  revalidatePath("/admin/settings");
+  return { success: true, message: "Settings saved" };
+}
+
+// --- 3. SERVICE AREA (Specific) ---
 export async function saveServiceArea(data: ServiceArea) {
-  // --- FIX 1: Zod Validation ---
   const result = ServiceAreaSchema.safeParse(data);
 
   if (!result.success) {
-    // We use .issues[0] to get the first specific error message safely
     const errorMessage =
       result.error.issues[0]?.message || "Invalid data format";
     return { error: errorMessage };
   }
 
-  const validatedCoordinates = result.data;
-
-  // --- FIX 2: Supabase Await ---
-  // createClient is ASYNC. You must use 'await' here!
   const supabase = await createClient();
-
-  // 3. Auth Check
   const {
     data: { user },
     error: authError,
   } = await supabase.auth.getUser();
+
   if (authError || !user) {
     return { error: "Unauthorized access" };
   }
 
-  // 4. Save to Database
   const { error } = await supabase
     .from("settings")
-    .update({ value: validatedCoordinates })
+    .update({ value: result.data })
     .eq("key", "service_area_boundary");
 
   if (error) {
@@ -41,16 +110,12 @@ export async function saveServiceArea(data: ServiceArea) {
     return { error: "Failed to save settings to database." };
   }
 
-  // 5. Revalidate
   revalidatePath("/admin/settings");
-  revalidatePath("/");
-
   return { success: true };
 }
 
 export async function getServiceArea() {
   const supabase = await createClient();
-
   const { data, error } = await supabase
     .from("settings")
     .select("value")
@@ -58,6 +123,5 @@ export async function getServiceArea() {
     .single();
 
   if (error) return [];
-
-  return data?.value || []; // Returns the array of coordinates
+  return data?.value || [];
 }

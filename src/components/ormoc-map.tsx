@@ -10,10 +10,58 @@ import {
   useMapsLibrary,
 } from "@vis.gl/react-google-maps";
 import { createClient } from "@/utils/supabase/client";
+import { toast } from "sonner"; // Assuming you have sonner installed
+
+// --- TYPES ---
+export type MapHub = {
+  id: string;
+  name: string;
+  lat: number;
+  lng: number;
+};
+
+type MapProps = {
+  // Updated to include the optional name argument
+  onLocationSelect?: (lat: number, lng: number, locationName?: string) => void;
+  hubs?: MapHub[];
+};
 
 const supabase = createClient();
 
-// --- Helper: Draws the Green Zones ---
+// --- COMPONENT 1: Hub Markers ---
+function HubMarkers({
+  hubs,
+  onHubSelect,
+}: {
+  hubs: MapHub[];
+  onHubSelect: (hub: MapHub) => void;
+}) {
+  return (
+    <>
+      {hubs.map((hub) => (
+        <AdvancedMarker
+          key={hub.id}
+          position={{ lat: hub.lat, lng: hub.lng }}
+          onClick={(e) => {
+            e.stop(); // Prevent map click event
+            onHubSelect(hub);
+          }}
+        >
+          <Pin
+            background={"#2563eb"}
+            glyphColor={"#fff"}
+            borderColor={"#1e40af"}
+          />
+          <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-white px-2 py-1 rounded shadow text-xs font-bold whitespace-nowrap z-50 pointer-events-none">
+            {hub.name}
+          </div>
+        </AdvancedMarker>
+      ))}
+    </>
+  );
+}
+
+// --- COMPONENT 2: Service Area (Green Zone) ---
 function ServiceAreaRenderer({
   onPathsLoaded,
 }: {
@@ -33,34 +81,41 @@ function ServiceAreaRenderer({
 
       if (error || !data?.value) return;
 
+      // Normalize data to ensure it's an array of paths
       const savedData = data.value;
-
       let serviceAreaPaths: any[] = [];
+
       if (Array.isArray(savedData) && savedData.length > 0) {
-        if (Array.isArray(savedData[0])) {
-          serviceAreaPaths = savedData;
-        } else {
+        // Check if it's a single polygon (array of coords) or multipolygon (array of arrays of coords)
+        if (
+          Array.isArray(savedData[0]) &&
+          typeof savedData[0][0] === "number"
+        ) {
+          // It's a single path [[lat,lng], [lat,lng]] - wrap it
           serviceAreaPaths = [savedData];
+        } else {
+          // It's likely already multiple paths
+          serviceAreaPaths = savedData;
         }
-
-        onPathsLoaded(serviceAreaPaths);
-
-        const greenZone = new google.maps.Polygon({
-          paths: serviceAreaPaths,
-          strokeColor: "#16a34a",
-          strokeOpacity: 0.8,
-          strokeWeight: 2,
-          fillColor: "#4ade80",
-          fillOpacity: 0.2,
-          map: map,
-          clickable: false,
-          zIndex: 1,
-        });
-
-        return () => {
-          greenZone.setMap(null);
-        };
       }
+
+      onPathsLoaded(serviceAreaPaths);
+
+      const greenZone = new google.maps.Polygon({
+        paths: serviceAreaPaths,
+        strokeColor: "#16a34a",
+        strokeOpacity: 0.8,
+        strokeWeight: 2,
+        fillColor: "#4ade80",
+        fillOpacity: 0.2,
+        map: map,
+        clickable: false, // Important: Let clicks pass through to the map
+        zIndex: 1,
+      });
+
+      return () => {
+        greenZone.setMap(null);
+      };
     }
 
     loadServiceAreas();
@@ -69,39 +124,30 @@ function ServiceAreaRenderer({
   return null;
 }
 
-// --- Child Component: Handles Map Logic ---
-// We moved all the logic HERE so it can access the APIProvider context
-function MapContent({
-  onLocationSelect,
-}: {
-  onLocationSelect?: (lat: number, lng: number) => void;
-}) {
+// --- COMPONENT 3: Map Content (Logic) ---
+function MapContent({ onLocationSelect, hubs = [] }: MapProps) {
   const [selectedLocation, setSelectedLocation] = useState<{
     lat: number;
     lng: number;
   } | null>(null);
   const [allowedPaths, setAllowedPaths] = useState<any[]>([]);
 
-  // NOW this hook works because it's inside APIProvider
+  // Load Geometry Library for "containsLocation"
   const geometryLib = useMapsLibrary("geometry");
 
   const handleMapClick = (e: any) => {
-    if (!e.detail.latLng) return;
-
-    if (!geometryLib) {
-      console.warn("Geometry library loading...");
-      return;
-    }
-
-    if (allowedPaths.length === 0) {
-      console.warn("No service areas loaded yet.");
+    // If geometry lib isn't loaded or no service area, block clicks
+    if (!geometryLib || allowedPaths.length === 0) {
+      toast.warning("Loading service area map...");
       return;
     }
 
     const { lat, lng } = e.detail.latLng;
     const clickPoint = new google.maps.LatLng(lat, lng);
 
+    // Check if click is inside ANY of the allowed paths
     let isInside = false;
+    // We create a temporary polygon object just to use the math library
     const tempPoly = new google.maps.Polygon({ paths: [] });
 
     for (const path of allowedPaths) {
@@ -113,12 +159,10 @@ function MapContent({
     }
 
     if (isInside) {
-      console.log("✅ Click valid! Pinning:", lat, lng);
       setSelectedLocation({ lat, lng });
-      if (onLocationSelect) onLocationSelect(lat, lng);
+      if (onLocationSelect) onLocationSelect(lat, lng, undefined); // Custom location has no name
     } else {
-      console.log("❌ Click rejected: Outside green zone.");
-      alert("Please select a location inside the green service area.");
+      toast.error("Please select a location inside the green service area.");
     }
   };
 
@@ -130,18 +174,30 @@ function MapContent({
         defaultZoom={13}
         minZoom={12}
         maxZoom={18}
-        gestureHandling={geometryLib ? "greedy" : "none"} // Wait for lib
+        gestureHandling={"greedy"}
         disableDefaultUI={true}
         onClick={handleMapClick}
       >
+        {/* Render Green Zones */}
         <ServiceAreaRenderer onPathsLoaded={setAllowedPaths} />
 
+        {/* Render Business Hubs */}
+        <HubMarkers
+          hubs={hubs}
+          onHubSelect={(hub) => {
+            setSelectedLocation({ lat: hub.lat, lng: hub.lng });
+            // Pass the Hub Name as the 3rd argument
+            if (onLocationSelect) onLocationSelect(hub.lat, hub.lng, hub.name);
+          }}
+        />
+
+        {/* Render User Selection Pin */}
         {selectedLocation && (
           <AdvancedMarker position={selectedLocation}>
             <Pin
-              background={"#16a34a"}
+              background={"#ef4444"}
               glyphColor={"#fff"}
-              borderColor={"#14532d"}
+              borderColor={"#b91c1c"}
             />
           </AdvancedMarker>
         )}
@@ -158,60 +214,17 @@ function MapContent({
   );
 }
 
-// --- Main Parent Component ---
-export default function OrmocMapSelector(props: {
-  onLocationSelect?: (lat: number, lng: number) => void;
-}) {
+// --- MAIN PARENT COMPONENT ---
+// Fix: Use the MapProps type here so 'hubs' is accepted
+export default function OrmocMapSelector(props: MapProps) {
   return (
-    <div className="h-[500px] w-full rounded-xl border-2 border-slate-200 overflow-hidden shadow-inner relative">
+    <div className="h-full w-full rounded-xl border-2 border-slate-200 overflow-hidden shadow-inner relative">
       <APIProvider
         apiKey={process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY as string}
-        libraries={["geometry"]} // <--- Request the library here
+        libraries={["geometry"]} // Request geometry lib here
       >
-        {/* Render the child that uses the library */}
         <MapContent {...props} />
       </APIProvider>
     </div>
   );
 }
-
-// useEffect(() => {
-//   if (!map) return;
-
-//   // 1. Fetch the GeoJSON from your public folder
-//   fetch("/data/ormoc-boundary.json")
-//     .then((res) => res.json())
-//     .then((data) => {
-//       // Extract the coordinates. Note: GeoJSON is [lng, lat], Google is {lat, lng}
-//       // This assumes a simple Polygon. If it's a MultiPolygon, you'll need a flatMap.
-//       const ormocCoords = data.features[0].geometry.coordinates[0].map(
-//         (coord: any) => ({
-//           lat: coord[1],
-//           lng: coord[0],
-//         }),
-//       );
-
-//       // 2. Define the "World" (The shaded area)
-//       const worldCoords = [
-//         { lat: 85, lng: -180 },
-//         { lat: 85, lng: 180 },
-//         { lat: -85, lng: 180 },
-//         { lat: -85, lng: -180 },
-//       ];
-
-//       // 3. Create the Mask (World with Ormoc cut out)
-//       const mask = new google.maps.Polygon({
-//         paths: [worldCoords, ormocCoords],
-//         strokeColor: "#2563eb", // Nice blue border for Ormoc
-//         strokeOpacity: 0.8,
-//         strokeWeight: 2,
-//         fillColor: "#0f172a", // Dark slate color
-//         fillOpacity: 0.45, // Dim the outside world
-//         map: map,
-//         clickable: false,
-//       });
-
-//       return () => mask.setMap(null);
-//     })
-//     .catch((err) => console.error("Error loading GeoJSON:", err));
-// }, [map]);

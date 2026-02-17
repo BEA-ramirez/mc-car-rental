@@ -1,3 +1,5 @@
+"use server";
+
 import { createClient } from "@/utils/supabase/server";
 import { UserType } from "@/lib/schemas/user";
 
@@ -18,13 +20,29 @@ export async function getEligibleUsers(): Promise<UserType[]> {
     .select("user_id");
 
   const existingIds = new Set(
-    existingPartners?.map((partner) => partner.user_id)
+    existingPartners?.map((partner) => partner.user_id),
   );
 
   // filter out users who are already partners
   const eligibleUsers = customers.filter(
-    (user) => !existingIds.has(user.user_id)
+    (user) => !existingIds.has(user.user_id),
   );
 
   return eligibleUsers;
+}
+
+export async function getCustomers() {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("users")
+    .select("user_id, full_name, email")
+    .eq("role", "customer")
+    .eq("is_archived", false)
+    .order("full_name", { ascending: true });
+
+  if (error) {
+    console.error("Error fetching customers:", error);
+    return [];
+  }
+  return data;
 }
