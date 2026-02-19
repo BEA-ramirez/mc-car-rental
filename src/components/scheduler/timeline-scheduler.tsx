@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect, useRef } from "react";
 import {
   format,
   addDays,
@@ -17,6 +17,7 @@ import {
   isWithinInterval,
   eachDayOfInterval,
   addHours,
+  addMinutes,
 } from "date-fns";
 import {
   ChevronLeft,
@@ -34,6 +35,15 @@ import {
   Phone,
   Mail,
   Edit,
+  CheckCircle,
+  AlertCircle,
+  Copy,
+  Trash,
+  CheckSquare,
+  Wrench,
+  Ban,
+  GripVertical,
+  ShieldAlert,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -63,6 +73,17 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuTrigger,
+  ContextMenuSeparator,
+  ContextMenuSub,
+  ContextMenuSubContent,
+  ContextMenuSubTrigger,
+  ContextMenuLabel,
+} from "@/components/ui/context-menu";
 
 // --- TYPES ---
 export type ViewType = "day" | "week" | "month";
@@ -83,8 +104,8 @@ export type SchedulerEvent = {
   title: string;
   subtitle?: string;
   color?: string;
-  status?: "confirmed" | "pending" | "maintenance";
-  // Extra Details
+  status?: "confirmed" | "pending" | "maintenance" | "displaced";
+  bufferDuration?: number;
   paymentStatus?: "Paid" | "Pending" | "Partial" | "Unpaid";
   amount?: number;
   customerPhone?: string;
@@ -96,8 +117,20 @@ export type SchedulerEvent = {
 type TimelineSchedulerProps = {
   resources: SchedulerResource[];
   events: SchedulerEvent[];
+  ghostBooking?: SchedulerEvent | null;
   onEmptyClick?: (resourceId: string, date: Date) => void;
+  // NEW: Callback for Drag-to-Create
+  onTimeRangeSelect?: (resourceId: string, start: Date, end: Date) => void;
   onEditClick?: (event: SchedulerEvent) => void;
+  onGhostMove?: (resourceId: string) => void;
+  onStatusChange?: (event: SchedulerEvent, newStatus: string) => void;
+  onDeleteClick?: (event: SchedulerEvent) => void;
+  onResizeEvent?: (event: SchedulerEvent, newEnd: Date) => void;
+  onResizeBuffer?: (event: SchedulerEvent, newBufferDuration: number) => void;
+  onEarlyReturnClick?: (event: SchedulerEvent) => void;
+  onAddMaintenance?: (resourceId: string, startDate: Date) => void;
+  onSplitEvent?: (event: SchedulerEvent, splitDate: Date) => void;
+  isOverrideMode?: boolean;
 };
 
 // --- CONFIG ---
@@ -105,24 +138,66 @@ const CELL_WIDTH_HOUR = 80;
 const CELL_WIDTH_MONTH = 60;
 const SIDEBAR_WIDTH = 240;
 
+interface MainHeader {
+  label: string;
+  width: number;
+  date: Date;
+}
+
+interface SubHeader {
+  label: string;
+  width: number;
+}
+
 export default function TimelineScheduler({
   resources,
   events,
+  ghostBooking,
   onEmptyClick,
+  onTimeRangeSelect,
   onEditClick,
+  onGhostMove,
+  onStatusChange,
+  onDeleteClick,
+  onResizeEvent,
+  onResizeBuffer,
+  onEarlyReturnClick,
+  onAddMaintenance,
+  onSplitEvent,
+  isOverrideMode = false,
 }: TimelineSchedulerProps) {
   const [view, setView] = useState<ViewType>("day");
   const [currentDate, setCurrentDate] = useState(new Date());
 
-  // --- STATE FOR POPOVER ---
-  // We track WHICH event ID is open to control the popover
   const [openEventId, setOpenEventId] = useState<string | null>(null);
-
-  // --- FILTERS ---
   const [searchQuery, setSearchQuery] = useState("");
   const [filterMode, setFilterMode] = useState<"all" | "booked" | "available">(
     "all",
   );
+
+  // --- EVENT RESIZE STATE ---
+  const [resizingEventId, setResizingEventId] = useState<string | null>(null);
+  const [resizeMode, setResizeMode] = useState<"event" | "buffer">("event");
+  const [resizePreviewEnd, setResizePreviewEnd] = useState<Date | null>(null);
+  const [resizePreviewBuffer, setResizePreviewBuffer] = useState<number | null>(
+    null,
+  );
+
+  const dragStartX = useRef<number>(0);
+  const originalEndRef = useRef<Date | null>(null);
+  const originalBufferRef = useRef<number>(0);
+
+  const clickedTimeRef = useRef<Date | null>(null);
+
+  // --- NEW: DRAG-TO-CREATE STATE ---
+  const [creationState, setCreationState] = useState<{
+    isDragging: boolean;
+    resourceId: string;
+    startX: number;
+    currentX: number;
+    startClientX: number;
+  } | null>(null);
+  const wasDragged = useRef(false);
 
   // --- NAVIGATION ---
   const handleNavigate = (direction: "prev" | "next") => {
@@ -135,53 +210,77 @@ export default function TimelineScheduler({
   // --- HEADER LOGIC ---
   const {
     timelineStart,
+
     timelineEnd,
+
     mainHeaders,
+
     subHeaders,
+
     totalWidth,
+
     pxPerMinute,
   } = useMemo(() => {
-    let start: Date, end: Date;
-    let mainHeaders: { label: string; width: number; date: Date }[] = [];
-    let subHeaders: { label: string; width: number }[] = [];
+    let start: Date = new Date(); // Initialize to avoid 'used before assigned'
+
+    let end: Date = new Date(); // Initialize
+
+    let mainHeaders: MainHeader[] = []; // Explicit type
+
+    let subHeaders: SubHeader[] = []; // Explicit type
+
     let pxPerMin = 0;
 
     if (view === "month") {
       start = startOfMonth(currentDate);
+
       end = endOfMonth(currentDate);
+
       pxPerMin = CELL_WIDTH_MONTH / 1440;
 
       mainHeaders = eachDayOfInterval({ start, end }).map((d) => ({
         label: format(d, "d"),
+
         width: CELL_WIDTH_MONTH,
+
         date: d,
       }));
+
       subHeaders = mainHeaders.map((h) => ({
         label: format(h.date, "EEEEE"),
+
         width: CELL_WIDTH_MONTH,
       }));
     } else {
       if (view === "day") {
         start = startOfDay(currentDate);
+
         end = addHours(start, 24);
       } else {
         start = startOfWeek(currentDate, { weekStartsOn: 1 });
+
         end = addWeeks(start, 1);
       }
+
       pxPerMin = CELL_WIDTH_HOUR / 60;
 
       const days = eachDayOfInterval({ start, end: addHours(end, -1) });
+
       mainHeaders = days.map((d) => ({
         label: format(d, "EEE d"),
+
         width: CELL_WIDTH_HOUR * 24,
+
         date: d,
       }));
 
       days.forEach(() => {
         for (let i = 0; i < 24; i++) {
           const hourDate = setHours(new Date(), i);
+
           subHeaders.push({
             label: format(hourDate, "h a"),
+
             width: CELL_WIDTH_HOUR,
           });
         }
@@ -189,15 +288,147 @@ export default function TimelineScheduler({
     }
 
     const totalWidth = subHeaders.reduce((acc, h) => acc + h.width, 0);
+
+    // Return explicit object
+
     return {
       timelineStart: start,
+
       timelineEnd: end,
+
       mainHeaders,
+
       subHeaders,
+
       totalWidth,
+
       pxPerMinute: pxPerMin,
     };
   }, [view, currentDate]);
+
+  // --- 1. EXISTING: RESIZE HANDLERS ---
+  const handleResizeStart = (
+    e: React.MouseEvent,
+    event: SchedulerEvent,
+    mode: "event" | "buffer",
+  ) => {
+    e.stopPropagation();
+    e.preventDefault();
+    setResizingEventId(event.id);
+    setResizeMode(mode);
+    setResizePreviewEnd(event.end);
+    setResizePreviewBuffer(event.bufferDuration || 0);
+    dragStartX.current = e.clientX;
+    originalEndRef.current = event.end;
+    originalBufferRef.current = event.bufferDuration || 0;
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+  };
+
+  useEffect(() => {
+    if (!resizingEventId) return;
+    const handleMouseMove = (e: MouseEvent) => {
+      const deltaX = e.clientX - dragStartX.current;
+      if (resizeMode === "event") {
+        if (!originalEndRef.current) return;
+        const pxPerDay = pxPerMinute * 1440;
+        const daysDragged = Math.round(deltaX / pxPerDay);
+        setResizePreviewEnd(addDays(originalEndRef.current, daysDragged));
+      } else {
+        const minutesDragged = deltaX / pxPerMinute;
+        const snappedMinutes = Math.round(minutesDragged / 60) * 60;
+        setResizePreviewBuffer(
+          Math.max(0, originalBufferRef.current + snappedMinutes),
+        );
+      }
+    };
+    const handleMouseUp = () => {
+      const evt = events.find((e) => e.id === resizingEventId);
+      if (evt) {
+        if (resizeMode === "event" && resizePreviewEnd && onResizeEvent) {
+          if (resizePreviewEnd.getTime() !== evt.end.getTime())
+            onResizeEvent(evt, resizePreviewEnd);
+        } else if (
+          resizeMode === "buffer" &&
+          resizePreviewBuffer !== null &&
+          onResizeBuffer
+        ) {
+          if (resizePreviewBuffer !== evt.bufferDuration)
+            onResizeBuffer(evt, resizePreviewBuffer);
+        }
+      }
+      setResizingEventId(null);
+      setResizePreviewEnd(null);
+      setResizePreviewBuffer(null);
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+    };
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mouseup", handleMouseUp);
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleMouseUp);
+    };
+  }, [
+    resizingEventId,
+    resizeMode,
+    resizePreviewEnd,
+    resizePreviewBuffer,
+    events,
+    pxPerMinute,
+    onResizeEvent,
+    onResizeBuffer,
+  ]);
+
+  // --- 2. NEW: DRAG-TO-CREATE EFFECT ---
+  useEffect(() => {
+    if (!creationState?.isDragging) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      const deltaX = e.clientX - creationState.startClientX;
+      if (Math.abs(deltaX) > 10) wasDragged.current = true; // Mark as drag if moved > 10px
+
+      setCreationState((prev) =>
+        prev ? { ...prev, currentX: prev.startX + deltaX } : null,
+      );
+    };
+
+    const handleMouseUp = () => {
+      if (creationState && wasDragged.current) {
+        const { startX, currentX, resourceId } = creationState;
+
+        const minX = Math.min(startX, currentX);
+        const maxX = Math.max(startX, currentX);
+
+        // Snap to nearest 30 mins
+        const snapMins = 30;
+        const startMins = Math.round(minX / pxPerMinute / snapMins) * snapMins;
+        const endMins = Math.round(maxX / pxPerMinute / snapMins) * snapMins;
+
+        const startDate = addMinutes(timelineStart, startMins);
+        const endDate = addMinutes(timelineStart, endMins);
+
+        // Only trigger range select if they actually dragged a duration > 0
+        if (onTimeRangeSelect && startMins !== endMins) {
+          onTimeRangeSelect(resourceId, startDate, endDate);
+        }
+      }
+
+      setCreationState(null);
+
+      // Delay resetting wasDragged so the onClick event doesn't sneak in
+      setTimeout(() => {
+        wasDragged.current = false;
+      }, 50);
+    };
+
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mouseup", handleMouseUp);
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleMouseUp);
+    };
+  }, [creationState, pxPerMinute, timelineStart, onTimeRangeSelect]);
 
   // --- FILTER RESOURCES ---
   const filteredResources = useMemo(() => {
@@ -206,7 +437,6 @@ export default function TimelineScheduler({
         res.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
         res.subtitle.toLowerCase().includes(searchQuery.toLowerCase());
       if (!matchesSearch) return false;
-
       if (filterMode === "all") return true;
       const hasBooking = events.some(
         (evt) =>
@@ -221,23 +451,44 @@ export default function TimelineScheduler({
   }, [resources, events, searchQuery, filterMode, timelineStart, timelineEnd]);
 
   // --- RENDER HELPERS ---
-  const getEventStyle = (event: SchedulerEvent) => {
-    const diffStart = Math.max(
-      0,
-      differenceInMinutes(event.start, timelineStart),
-    );
-    const effectiveEnd = event.end > timelineEnd ? timelineEnd : event.end;
+  const getEventStyle = (event: SchedulerEvent, overrideEnd?: Date) => {
+    const start = event.start;
+    const end = overrideEnd || event.end;
+    const safeEnd = end <= start ? addDays(start, 1) : end;
+    const diffStart = Math.max(0, differenceInMinutes(start, timelineStart));
+    const effectiveEnd = safeEnd > timelineEnd ? timelineEnd : safeEnd;
     const diffDuration = Math.max(
       15,
       differenceInMinutes(
         effectiveEnd,
-        event.start < timelineStart ? timelineStart : event.start,
+        start < timelineStart ? timelineStart : start,
       ),
     );
-
     return {
       left: `${diffStart * pxPerMinute}px`,
       width: `${diffDuration * pxPerMinute}px`,
+    };
+  };
+
+  const getBufferStyle = (
+    event: SchedulerEvent,
+    overrideEnd?: Date,
+    overrideDuration?: number,
+  ) => {
+    const bufferMins = overrideDuration ?? event.bufferDuration ?? 0;
+    if (bufferMins <= 0) return null;
+    const bufferStart = overrideEnd || event.end;
+    const bufferEnd = addMinutes(bufferStart, bufferMins);
+    if (bufferEnd < timelineStart || bufferStart > timelineEnd) return null;
+    const effectiveStart =
+      bufferStart < timelineStart ? timelineStart : bufferStart;
+    const effectiveEnd = bufferEnd > timelineEnd ? timelineEnd : bufferEnd;
+    const diffStart = differenceInMinutes(effectiveStart, timelineStart);
+    const duration = differenceInMinutes(effectiveEnd, effectiveStart);
+    if (duration <= 0) return null;
+    return {
+      left: `${diffStart * pxPerMinute}px`,
+      width: `${duration * pxPerMinute}px`,
     };
   };
 
@@ -249,7 +500,7 @@ export default function TimelineScheduler({
   }, [view, currentDate, timelineStart, timelineEnd]);
 
   return (
-    <div className="flex flex-col h-full bg-white border rounded-xl shadow-sm overflow-hidden">
+    <div className="flex flex-col h-full bg-white shadow-sm overflow-hidden">
       {/* 1. TOP TOOLBAR */}
       <div className="flex flex-col gap-4 p-4 border-b bg-white shrink-0 z-30">
         <div className="flex flex-col md:flex-row items-center justify-between gap-4">
@@ -290,7 +541,6 @@ export default function TimelineScheduler({
               <ChevronRight className="h-4 w-4" />
             </Button>
           </div>
-
           <Tabs
             value={view}
             onValueChange={(v) => setView(v as ViewType)}
@@ -309,7 +559,6 @@ export default function TimelineScheduler({
             </TabsList>
           </Tabs>
         </div>
-
         <div className="flex flex-col md:flex-row gap-2">
           <div className="relative flex-1">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -348,10 +597,9 @@ export default function TimelineScheduler({
             >
               Resources ({filteredResources.length})
             </div>
-
             <div className="flex flex-col">
               <div className="flex h-7 bg-slate-50 border-b">
-                {mainHeaders.map((h, i) => (
+                {mainHeaders.map((h: MainHeader, i: number) => (
                   <div
                     key={i}
                     className="shrink-0 border-r flex items-center justify-center font-bold text-xs text-slate-600 uppercase tracking-wide bg-slate-50"
@@ -362,7 +610,7 @@ export default function TimelineScheduler({
                 ))}
               </div>
               <div className="flex h-7 bg-white">
-                {subHeaders.map((h, i) => (
+                {subHeaders.map((h: SubHeader, i: number) => (
                   <div
                     key={i}
                     className="shrink-0 border-r flex items-center justify-center text-[10px] text-slate-400 font-mono"
@@ -377,286 +625,736 @@ export default function TimelineScheduler({
 
           {/* B. RESOURCE ROWS */}
           <div>
-            {filteredResources.map((res) => (
-              <div
-                key={res.id}
-                className="flex group hover:bg-slate-100/50 transition-colors h-[72px] border-b bg-white"
-              >
-                {/* Sidebar Cell */}
+            {filteredResources.map((res) => {
+              const isGhostHere =
+                ghostBooking && ghostBooking.resourceId === res.id;
+
+              const hasConflict =
+                isGhostHere &&
+                events.some((e) => {
+                  if (e.resourceId !== res.id) return false;
+                  if (e.status !== "confirmed" && e.status !== "maintenance")
+                    return false;
+                  const eEndWithBuffer = addMinutes(
+                    e.end,
+                    e.bufferDuration || 0,
+                  );
+                  const ghostEndWithBuffer = addMinutes(
+                    ghostBooking.end,
+                    ghostBooking.bufferDuration || 0,
+                  );
+                  return (
+                    ghostBooking.start < eEndWithBuffer &&
+                    ghostEndWithBuffer > e.start
+                  );
+                });
+
+              let ghostStyleClass =
+                "bg-emerald-100/80 border-emerald-500 text-emerald-900";
+              let ghostLabel = "PROPOSAL";
+              let ghostIcon = <CheckCircle className="w-3 h-3" />;
+
+              if (hasConflict) {
+                if (isOverrideMode) {
+                  ghostStyleClass =
+                    "bg-amber-100/90 border-amber-600 text-amber-900 ring-2 ring-amber-500";
+                  ghostLabel = "FORCE OVERRIDE";
+                  ghostIcon = <ShieldAlert className="w-3 h-3" />;
+                } else {
+                  ghostStyleClass = "bg-red-100/80 border-red-500 text-red-900";
+                  ghostLabel = "CONFLICT";
+                  ghostIcon = <AlertCircle className="w-3 h-3" />;
+                }
+              }
+
+              const ghostStyle =
+                isGhostHere && ghostBooking
+                  ? getEventStyle(ghostBooking)
+                  : undefined;
+
+              return (
                 <div
-                  className="sticky left-0 z-20 bg-white group-hover:bg-slate-50 border-r flex items-center px-4 gap-3 shadow-[4px_0_24px_-12px_rgba(0,0,0,0.1)]"
-                  style={{ width: `${SIDEBAR_WIDTH}px` }}
+                  key={res.id}
+                  className="flex group hover:bg-slate-100/50 transition-colors h-[72px] border-b bg-white relative"
                 >
-                  <Avatar className="h-9 w-9 border border-slate-200">
-                    <AvatarImage src={res.image} />
-                    <AvatarFallback className="bg-slate-100">
-                      {res.title[0]}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="flex flex-col overflow-hidden">
-                    <span className="text-sm font-semibold truncate text-slate-700">
-                      {res.title}
-                    </span>
-                    <span className="text-[10px] text-muted-foreground truncate">
-                      {res.subtitle}
-                    </span>
-                    <div className="flex gap-1 mt-0.5">
-                      {res.tags?.slice(0, 2).map((tag) => (
-                        <Badge
-                          key={tag}
-                          variant="secondary"
-                          className="px-1 py-0 text-[8px] h-3.5 border-slate-200 bg-slate-50"
-                        >
-                          {tag}
-                        </Badge>
-                      ))}
+                  {/* Sidebar Cell */}
+                  <div
+                    className="sticky left-0 z-20 bg-white group-hover:bg-slate-50 border-r flex items-center px-4 gap-3 shadow-[4px_0_24px_-12px_rgba(0,0,0,0.1)]"
+                    style={{ width: `${SIDEBAR_WIDTH}px` }}
+                  >
+                    <Avatar className="h-9 w-9 border border-slate-200">
+                      <AvatarImage src={res.image} />
+                      <AvatarFallback className="bg-slate-100">
+                        {res.title[0]}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex flex-col overflow-hidden">
+                      <span className="text-sm font-semibold truncate text-slate-700">
+                        {res.title}
+                      </span>
+                      <span className="text-[10px] text-muted-foreground truncate">
+                        {res.subtitle}
+                      </span>
                     </div>
                   </div>
-                </div>
 
-                {/* Timeline Cells */}
-                <div
-                  className="relative flex-1"
-                  style={{ width: `${totalWidth}px` }}
-                >
-                  {/* Grid Lines */}
-                  <div className="absolute inset-0 flex pointer-events-none">
-                    {subHeaders.map((h, i) => (
-                      <div
-                        key={i}
-                        className={cn(
-                          "border-r h-full",
-                          view !== "month" && i % 24 === 0
-                            ? "border-slate-300"
-                            : "border-slate-100",
-                        )}
-                        style={{ width: `${h.width}px` }}
-                      />
-                    ))}
-                  </div>
+                  <div
+                    className="relative flex-1"
+                    style={{ width: `${totalWidth}px` }}
+                  >
+                    {/* --- TRACK INTERACTION LAYER --- */}
+                    <ContextMenu>
+                      <ContextMenuTrigger>
+                        <div
+                          className="absolute inset-0 z-0"
+                          onContextMenu={(e) => {
+                            const rect =
+                              e.currentTarget.getBoundingClientRect();
+                            const offsetX = e.clientX - rect.left;
+                            clickedTimeRef.current = addMinutes(
+                              timelineStart,
+                              offsetX / pxPerMinute,
+                            );
+                          }}
+                          // Trigger Drag Start
+                          onMouseDown={(e) => {
+                            if (e.button !== 0 || e.altKey) return; // Left click only
+                            const rect =
+                              e.currentTarget.getBoundingClientRect();
+                            const offsetX = e.clientX - rect.left;
+                            setCreationState({
+                              isDragging: true,
+                              resourceId: res.id,
+                              startX: offsetX,
+                              currentX: offsetX,
+                              startClientX: e.clientX,
+                            });
+                          }}
+                          onClick={(e) => {
+                            // If user just dragged, DON'T fire the click event
+                            if (wasDragged.current) return;
 
-                  {/* Event Bars with Popover */}
-                  {events
-                    .filter((evt) => evt.resourceId === res.id)
-                    .map((evt) => {
-                      const style = getEventStyle(evt);
-                      if (evt.end < timelineStart || evt.start > timelineEnd)
-                        return null;
-
-                      return (
-                        <Popover
-                          key={evt.id}
-                          open={openEventId === evt.id}
-                          onOpenChange={(isOpen) =>
-                            setOpenEventId(isOpen ? evt.id : null)
+                            if (ghostBooking && onGhostMove) {
+                              onGhostMove(res.id);
+                            } else if (onEmptyClick) {
+                              const rect =
+                                e.currentTarget.getBoundingClientRect();
+                              onEmptyClick(
+                                res.id,
+                                addMinutes(
+                                  timelineStart,
+                                  (e.clientX - rect.left) / pxPerMinute,
+                                ),
+                              );
+                            }
+                          }}
+                        >
+                          {/* Grid Lines */}
+                          <div className="absolute inset-0 flex pointer-events-none">
+                            {subHeaders.map((h: SubHeader, i: number) => (
+                              <div
+                                key={i}
+                                className={cn(
+                                  "border-r h-full",
+                                  view !== "month" && i % 24 === 0
+                                    ? "border-slate-300"
+                                    : "border-slate-100",
+                                )}
+                                style={{ width: `${h.width}px` }}
+                              />
+                            ))}
+                          </div>
+                        </div>
+                      </ContextMenuTrigger>
+                      <ContextMenuContent className="w-56 rounded-none shadow-md border-slate-200">
+                        <ContextMenuLabel className="text-xs">
+                          Slot Actions
+                        </ContextMenuLabel>
+                        <ContextMenuItem
+                          className="text-xs"
+                          onClick={() =>
+                            onAddMaintenance &&
+                            clickedTimeRef.current &&
+                            onAddMaintenance(res.id, clickedTimeRef.current)
                           }
                         >
-                          <PopoverTrigger asChild>
-                            <div
-                              className={cn(
-                                "absolute top-3 bottom-3 rounded-md border px-2 text-xs shadow-sm cursor-pointer hover:brightness-105 hover:shadow-md transition-all z-10 overflow-hidden flex flex-col justify-center",
-                                evt.status === "confirmed"
-                                  ? "bg-emerald-100 border-emerald-200 text-emerald-800"
-                                  : evt.status === "pending"
-                                    ? "bg-amber-100 border-amber-200 text-amber-800"
-                                    : "bg-blue-100 border-blue-200 text-blue-800",
+                          <Wrench className="w-3 h-3 mr-2" /> Block for
+                          Maintenance
+                        </ContextMenuItem>
+                      </ContextMenuContent>
+                    </ContextMenu>
+
+                    {/* --- DRAG-TO-CREATE VISUAL PREVIEW --- */}
+                    {creationState?.isDragging &&
+                      creationState.resourceId === res.id && (
+                        <div
+                          className="absolute top-3 bottom-3 bg-blue-100/60 border-2 border-blue-500 border-dashed rounded-md z-40 flex items-center justify-center pointer-events-none overflow-hidden"
+                          style={{
+                            left: `${Math.min(creationState.startX, creationState.currentX)}px`,
+                            width: `${Math.abs(creationState.currentX - creationState.startX)}px`,
+                          }}
+                        >
+                          {/* Only show text if box is wide enough */}
+                          {Math.abs(
+                            creationState.currentX - creationState.startX,
+                          ) > 60 && (
+                            <div className="bg-white/90 px-1.5 py-0.5 rounded shadow-sm text-blue-700 font-bold text-[10px] whitespace-nowrap">
+                              {format(
+                                addMinutes(
+                                  timelineStart,
+                                  Math.round(
+                                    Math.min(
+                                      creationState.startX,
+                                      creationState.currentX,
+                                    ) /
+                                      pxPerMinute /
+                                      30,
+                                  ) * 30,
+                                ),
+                                "h:mm a",
                               )}
-                              style={style}
-                              onClick={(e) => e.stopPropagation()} // Let Popover handle it
-                            >
-                              <div className="font-bold truncate leading-tight">
-                                {evt.title}
-                              </div>
-                              {evt.subtitle && (
-                                <div className="text-[10px] opacity-80 truncate">
-                                  {evt.subtitle}
+                              {" - "}
+                              {format(
+                                addMinutes(
+                                  timelineStart,
+                                  Math.round(
+                                    Math.max(
+                                      creationState.startX,
+                                      creationState.currentX,
+                                    ) /
+                                      pxPerMinute /
+                                      30,
+                                  ) * 30,
+                                ),
+                                "h:mm a",
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                    {/* Ghost */}
+                    {isGhostHere && ghostStyle && ghostBooking && (
+                      <div
+                        className={cn(
+                          "absolute top-3 bottom-3 rounded-md border-2 border-dashed px-2 text-xs shadow-lg z-50 flex flex-col justify-center animate-pulse pointer-events-none",
+                          ghostStyleClass,
+                        )}
+                        style={ghostStyle}
+                      >
+                        <div className="font-bold flex items-center gap-1">
+                          {ghostIcon}
+                          {ghostLabel}
+                        </div>
+                        <div className="text-[10px] font-medium opacity-90 truncate">
+                          {ghostBooking.title}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Events Loop */}
+                    {events
+                      .filter((evt) => evt.resourceId === res.id)
+                      .map((evt) => {
+                        const isResizing = resizingEventId === evt.id;
+                        const displayEnd =
+                          isResizing &&
+                          resizeMode === "event" &&
+                          resizePreviewEnd
+                            ? resizePreviewEnd
+                            : evt.end;
+                        const displayBuffer =
+                          isResizing &&
+                          resizeMode === "buffer" &&
+                          resizePreviewBuffer !== null
+                            ? resizePreviewBuffer
+                            : evt.bufferDuration;
+                        const style = getEventStyle(evt, displayEnd);
+                        if (
+                          displayEnd < timelineStart ||
+                          evt.start > timelineEnd
+                        )
+                          return null;
+
+                        const isMaintenance = evt.status === "maintenance";
+                        const isDisplaced = evt.status === "displaced";
+
+                        let isOverlappingOther = false;
+                        if (!isResizing) {
+                          isOverlappingOther = events.some(
+                            (other) =>
+                              other.id !== evt.id &&
+                              other.resourceId === evt.resourceId &&
+                              other.status !== "displaced" &&
+                              other.start <
+                                addMinutes(displayEnd, displayBuffer || 0) &&
+                              addMinutes(other.end, other.bufferDuration || 0) >
+                                evt.start,
+                          );
+                        }
+
+                        let eventColorClass =
+                          "bg-blue-100 border-blue-200 text-blue-800";
+                        if (isMaintenance) {
+                          eventColorClass =
+                            "bg-slate-100 border-slate-300 text-slate-500 bg-[linear-gradient(45deg,rgba(0,0,0,0.02)_25%,transparent_25%,transparent_50%,rgba(0,0,0,0.02)_50%,rgba(0,0,0,0.02)_75%,transparent_75%,transparent)] bg-[length:10px_10px]";
+                        } else if (isDisplaced || isOverlappingOther) {
+                          eventColorClass =
+                            "bg-red-600 border-red-700 text-white shadow-md animate-pulse";
+                        } else if (evt.status === "confirmed") {
+                          eventColorClass =
+                            "bg-emerald-100 border-emerald-200 text-emerald-800";
+                        } else if (evt.status === "pending") {
+                          eventColorClass =
+                            "bg-amber-100 border-amber-200 text-amber-800";
+                        }
+
+                        if (isResizing) {
+                          const newBufferEnd = addMinutes(
+                            displayEnd,
+                            displayBuffer || 0,
+                          );
+                          const isResizeConflict = events.some(
+                            (other) =>
+                              other.id !== evt.id &&
+                              other.resourceId === evt.resourceId &&
+                              (other.status === "confirmed" ||
+                                other.status === "maintenance") &&
+                              other.start < newBufferEnd &&
+                              addMinutes(other.end, other.bufferDuration || 0) >
+                                evt.start,
+                          );
+                          if (isResizeConflict)
+                            eventColorClass =
+                              "bg-red-100 border-red-500 text-red-900 ring-2 ring-red-500 z-50 opacity-95";
+                        }
+
+                        return (
+                          <React.Fragment key={evt.id}>
+                            {/* Buffer */}
+                            {displayBuffer !== undefined &&
+                              displayBuffer > 0 &&
+                              getBufferStyle(
+                                evt,
+                                displayEnd,
+                                displayBuffer,
+                              ) && (
+                                <div
+                                  className="absolute top-3 bottom-3 z-0 bg-slate-100 border border-slate-300/50 border-l-0 flex items-center justify-center opacity-80 group/buffer"
+                                  style={{
+                                    ...getBufferStyle(
+                                      evt,
+                                      displayEnd,
+                                      displayBuffer,
+                                    ),
+                                    height: undefined,
+                                    backgroundImage:
+                                      "repeating-linear-gradient(45deg, transparent, transparent 5px, #cbd5e1 5px, #cbd5e1 10px)",
+                                  }}
+                                  title={`Turnaround: ${displayBuffer / 60}h`}
+                                >
+                                  <div
+                                    className="absolute right-0 top-0 bottom-0 w-3 cursor-col-resize flex items-center justify-center hover:bg-black/10 transition-colors z-20 opacity-0 group-hover/buffer:opacity-100"
+                                    onMouseDown={(e) =>
+                                      handleResizeStart(e, evt, "buffer")
+                                    }
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
+                                    <div className="w-0.5 h-3 bg-slate-500 rounded-full" />
+                                  </div>
+                                  {isResizing && resizeMode === "buffer" && (
+                                    <span className="absolute -top-6 bg-black/70 text-white px-1.5 py-0.5 rounded text-[9px] whitespace-nowrap shadow-sm z-50">
+                                      {displayBuffer / 60}h
+                                    </span>
+                                  )}
                                 </div>
                               )}
-                            </div>
-                          </PopoverTrigger>
 
-                          <PopoverContent
-                            className="w-80 p-0 shadow-xl"
-                            align="start"
-                          >
-                            {/* Header */}
-                            <div className="p-4 border-b bg-slate-50/50">
-                              <div className="flex items-center justify-between mb-2">
-                                <Badge
-                                  variant={
-                                    evt.status === "confirmed"
-                                      ? "default"
-                                      : "secondary"
-                                  }
-                                  className={cn(
-                                    "uppercase text-[10px]",
-                                    evt.status === "confirmed" &&
-                                      "bg-emerald-600 hover:bg-emerald-700",
-                                  )}
-                                >
-                                  {evt.status || "BOOKING"}
-                                </Badge>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-6 w-6"
-                                  onClick={() =>
-                                    onEditClick && onEditClick(evt)
-                                  }
-                                >
-                                  <Edit className="h-3 w-3 text-slate-500" />
-                                </Button>
-                              </div>
-                              <div className="font-bold text-lg leading-tight">
-                                {evt.title}
-                              </div>
-                              <div className="text-xs text-muted-foreground mt-1">
-                                Booking ID:{" "}
-                                <span className="font-mono">{evt.id}</span>
-                              </div>
-                            </div>
-
-                            {/* Accordion Content */}
-                            <Accordion
-                              type="single"
-                              collapsible
-                              className="w-full"
-                              defaultValue="schedule"
+                            {/* Main Bar */}
+                            <Popover
+                              open={openEventId === evt.id}
+                              onOpenChange={(isOpen) =>
+                                !isResizing &&
+                                setOpenEventId(isOpen ? evt.id : null)
+                              }
                             >
-                              {/* 1. Schedule */}
-                              <AccordionItem value="schedule">
-                                <AccordionTrigger className="px-4 py-2 text-xs font-semibold hover:no-underline bg-slate-50/30">
-                                  <div className="flex items-center gap-2">
-                                    <CalendarIcon className="w-3 h-3" /> Trip
-                                    Schedule
-                                  </div>
-                                </AccordionTrigger>
-                                <AccordionContent className="px-4 py-3 space-y-3">
-                                  <div className="grid grid-cols-[20px_1fr] items-start gap-1">
-                                    <div className="mt-0.5 w-1.5 h-1.5 rounded-full bg-blue-500" />
-                                    <div>
-                                      <div className="text-xs font-semibold">
-                                        Pick-up
-                                      </div>
-                                      <div className="text-[10px] text-muted-foreground">
-                                        {format(
-                                          evt.start,
-                                          "MMM d, yyyy • h:mm a",
-                                        )}
-                                      </div>
-                                      {evt.pickupLocation && (
-                                        <div className="text-[10px] text-slate-600 mt-0.5 flex gap-1">
-                                          <MapPin className="w-3 h-3 inline" />{" "}
-                                          {evt.pickupLocation}
-                                        </div>
-                                      )}
-                                    </div>
-                                  </div>
-                                  <div className="grid grid-cols-[20px_1fr] items-start gap-1">
-                                    <div className="mt-0.5 w-1.5 h-1.5 rounded-full bg-slate-300" />
-                                    <div>
-                                      <div className="text-xs font-semibold">
-                                        Return
-                                      </div>
-                                      <div className="text-[10px] text-muted-foreground">
-                                        {format(
-                                          evt.end,
-                                          "MMM d, yyyy • h:mm a",
-                                        )}
-                                      </div>
-                                      {evt.dropoffLocation && (
-                                        <div className="text-[10px] text-slate-600 mt-0.5 flex gap-1">
-                                          <MapPin className="w-3 h-3 inline" />{" "}
-                                          {evt.dropoffLocation}
-                                        </div>
-                                      )}
-                                    </div>
-                                  </div>
-                                </AccordionContent>
-                              </AccordionItem>
-
-                              {/* 2. Customer Contact */}
-                              <AccordionItem value="contact">
-                                <AccordionTrigger className="px-4 py-2 text-xs font-semibold hover:no-underline bg-slate-50/30">
-                                  <div className="flex items-center gap-2">
-                                    <User className="w-3 h-3" /> Customer Info
-                                  </div>
-                                </AccordionTrigger>
-                                <AccordionContent className="px-4 py-3 space-y-2">
-                                  <div className="flex items-center gap-2 text-xs">
-                                    <Phone className="w-3 h-3 text-slate-400" />
-                                    <span>
-                                      {evt.customerPhone || "No phone provided"}
-                                    </span>
-                                  </div>
-                                  <div className="flex items-center gap-2 text-xs">
-                                    <Mail className="w-3 h-3 text-slate-400" />
-                                    <span className="truncate">
-                                      {evt.customerEmail || "No email provided"}
-                                    </span>
-                                  </div>
-                                </AccordionContent>
-                              </AccordionItem>
-
-                              {/* 3. Payment */}
-                              <AccordionItem
-                                value="payment"
-                                className="border-b-0"
-                              >
-                                <AccordionTrigger className="px-4 py-2 text-xs font-semibold hover:no-underline bg-slate-50/30">
-                                  <div className="flex items-center gap-2">
-                                    <CreditCard className="w-3 h-3" /> Payment
-                                  </div>
-                                </AccordionTrigger>
-                                <AccordionContent className="px-4 py-3">
-                                  <div className="flex justify-between items-center mb-2">
-                                    <span className="text-xs text-muted-foreground">
-                                      Total
-                                    </span>
-                                    <span className="font-bold text-sm">
-                                      ₱ {evt.amount?.toLocaleString() || "0.00"}
-                                    </span>
-                                  </div>
-                                  <div className="flex justify-between items-center">
-                                    <span className="text-xs text-muted-foreground">
-                                      Status
-                                    </span>
-                                    <Badge
-                                      variant="outline"
+                              <ContextMenu>
+                                <ContextMenuTrigger asChild>
+                                  <PopoverTrigger asChild>
+                                    <div
                                       className={cn(
-                                        "text-[10px] h-5",
-                                        evt.paymentStatus === "Paid"
-                                          ? "border-emerald-200 text-emerald-700 bg-emerald-50"
-                                          : "border-amber-200 text-amber-700 bg-amber-50",
+                                        "absolute top-3 bottom-3 rounded-md border px-2 text-xs shadow-sm cursor-pointer hover:shadow-md transition-all z-10 overflow-hidden flex flex-col justify-center group/event",
+                                        eventColorClass,
                                       )}
+                                      style={style}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        if (e.altKey && onSplitEvent) {
+                                          const rect =
+                                            e.currentTarget.getBoundingClientRect();
+                                          const minutesIntoEvent =
+                                            (e.clientX - rect.left) /
+                                            pxPerMinute;
+                                          const snapMins = 30;
+                                          const roundedMins =
+                                            Math.round(
+                                              minutesIntoEvent / snapMins,
+                                            ) * snapMins;
+                                          onSplitEvent(
+                                            evt,
+                                            addMinutes(evt.start, roundedMins),
+                                          );
+                                          return;
+                                        }
+                                      }}
                                     >
-                                      {evt.paymentStatus || "Pending"}
-                                    </Badge>
+                                      <div className="font-bold truncate leading-tight flex justify-between items-center w-full">
+                                        <span className="truncate flex items-center gap-1">
+                                          {isDisplaced && (
+                                            <AlertCircle className="w-3 h-3 text-white" />
+                                          )}
+                                          {isMaintenance && (
+                                            <Wrench className="w-3 h-3" />
+                                          )}
+                                          {evt.title}
+                                        </span>
+                                        {isResizing &&
+                                          resizeMode === "event" && (
+                                            <span className="bg-black/70 text-white px-1.5 py-0.5 rounded text-[9px] ml-1 whitespace-nowrap shadow-sm">
+                                              {format(displayEnd, "MMM d")}
+                                            </span>
+                                          )}
+                                      </div>
+                                      {evt.subtitle && !isMaintenance && (
+                                        <div
+                                          className={cn(
+                                            "text-[10px] truncate",
+                                            isDisplaced || isOverlappingOther
+                                              ? "text-white/80"
+                                              : "opacity-80",
+                                          )}
+                                        >
+                                          {isDisplaced
+                                            ? "DISPLACED"
+                                            : evt.subtitle}
+                                        </div>
+                                      )}
+                                      <div
+                                        className="absolute right-0 top-0 bottom-0 w-3 cursor-col-resize flex items-center justify-center hover:bg-black/5 transition-colors z-20 opacity-0 group-hover/event:opacity-100"
+                                        onMouseDown={(e) =>
+                                          handleResizeStart(e, evt, "event")
+                                        }
+                                        onClick={(e) => e.stopPropagation()}
+                                      >
+                                        <div
+                                          className={cn(
+                                            "w-0.5 h-3 rounded-full",
+                                            isDisplaced
+                                              ? "bg-white/50"
+                                              : "bg-slate-400",
+                                          )}
+                                        />
+                                      </div>
+                                    </div>
+                                  </PopoverTrigger>
+                                </ContextMenuTrigger>
+                                <ContextMenuContent className="w-48 rounded-none text-xs shadow-md border-slate-200">
+                                  {isMaintenance ? (
+                                    <ContextMenuItem
+                                      className="text-xs text-red-600 focus:text-red-600 focus:bg-red-50"
+                                      onClick={() =>
+                                        onDeleteClick && onDeleteClick(evt)
+                                      }
+                                    >
+                                      <Trash className="w-3 h-3 mr-2" /> Delete
+                                      Block
+                                    </ContextMenuItem>
+                                  ) : (
+                                    <>
+                                      <ContextMenuLabel className="text-xs">
+                                        Booking Actions
+                                      </ContextMenuLabel>
+                                      <ContextMenuItem
+                                        className="text-xs"
+                                        onClick={() =>
+                                          onEditClick && onEditClick(evt)
+                                        }
+                                      >
+                                        <Edit className="w-3 h-3 mr-2" /> Edit
+                                        Booking
+                                      </ContextMenuItem>
+                                      <ContextMenuItem
+                                        className="text-xs"
+                                        onClick={() =>
+                                          navigator.clipboard.writeText(evt.id)
+                                        }
+                                      >
+                                        <Copy className="w-3 h-3 mr-2" /> Copy
+                                        ID
+                                      </ContextMenuItem>
+                                      <ContextMenuSeparator />
+                                      {[
+                                        "confirmed",
+                                        "ongoing",
+                                        "active",
+                                      ].includes(
+                                        evt.status?.toLowerCase() || "",
+                                      ) && (
+                                        <ContextMenuItem
+                                          className="text-xs text-emerald-700 focus:text-emerald-800 focus:bg-emerald-50"
+                                          onClick={() =>
+                                            onEarlyReturnClick &&
+                                            onEarlyReturnClick(evt)
+                                          }
+                                        >
+                                          <CheckCircle className="w-3 h-3 mr-2" />{" "}
+                                          Early Return
+                                        </ContextMenuItem>
+                                      )}
+                                      <ContextMenuSeparator />
+                                      <ContextMenuSub>
+                                        <ContextMenuSubTrigger className="text-xs">
+                                          <CheckSquare className="w-3 h-3 mr-2" />{" "}
+                                          Change Status
+                                        </ContextMenuSubTrigger>
+                                        <ContextMenuSubContent className="w-40 rounded-none text-xs shadow-md border-slate-200">
+                                          <ContextMenuItem
+                                            className="text-xs"
+                                            onClick={() =>
+                                              onStatusChange &&
+                                              onStatusChange(evt, "confirmed")
+                                            }
+                                          >
+                                            Mark as Confirmed
+                                          </ContextMenuItem>
+                                          <ContextMenuItem
+                                            className="text-xs"
+                                            onClick={() =>
+                                              onStatusChange &&
+                                              onStatusChange(evt, "completed")
+                                            }
+                                          >
+                                            Mark as Completed
+                                          </ContextMenuItem>
+                                          <ContextMenuSeparator />
+                                          <ContextMenuItem
+                                            className="text-xs text-red-600 focus:text-red-600"
+                                            onClick={() =>
+                                              onStatusChange &&
+                                              onStatusChange(evt, "cancelled")
+                                            }
+                                          >
+                                            Mark as Cancelled
+                                          </ContextMenuItem>
+                                        </ContextMenuSubContent>
+                                      </ContextMenuSub>
+                                      <ContextMenuSeparator />
+                                      <ContextMenuItem
+                                        className="text-xs text-red-600 focus:text-red-600 focus:bg-red-50"
+                                        onClick={() =>
+                                          onDeleteClick && onDeleteClick(evt)
+                                        }
+                                      >
+                                        <Trash className="w-3 h-3 mr-2" />{" "}
+                                        Delete Booking
+                                      </ContextMenuItem>
+                                    </>
+                                  )}
+                                </ContextMenuContent>
+                              </ContextMenu>
+                              {/* ... (Accordion code kept exactly same) */}
+                              <PopoverContent
+                                className="w-80 p-0 shadow-xl"
+                                align="start"
+                              >
+                                {isMaintenance ? (
+                                  <div className="p-4 bg-slate-50 text-center">
+                                    <Wrench className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+                                    <div className="font-bold text-slate-700">
+                                      Maintenance Block
+                                    </div>
+                                    <div className="text-xs text-slate-500 mt-1">
+                                      {format(evt.start, "MMM d, h:mm a")} -{" "}
+                                      {format(evt.end, "h:mm a")}
+                                    </div>
                                   </div>
-                                </AccordionContent>
-                              </AccordionItem>
-                            </Accordion>
-                          </PopoverContent>
-                        </Popover>
-                      );
-                    })}
-
-                  {isWithinInterval(new Date(), {
-                    start: timelineStart,
-                    end: timelineEnd,
-                  }) && (
-                    <div
-                      className="absolute top-0 bottom-0 w-0.5 bg-red-500 z-0 pointer-events-none"
-                      style={{
-                        left: `${Math.max(0, differenceInMinutes(new Date(), timelineStart)) * pxPerMinute}px`,
-                      }}
-                    >
-                      <div className="w-2 h-2 bg-red-500 rounded-full -ml-[3px] -mt-1" />
-                    </div>
-                  )}
+                                ) : (
+                                  <>
+                                    <div className="p-4 border-b bg-slate-50/50">
+                                      <div className="flex items-center justify-between mb-2">
+                                        <Badge
+                                          variant={
+                                            evt.status === "confirmed"
+                                              ? "default"
+                                              : "secondary"
+                                          }
+                                          className={cn(
+                                            "uppercase text-[10px]",
+                                            evt.status === "confirmed" &&
+                                              "bg-emerald-600 hover:bg-emerald-700",
+                                          )}
+                                        >
+                                          {evt.status || "BOOKING"}
+                                        </Badge>
+                                        <Button
+                                          variant="ghost"
+                                          size="icon"
+                                          className="h-6 w-6"
+                                          onClick={() =>
+                                            onEditClick && onEditClick(evt)
+                                          }
+                                        >
+                                          <Edit className="h-3 w-3 text-slate-500" />
+                                        </Button>
+                                      </div>
+                                      <div className="font-bold text-lg leading-tight">
+                                        {evt.title}
+                                      </div>
+                                      <div className="text-xs text-muted-foreground mt-1">
+                                        Booking ID:{" "}
+                                        <span className="font-mono">
+                                          {evt.id}
+                                        </span>
+                                      </div>
+                                    </div>
+                                    <Accordion
+                                      type="single"
+                                      collapsible
+                                      className="w-full"
+                                      defaultValue="schedule"
+                                    >
+                                      <AccordionItem value="schedule">
+                                        <AccordionTrigger className="px-4 py-2 text-xs font-semibold hover:no-underline bg-slate-50/30">
+                                          <div className="flex items-center gap-2">
+                                            <CalendarIcon className="w-3 h-3" />{" "}
+                                            Trip Schedule
+                                          </div>
+                                        </AccordionTrigger>
+                                        <AccordionContent className="px-4 py-3 space-y-3">
+                                          <div className="grid grid-cols-[20px_1fr] items-start gap-1">
+                                            <div className="mt-0.5 w-1.5 h-1.5 rounded-full bg-blue-500" />
+                                            <div>
+                                              <div className="text-xs font-semibold">
+                                                Pick-up
+                                              </div>
+                                              <div className="text-[10px] text-muted-foreground">
+                                                {format(
+                                                  evt.start,
+                                                  "MMM d, yyyy • h:mm a",
+                                                )}
+                                              </div>
+                                              {evt.pickupLocation && (
+                                                <div className="text-[10px] text-slate-600 mt-0.5 flex gap-1">
+                                                  <MapPin className="w-3 h-3 inline" />{" "}
+                                                  {evt.pickupLocation}
+                                                </div>
+                                              )}
+                                            </div>
+                                          </div>
+                                          <div className="grid grid-cols-[20px_1fr] items-start gap-1">
+                                            <div className="mt-0.5 w-1.5 h-1.5 rounded-full bg-slate-300" />
+                                            <div>
+                                              <div className="text-xs font-semibold">
+                                                Return
+                                              </div>
+                                              <div className="text-[10px] text-muted-foreground">
+                                                {format(
+                                                  evt.end,
+                                                  "MMM d, yyyy • h:mm a",
+                                                )}
+                                              </div>
+                                              {evt.dropoffLocation && (
+                                                <div className="text-[10px] text-slate-600 mt-0.5 flex gap-1">
+                                                  <MapPin className="w-3 h-3 inline" />{" "}
+                                                  {evt.dropoffLocation}
+                                                </div>
+                                              )}
+                                              {evt.bufferDuration &&
+                                                evt.bufferDuration > 0 && (
+                                                  <div className="text-[10px] text-slate-400 mt-1 italic">
+                                                    + {evt.bufferDuration / 60}h
+                                                    turnaround time
+                                                  </div>
+                                                )}
+                                            </div>
+                                          </div>
+                                        </AccordionContent>
+                                      </AccordionItem>
+                                      <AccordionItem value="contact">
+                                        <AccordionTrigger className="px-4 py-2 text-xs font-semibold hover:no-underline bg-slate-50/30">
+                                          <div className="flex items-center gap-2">
+                                            <User className="w-3 h-3" />{" "}
+                                            Customer Info
+                                          </div>
+                                        </AccordionTrigger>
+                                        <AccordionContent className="px-4 py-3 space-y-2">
+                                          <div className="flex items-center gap-2 text-xs">
+                                            <Phone className="w-3 h-3 text-slate-400" />
+                                            <span>
+                                              {evt.customerPhone ||
+                                                "No phone provided"}
+                                            </span>
+                                          </div>
+                                          <div className="flex items-center gap-2 text-xs">
+                                            <Mail className="w-3 h-3 text-slate-400" />
+                                            <span className="truncate">
+                                              {evt.customerEmail ||
+                                                "No email provided"}
+                                            </span>
+                                          </div>
+                                        </AccordionContent>
+                                      </AccordionItem>
+                                      <AccordionItem
+                                        value="payment"
+                                        className="border-b-0"
+                                      >
+                                        <AccordionTrigger className="px-4 py-2 text-xs font-semibold hover:no-underline bg-slate-50/30">
+                                          <div className="flex items-center gap-2">
+                                            <CreditCard className="w-3 h-3" />{" "}
+                                            Payment
+                                          </div>
+                                        </AccordionTrigger>
+                                        <AccordionContent className="px-4 py-3">
+                                          <div className="flex justify-between items-center mb-2">
+                                            <span className="text-xs text-muted-foreground">
+                                              Total
+                                            </span>
+                                            <span className="font-bold text-sm">
+                                              ₱{" "}
+                                              {evt.amount?.toLocaleString() ||
+                                                "0.00"}
+                                            </span>
+                                          </div>
+                                          <div className="flex justify-between items-center">
+                                            <span className="text-xs text-muted-foreground">
+                                              Status
+                                            </span>
+                                            <Badge
+                                              variant="outline"
+                                              className={cn(
+                                                "text-[10px] h-5",
+                                                evt.paymentStatus === "Paid"
+                                                  ? "border-emerald-200 text-emerald-700 bg-emerald-50"
+                                                  : "border-amber-200 text-amber-700 bg-amber-50",
+                                              )}
+                                            >
+                                              {evt.paymentStatus || "Pending"}
+                                            </Badge>
+                                          </div>
+                                        </AccordionContent>
+                                      </AccordionItem>
+                                    </Accordion>
+                                  </>
+                                )}
+                              </PopoverContent>
+                            </Popover>
+                          </React.Fragment>
+                        );
+                      })}
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       </div>
