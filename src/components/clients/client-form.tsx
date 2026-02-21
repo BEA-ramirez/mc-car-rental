@@ -2,10 +2,6 @@
 
 import { useState, useEffect, useRef } from "react";
 import { manageUser } from "@/actions/manage-user";
-import {
-  UploaderComponent,
-  RemovingEventArgs,
-} from "@syncfusion/ej2-react-inputs";
 import Image from "next/image";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -15,13 +11,14 @@ import {
   Phone,
   MapPin,
   Lock,
-  Shield,
   FileBadge,
   CalendarDays,
   ShieldCheck,
   UploadCloud,
-  Briefcase,
-  Plus,
+  Loader2,
+  ImagePlus,
+  Trash2,
+  FileText,
 } from "lucide-react";
 
 // UI Components
@@ -36,13 +33,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Field,
-  FieldContent,
-  FieldDescription,
-  FieldError,
-  FieldLabel,
-} from "@/components/ui/field";
+import { cn } from "@/lib/utils";
 
 // Helper to sanitize/default data
 function sanitizeData(props: any) {
@@ -74,7 +65,9 @@ function sanitizeData(props: any) {
     data.license_expiry_date = data.license_expiry_date
       ? new Date(data.license_expiry_date).toISOString().split("T")[0]
       : "";
-    data.valid_id_expiry_date = "";
+    data.valid_id_expiry_date = data.valid_id_expiry_date
+      ? new Date(data.valid_id_expiry_date).toISOString().split("T")[0]
+      : "";
   }
   return data;
 }
@@ -87,19 +80,22 @@ interface ClientFormProps {
 export function ClientForm({ data: rawData, closeDialog }: ClientFormProps) {
   const queryClient = useQueryClient();
   const initialData = sanitizeData(rawData);
-  const isAdd = !!initialData.isAdd;
+  const isAdd = !!initialData.isAdd || !rawData;
 
   // Refs for manual uploader cleanup
-  const validIdUploaderRef = useRef<UploaderComponent>(null);
-  const licenseUploaderRef = useRef<UploaderComponent>(null);
   const profileInputRef = useRef<HTMLInputElement>(null);
+  const validIdInputRef = useRef<HTMLInputElement>(null);
+  const licenseInputRef = useRef<HTMLInputElement>(null);
 
   const [formData, setFormData] = useState(initialData);
+
+  // Files State
   const [files, setFiles] = useState<{
-    profile_picture_url?: File;
-    valid_id_url?: File;
-    license_id_url?: File;
+    profile_picture_url?: File | null;
+    valid_id_url?: File | null;
+    license_id_url?: File | null;
   }>({});
+
   const [password, setPassword] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<
@@ -109,8 +105,6 @@ export function ClientForm({ data: rawData, closeDialog }: ClientFormProps) {
   const [globalError, setGlobalError] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
-  console.log("Form Data:", formData);
-
   // Reset form when data changes
   useEffect(() => {
     setFormData(sanitizeData(rawData));
@@ -119,9 +113,6 @@ export function ClientForm({ data: rawData, closeDialog }: ClientFormProps) {
     setPassword("");
     setFieldErrors(null);
     setGlobalError(null);
-
-    validIdUploaderRef.current?.clearAll();
-    licenseUploaderRef.current?.clearAll();
   }, [rawData]);
 
   // Cleanup preview URL
@@ -224,322 +215,344 @@ export function ClientForm({ data: rawData, closeDialog }: ClientFormProps) {
     });
   };
 
-  const onFileSelect = (args: any, fieldName: string) => {
-    if (args.filesData && args.filesData.length > 0) {
-      const selectedFile = args.filesData[0].rawFile as File;
-      if (selectedFile) {
-        setFiles((prev) => ({ ...prev, [fieldName]: selectedFile }));
-        if (fieldName === "profile_picture_url") {
-          if (previewUrl) URL.revokeObjectURL(previewUrl);
-          const objectURL = URL.createObjectURL(selectedFile);
-          setPreviewUrl(objectURL);
-        }
+  // Generic File Change Handler for native inputs
+  const handleFileChange = (
+    e: React.ChangeEvent<HTMLInputElement>,
+    fieldName: keyof typeof files,
+  ) => {
+    if (e.target.files && e.target.files.length > 0) {
+      const selectedFile = e.target.files[0];
+      setFiles((prev) => ({ ...prev, [fieldName]: selectedFile }));
+
+      // Special handling for profile preview
+      if (fieldName === "profile_picture_url") {
+        if (previewUrl) URL.revokeObjectURL(previewUrl);
+        const objectURL = URL.createObjectURL(selectedFile);
+        setPreviewUrl(objectURL);
       }
     }
   };
 
-  // a specific handler for the native profile input
-  const handleProfileFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files.length > 0) {
-      const selectedFile = e.target.files[0];
-
-      // Update State
-      setFiles((prev) => ({ ...prev, profile_picture_url: selectedFile }));
-
-      // Update Preview
-      if (previewUrl) URL.revokeObjectURL(previewUrl);
-      const objectURL = URL.createObjectURL(selectedFile);
-      setPreviewUrl(objectURL);
-    }
+  const removeFile = (fieldName: keyof typeof files, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setFiles((prev) => ({ ...prev, [fieldName]: null }));
+    if (fieldName === "profile_picture_url") setPreviewUrl(null);
   };
 
   const getProfileImageSrc = () => {
     if (previewUrl) return previewUrl;
     if (formData.profile_picture_url) return formData.profile_picture_url;
-
-    // 👇 FIX: Provide a fallback so the URL is never empty/broken
     const fname = formData.first_name || "New";
     const lname = formData.last_name || "User";
-
     return `https://ui-avatars.com/api/?name=${fname}+${lname}&background=random&color=fff`;
   };
 
-  const onFileRemove = (args: RemovingEventArgs, fieldName: string) => {
-    setFiles((prev) => {
-      const newState = { ...prev };
-      delete (newState as any)[fieldName];
-      return newState;
-    });
-    args.postRawFile = false;
-  };
-
-  const triggerProfileUpload = () => {
-    // Directly click the native input using React Ref
-    profileInputRef.current?.click();
-  };
   return (
-    <div className="w-120 bg-card border border-foreground/10 p-3 rounded-md">
-      <Tabs defaultValue="account" className="w-full text-[14px] bg-card!">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="account">Account</TabsTrigger>
-          <TabsTrigger value="contact">Contact</TabsTrigger>
-          <TabsTrigger value="compliance">Compliance</TabsTrigger>
-        </TabsList>
-
-        {/* ================= TAB 1: ACCOUNT ================= */}
-        <TabsContent value="account" className="space-y-4 py-4">
-          {/* Profile Picture Section */}
-          <div className="flex flex-col items-center justify-center gap-2 mb-6">
-            <div
-              className="relative w-20 h-20 rounded-full border-2 border-dashed border-muted-foreground/30 hover:border-primary cursor-pointer group transition-all overflow-hidden"
-              onClick={triggerProfileUpload}
+    <div className="flex flex-col h-full bg-white relative">
+      <Tabs defaultValue="account" className="flex flex-col flex-1 min-h-0">
+        {/* TAB NAVIGATION */}
+        <div className="px-5 pt-3 pb-3 border-b border-slate-100 bg-white shrink-0">
+          <TabsList className="h-8 bg-slate-100 p-0.5 rounded-md border border-slate-200 inline-flex w-full">
+            <TabsTrigger
+              value="account"
+              className="flex-1 h-6 text-[11px] font-medium rounded-[4px] data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-slate-900 text-slate-500 transition-all"
             >
-              {/* Profile Image */}
-              <Image
-                src={getProfileImageSrc()}
-                alt="Profile"
-                fill
-                className="object-cover transition-opacity group-hover:opacity-60"
-              />
+              Account
+            </TabsTrigger>
+            <TabsTrigger
+              value="contact"
+              className="flex-1 h-6 text-[11px] font-medium rounded-[4px] data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-slate-900 text-slate-500 transition-all"
+            >
+              Contact
+            </TabsTrigger>
+            <TabsTrigger
+              value="compliance"
+              className="flex-1 h-6 text-[11px] font-medium rounded-[4px] data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-slate-900 text-slate-500 transition-all"
+            >
+              Compliance
+            </TabsTrigger>
+          </TabsList>
+        </div>
 
-              {/* Overlay with Plus Icon */}
-              <div className="absolute inset-0 flex items-center justify-center bg-black/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                <div className="bg-white/20 backdrop-blur-[2px] p-2 rounded-full shadow-sm">
-                  <Plus className="w-6 h-6 text-white stroke-[3]" />
+        {/* SCROLLABLE TAB CONTENT */}
+        <div className="flex-1 overflow-y-auto p-5 bg-slate-50/50 pb-20">
+          {/* ================= TAB 1: ACCOUNT ================= */}
+          <TabsContent value="account" className="m-0 space-y-4 outline-none">
+            {/* Profile Picture Section */}
+            <div className="flex flex-col items-center justify-center gap-2 mb-4">
+              <div
+                className="relative w-20 h-20 rounded-full border-2 border-dashed border-slate-300 bg-white shadow-sm cursor-pointer group transition-all overflow-hidden"
+                onClick={() => profileInputRef.current?.click()}
+              >
+                <Image
+                  src={getProfileImageSrc()}
+                  alt="Profile"
+                  fill
+                  className="object-cover transition-opacity group-hover:opacity-50"
+                  unoptimized
+                />
+                <div className="absolute inset-0 flex items-center justify-center bg-slate-900/20 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <ImagePlus className="w-6 h-6 text-white drop-shadow-md" />
                 </div>
               </div>
+              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">
+                Profile Photo
+              </p>
+              <input
+                type="file"
+                ref={profileInputRef}
+                className="hidden"
+                accept=".jpg,.png,.jpeg"
+                onChange={(e) => handleFileChange(e, "profile_picture_url")}
+              />
             </div>
-            <p className="text-xs text-muted-foreground font-medium">
-              Click to upload photo
-            </p>
 
-            <input
-              type="file"
-              ref={profileInputRef}
-              className="hidden"
-              accept=".jpg,.png,.jpeg"
-              onChange={handleProfileFileChange}
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <Field className="gap-2">
-              <FieldLabel>First Name</FieldLabel>
-              <FieldContent className="gap-0!">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
+                  First Name
+                </label>
                 <div className="relative">
-                  <User className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <User className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-slate-400" />
                   <Input
                     name="first_name"
-                    className="pl-9"
+                    className="pl-8 h-9 text-xs bg-white border-slate-200"
                     value={formData.first_name}
                     onChange={handleChange}
                     placeholder="John"
                   />
                 </div>
-              </FieldContent>
-              <FieldError className="text-[12px] font-medium ml-2">
-                {fieldErrors?.first_name?.[0]}
-              </FieldError>
-            </Field>
+                {fieldErrors?.first_name && (
+                  <p className="text-[10px] text-red-500">
+                    {fieldErrors.first_name[0]}
+                  </p>
+                )}
+              </div>
 
-            <Field className="gap-2">
-              <FieldLabel className="text-[14px]">Last Name</FieldLabel>
-              <FieldContent className="gap-0!">
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
+                  Last Name
+                </label>
                 <div className="relative">
-                  <User className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <User className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-slate-400" />
                   <Input
                     name="last_name"
-                    className="pl-9"
+                    className="pl-8 h-9 text-xs bg-white border-slate-200"
                     value={formData.last_name}
                     onChange={handleChange}
                     placeholder="Doe"
                   />
                 </div>
-              </FieldContent>
-              <FieldError className="text-[12px] font-medium ml-2">
-                {fieldErrors?.last_name?.[0]}
-              </FieldError>
-            </Field>
-          </div>
+                {fieldErrors?.last_name && (
+                  <p className="text-[10px] text-red-500">
+                    {fieldErrors.last_name[0]}
+                  </p>
+                )}
+              </div>
+            </div>
 
-          <Field className="gap-2">
-            <FieldLabel>Email Address</FieldLabel>
-            <FieldContent className="gap-0!">
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
+                Email Address
+              </label>
               <div className="relative">
-                <Mail className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Mail className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-slate-400" />
                 <Input
                   name="email"
                   type="email"
-                  className="pl-9"
+                  className="pl-8 h-9 text-xs bg-white border-slate-200"
                   value={formData.email}
                   onChange={handleChange}
                   disabled={!isAdd}
                   placeholder="john.doe@example.com"
                 />
               </div>
-            </FieldContent>
-            <FieldError className="text-[12px] font-medium ml-2">
-              {fieldErrors?.email?.[0]}
-            </FieldError>
-          </Field>
+              {fieldErrors?.email && (
+                <p className="text-[10px] text-red-500">
+                  {fieldErrors.email[0]}
+                </p>
+              )}
+            </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            {isAdd ? (
-              <Field className="gap-2">
-                <FieldLabel>Temporary Password</FieldLabel>
-                <FieldContent>
+            <div className="grid grid-cols-2 gap-4">
+              {isAdd ? (
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
+                    Temporary Password
+                  </label>
                   <div className="relative">
-                    <Lock className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <Lock className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-slate-400" />
                     <Input
                       type="password"
-                      className="pl-9"
+                      className="pl-8 h-9 text-xs bg-white border-slate-200"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       placeholder="••••••"
                     />
                   </div>
-                </FieldContent>
-                <FieldError className="text-[12px] font-medium ml-2">
-                  {fieldErrors?.password?.[0]}
-                </FieldError>
-              </Field>
-            ) : (
-              <Field className="gap-2">
-                <FieldLabel>Account Status</FieldLabel>
+                  {fieldErrors?.password && (
+                    <p className="text-[10px] text-red-500">
+                      {fieldErrors.password[0]}
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
+                    Account Status
+                  </label>
+                  <Select
+                    value={formData.account_status}
+                    onValueChange={(v) =>
+                      handleSelectChange("account_status", v)
+                    }
+                  >
+                    <SelectTrigger className="h-9 text-xs bg-white border-slate-200">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="rounded-md border-slate-200">
+                      <SelectItem value="pending" className="text-xs">
+                        Pending
+                      </SelectItem>
+                      <SelectItem value="verified" className="text-xs">
+                        Verified
+                      </SelectItem>
+                      <SelectItem value="rejected" className="text-xs">
+                        Rejected
+                      </SelectItem>
+                      <SelectItem
+                        value="banned"
+                        className="text-xs text-red-600"
+                      >
+                        Banned
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
+                  System Role
+                </label>
                 <Select
-                  value={formData.account_status}
-                  onValueChange={(v) => handleSelectChange("account_status", v)}
+                  value={formData.role}
+                  onValueChange={(v) => handleSelectChange("role", v)}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className="h-9 text-xs bg-white border-slate-200">
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent className="z-999999">
-                    <SelectItem value="pending">Pending</SelectItem>
-                    <SelectItem value="verified">Verified</SelectItem>
-                    <SelectItem value="rejected">Rejected</SelectItem>
-                    <SelectItem value="banned">Banned</SelectItem>
+                  <SelectContent className="rounded-md border-slate-200">
+                    <SelectItem value="customer" className="text-xs">
+                      Customer
+                    </SelectItem>
+                    <SelectItem value="driver" className="text-xs">
+                      Driver
+                    </SelectItem>
+                    <SelectItem value="car_owner" className="text-xs">
+                      Car Owner
+                    </SelectItem>
+                    <SelectItem value="staff" className="text-xs">
+                      Staff
+                    </SelectItem>
+                    <SelectItem value="admin" className="text-xs">
+                      Admin
+                    </SelectItem>
                   </SelectContent>
                 </Select>
-              </Field>
-            )}
+                {fieldErrors?.role && (
+                  <p className="text-[10px] text-red-500">
+                    {fieldErrors.role[0]}
+                  </p>
+                )}
+              </div>
+            </div>
+          </TabsContent>
 
-            <Field className="gap-2">
-              <FieldLabel>System Role</FieldLabel>
-              <Select
-                value={formData.role}
-                onValueChange={(v) => handleSelectChange("role", v)}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="z-999999">
-                  <SelectItem value="customer">Customer</SelectItem>
-                  <SelectItem value="driver">Driver</SelectItem>
-                  <SelectItem value="car_owner">Car Owner</SelectItem>
-                  <SelectItem value="staff">Staff</SelectItem>
-                  <SelectItem value="admin">Admin</SelectItem>
-                </SelectContent>
-              </Select>
-              <FieldError className="text-[12px] font-medium ml-2">
-                {fieldErrors?.role?.[0]}
-              </FieldError>
-            </Field>
-          </div>
-        </TabsContent>
-
-        {/* ================= TAB 2: CONTACT ================= */}
-        <TabsContent value="contact" className="space-y-4 py-4 min-h-[300px]">
-          <Field className="gap-2">
-            <FieldLabel>Phone Number</FieldLabel>
-            <FieldContent>
+          {/* ================= TAB 2: CONTACT ================= */}
+          <TabsContent
+            value="contact"
+            className="m-0 space-y-4 min-h-[250px] outline-none"
+          >
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
+                Phone Number
+              </label>
               <div className="relative">
-                <Phone className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Phone className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-slate-400" />
                 <Input
                   name="phone_number"
-                  className="pl-9"
+                  className="pl-8 h-9 text-xs bg-white border-slate-200"
                   value={formData.phone_number}
                   onChange={handleChange}
                   placeholder="0912 345 6789"
                 />
               </div>
-            </FieldContent>
-            <FieldDescription className="text-[12px] ml-2">
-              Enter valid mobile number.
-            </FieldDescription>
-            <FieldError className="text-[12px] font-medium ml-2">
-              {fieldErrors?.phone_number?.[0]}
-            </FieldError>
-          </Field>
+              {fieldErrors?.phone_number && (
+                <p className="text-[10px] text-red-500">
+                  {fieldErrors.phone_number[0]}
+                </p>
+              )}
+            </div>
 
-          <Field className="gap-2">
-            <FieldLabel>Complete Address</FieldLabel>
-            <FieldContent>
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
+                Complete Address
+              </label>
               <div className="relative">
-                <MapPin className="absolute left-2.5 top-3 h-4 w-4 text-muted-foreground" />
+                <MapPin className="absolute left-2.5 top-3 h-3.5 w-3.5 text-slate-400" />
                 <Textarea
                   name="address"
-                  className="pl-9 resize-none min-h-[100px]"
+                  className="pl-8 pt-2.5 text-xs bg-white border-slate-200 resize-none min-h-[120px]"
                   value={formData.address || ""}
                   onChange={handleChange}
                   placeholder="House No., Street Name, Barangay, City, Province"
                 />
               </div>
-            </FieldContent>
-            <FieldError className="text-[12px] font-medium ml-2">
-              {fieldErrors?.address?.[0]}
-            </FieldError>
-          </Field>
-        </TabsContent>
+              {fieldErrors?.address && (
+                <p className="text-[10px] text-red-500">
+                  {fieldErrors.address[0]}
+                </p>
+              )}
+            </div>
+          </TabsContent>
 
-        {/* ================= TAB 3: COMPLIANCE ================= */}
-        <TabsContent
-          value="compliance"
-          className="space-y-4 py-4 min-h-[300px]"
-        >
-          <Field>
-            <FieldLabel>Trust Score (0 - 5)</FieldLabel>
-            <FieldContent>
-              <div className="relative">
-                <ShieldCheck className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  type="number"
-                  step="0.1"
-                  max="5"
-                  min="0"
-                  className="pl-9"
-                  value={formData.trust_score}
-                  onChange={handleChange}
-                />
-              </div>
-            </FieldContent>
-          </Field>
-
-          <div className="grid grid-cols-2 gap-4">
-            <Field>
-              <FieldLabel>License Number</FieldLabel>
-              <FieldContent>
+          {/* ================= TAB 3: COMPLIANCE ================= */}
+          <TabsContent
+            value="compliance"
+            className="m-0 space-y-4 min-h-[300px] outline-none"
+          >
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
+                  License Number
+                </label>
                 <div className="relative">
-                  <FileBadge className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <FileBadge className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-slate-400" />
                   <Input
                     name="license_number"
-                    className="pl-9"
+                    className="pl-8 h-9 text-xs bg-white border-slate-200 uppercase"
                     value={formData.license_number}
                     onChange={handleChange}
                     placeholder="L02-XX-XXXXXX"
                   />
                 </div>
-              </FieldContent>
-              <FieldError>{fieldErrors?.license_number?.[0]}</FieldError>
-            </Field>
+                {fieldErrors?.license_number && (
+                  <p className="text-[10px] text-red-500">
+                    {fieldErrors.license_number[0]}
+                  </p>
+                )}
+              </div>
 
-            <Field>
-              <FieldLabel>License Expiry</FieldLabel>
-              <FieldContent>
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
+                  License Expiry
+                </label>
                 <div className="relative">
-                  <CalendarDays className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <CalendarDays className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-slate-400" />
                   <Input
                     type="date"
-                    className="pl-9"
+                    className="pl-8 h-9 text-xs bg-white border-slate-200"
                     value={formData.license_expiry_date || ""}
                     onChange={(e) =>
                       setFormData({
@@ -549,95 +562,171 @@ export function ClientForm({ data: rawData, closeDialog }: ClientFormProps) {
                     }
                   />
                 </div>
-              </FieldContent>
-              <FieldError>{fieldErrors?.license_expiry_date?.[0]}</FieldError>
-            </Field>
-          </div>
+                {fieldErrors?.license_expiry_date && (
+                  <p className="text-[10px] text-red-500">
+                    {fieldErrors.license_expiry_date[0]}
+                  </p>
+                )}
+              </div>
+            </div>
 
-          <Field>
-            <FieldLabel>License Image</FieldLabel>
-            <FieldContent>
-              <div className="border border-input rounded-md p-1 flex items-center gap-2">
-                <UploadCloud className="h-4 w-4 ml-2 text-muted-foreground" />
-                <div className="flex-1">
-                  <UploaderComponent
-                    ref={licenseUploaderRef}
-                    id="license-upload"
-                    type="file"
-                    multiple={false}
-                    autoUpload={false}
-                    allowedExtensions=".jpg,.png,.pdf"
-                    showFileList={true}
-                    selected={(args) => onFileSelect(args, "license_id_url")}
-                    removing={(args) => onFileRemove(args, "license_id_url")}
+            {/* Custom Shadcn File Uploader (License) */}
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
+                License Document Scan
+              </label>
+              <input
+                type="file"
+                ref={licenseInputRef}
+                className="hidden"
+                accept=".jpg,.png,.pdf"
+                onChange={(e) => handleFileChange(e, "license_id_url")}
+              />
+
+              {!files.license_id_url ? (
+                <div
+                  className="border border-dashed border-slate-300 rounded-md h-20 flex flex-col items-center justify-center bg-white hover:bg-slate-50 cursor-pointer transition-colors shadow-sm"
+                  onClick={() => licenseInputRef.current?.click()}
+                >
+                  <UploadCloud className="h-4 w-4 text-slate-400 mb-1.5" />
+                  <p className="text-[10px] text-slate-500 font-medium">
+                    Click to upload license
+                  </p>
+                </div>
+              ) : (
+                <div className="flex items-center justify-between p-2 border border-slate-200 rounded-md bg-slate-50 shadow-sm">
+                  <div className="flex items-center gap-2 overflow-hidden">
+                    <div className="p-1.5 bg-white border border-slate-200 rounded text-slate-500">
+                      <FileText className="w-3.5 h-3.5" />
+                    </div>
+                    <span className="text-xs font-medium text-slate-700 truncate">
+                      {files.license_id_url.name}
+                    </span>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6 text-red-500 hover:text-red-600 hover:bg-red-50 shrink-0"
+                    onClick={(e) => removeFile("license_id_url", e)}
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </Button>
+                </div>
+              )}
+            </div>
+
+            <div className="border-t border-slate-200 my-2" />
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
+                  Valid ID Expiry
+                </label>
+                <div className="relative">
+                  <CalendarDays className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-slate-400" />
+                  <Input
+                    type="date"
+                    className="pl-8 h-9 text-xs bg-white border-slate-200"
+                    value={formData.valid_id_expiry_date || ""}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        valid_id_expiry_date: e.target.value,
+                      })
+                    }
                   />
                 </div>
               </div>
-            </FieldContent>
-          </Field>
 
-          <div className="border-t pt-4 mt-2">
-            <div className="grid grid-cols-2 gap-4">
-              <Field>
-                <FieldLabel>Valid ID Expiry</FieldLabel>
-                <FieldContent>
-                  <div className="relative">
-                    <CalendarDays className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      type="date"
-                      className="pl-9"
-                      value={formData.valid_id_expiry_date || ""}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          valid_id_expiry_date: e.target.value,
-                        })
-                      }
-                    />
-                  </div>
-                </FieldContent>
-              </Field>
-
-              <Field>
-                <FieldLabel>Valid ID Image</FieldLabel>
-                <FieldContent>
-                  <div className="border border-input rounded-md p-1 flex items-center gap-2 h-[40px]">
-                    <Shield className="h-4 w-4 ml-2 text-muted-foreground" />
-                    <div className="flex-1 -mt-1">
-                      <UploaderComponent
-                        ref={validIdUploaderRef}
-                        id="valid-id-upload"
-                        type="file"
-                        multiple={false}
-                        autoUpload={false}
-                        allowedExtensions=".jpg,.png,.pdf"
-                        showFileList={true}
-                        selected={(args) => onFileSelect(args, "valid_id_url")}
-                        removing={(args) => onFileRemove(args, "valid_id_url")}
-                      />
-                    </div>
-                  </div>
-                </FieldContent>
-              </Field>
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
+                  Trust Score (0-5)
+                </label>
+                <div className="relative">
+                  <ShieldCheck className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-slate-400" />
+                  <Input
+                    type="number"
+                    step="0.1"
+                    max="5"
+                    min="0"
+                    className="pl-8 h-9 text-xs bg-white border-slate-200"
+                    value={formData.trust_score}
+                    onChange={handleChange}
+                  />
+                </div>
+              </div>
             </div>
-          </div>
-        </TabsContent>
+
+            {/* Custom Shadcn File Uploader (Valid ID) */}
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
+                Valid ID Scan
+              </label>
+              <input
+                type="file"
+                ref={validIdInputRef}
+                className="hidden"
+                accept=".jpg,.png,.pdf"
+                onChange={(e) => handleFileChange(e, "valid_id_url")}
+              />
+
+              {!files.valid_id_url ? (
+                <div
+                  className="border border-dashed border-slate-300 rounded-md h-20 flex flex-col items-center justify-center bg-white hover:bg-slate-50 cursor-pointer transition-colors shadow-sm"
+                  onClick={() => validIdInputRef.current?.click()}
+                >
+                  <UploadCloud className="h-4 w-4 text-slate-400 mb-1.5" />
+                  <p className="text-[10px] text-slate-500 font-medium">
+                    Click to upload valid ID
+                  </p>
+                </div>
+              ) : (
+                <div className="flex items-center justify-between p-2 border border-slate-200 rounded-md bg-slate-50 shadow-sm">
+                  <div className="flex items-center gap-2 overflow-hidden">
+                    <div className="p-1.5 bg-white border border-slate-200 rounded text-slate-500">
+                      <FileText className="w-3.5 h-3.5" />
+                    </div>
+                    <span className="text-xs font-medium text-slate-700 truncate">
+                      {files.valid_id_url.name}
+                    </span>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6 text-red-500 hover:text-red-600 hover:bg-red-50 shrink-0"
+                    onClick={(e) => removeFile("valid_id_url", e)}
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </Button>
+                </div>
+              )}
+            </div>
+          </TabsContent>
+        </div>
       </Tabs>
 
-      {/* Footer Actions */}
-      <div className="flex justify-between items-center pt-4">
-        {globalError && (
-          <p className="text-xs text-red-500 font-medium">{globalError}</p>
-        )}
-        <div className="flex gap-2 ml-auto">
-          <Button variant="outline" onClick={closeDialog} disabled={isSaving}>
+      {/* --- FLOATING FOOTER ACTIONS --- */}
+      <div className="absolute bottom-0 left-0 right-0 px-5 py-3 border-t border-slate-200 bg-white flex items-center justify-between z-10">
+        <div className="text-[11px] text-red-600 font-medium line-clamp-1 pr-2">
+          {globalError}
+        </div>
+        <div className="flex gap-2 shrink-0">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={closeDialog}
+            disabled={isSaving}
+            className="h-8 text-xs bg-white text-slate-700 border-slate-200 hover:bg-slate-50"
+          >
             Cancel
           </Button>
           <Button
+            size="sm"
             onClick={handleSave}
             disabled={isSaving}
-            className="bg-primary hover:bg-primary/60 text-card border-none font-medium text-[12px] px-3! py-2!"
+            className="h-8 text-xs bg-slate-900 hover:bg-slate-800 text-white shadow-sm"
           >
+            {isSaving && <Loader2 className="w-3.5 h-3.5 mr-2 animate-spin" />}
             {isSaving ? "Saving..." : isAdd ? "Create Client" : "Save Changes"}
           </Button>
         </div>

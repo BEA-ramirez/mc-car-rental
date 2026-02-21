@@ -8,163 +8,296 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import {
-  Card,
-  CardAction,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Avatar, AvatarImage, AvatarFallback, AvatarBadge } from "../ui/avatar";
-import { Button } from "../ui/button";
-import { Menu, Phone, Send, SquarePen, MapPin } from "lucide-react";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
+import {
+  Menu,
+  Phone,
+  Send,
+  Edit2,
+  MapPin,
+  Mail,
+  CalendarDays,
+  IdCard,
+  Car,
+  FileText,
+} from "lucide-react";
 import { toTitleCase, getInitials } from "@/actions/helper/format-text";
-import { Badge } from "../ui/badge";
+import { Badge } from "@/components/ui/badge";
 import DriverSchedule from "./big-calendar";
+import { cn } from "@/lib/utils";
 
-function DriverProfile({ driver }: { driver: CompleteDriverType | null }) {
+export default function DriverProfile({
+  driver,
+}: {
+  driver: CompleteDriverType | null;
+}) {
+  if (!driver) return null;
+
   return (
-    <div className="h-full w-[70%]">
-      <div className="flex items-center justify-between">
-        <h2 className="font-medium text-lg">Driver Profile & Dashboard</h2>
-        <Sheet>
-          <SheetTrigger asChild>
-            <Button variant="default">
-              <Menu />
-            </Button>
-          </SheetTrigger>
-          <SheetContent className="w-75! sm:w-100!">
-            <SheetHeader>
-              <SheetTitle>Quick Actions</SheetTitle>
-              <SheetDescription>
-                This sheet doesn&apos;t have a close button in the top-right
-                corner. Click outside to close.
-              </SheetDescription>
-            </SheetHeader>
-          </SheetContent>
-        </Sheet>
-      </div>
-      <Card className="mt-3 rounded-none shadow-sm border-none p-3">
-        <CardHeader className="p-0">
-          <div className="flex items-center justify-between pr-6">
-            <div className="flex items-center justify-start gap-6 border-r pr-8">
-              <Avatar className="size-36 rounded-none!">
-                <AvatarImage
-                  src={driver?.profiles?.profile_picture_url || undefined}
-                  alt="@shadcn"
-                  className="rounded-none!"
-                />
-                <AvatarFallback>
-                  {getInitials(driver?.profiles?.full_name || "")}
-                </AvatarFallback>
-              </Avatar>
-
-              <div className="flex flex-col items-between justify-center text-xs gap-2 px-4">
-                <div>
-                  <label className="uppercase ">Name</label>
-                  <p className="text-primary/70 font-medium">
-                    {toTitleCase(driver?.profiles?.full_name)}
-                  </p>
-                </div>
-                <div>
-                  <label className="uppercase">Phone No.</label>
-                  <p className="text-primary/70 font-medium">
-                    {driver?.profiles?.phone_number}
-                  </p>
-                </div>
-                <div>
-                  <label className="uppercase">Email</label>
-                  <p className="text-primary/70 font-medium">
-                    {driver?.profiles?.email}
-                  </p>
-                </div>
-              </div>
-              <div className="flex flex-col items-start justify-start text-xs gap-2 px-4">
-                <div>
-                  <label className="uppercase ">License No.</label>
-                  <p className="text-primary/70 font-medium">
-                    {driver?.profiles?.license_number}
-                  </p>
-                </div>
-                <div>
-                  <label className="uppercase">License Expiry</label>
-                  <p className="text-primary/70 font-medium">
-                    {driver?.profiles?.license_expiry_date}
-                  </p>
-                </div>
-                <div>
-                  <label className="uppercase">Account Verified</label>
-                  <p className="text-primary/70 font-medium">
-                    {driver?.is_verified ? "Verified" : "Not Verified"}
-                  </p>
-                </div>
-              </div>
-            </div>
-            <div className="border p-1 px-4 flex flex-col items-start justify-start gap-1 text-xs rounded-sm font-medium text-primary/70">
-              <p>ID: {driver?.display_id}</p>
-              <p>Total Trips: 48</p>
-              <p className="mt-2">Current Unit:</p>
-              <div className="border p-1 w-full rounded-sm text-card bg-primary/60 text-center">
-                <p>Toyota Vios</p>
-                <p>ABC-1224</p>
+    // FIX 1: Removed h-full and min-h-0. The container will now expand naturally.
+    <div className="flex flex-col bg-slate-50/50 pb-8">
+      {/* --- TOP PROFILE HEADER --- */}
+      <div className="bg-white border-b border-slate-200 shadow-sm">
+        {/* Top Control Bar */}
+        <div className="flex items-center justify-between px-6 py-3 border-b border-slate-100">
+          <div className="flex items-center gap-3">
+            <Avatar className="h-10 w-10 border border-slate-200">
+              <AvatarImage
+                src={driver.profiles?.profile_picture_url || undefined}
+              />
+              <AvatarFallback className="bg-slate-100 text-slate-600 text-xs font-medium">
+                {getInitials(driver.profiles?.full_name || "")}
+              </AvatarFallback>
+            </Avatar>
+            <div>
+              <h2 className="text-sm font-bold text-slate-800 leading-tight">
+                {toTitleCase(driver.profiles?.full_name)}
+              </h2>
+              <div className="flex items-center gap-2 mt-0.5">
+                <span className="text-[10px] font-mono text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">
+                  {driver.display_id}
+                </span>
+                <Badge
+                  variant="outline"
+                  className={cn(
+                    "text-[9px] uppercase tracking-wider px-1.5 h-4 border",
+                    driver.driver_status === "Available"
+                      ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                      : driver.driver_status === "On Trip"
+                        ? "bg-blue-50 text-blue-700 border-blue-200"
+                        : "bg-slate-50 text-slate-600 border-slate-200",
+                  )}
+                >
+                  {driver.driver_status}
+                </Badge>
               </div>
             </div>
           </div>
-          <div className="flex items-end justify-between p-2 border-t gap-6">
-            <div className="flex flex-col items-start gap-2">
-              <Badge className="bg-primary/80">{driver?.driver_status}</Badge>
-              <div className="text-xs text-primary/70 font-medium flex gap-1 ">
-                <MapPin className="w-4 h-4 shrink-0" />
-                <p className="line-clamp-3">
-                  {driver?.profiles?.address ||
-                    "Cecilia Chapman 711-2880 Nulla St. Mankato Mississippi 96522 "}
+
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 text-xs bg-white text-slate-700 shadow-sm"
+            >
+              <Phone className="w-3.5 h-3.5 mr-1.5 text-slate-400" /> Call
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 text-xs bg-white text-slate-700 shadow-sm"
+            >
+              <Send className="w-3.5 h-3.5 mr-1.5 text-slate-400" /> Message
+            </Button>
+            <Button
+              size="sm"
+              className="h-8 text-xs bg-slate-900 hover:bg-slate-800 text-white shadow-sm ml-2"
+            >
+              <Edit2 className="w-3.5 h-3.5 mr-1.5" /> Edit Profile
+            </Button>
+
+            <Sheet>
+              <SheetTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 ml-1 text-slate-500 hover:bg-slate-100"
+                >
+                  <Menu className="w-4 h-4" />
+                </Button>
+              </SheetTrigger>
+              <SheetContent className="w-80">
+                <SheetHeader>
+                  <SheetTitle className="text-base">Driver Actions</SheetTitle>
+                  <SheetDescription className="text-xs">
+                    Quick administrative actions for this driver.
+                  </SheetDescription>
+                </SheetHeader>
+              </SheetContent>
+            </Sheet>
+          </div>
+        </div>
+
+        {/* Detailed Info Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 p-6">
+          {/* Col 1: Contact */}
+          <div className="space-y-3">
+            <div>
+              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5 mb-1">
+                <Phone className="w-3 h-3" /> Phone
+              </label>
+              <p className="text-xs font-medium text-slate-800">
+                {driver.profiles?.phone_number || "N/A"}
+              </p>
+            </div>
+            <div>
+              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5 mb-1">
+                <Mail className="w-3 h-3" /> Email
+              </label>
+              <p className="text-xs font-medium text-slate-800 truncate">
+                {driver.profiles?.email || "N/A"}
+              </p>
+            </div>
+          </div>
+
+          {/* Col 2: Licensing */}
+          <div className="space-y-3">
+            <div>
+              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5 mb-1">
+                <IdCard className="w-3 h-3" /> License No.
+              </label>
+              <p className="text-xs font-medium text-slate-800 font-mono">
+                {driver.profiles?.license_number || "N/A"}
+              </p>
+            </div>
+            <div>
+              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5 mb-1">
+                <CalendarDays className="w-3 h-3" /> Expiry Date
+              </label>
+              <p className="text-xs font-medium text-slate-800">
+                {driver.profiles?.license_expiry_date || "N/A"}
+              </p>
+            </div>
+          </div>
+
+          {/* Col 3: Location */}
+          <div className="md:col-span-2 space-y-3 border-l border-slate-100 pl-6">
+            <div>
+              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5 mb-1">
+                <MapPin className="w-3 h-3" /> Address
+              </label>
+              <p className="text-xs font-medium text-slate-800 line-clamp-2">
+                {driver.profiles?.address || "No address on file."}
+              </p>
+            </div>
+            <div className="flex gap-4">
+              <div>
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 block">
+                  Account Status
+                </label>
+                <Badge
+                  variant="outline"
+                  className={cn(
+                    "text-[10px] h-5 border px-2",
+                    driver.is_verified
+                      ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                      : "bg-amber-50 text-amber-700 border-amber-200",
+                  )}
+                >
+                  {driver.is_verified ? "Verified" : "Pending Verification"}
+                </Badge>
+              </div>
+              <div>
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 block">
+                  Total Trips
+                </label>
+                <span className="text-xs font-bold text-slate-800 px-2 py-0.5 bg-slate-100 rounded border border-slate-200">
+                  48
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* --- TABS SECTION --- */}
+      <Tabs defaultValue="sched" className="flex flex-col mt-6 px-6">
+        <TabsList className="h-8 bg-slate-100 p-0.5 rounded-md border border-slate-200 inline-flex w-fit mb-4">
+          <TabsTrigger
+            value="sched"
+            className="h-6 text-xs font-medium px-4 rounded-[4px] data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-slate-900 text-slate-500 transition-all gap-1.5"
+          >
+            <CalendarDays className="w-3.5 h-3.5" /> Schedule & Trips
+          </TabsTrigger>
+          <TabsTrigger
+            value="docs"
+            className="h-6 text-xs font-medium px-4 rounded-[4px] data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-slate-900 text-slate-500 transition-all gap-1.5"
+          >
+            <FileText className="w-3.5 h-3.5" /> Documents
+          </TabsTrigger>
+        </TabsList>
+
+        {/* FIX 2: Removed internal scrolling restrictions, allowed content to push parent height */}
+        <TabsContent
+          value="sched"
+          className="m-0 data-[state=active]:flex flex-col gap-4 outline-none"
+        >
+          {/* Current Assignment Box */}
+          <div className="bg-white border border-slate-200 rounded-lg p-4 flex items-center justify-between shadow-sm">
+            <div className="flex items-center gap-4">
+              <div className="h-10 w-10 bg-blue-50 border border-blue-100 rounded-full flex items-center justify-center">
+                <Car className="h-5 w-5 text-blue-600" />
+              </div>
+              <div>
+                <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider mb-0.5">
+                  Current Assignment
+                </h3>
+                <p className="text-sm font-medium text-slate-900">
+                  Toyota Vios{" "}
+                  <span className="text-slate-500 font-mono text-xs ml-1 bg-slate-100 px-1.5 rounded border border-slate-200">
+                    ABC-1234
+                  </span>
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              <Button>
-                <Phone />
-                Call
-              </Button>
-              <Button>
-                <Send />
-                Message
-              </Button>
-              <Button>
-                <SquarePen />
-                Edit
-              </Button>
+            <div className="text-right border-l border-slate-100 pl-6">
+              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-0.5">
+                Next Pickup
+              </p>
+              <p className="text-xs font-medium text-slate-800">
+                Airport Terminal 3{" "}
+                <span className="text-slate-400 ml-1">• 2:00 PM</span>
+              </p>
             </div>
           </div>
-        </CardHeader>
-      </Card>
-      <Tabs defaultValue="sched" className="mt-3">
-        <TabsList>
-          <TabsTrigger value="sched">Schedule & Trips</TabsTrigger>
-          <TabsTrigger value="docs">Documents</TabsTrigger>
-        </TabsList>
-        <TabsContent value="sched">
-          <div className="w-full flex items-center justify-between gap-3 bg-card shadow-sm mt-1 p-3">
-            <DriverSchedule />
-            <div className="flex-1 h-80 border border-black">List of Trips</div>
+
+          {/* FIX 3: Explicit h-[700px] ensures the calendar is nice and large, triggering a page-level scroll */}
+          <div className="flex flex-col xl:flex-row gap-4 h-[700px]">
+            {/* Calendar */}
+            <div className="xl:w-2/3 bg-white border border-slate-200 rounded-lg shadow-sm overflow-hidden flex flex-col h-full">
+              <div className="p-3 border-b border-slate-100 bg-slate-50 shrink-0">
+                <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                  Driver Calendar
+                </h3>
+              </div>
+              <div className="flex-1 p-2 min-h-0">
+                <DriverSchedule />
+              </div>
+            </div>
+
+            {/* Trip List Sidebar */}
+            <div className="xl:w-1/3 bg-white border border-slate-200 rounded-lg shadow-sm overflow-hidden flex flex-col h-full">
+              <div className="p-3 border-b border-slate-100 bg-slate-50 shrink-0">
+                <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                  Trip History
+                </h3>
+              </div>
+              <div className="flex-1 p-4 flex items-center justify-center text-slate-400 bg-slate-50/50">
+                <p className="text-xs font-medium">
+                  List of Trips Component Here
+                </p>
+              </div>
+            </div>
+          </div>
+        </TabsContent>
+
+        <TabsContent
+          value="docs"
+          className="m-0 bg-white border border-slate-200 rounded-lg shadow-sm p-6 outline-none"
+        >
+          <div className="flex flex-col items-center justify-center h-full text-slate-400 border-2 border-dashed border-slate-200 rounded-lg min-h-[400px]">
+            <FileText className="h-8 w-8 mb-2 text-slate-300" />
+            <p className="text-xs font-semibold text-slate-600">
+              No documents uploaded.
+            </p>
+            <p className="text-[10px] mt-1">
+              Upload driver's license, NBI clearance, etc.
+            </p>
           </div>
         </TabsContent>
       </Tabs>
-
-      <Card className="mt-3 rounded-none shadow-sm border-none p-3">
-        <CardHeader>
-          <CardTitle>Upcoming Trip Details</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p>Vios (ABC-1234)</p>
-          <p>Pickup: Airport Terminal 3</p>
-        </CardContent>
-      </Card>
     </div>
   );
 }
-
-export default DriverProfile;

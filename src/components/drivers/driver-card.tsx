@@ -1,25 +1,7 @@
 "use client";
 import { useState } from "react";
-import {
-  Card,
-  CardAction,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Button } from "../ui/button";
-import { Avatar, AvatarImage, AvatarFallback, AvatarBadge } from "../ui/avatar";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { Button } from "@/components/ui/button";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -30,23 +12,14 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Badge } from "../ui/badge";
-import {
-  EllipsisVertical,
-  RotateCw,
-  ScanSearch,
-  CircleCheck,
-  SquarePen,
-  Trash2,
-  CircleX,
-} from "lucide-react";
+import { Edit2, Trash2, AlertTriangle, Loader2 } from "lucide-react";
 import { CompleteDriverType } from "@/lib/schemas/driver";
 import { cn } from "@/lib/utils";
 import { toTitleCase, getInitials } from "@/actions/helper/format-text";
 import { useDrivers } from "../../../hooks/use-drivers";
 import { toast } from "sonner";
 
-function DriverCard({
+export default function DriverCard({
   driver,
   onClick,
   isActive,
@@ -64,6 +37,7 @@ function DriverCard({
     try {
       await deleteDriver(driver.driver_id || "");
       toast.success("Driver deleted successfully");
+      setShowDeleteDialog(false);
     } catch (error) {
       toast.error("Failed to delete driver.");
     }
@@ -71,110 +45,135 @@ function DriverCard({
 
   return (
     <>
-      <Card
+      <div
         onClick={onClick}
         className={cn(
-          "mx-auto w-full max-w-sm p-2 gap-1 cursor-pointer transition-all hover:bg-accent/50 mb-3",
-          // Active Styles: Stronger border and a subtle background
+          "group flex flex-col p-2.5 rounded-md border cursor-pointer transition-all w-full",
           isActive
-            ? "border-primary bg-primary/5 ring-1 ring-primary/20"
-            : "border-border",
+            ? "border-blue-500 bg-blue-50/50 ring-1 ring-blue-500 shadow-sm"
+            : "border-slate-200 bg-white hover:border-slate-300 hover:shadow-sm",
         )}
       >
-        <CardHeader className="p-0">
-          <div className="flex items-start justify-between">
-            <div className="flex items-center justify-start gap-2">
-              <Avatar className="size-12">
-                <AvatarImage
-                  src={driver.profiles?.profile_picture_url || undefined}
-                  alt="@shadcn"
+        <div className="flex items-start justify-between">
+          {/* --- AVATAR & INFO --- */}
+          <div className="flex items-center gap-3 overflow-hidden">
+            <Avatar className="h-10 w-10 border border-slate-200 shrink-0">
+              <AvatarImage
+                src={driver.profiles?.profile_picture_url || undefined}
+              />
+              <AvatarFallback className="bg-slate-100 text-slate-600 text-[10px] font-bold">
+                {getInitials(driver.profiles?.full_name || "")}
+              </AvatarFallback>
+            </Avatar>
+
+            <div className="flex flex-col overflow-hidden pr-2">
+              <div className="flex items-center gap-1.5">
+                {/* Status Dot */}
+                <div
+                  className={cn(
+                    "w-1.5 h-1.5 rounded-full shrink-0",
+                    driver.driver_status === "Available"
+                      ? "bg-emerald-500"
+                      : driver.driver_status === "On Trip"
+                        ? "bg-blue-500"
+                        : "bg-orange-500",
+                  )}
                 />
-                <AvatarFallback>
-                  {getInitials(driver.profiles?.full_name)}
-                </AvatarFallback>
-                <AvatarBadge className="bg-green-600 dark:bg-green-800" />
-              </Avatar>
-              <div className="flex flex-col items-between justify-center">
-                <CardTitle className="text-sm px-1">
+                <h4 className="text-xs font-bold text-slate-800 truncate">
                   {toTitleCase(driver.profiles?.full_name)}
-                </CardTitle>
-                <CardDescription className="text-xs">
-                  <Badge className="bg-primary/60 text-xs font-medium">
-                    {driver.profiles.email}
-                  </Badge>
-                </CardDescription>
+                </h4>
               </div>
+              <p className="text-[10px] text-slate-500 truncate mt-0.5">
+                {driver.profiles?.email}
+              </p>
             </div>
-            <DropdownMenu modal={false}>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="outline"
-                  className="bg-transparent! border-none! shadow-none! cursor-pointer"
-                  size={"icon-sm"}
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <EllipsisVertical className="text-card-foreground" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-20">
-                <DropdownMenuGroup>
-                  <DropdownMenuItem
-                    className="text-xs!"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onEdit();
-                    }}
-                  >
-                    <div className="flex items-center gap-2">
-                      <SquarePen className="size-4" />
-                      <p>Edit details</p>
-                    </div>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    className="text-xs!"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setShowDeleteDialog(true);
-                    }}
-                  >
-                    <div className="flex items-center gap-2 ">
-                      <Trash2 className="size-4" />
-                      <p>Delete Driver</p>
-                    </div>
-                  </DropdownMenuItem>
-                </DropdownMenuGroup>
-              </DropdownMenuContent>
-            </DropdownMenu>
           </div>
-        </CardHeader>
-        <CardFooter className="p-0! flex items-center justify-between border-t pt-1!">
-          <div className="flex items-center justify-start gap-2 text-xs font-medium text-primary/70">
-            <p className="border-r pr-3">#{driver.display_id}</p>
-            <p>{driver.profiles.phone_number}</p>
+
+          {/* --- QUICK ACTIONS (Hover) --- */}
+          <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6 rounded hover:bg-slate-100 text-slate-400 hover:text-slate-700"
+              onClick={(e) => {
+                e.stopPropagation();
+                onEdit();
+              }}
+              title="Edit Driver"
+            >
+              <Edit2 className="w-3 h-3" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6 rounded hover:bg-red-50 text-slate-400 hover:text-red-600"
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowDeleteDialog(true);
+              }}
+              title="Delete Driver"
+            >
+              <Trash2 className="w-3 h-3" />
+            </Button>
           </div>
-          <CircleCheck className="w-4 h-4 stroke-2 text-primary/50 mr-2" />
-        </CardFooter>
-      </Card>
-      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-        <AlertDialogContent onClick={(e) => e.stopPropagation()}>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete
-              <span className="font-semibold text-foreground">
-                {" "}
-                {driver.profiles.full_name}
+        </div>
+
+        {/* --- FOOTER INFO --- */}
+        <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-100/80">
+          <div className="flex items-center gap-2 text-[9px] font-medium text-slate-400 uppercase tracking-wider">
+            <span>
+              ID:{" "}
+              <span className="text-slate-600 font-mono ml-0.5">
+                {driver.display_id}
               </span>
-              from the system.
+            </span>
+            <span className="w-[1px] h-2 bg-slate-200" />
+            <span className="text-slate-500">
+              {driver.profiles?.phone_number || "NO PHONE"}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* --- DELETE DIALOG --- */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent
+          onClick={(e) => e.stopPropagation()}
+          className="sm:max-w-[400px] rounded-lg"
+        >
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-red-600 text-base">
+              <AlertTriangle className="h-5 w-5" />
+              Remove Driver?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-xs text-slate-600 mt-2">
+              Are you sure you want to remove{" "}
+              <strong className="text-slate-900">
+                {driver.profiles?.full_name}
+              </strong>{" "}
+              from the system? This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogFooter className="mt-4">
+            <AlertDialogCancel
+              disabled={isDeleting}
+              className="h-8 text-xs bg-slate-50 hover:bg-slate-100 border-slate-200"
+            >
+              Cancel
+            </AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDelete}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              className="h-8 text-xs bg-red-600 text-white hover:bg-red-700 shadow-sm"
+              disabled={isDeleting}
             >
-              {isDeleting ? "Deleting..." : "Delete Driver"}
+              {isDeleting ? (
+                <>
+                  <Loader2 className="w-3.5 h-3.5 mr-2 animate-spin" />
+                  Removing...
+                </>
+              ) : (
+                "Remove Driver"
+              )}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -182,5 +181,3 @@ function DriverCard({
     </>
   );
 }
-
-export default DriverCard;

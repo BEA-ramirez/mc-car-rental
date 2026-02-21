@@ -1,15 +1,16 @@
 "use client";
+
 import { useState, useEffect } from "react";
-import { Button } from "../ui/button";
-import { Input } from "../ui/input";
-import { Funnel, Search } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Filter, Search, Plus, Loader2 } from "lucide-react";
 import DriverForm from "./driver-form";
 import { CompleteDriverType } from "@/lib/schemas/driver";
 import DriverCard from "./driver-card";
-import { ScrollArea } from "../ui/scroll-area";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { useDrivers } from "../../../hooks/use-drivers";
 
-function DriverList({
+export default function DriverList({
   selectedDriver,
   onClick,
 }: {
@@ -20,7 +21,19 @@ function DriverList({
   const [editingDriver, setEditingDriver] = useState<CompleteDriverType | null>(
     null,
   );
-  const { data: drivers } = useDrivers();
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const { data: drivers, isLoading } = useDrivers();
+
+  // Client-side filtering
+  const filteredDrivers =
+    drivers?.filter(
+      (d) =>
+        d.profiles?.full_name
+          ?.toLowerCase()
+          .includes(searchQuery.toLowerCase()) ||
+        d.display_id?.toLowerCase().includes(searchQuery.toLowerCase()),
+    ) || [];
 
   useEffect(() => {
     if (selectedDriver && drivers) {
@@ -34,7 +47,7 @@ function DriverList({
   }, [drivers, selectedDriver, onClick]);
 
   const handleAddDriver = () => {
-    setEditingDriver(null); // clear any data for a fresh form
+    setEditingDriver(null);
     setOpenForm(true);
   };
 
@@ -44,40 +57,76 @@ function DriverList({
   };
 
   return (
-    <div className="h-full w-[30%] bg-card p-3 shadow-sm">
-      <div className="flex flex-row-reverse w-full mb-2">
-        <Button className="text-sm! p-2! rounded-sm!" onClick={handleAddDriver}>
-          Add Driver
-        </Button>
-      </div>
-      <div className="flex items-center justify-between gap-2 mb-3">
-        <div className="relative w-[90%] flex items-center gap-2">
-          <Search className="absolute left-2 top-2.4 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search user..."
-            className="pl-8 border-gray-300 rounded-sm text-xs! h-8"
-            //   onChange={handleSearch}
-          />
+    <div className="w-[320px] lg:w-[350px] bg-white border-r border-slate-200 flex flex-col shrink-0 h-full z-10 shadow-[4px_0_24px_-12px_rgba(0,0,0,0.05)]">
+      {/* --- SEARCH & ACTIONS HEADER --- */}
+      <div className="p-4 border-b border-slate-100 shrink-0 bg-slate-50/50">
+        <div className="flex items-center justify-between mb-3">
+          <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+            Driver Roster
+          </span>
+          <Button
+            size="sm"
+            className="h-7 text-[10px] bg-blue-600 hover:bg-blue-700 text-white shadow-sm px-2.5 rounded-md"
+            onClick={handleAddDriver}
+          >
+            <Plus className="w-3.5 h-3.5 mr-1" /> Add Driver
+          </Button>
         </div>
-        <Button
-          variant="outline"
-          className="bg-transparent! rounded-sm!"
-          size={"icon-sm"}
-        >
-          <Funnel className="text-foreground" />
-        </Button>
+
+        <div className="flex items-center gap-2">
+          <div className="relative flex-1">
+            <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-slate-400" />
+            <Input
+              placeholder="Search name or ID..."
+              className="pl-8 h-8 text-xs bg-white border-slate-200 focus-visible:ring-1"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
+          <Button
+            variant="outline"
+            size="icon"
+            className="h-8 w-8 bg-white border-slate-200 text-slate-700 shrink-0"
+          >
+            <Filter className="h-3.5 w-3.5" />
+          </Button>
+        </div>
       </div>
-      <ScrollArea className="h-[85%] p-1">
-        {drivers?.map((driver) => (
-          <DriverCard
-            driver={driver}
-            key={driver.driver_id}
-            onClick={() => onClick(driver)}
-            onEdit={() => handleEditDriver(driver)}
-            isActive={selectedDriver?.driver_id === driver.driver_id}
-          />
-        ))}
+
+      {/* --- SCROLLABLE LIST --- */}
+      <ScrollArea className="flex-1 min-h-0 p-3">
+        {isLoading ? (
+          <div className="flex flex-col items-center justify-center py-10 text-slate-400 gap-2">
+            <Loader2 className="w-5 h-5 animate-spin text-blue-600" />
+            <span className="text-xs font-medium">Loading drivers...</span>
+          </div>
+        ) : filteredDrivers.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-12 text-center border border-dashed border-slate-200 rounded-md mt-2">
+            <p className="text-xs text-slate-500 font-semibold">
+              No drivers found.
+            </p>
+            {searchQuery && (
+              <p className="text-[10px] text-slate-400 mt-1">
+                Adjust your search query.
+              </p>
+            )}
+          </div>
+        ) : (
+          <div className="flex flex-col gap-2">
+            {filteredDrivers.map((driver) => (
+              <DriverCard
+                key={driver.driver_id}
+                driver={driver}
+                onClick={() => onClick(driver)}
+                onEdit={() => handleEditDriver(driver)}
+                isActive={selectedDriver?.driver_id === driver.driver_id}
+              />
+            ))}
+          </div>
+        )}
       </ScrollArea>
+
+      {/* --- MODAL --- */}
       <DriverForm
         open={openForm}
         onOpenChange={setOpenForm}
@@ -86,5 +135,3 @@ function DriverList({
     </div>
   );
 }
-
-export default DriverList;

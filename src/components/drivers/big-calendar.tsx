@@ -19,7 +19,7 @@ import {
   isWithinInterval,
   intervalToDuration,
 } from "date-fns";
-import { Car, Clock, MapPin, CalendarDays } from "lucide-react";
+import { Clock, MapPin, CalendarDays } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
@@ -86,95 +86,111 @@ export default function DriverSchedule() {
   };
 
   return (
-    <div className="p-3 border rounded-xl shadow-sm bg-card w-fit h-full flex flex-col">
-      <div className="flex items-center gap-2 mb-2 px-1 shrink-0">
-        <CalendarDays className="w-4 h-4 text-primary" />
-        <h3 className="font-semibold text-sm">Driver Schedule</h3>
-      </div>
-
+    <div className="w-full h-full flex flex-col bg-white rounded-md">
       <Calendar
         mode="single"
         selected={date}
         onSelect={setDate}
-        className="p-0"
+        className="w-full h-full p-0 flex flex-col"
         classNames={{
-          month: "space-y-1",
-          caption: "flex justify-center pt-1 relative items-center mb-1",
-          caption_label: "text-sm font-bold",
-          nav_button: "h-6 w-6 p-0 hover:opacity-100",
+          months: "flex flex-col flex-1 h-full w-full",
+          month: "flex flex-col flex-1 h-full w-full",
+          caption:
+            "flex justify-between pt-1 relative items-center mb-3 px-2 shrink-0",
+          caption_label: "text-sm font-bold text-slate-800",
+          nav: "space-x-1 flex items-center",
+          nav_button:
+            "h-7 w-7 bg-transparent p-0 opacity-50 hover:opacity-100 border border-slate-200 rounded-md flex items-center justify-center text-slate-600 hover:bg-slate-50",
+
+          // --- FLEXBOX OVERRIDES FOR THE TABLE ---
+          table: "w-full h-full flex flex-col flex-1",
+          head: "w-full shrink-0 flex",
+          head_row: "flex w-full mb-2",
           head_cell:
-            "text-muted-foreground rounded-md w-9 font-normal text-[0.75rem]",
-          // NOTE: We manually apply cell sizing in the custom component below
-          cell: "p-0 relative focus-within:relative focus-within:z-20 text-center",
-          day: "h-9 w-9 p-0 font-normal aria-selected:opacity-100 text-xs",
+            "text-slate-500 font-bold text-[10px] uppercase tracking-wider flex-1 text-center",
+          tbody: "flex flex-col flex-1 w-full",
+          row: "flex w-full flex-1 border-t border-slate-100",
+          cell: "flex-1 relative p-0 text-center border-r border-slate-100 last:border-r-0 flex flex-col items-stretch overflow-hidden focus-within:relative focus-within:z-20",
+          day: "w-full h-full p-0 font-normal aria-selected:opacity-100",
         }}
         components={{
           Day: (props: any) => {
             const currentDay = props.day.date || props.date;
 
-            // FIX: Ensure empty days are wrapped in <td> to prevent hydration errors
-            if (!currentDay) return <td className="h-9 w-9 p-0" />;
+            // Empty cells must also flex to keep the grid aligned
+            if (!currentDay)
+              return (
+                <td className="flex-1 w-full h-full p-0 bg-slate-50/30 border-r border-slate-100 last:border-r-0" />
+              );
 
             const dayBookings = getBookingsForDay(currentDay);
             const isBooked = dayBookings.length > 0;
             const isTurnover = dayBookings.length > 1;
 
-            let shapeClass = "rounded-none";
-            let colorClass = "bg-primary text-primary-foreground";
-
-            if (isTurnover) {
-              colorClass = "bg-slate-500 text-white";
-            } else if (isBooked) {
-              const b = dayBookings[0];
-              const isStart = isSameDay(currentDay, b.start);
-              const isEnd = isSameDay(currentDay, b.end);
-              const isSingleDay = isStart && isEnd;
-
-              if (isSingleDay) shapeClass = "rounded-full";
-              else if (isStart) shapeClass = "rounded-l-full";
-              else if (isEnd) shapeClass = "rounded-r-full";
-            }
-
             const { day, modifiers, ...buttonProps } = props;
 
             return (
-              // FIX: Wrapped everything in a <td> tag
-              <td className="h-9 w-9 p-0 relative focus-within:relative focus-within:z-20 text-center">
+              <td className="flex-1 flex flex-col w-full h-full p-0 relative focus-within:relative focus-within:z-20 border-r border-slate-100 last:border-r-0">
                 <Popover>
                   <PopoverTrigger asChild>
                     <button
                       {...buttonProps}
                       className={cn(
-                        "h-9 w-9 flex items-center justify-center text-xs transition-all relative z-10",
-                        !isBooked &&
-                          "hover:bg-muted rounded-full text-foreground",
-                        isBooked && colorClass,
-                        isBooked && shapeClass,
-                        props.selected && !isBooked && "ring-2 ring-primary",
+                        "w-full h-full flex-1 flex flex-col items-start p-1.5 gap-1 transition-colors outline-none hover:bg-slate-50 overflow-hidden",
+                        props.selected &&
+                          "bg-slate-50 ring-1 ring-inset ring-slate-300",
                       )}
                       onClick={(e) => {
                         e.stopPropagation();
-                        // If you need the calendar to select the date too:
                         if (buttonProps.onClick) buttonProps.onClick(e);
                       }}
                     >
-                      {format(currentDay, "d")}
+                      {/* Date Number */}
+                      <span
+                        className={cn(
+                          "text-[11px] font-semibold w-5 h-5 flex items-center justify-center rounded-[4px] shrink-0",
+                          props.selected
+                            ? "bg-slate-800 text-white"
+                            : "text-slate-600",
+                          isSameDay(currentDay, new Date()) &&
+                            !props.selected &&
+                            "bg-blue-100 text-blue-700",
+                        )}
+                      >
+                        {format(currentDay, "d")}
+                      </span>
+
+                      {/* Event Bar */}
+                      {isBooked && (
+                        <div
+                          className={cn(
+                            "w-full text-left px-1.5 py-0.5 rounded-[3px] text-[9px] font-bold uppercase tracking-wider truncate border mt-auto",
+                            isTurnover
+                              ? "bg-amber-50 text-amber-700 border-amber-200"
+                              : dayBookings[0].status === "Confirmed"
+                                ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                                : "bg-blue-50 text-blue-700 border-blue-200",
+                          )}
+                        >
+                          {isTurnover ? "Turnover" : dayBookings[0].car}
+                        </div>
+                      )}
                     </button>
                   </PopoverTrigger>
 
                   {isBooked ? (
                     <PopoverContent
-                      className="w-80 p-0 shadow-xl"
-                      align="center"
+                      className="w-80 p-0 shadow-xl border-slate-200 rounded-lg overflow-hidden"
+                      align="start"
                     >
-                      <div className="bg-muted/40 p-3 border-b flex items-center justify-between">
-                        <span className="font-bold text-sm">
-                          {format(currentDay, "MMMM d")}
+                      <div className="bg-slate-50 p-3 border-b border-slate-100 flex items-center justify-between">
+                        <span className="font-bold text-sm text-slate-800">
+                          {format(currentDay, "MMMM d, yyyy")}
                         </span>
                         {isTurnover && (
                           <Badge
-                            variant="destructive"
-                            className="text-[10px] h-5 px-1.5"
+                            variant="outline"
+                            className="text-[9px] uppercase tracking-wider h-5 px-1.5 bg-amber-50 text-amber-700 border-amber-200 font-bold"
                           >
                             Turnover Day
                           </Badge>
@@ -191,30 +207,31 @@ export default function DriverSchedule() {
                             <AccordionItem
                               value={booking.id}
                               key={booking.id}
-                              className="border-b last:border-0"
+                              className="border-b border-slate-100 last:border-0"
                             >
-                              <AccordionTrigger className="px-4 py-3 hover:bg-muted/50 hover:no-underline">
-                                <div className="flex flex-col items-start gap-1 text-left">
-                                  <div className="flex items-center gap-2">
-                                    <span className="font-bold text-sm">
+                              <AccordionTrigger className="px-4 py-3 hover:bg-slate-50 hover:no-underline">
+                                <div className="flex flex-col items-start gap-1 text-left w-full pr-2">
+                                  <div className="flex items-center justify-between w-full">
+                                    <span className="font-bold text-xs text-slate-800">
                                       {booking.car}
                                     </span>
                                     <Badge
                                       variant="outline"
-                                      className="text-[10px] h-5 font-normal px-1.5"
+                                      className="text-[9px] uppercase tracking-wider h-4 px-1.5 text-slate-500 border-slate-200 bg-white"
                                     >
-                                      {duration} Trip
+                                      {duration}
                                     </Badge>
                                   </div>
-                                  <div className="flex items-center gap-2 text-xs text-muted-foreground font-normal">
-                                    <span>{booking.plate}</span>
+                                  <div className="flex items-center gap-2 text-[10px] text-slate-500 font-medium mt-0.5">
+                                    <span className="font-mono bg-slate-100 px-1 rounded border border-slate-200">
+                                      {booking.plate}
+                                    </span>
                                     <span>•</span>
                                     <span
                                       className={cn(
-                                        "font-medium",
                                         booking.status === "Confirmed"
-                                          ? "text-green-600"
-                                          : "text-amber-600",
+                                          ? "text-emerald-600"
+                                          : "text-blue-600",
                                       )}
                                     >
                                       {booking.status}
@@ -222,37 +239,39 @@ export default function DriverSchedule() {
                                   </div>
                                 </div>
                               </AccordionTrigger>
-                              <AccordionContent className="px-4 pb-4 pt-0 bg-muted/10">
+                              <AccordionContent className="px-4 pb-4 pt-0">
                                 <div className="space-y-3 pt-2">
-                                  <div className="flex items-start gap-3">
-                                    <Clock className="w-4 h-4 text-primary mt-0.5" />
-                                    <div className="text-xs space-y-1">
-                                      <div className="flex justify-between w-full gap-4">
-                                        <span className="text-muted-foreground">
-                                          Start:
+                                  <div className="flex items-start gap-2">
+                                    <Clock className="w-3.5 h-3.5 text-slate-400 mt-0.5" />
+                                    <div className="text-[10px] space-y-1.5 w-full">
+                                      <div className="flex items-center gap-2">
+                                        <span className="font-bold text-slate-500 uppercase tracking-wider w-10">
+                                          Start
                                         </span>
-                                        <span className="font-medium">
+                                        <span className="font-medium text-slate-800 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">
                                           {format(
                                             booking.start,
                                             "MMM d, h:mm a",
                                           )}
                                         </span>
                                       </div>
-                                      <div className="flex justify-between w-full gap-4">
-                                        <span className="text-muted-foreground">
-                                          End:
+                                      <div className="flex items-center gap-2">
+                                        <span className="font-bold text-slate-500 uppercase tracking-wider w-10">
+                                          End
                                         </span>
-                                        <span className="font-medium">
+                                        <span className="font-medium text-slate-800 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">
                                           {format(booking.end, "MMM d, h:mm a")}
                                         </span>
                                       </div>
                                     </div>
                                   </div>
-                                  <div className="flex items-start gap-3">
-                                    <MapPin className="w-4 h-4 text-primary mt-0.5" />
-                                    <div className="text-xs">
-                                      <p className="font-medium">Destination</p>
-                                      <p className="text-muted-foreground">
+                                  <div className="flex items-start gap-2 pt-2 border-t border-slate-100">
+                                    <MapPin className="w-3.5 h-3.5 text-slate-400 mt-0.5" />
+                                    <div className="text-[10px]">
+                                      <p className="font-bold text-slate-500 uppercase tracking-wider mb-0.5">
+                                        Destination
+                                      </p>
+                                      <p className="font-medium text-slate-800">
                                         {booking.location}
                                       </p>
                                     </div>
@@ -265,8 +284,8 @@ export default function DriverSchedule() {
                       </Accordion>
                     </PopoverContent>
                   ) : (
-                    <PopoverContent className="w-auto p-2 text-xs text-muted-foreground">
-                      <p>No schedule for {format(currentDay, "MMM d")}</p>
+                    <PopoverContent className="w-auto p-3 text-[10px] font-medium text-slate-500 border-slate-200 shadow-md">
+                      <p>No schedule for {format(currentDay, "MMMM d")}</p>
                     </PopoverContent>
                   )}
                 </Popover>
