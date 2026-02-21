@@ -1,6 +1,5 @@
 "use client";
 
-import { UserType } from "@/lib/schemas/user";
 import { useState } from "react";
 import { managePartner } from "@/actions/manage-partner";
 import { Button } from "@/components/ui/button";
@@ -20,32 +19,36 @@ import {
   CalendarDays,
   Briefcase,
   Percent,
+  Loader2,
 } from "lucide-react";
-import { Input } from "../ui/input";
-import { Textarea } from "../ui/textarea";
-import { Switch } from "../ui/switch";
-import {
-  Field,
-  FieldContent,
-  FieldDescription,
-  FieldError,
-  FieldLabel,
-} from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
 
 import { useQueryClient } from "@tanstack/react-query";
 import { useUnassignedCarOwners } from "../../../hooks/use-fleetPartners";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 
 // Helper to sanitize/default data
 function sanitizeData(props: any) {
+  if (!props)
+    return {
+      isAdd: true,
+      revenue_share_percentage: 70,
+      active_status: false,
+      verification_status: "pending",
+    };
+
   const { car_owner_id, full_name, ...rest } = props;
-  // Clone the object using spread syntax to avoid "Object is not extensible" error
   const data = { ...rest };
+
   data.business_name = data.business_name || "";
   data.bank_name = data.bank_name || "";
   data.bank_account_name = data.bank_account_name || "";
   data.bank_account_number = data.bank_account_number || "";
   data.owner_notes = data.owner_notes || "";
+
   if (data.contract_expiry_date) {
     data.contract_expiry_date = new Date(data.contract_expiry_date)
       .toISOString()
@@ -68,11 +71,7 @@ interface PartnerFormProps {
   closeDialog: () => void;
 }
 
-export function PartnerForm({
-  data: rawData,
-
-  closeDialog,
-}: PartnerFormProps) {
+export function PartnerForm({ data: rawData, closeDialog }: PartnerFormProps) {
   const initialData = sanitizeData(rawData);
   const isAdd = !!initialData.isAdd;
 
@@ -89,8 +88,6 @@ export function PartnerForm({
 
   const queryClient = useQueryClient();
 
-  console.log("form data:", formData);
-
   const handleChange = (e: any) => {
     const { name, value, type, checked } = e.target;
     const finalValue = type === "checkbox" ? checked : value;
@@ -105,13 +102,11 @@ export function PartnerForm({
     setFormData((prev: any) => ({ ...prev, [name]: value }));
   };
 
-  // 4. Custom Save Handler
   const handleSave = async () => {
     setIsSaving(true);
-    setFieldErrors(null); // Clear previous errors
+    setFieldErrors(null);
     setGlobalError(null);
 
-    // Create FormData manually
     const submitData = new FormData();
     Object.keys(formData).forEach((key) => {
       const val = formData[key];
@@ -124,22 +119,20 @@ export function PartnerForm({
       }
     });
 
-    console.log("Sumbitted data", submitData);
-
     const promise = managePartner({ message: "", success: false }, submitData);
 
     toast.promise(promise, {
-      loading: "Saving fleet partner...",
+      loading: isAdd ? "Saving fleet partner..." : "Updating partner...",
       success: (result) => {
         if (result.success) {
           queryClient.invalidateQueries({ queryKey: ["fleet-partners"] });
           queryClient.invalidateQueries({ queryKey: ["unassigned-owners"] });
           closeDialog();
-          return `${formData.business_name || "Partner"} added successfully!`;
+          return `${formData.business_name || "Partner"} saved successfully!`;
         } else {
-          // This part handles "Logical" errors (like validation)
           setIsSaving(false);
           if (result.errors) setFieldErrors(result.errors);
+          if (result.message) setGlobalError(result.message);
           throw new Error(result.message || "Failed to save");
         }
       },
@@ -150,234 +143,317 @@ export function PartnerForm({
     });
   };
 
-  // Styles
-  const inputClass =
-    "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50";
-  const labelClass =
-    "text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70";
-  const ErrorMsg = ({ field }: { field: string }) => {
-    if (!fieldErrors?.[field]) return null;
-    return <p className="text-red-500 text-xs mt-1">{fieldErrors[field][0]}</p>;
-  };
-
   return (
-    <div className="w-137.5 bg-card">
-      <Tabs defaultValue="profile" className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="profile">Partner Profile</TabsTrigger>
-          <TabsTrigger value="financials">Financials & Legal</TabsTrigger>
-        </TabsList>
+    <div className="flex flex-col h-full bg-white relative">
+      <Tabs defaultValue="profile" className="flex flex-col flex-1 min-h-0">
+        {/* TAB NAVIGATION */}
+        <div className="px-5 pt-3 pb-3 border-b border-slate-100 bg-white shrink-0">
+          <TabsList className="h-8 bg-slate-100 p-0.5 rounded-md border border-slate-200 inline-flex w-full">
+            <TabsTrigger
+              value="profile"
+              className="flex-1 h-6 text-[11px] font-medium rounded-[4px] data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-slate-900 text-slate-500 transition-all"
+            >
+              Partner Profile
+            </TabsTrigger>
+            <TabsTrigger
+              value="financials"
+              className="flex-1 h-6 text-[11px] font-medium rounded-[4px] data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-slate-900 text-slate-500 transition-all"
+            >
+              Financials & Legal
+            </TabsTrigger>
+          </TabsList>
+        </div>
 
-        {/* --- TAB 1: PROFILE --- */}
-        <TabsContent value="profile" className="space-y-4 py-4">
-          <Field>
-            <FieldLabel>Link Account</FieldLabel>
-            <FieldContent>
+        {/* SCROLLABLE TAB CONTENT */}
+        <div className="flex-1 overflow-y-auto p-5 bg-slate-50/50 pb-20">
+          {/* --- TAB 1: PROFILE --- */}
+          <TabsContent value="profile" className="m-0 space-y-4 outline-none">
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
+                Link Account
+              </label>
               {isAdd ? (
                 <Select
-                  value={formData.user_id} // This links the state back to the UI
+                  value={formData.user_id}
                   onValueChange={(v) => handleSelectChange("user_id", v)}
                 >
-                  <SelectTrigger className="w-full">
+                  <SelectTrigger className="h-9 text-xs bg-white border-slate-200">
                     <SelectValue placeholder="Select a user applicant" />
                   </SelectTrigger>
-                  <SelectGroup>
-                    <SelectContent position="popper" className="z-999999">
-                      {availableUsers.length > 0 ? (
-                        availableUsers.map((user) => (
-                          <SelectItem key={user.user_id} value={user.user_id}>
-                            {user.full_name} - {user.email}
-                          </SelectItem>
-                        ))
-                      ) : (
-                        <p className="p-2 text-xs text-muted-foreground text-center">
-                          No applicants found
-                        </p>
-                      )}
-                    </SelectContent>
-                  </SelectGroup>
+                  <SelectContent className="z-[9999]">
+                    {availableUsers.length > 0 ? (
+                      availableUsers.map((user: any) => (
+                        <SelectItem
+                          key={user.user_id}
+                          value={user.user_id}
+                          className="text-xs"
+                        >
+                          {user.full_name} - {user.email}
+                        </SelectItem>
+                      ))
+                    ) : (
+                      <p className="p-2 text-xs text-muted-foreground text-center">
+                        No applicants found
+                      </p>
+                    )}
+                  </SelectContent>
                 </Select>
               ) : (
-                <div className="flex items-center gap-2 p-2 bg-muted rounded-md border border-dashed">
-                  <User className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm font-medium">
-                    {formData.full_name}
+                <div className="flex items-center gap-2 p-2 bg-slate-100/50 rounded-md border border-slate-200 border-dashed h-9">
+                  <User className="h-3.5 w-3.5 text-slate-400" />
+                  <span className="text-xs font-medium text-slate-700">
+                    {formData.users?.full_name || "Linked User"}
                   </span>
                 </div>
               )}
-            </FieldContent>
-            <FieldDescription>
-              Select the user who applied to be a partner.
-            </FieldDescription>
-            <FieldError>{fieldErrors?.user_id?.[0]}</FieldError>
-          </Field>
+              {fieldErrors?.user_id && (
+                <p className="text-[10px] text-red-500">
+                  {fieldErrors.user_id[0]}
+                </p>
+              )}
+            </div>
 
-          <Field>
-            <FieldLabel>Business Name</FieldLabel>
-            <FieldContent>
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
+                Business Name
+              </label>
               <div className="relative">
-                <Briefcase className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Briefcase className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-slate-400" />
                 <Input
                   name="business_name"
                   value={formData.business_name}
                   onChange={handleChange}
-                  className="pl-9"
+                  className="pl-8 h-9 text-xs bg-white border-slate-200"
                   placeholder="Enter official business name"
                 />
               </div>
-            </FieldContent>
-            <FieldError>{fieldErrors?.business_name?.[0]}</FieldError>
-          </Field>
-
-          <div className="grid grid-cols-2 gap-4">
-            <Field>
-              <FieldLabel>Verification</FieldLabel>
-              <Select
-                value={formData.verification_status}
-                onValueChange={(v) =>
-                  handleSelectChange("verification_status", v)
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="z-999999">
-                  <SelectItem value="pending">Pending</SelectItem>
-                  <SelectItem value="verified">Verified</SelectItem>
-                  <SelectItem value="rejected">Rejected</SelectItem>
-                </SelectContent>
-              </Select>
-              <FieldError>{fieldErrors?.verification_status?.[0]}</FieldError>
-            </Field>
-
-            <Field className="flex flex-col justify-end pb-2">
-              <div className="flex items-center justify-between space-x-2 rounded-md border p-2 h-10">
-                <FieldLabel className="mb-0">Active Status</FieldLabel>
-                <Switch
-                  checked={formData.active_status}
-                  onCheckedChange={(checked) =>
-                    setFormData((prev: any) => ({
-                      ...prev,
-                      active_status: checked,
-                    }))
-                  }
-                />
-              </div>
-            </Field>
-          </div>
-
-          <Field>
-            <FieldLabel>Internal Notes</FieldLabel>
-            <Textarea
-              name="owner_notes"
-              value={formData.owner_notes || ""}
-              onChange={handleChange}
-              placeholder="Private admin notes..."
-              className="resize-none h-20"
-            />
-            <FieldDescription>
-              Visible only to administrative staff.
-            </FieldDescription>
-          </Field>
-        </TabsContent>
-
-        {/* --- TAB 2: FINANCIALS --- */}
-        <TabsContent value="financials" className="space-y-4 py-4">
-          <Field>
-            <FieldLabel>Revenue Share (%)</FieldLabel>
-            <div className="relative">
-              <Percent className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                type="number"
-                name="revenue_share_percentage"
-                value={formData.revenue_share_percentage}
-                onChange={handleChange}
-                className="pl-9"
-                max={100}
-                min={0}
-              />
+              {fieldErrors?.business_name && (
+                <p className="text-[10px] text-red-500">
+                  {fieldErrors.business_name[0]}
+                </p>
+              )}
             </div>
-            <FieldDescription>
-              The percentage of revenue assigned to the partner.
-            </FieldDescription>
-            <FieldError>
-              {fieldErrors?.revenue_share_percentage?.[0]}
-            </FieldError>
-          </Field>
 
-          <div className="grid grid-cols-2 gap-4">
-            <Field>
-              <FieldLabel>Bank Name</FieldLabel>
-              <div className="relative">
-                <Landmark className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  name="bank_name"
-                  value={formData.bank_name || ""}
-                  onChange={handleChange}
-                  className="pl-9"
-                  placeholder="e.g. BDO"
-                />
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
+                  Verification
+                </label>
+                <Select
+                  value={formData.verification_status}
+                  onValueChange={(v) =>
+                    handleSelectChange("verification_status", v)
+                  }
+                >
+                  <SelectTrigger className="h-9 text-xs bg-white border-slate-200">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="z-[9999]">
+                    <SelectItem value="pending" className="text-xs">
+                      Pending
+                    </SelectItem>
+                    <SelectItem
+                      value="verified"
+                      className="text-xs text-emerald-600"
+                    >
+                      Verified
+                    </SelectItem>
+                    <SelectItem
+                      value="rejected"
+                      className="text-xs text-red-600"
+                    >
+                      Rejected
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+                {fieldErrors?.verification_status && (
+                  <p className="text-[10px] text-red-500">
+                    {fieldErrors.verification_status[0]}
+                  </p>
+                )}
               </div>
-              <FieldError>{fieldErrors?.bank_name?.[0]}</FieldError>
-            </Field>
-            <Field>
-              <FieldLabel>Account Holder</FieldLabel>
-              <Input
-                name="bank_account_name"
-                value={formData.bank_account_name || ""}
+
+              <div className="space-y-1.5 flex flex-col justify-end">
+                <div className="flex items-center justify-between space-x-2 rounded-md border border-slate-200 bg-white p-2 h-9 shadow-sm">
+                  <label className="text-[10px] font-bold text-slate-600 uppercase tracking-wider block">
+                    Active Status
+                  </label>
+                  <Switch
+                    checked={formData.active_status}
+                    onCheckedChange={(checked) =>
+                      setFormData((prev: any) => ({
+                        ...prev,
+                        active_status: checked,
+                      }))
+                    }
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
+                Internal Notes
+              </label>
+              <Textarea
+                name="owner_notes"
+                value={formData.owner_notes || ""}
                 onChange={handleChange}
-                placeholder="Account Name"
+                placeholder="Private admin notes..."
+                className="resize-none min-h-[80px] text-xs bg-white border-slate-200"
               />
-              <FieldError>{fieldErrors?.bank_account_name?.[0]}</FieldError>
-            </Field>
-          </div>
+              <p className="text-[9px] text-slate-400 mt-1">
+                Visible only to administrative staff.
+              </p>
+            </div>
+          </TabsContent>
 
-          <div className="grid grid-cols-2 gap-4">
-            <Field>
-              <FieldLabel>Account Number</FieldLabel>
-              <div className="relative">
-                <CreditCard className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+          {/* --- TAB 2: FINANCIALS --- */}
+          <TabsContent
+            value="financials"
+            className="m-0 space-y-4 outline-none"
+          >
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
+                Revenue Share (%)
+              </label>
+              <div className="relative w-1/2">
+                <Percent className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-slate-400" />
                 <Input
-                  name="bank_account_number"
-                  value={formData.bank_account_number || ""}
+                  type="number"
+                  name="revenue_share_percentage"
+                  value={formData.revenue_share_percentage}
                   onChange={handleChange}
-                  className="pl-9"
+                  className="pl-8 h-9 text-xs bg-white border-slate-200"
+                  max={100}
+                  min={0}
                 />
               </div>
-              <FieldError>{fieldErrors?.bank_account_number?.[0]}</FieldError>
-            </Field>
-            <Field>
-              <FieldLabel>Contract Expiry</FieldLabel>
-              <div className="relative">
-                <CalendarDays className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  type="date"
-                  name="contract_expiry_date"
-                  value={formData.contract_expiry_date || ""}
-                  onChange={handleChange}
-                  className="pl-9"
-                />
+              <p className="text-[9px] text-slate-400 mt-1">
+                The percentage of revenue assigned to the partner.
+              </p>
+              {fieldErrors?.revenue_share_percentage && (
+                <p className="text-[10px] text-red-500">
+                  {fieldErrors.revenue_share_percentage[0]}
+                </p>
+              )}
+            </div>
+
+            <div className="border-t border-slate-200 my-2 pt-2" />
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
+                  Bank Name
+                </label>
+                <div className="relative">
+                  <Landmark className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-slate-400" />
+                  <Input
+                    name="bank_name"
+                    value={formData.bank_name || ""}
+                    onChange={handleChange}
+                    className="pl-8 h-9 text-xs bg-white border-slate-200"
+                    placeholder="e.g. BDO"
+                  />
+                </div>
+                {fieldErrors?.bank_name && (
+                  <p className="text-[10px] text-red-500">
+                    {fieldErrors.bank_name[0]}
+                  </p>
+                )}
               </div>
-            </Field>
-          </div>
-        </TabsContent>
+
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
+                  Account Holder
+                </label>
+                <div className="relative">
+                  <User className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-slate-400" />
+                  <Input
+                    name="bank_account_name"
+                    value={formData.bank_account_name || ""}
+                    onChange={handleChange}
+                    className="pl-8 h-9 text-xs bg-white border-slate-200"
+                    placeholder="Account Name"
+                  />
+                </div>
+                {fieldErrors?.bank_account_name && (
+                  <p className="text-[10px] text-red-500">
+                    {fieldErrors.bank_account_name[0]}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
+                  Account Number
+                </label>
+                <div className="relative">
+                  <CreditCard className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-slate-400" />
+                  <Input
+                    name="bank_account_number"
+                    value={formData.bank_account_number || ""}
+                    onChange={handleChange}
+                    className="pl-8 h-9 text-xs bg-white border-slate-200 font-mono"
+                    placeholder="XXXX-XXXX-XXXX"
+                  />
+                </div>
+                {fieldErrors?.bank_account_number && (
+                  <p className="text-[10px] text-red-500">
+                    {fieldErrors.bank_account_number[0]}
+                  </p>
+                )}
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
+                  Contract Expiry
+                </label>
+                <div className="relative">
+                  <CalendarDays className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-slate-400" />
+                  <Input
+                    type="date"
+                    name="contract_expiry_date"
+                    value={formData.contract_expiry_date || ""}
+                    onChange={handleChange}
+                    className="pl-8 h-9 text-xs bg-white border-slate-200"
+                  />
+                </div>
+              </div>
+            </div>
+          </TabsContent>
+        </div>
       </Tabs>
 
-      {/* Footer Actions */}
-      <div className="flex justify-between items-center mt-6 pt-4 border-t">
-        {globalError && (
-          <p className="text-xs text-red-500 font-medium">{globalError}</p>
-        )}
-        <div className="flex gap-2 ml-auto">
-          <Button variant="outline" onClick={closeDialog} disabled={isSaving}>
+      {/* --- FLOATING FOOTER ACTIONS --- */}
+      <div className="absolute bottom-0 left-0 right-0 px-5 py-3 border-t border-slate-200 bg-white flex items-center justify-between z-10">
+        <div className="text-[11px] text-red-600 font-medium line-clamp-1 pr-2">
+          {globalError}
+        </div>
+        <div className="flex gap-2 shrink-0">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={closeDialog}
+            disabled={isSaving}
+            className="h-8 text-xs bg-white text-slate-700 border-slate-200 hover:bg-slate-50 shadow-sm"
+          >
             Cancel
           </Button>
           <Button
+            size="sm"
             onClick={handleSave}
             disabled={isSaving}
-            className="bg-[#00ddd2] hover:bg-[#00c4ba] text-black border-none font-bold"
+            className="h-8 text-xs bg-slate-900 hover:bg-slate-800 text-white shadow-sm px-4"
           >
-            {isSaving ? "Saving..." : "Save Fleet Partner"}
+            {isSaving && <Loader2 className="w-3.5 h-3.5 mr-2 animate-spin" />}
+            {isSaving
+              ? "Saving..."
+              : isAdd
+                ? "Add Fleet Partner"
+                : "Save Changes"}
           </Button>
         </div>
       </div>

@@ -1,58 +1,52 @@
 "use client";
+
 import React from "react";
 import { FleetPartnerType } from "@/lib/schemas/car-owner";
+import { toTitleCase } from "@/actions/helper/format-text";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuShortcut,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { toTitleCase, toTitleCaseLine } from "@/actions/helper/format-text";
-import {
-  EllipsisVertical,
-  Trash2,
-  SquarePen,
-  FileSearchCorner,
-  History,
   Star,
-  UserRound,
   BadgePercent,
   Banknote,
   BookAlert,
   Activity,
+  Edit2,
+  Mail,
+  Phone,
+  Trash2,
+  MessageSquare,
+  MoreHorizontal,
+  ShieldCheck,
+  Calendar,
+  User,
 } from "lucide-react";
-import { Button } from "../ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
-  DatePickerComponent,
-  CalendarView,
-} from "@syncfusion/ej2-react-calendars";
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { cn } from "@/lib/utils";
 import { useFleetPartners } from "../../../hooks/use-fleetPartners";
 
-function PartnerHeader({
+export default function PartnerHeader({
   selectedPartner,
   onEdit,
 }: {
   selectedPartner: FleetPartnerType | null;
   onEdit: () => void;
 }) {
-  const start: CalendarView = "Year";
-  const depth: CalendarView = "Year";
-  const format: string = "MMMM y";
-  const dateValue: Date = new Date();
-
   const { deletePartner } = useFleetPartners();
 
-  const handleDeletePartner = async () => {
-    if (!selectedPartner) return;
-    const confirm = window.confirm(
-      `Are you sure you want to archive ${selectedPartner.business_name}?`,
-    );
+  if (!selectedPartner) return null;
 
-    if (confirm) {
+  const handleDelete = () => {
+    if (
+      confirm(
+        `Are you sure you want to archive ${selectedPartner.business_name}?`,
+      )
+    ) {
       deletePartner({
         carOwnerId: selectedPartner.car_owner_id,
         userId: selectedPartner.users.user_id,
@@ -61,158 +55,178 @@ function PartnerHeader({
   };
 
   return (
-    <div className="rounded-lg bg-card shadow-md p-3 px-4">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center justify-start gap-3">
-          <div className="flex flex-col items-start justify-center gap-1 border-r pr-6">
-            <div className="flex items-center gap-3">
-              <h3 className="text-2xl font-bold">
-                {toTitleCase(selectedPartner?.business_name || "New Partner")}
-              </h3>
-              <p className="border px-2 rounded-md text-sm uppercase font-medium bg-foreground/60 text-background ">
-                {selectedPartner?.verification_status}
-              </p>
-            </div>
-            <p className="text-xs text-foreground/80 bg-foreground/10 px-2 rounded-lg">
-              {selectedPartner?.car_owner_id}
-            </p>
+    <div className="flex flex-col gap-5 w-full">
+      {/* --- TOP SECTION: BRANDING & ACTIONS --- */}
+      <div className="flex items-start justify-between">
+        <div className="flex gap-4">
+          {/* Business Icon/Initials Placeholder */}
+          <div className="h-12 w-12 rounded-lg bg-slate-900 flex items-center justify-center text-white font-bold text-lg shrink-0 shadow-sm">
+            {selectedPartner.business_name?.charAt(0) || "P"}
           </div>
-          <h5 className="text-xs w-12 h-12 rounded-full bg-foreground/20 font-semibold text-foreground/80 flex flex-col items-center gap-1 border-r pr-3"></h5>
-          <div className="flex flex-col items-start justify-center gap-1 6">
-            <h5 className="flex items-center gap-1 ">
-              <Star className="text-amber-400 fill-amber-400 w-4 h-4" />
-              <span className="text-md font-semibold text-foreground/80">
-                {selectedPartner?.trust_score}
+          <div>
+            <h2 className="text-xl font-bold text-slate-900 leading-tight">
+              {toTitleCase(selectedPartner.business_name || "Unknown Partner")}
+            </h2>
+            <div className="flex items-center gap-2 mt-1">
+              <span className="text-[10px] font-mono text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">
+                ID: {selectedPartner.car_owner_id.slice(0, 8)}...
               </span>
-            </h5>
-            <div className="flex flex-col items-start justify-center gap-1">
-              <h5 className="text-xs font-semibold text-foreground/80 flex items-center gap-1">
-                <BadgePercent className="w-4 h-4" />
-                <span>{selectedPartner?.revenue_share_percentage}/30</span>
-              </h5>
+              <Badge
+                variant="outline"
+                className={cn(
+                  "text-[9px] uppercase tracking-wider h-5 px-2",
+                  selectedPartner.verification_status === "verified"
+                    ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                    : "bg-amber-50 text-amber-700 border-amber-200",
+                )}
+              >
+                {selectedPartner.verification_status || "Pending"}
+              </Badge>
             </div>
           </div>
         </div>
+
+        {/* Action Buttons */}
         <div className="flex items-center gap-2">
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-8 text-xs font-medium bg-white"
+            onClick={onEdit}
+          >
+            <Edit2 className="w-3.5 h-3.5 mr-1.5 text-slate-400" /> Edit
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-8 text-xs font-medium bg-white"
+          >
+            <MessageSquare className="w-3.5 h-3.5 mr-1.5 text-slate-400" />{" "}
+            Message
+          </Button>
           <DropdownMenu modal={false}>
             <DropdownMenuTrigger asChild>
               <Button
                 variant="outline"
-                className="bg-transparent! border-none! shadow-none! cursor-pointer"
-                size={"icon-sm"}
-                onPointerDown={(e) => e.stopPropagation()}
-                onClick={(e) => e.stopPropagation()}
+                size="icon"
+                className="h-8 w-8 bg-white"
               >
-                <EllipsisVertical className="text-foreground" />
+                <MoreHorizontal className="h-4 w-4 text-slate-500" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent
-              align="end"
-              className="w-40"
-              onCloseAutoFocus={(e) => e.preventDefault()}
-            >
-              <DropdownMenuGroup>
-                <DropdownMenuItem className="text-xs!">
-                  <div className="flex items-center gap-2">
-                    <FileSearchCorner className="size-4" />
-                    <p>View Details</p>
-                  </div>
-                </DropdownMenuItem>
-                <DropdownMenuItem className="text-xs!">
-                  <div className="flex items-center gap-2 ">
-                    <History className="size-4" />
-                    <p>Item History</p>
-                  </div>
-                </DropdownMenuItem>
-                <DropdownMenuItem className="text-xs!">
-                  <div className="flex items-center gap-2 ">
-                    <SquarePen className="size-4" />
-                    <p>Edit Fleet</p>
-                  </div>
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  className="text-xs!"
-                  onClick={handleDeletePartner}
-                >
-                  <div className="flex items-center gap-2 ">
-                    <Trash2 className="size-4" />
-                    <p>Delete User</p>
-                  </div>
-                </DropdownMenuItem>
-              </DropdownMenuGroup>
+            <DropdownMenuContent align="end" className="w-40">
+              <DropdownMenuItem className="text-xs text-slate-600">
+                <ShieldCheck className="w-3.5 h-3.5 mr-2" /> Verify Documents
+              </DropdownMenuItem>
+              <DropdownMenuItem className="text-xs text-slate-600">
+                <Calendar className="w-3.5 h-3.5 mr-2" /> Schedule Payout
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                className="text-xs text-red-600 focus:text-red-700 focus:bg-red-50"
+                onClick={handleDelete}
+              >
+                <Trash2 className="w-3.5 h-3.5 mr-2" /> Archive Partner
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
       </div>
 
-      <div className="flex flex-col justify-center items-end mt-3 border-t p-3 pb-3 gap-2">
-        <div className="flex items-center justify-between w-full">
-          <div className="flex items-center gap-2">
-            <div className="flex items-center gap-2 border-r-2 pr-2">
-              <div className="w-3 h-3 bg-green-400 rounded-full" />
-              <h6 className="font-semibold text-sm text-foreground">
-                On Rent:
-              </h6>
-              <p className="text-sm font-semibold text-foreground/80">5</p>
-            </div>
-            <div className="flex items-center gap-2 border-r-2 pr-2">
-              <div className="w-3 h-3 bg-orange-400 rounded-full" />
-              <h6 className="font-semibold text-sm text-foreground">
-                Idle/Garage:
-              </h6>
-              <p className="text-sm font-semibold text-foreground/80">2</p>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 bg-red-400 rounded-full" />
-              <h6 className="font-semibold text-sm text-foreground">
-                Maintenance:
-              </h6>
-              <p className="text-sm font-semibold text-foreground/80">1</p>
-            </div>
+      {/* --- INFO STRIP: CONTACT & KEY DATA --- */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl shrink-0">
+        <div className="space-y-0.5">
+          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
+            <User className="w-3 h-3" /> Representative
+          </p>
+          <p className="text-xs font-semibold text-slate-700 truncate">
+            {selectedPartner.users?.full_name}
+          </p>
+        </div>
+        <div className="space-y-0.5">
+          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
+            <Mail className="w-3 h-3" /> Email
+          </p>
+          <p className="text-xs font-semibold text-slate-700 truncate">
+            {selectedPartner.users?.email}
+          </p>
+        </div>
+        <div className="space-y-0.5">
+          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
+            <Phone className="w-3 h-3" /> Phone
+          </p>
+          <p className="text-xs font-semibold text-slate-700">
+            {selectedPartner.users?.phone_number || "N/A"}
+          </p>
+        </div>
+        <div className="flex gap-4 ml-auto border-l border-slate-200 pl-4">
+          <div className="text-center">
+            <p className="text-[9px] font-bold text-slate-400 uppercase">
+              Trust
+            </p>
+            <span className="text-xs font-bold text-slate-700 flex items-center justify-center gap-1">
+              <Star className="w-3 h-3 text-amber-400 fill-amber-400" />
+              {selectedPartner.users?.trust_score || "5.0"}
+            </span>
           </div>
-          <div className="w-[20%]">
-            <DatePickerComponent
-              value={dateValue}
-              start={start}
-              depth={depth}
-              format={format}
-            ></DatePickerComponent>
+          <div className="text-center">
+            <p className="text-[9px] font-bold text-slate-400 uppercase">
+              Share
+            </p>
+            <span className="text-xs font-bold text-slate-700 flex items-center justify-center gap-1">
+              <BadgePercent className="w-3 h-3 text-blue-500" />
+              {selectedPartner.revenue_share_percentage}%
+            </span>
           </div>
         </div>
-        <div className="grid grid-rows-1 grid-cols-3 gap-3 w-full">
-          <div className="border p-3 rounded-md flex items-center justify-between ">
-            <div className="text-foreground/90">
-              <h6 className="text-sm">Earnings</h6>
-              <p className="text-md font-semibold">P45,000</p>
-            </div>
-            <div className="border rounded-full p-3 bg-background">
-              <Banknote className="w-6 h-6" />
-            </div>
+      </div>
+
+      {/* --- KPI CARDS --- */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        {/* Earnings */}
+        <div className="border border-slate-200 rounded-lg p-3.5 flex items-center justify-between bg-white shadow-sm hover:border-slate-300 transition-colors">
+          <div>
+            <h6 className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">
+              Earnings (YTD)
+            </h6>
+            <p className="text-xl font-bold text-slate-900 leading-none">
+              ₱45,000.00
+            </p>
           </div>
-          <div className="border p-3 rounded-md flex items-center justify-between ">
-            <div className="text-foreground/90">
-              <h6 className="text-sm">Compliance</h6>
-              <div className="flex items-center gap-3 font-semibold text-md">
-                <p>All Good</p>
-              </div>
-            </div>
-            <div className="border rounded-full p-3 bg-background">
-              <BookAlert className="w-6 h-6" />
-            </div>
+          <div className="h-10 w-10 bg-emerald-50 rounded-full flex items-center justify-center border border-emerald-100">
+            <Banknote className="w-5 h-5 text-emerald-600" />
           </div>
-          <div className="border p-3 rounded-md flex items-center justify-between ">
-            <div className="text-foreground/90">
-              <h6 className="text-sm">Fleet Health</h6>
-              <p className="text-md font-semibold">6 Maintenance</p>
-            </div>
-            <div className="border rounded-full p-3 bg-background">
-              <Activity className="w-6 h-6" />
-            </div>
+        </div>
+
+        {/* Compliance */}
+        <div className="border border-slate-200 rounded-lg p-3.5 flex items-center justify-between bg-white shadow-sm hover:border-slate-300 transition-colors">
+          <div>
+            <h6 className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">
+              Compliance Status
+            </h6>
+            <p className="text-sm font-bold text-emerald-600 leading-none mt-1">
+              Verified / All Docs Valid
+            </p>
+          </div>
+          <div className="h-10 w-10 bg-blue-50 rounded-full flex items-center justify-center border border-blue-100">
+            <BookAlert className="w-5 h-5 text-blue-600" />
+          </div>
+        </div>
+
+        {/* Fleet Health */}
+        <div className="border border-slate-200 rounded-lg p-3.5 flex items-center justify-between bg-white shadow-sm hover:border-slate-300 transition-colors">
+          <div>
+            <h6 className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">
+              Fleet Availability
+            </h6>
+            <p className="text-sm font-bold text-amber-600 leading-none mt-1">
+              1 Unit in Maintenance
+            </p>
+          </div>
+          <div className="h-10 w-10 bg-amber-50 rounded-full flex items-center justify-center border border-amber-100">
+            <Activity className="w-5 h-5 text-amber-600" />
           </div>
         </div>
       </div>
     </div>
   );
 }
-
-export default PartnerHeader;

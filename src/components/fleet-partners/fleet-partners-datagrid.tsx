@@ -1,212 +1,206 @@
 "use client";
 
-import { useRef, forwardRef } from "react";
-import {
-  GridComponent,
-  ColumnsDirective,
-  ColumnDirective,
-  Inject,
-  Filter,
-  EditSettingsModel,
-  Toolbar,
-  Sort,
-  Page,
-  Edit,
-  Selection,
-  RecordClickEventArgs,
-  DialogEditEventArgs,
-} from "@syncfusion/ej2-react-grids";
-import { Browser } from "@syncfusion/ej2-base";
-import { PartnerForm } from "./partner-form";
+import { useState, forwardRef, useImperativeHandle } from "react";
 import Image from "next/image";
-import { Input } from "../ui/input";
-import { Button } from "../ui/button";
-import { Search, Plus, Funnel, Star } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Search, Plus, Filter, Star, Loader2, Car } from "lucide-react";
 import { FleetPartnerType } from "@/lib/schemas/car-owner";
-import { useFleetPartners } from "../../../hooks/use-fleetPartners"; // Verify this path matches your folder structure
+import { useFleetPartners } from "../../../hooks/use-fleetPartners";
+import { PartnerForm } from "./partner-form";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { cn } from "@/lib/utils";
+import { toTitleCase } from "@/actions/helper/format-text";
 
-// Wrap with forwardRef to allow the parent to trigger Edit
+// We expose a startEdit method so the parent can trigger the modal
+export interface FleetPartnersGridRef {
+  startEdit: () => void;
+}
+
 const FleetPartnersDataGrid = forwardRef<
-  GridComponent,
+  FleetPartnersGridRef,
   { onSelectPartner: (partner: FleetPartnerType | null) => void }
 >(({ onSelectPartner }, ref) => {
-  // Use React Query Hook
-  // Note: We don't need deletePartner here anymore since the delete button is in the Header
   const { data: partners, isLoading } = useFleetPartners();
 
-  // TEMPLATE: Syncfusion passes 'props' (the row data + isAdd flag) here
-  function dialogTemplate(props: any) {
-    // If car_owner_id is missing, it's a new record
-    const isAdd = !props.car_owner_id;
-    return (
-      <PartnerForm
-        data={{ ...props, isAdd }}
-        closeDialog={() => {
-          // @ts-ignore - ref.current might be null, safety check handled by logic
-          if (ref && "current" in ref && ref.current) {
-            ref.current.closeEdit();
-          }
-        }}
-      />
-    );
-  }
+  const [searchQuery, setSearchQuery] = useState("");
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [editingPartner, setEditingPartner] = useState<FleetPartnerType | null>(
+    null,
+  );
+  const [activePartnerId, setActivePartnerId] = useState<string | null>(null);
 
-  // ACTION COMPLETE: Handle Dialog Sizing/Header
-  function actionComplete(args: DialogEditEventArgs): void {
-    if (
-      (args.requestType === "beginEdit" || args.requestType === "add") &&
-      args.dialog
-    ) {
-      args.dialog.header =
-        args.requestType === "add"
-          ? "Add New Fleet Partner"
-          : "Edit Partner Details";
-      if (Browser.isDevice) {
-        args.dialog.height = window.innerHeight - 90 + "px";
-        (args.dialog as any).dataBind();
+  // Expose method to parent
+  useImperativeHandle(ref, () => ({
+    startEdit: () => {
+      if (activePartnerId) {
+        const partnerToEdit = partners?.find(
+          (p) => p.car_owner_id === activePartnerId,
+        );
+        if (partnerToEdit) {
+          setEditingPartner(partnerToEdit);
+          setIsFormOpen(true);
+        }
       }
-    }
-  }
+    },
+  }));
 
-  // We are using custom saving in the Form, so we just need to prevent default saving behavior
-  const actionBegin = async (args: any) => {
-    // No internal logic needed here anymore, handled by PartnerForm
-  };
-
-  const editSettings: EditSettingsModel = {
-    allowEditing: true,
-    allowAdding: true,
-    allowDeleting: true,
-    mode: "Dialog",
-    template: dialogTemplate,
-  };
-
-  function profileTemplate(props: FleetPartnerType) {
-    const user = props.users;
-    const profilePicture = user?.profile_picture_url
-      ? user.profile_picture_url
-      : `https://ui-avatars.com/api/?name=${user?.first_name}+${user?.last_name}&background=random&color=fff`;
-    return (
-      <div>
-        <div className="flex justify-start items-center gap-4">
-          <div className="relative w-14 h-14">
-            <Image
-              src={profilePicture}
-              alt="Profile"
-              fill
-              className="rounded-full object-cover border"
-              sizes="40px"
-            />
-          </div>
-          <div className="flex flex-col justify-center items-start">
-            <h3 className="text-[0.9rem] font-semibold p-0 truncate max-w-37.5">
-              {props.business_name || user?.full_name}
-            </h3>
-            <div className="flex items-center gap-2">
-              <Star className="text-amber-400 fill-amber-400 w-4 h-4" />
-              <h4 className="text-[0.8rem] font-medium text-foreground/50">
-                {user?.trust_score || 5.0}
-              </h4>
-              <div className="w-2 h-2 rounded-full bg-foreground/70"></div>
-              <h4 className="text-[0.8rem] font-medium text-foreground/60">
-                {props.total_units} cars
-              </h4>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  const handleRecordClick = (args: RecordClickEventArgs) => {
-    onSelectPartner(args.rowData as FleetPartnerType);
-  };
-
-  // The Add Function (Programmatic)
   const handleAdd = () => {
-    // @ts-ignore
-    if (ref && ref.current) {
-      // @ts-ignore
-      ref.current.addRecord();
-    }
+    setEditingPartner(null);
+    setIsFormOpen(true);
   };
 
-  const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
-    // @ts-ignore
-    if (ref && ref.current) {
-      // @ts-ignore
-      ref.current.search(e.target.value);
-    }
+  const handleSelect = (partner: FleetPartnerType) => {
+    setActivePartnerId(partner.car_owner_id);
+    onSelectPartner(partner);
   };
+
+  const filteredPartners =
+    partners?.filter((p) => {
+      const name = p.business_name || p.users?.full_name || "";
+      return name.toLowerCase().includes(searchQuery.toLowerCase());
+    }) || [];
 
   return (
     <>
-      <style>
-        {`
-          /* Hide footer ONLY for the custom Add/Edit form */
-          #fleetPartnersGrid_dialogEdit_wrapper.e-dialog .e-footer-content { 
-            display: none !important; 
-          }
-        `}
-      </style>
-      <div className="flex flex-row-reverse px-4 pt-4">
-        <Button
-          onClick={handleAdd}
-          className="bg-primary hover:bg-primary/60 shadow-md cursor-pointer h-7! text-[0.7rem] rounded-sm! p-1! px-2! mb-2 gap-1!"
-        >
-          <Plus className="text-secondary stroke-3" />
-          Fleet Partner
-        </Button>
-      </div>
-      <div className="flex items-center justify-between gap-2 mb-2 px-4">
-        <div className="relative w-[90%] flex items-center gap-2">
-          <Search className="absolute left-2 top-2.4 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search user..."
-            className="pl-8 border-gray-300 rounded-sm text-xs! h-8"
-            onChange={handleSearch}
-          />
+      <div className="flex flex-col h-full bg-white shrink-0">
+        {/* --- SEARCH & ACTIONS HEADER --- */}
+        <div className="p-4 border-b border-slate-100 shrink-0 bg-slate-50/50">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+              Partner Directory
+            </span>
+            <Button
+              size="sm"
+              className="h-7 text-[10px] bg-blue-600 hover:bg-blue-700 text-white shadow-sm px-2.5 rounded-md"
+              onClick={handleAdd}
+            >
+              <Plus className="w-3.5 h-3.5 mr-1" /> Add Partner
+            </Button>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <div className="relative flex-1">
+              <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-slate-400" />
+              <Input
+                placeholder="Search business or name..."
+                className="pl-8 h-8 text-xs bg-white border-slate-200 focus-visible:ring-1"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </div>
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-8 w-8 bg-white border-slate-200 text-slate-700 shrink-0"
+            >
+              <Filter className="h-3.5 w-3.5" />
+            </Button>
+          </div>
         </div>
-        <Button variant="outline" className="bg-transparent! " size={"icon-sm"}>
-          <Funnel className="text-foreground" />
-        </Button>
+
+        {/* --- SCROLLABLE LIST --- */}
+        <ScrollArea className="flex-1 min-h-0 p-3">
+          {isLoading ? (
+            <div className="flex flex-col items-center justify-center py-10 text-slate-400 gap-2">
+              <Loader2 className="w-5 h-5 animate-spin text-blue-600" />
+              <span className="text-xs font-medium">Loading partners...</span>
+            </div>
+          ) : filteredPartners.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12 text-center border border-dashed border-slate-200 rounded-md mt-2">
+              <p className="text-xs text-slate-500 font-semibold">
+                No partners found.
+              </p>
+              {searchQuery && (
+                <p className="text-[10px] text-slate-400 mt-1">
+                  Adjust your search query.
+                </p>
+              )}
+            </div>
+          ) : (
+            <div className="flex flex-col gap-2">
+              {filteredPartners.map((partner) => {
+                const isActive = activePartnerId === partner.car_owner_id;
+                const user = partner.users;
+                const displayName =
+                  partner.business_name || user?.full_name || "Unknown Partner";
+                const profilePicture =
+                  user?.profile_picture_url ||
+                  `https://ui-avatars.com/api/?name=${displayName.replace(" ", "+")}&background=random&color=fff`;
+
+                return (
+                  <div
+                    key={partner.car_owner_id}
+                    onClick={() => handleSelect(partner)}
+                    className={cn(
+                      "group flex items-start gap-3 p-2.5 rounded-md border cursor-pointer transition-all",
+                      isActive
+                        ? "border-blue-500 bg-blue-50/50 ring-1 ring-blue-500 shadow-sm"
+                        : "border-slate-200 bg-white hover:border-slate-300 hover:shadow-sm",
+                    )}
+                  >
+                    {/* Avatar */}
+                    <div className="relative w-10 h-10 shrink-0 rounded-full border border-slate-200 overflow-hidden bg-slate-50">
+                      <Image
+                        src={profilePicture}
+                        alt="Profile"
+                        fill
+                        className="object-cover"
+                        sizes="40px"
+                      />
+                    </div>
+
+                    {/* Info */}
+                    <div className="flex flex-col overflow-hidden flex-1 justify-center py-0.5">
+                      <h4 className="text-xs font-bold text-slate-800 truncate leading-tight">
+                        {toTitleCase(displayName)}
+                      </h4>
+                      <div className="flex items-center gap-2 mt-1">
+                        <div className="flex items-center text-[10px] font-medium text-slate-500">
+                          <Star className="w-3 h-3 text-amber-400 fill-amber-400 mr-1" />
+                          {user?.trust_score || "5.0"}
+                        </div>
+                        <div className="w-[1px] h-2.5 bg-slate-300" />
+                        <div className="flex items-center text-[10px] font-medium text-slate-500">
+                          <Car className="w-3 h-3 text-slate-400 mr-1" />
+                          {partner.total_units} cars
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </ScrollArea>
       </div>
-      <div className="h-[90%]">
-        <GridComponent
-          ref={ref} // 👈 Attach the forwarded ref here
-          id="fleetPartnersGrid"
-          dataSource={partners || []}
-          editSettings={editSettings}
-          allowSorting={true}
-          allowSelection={true}
-          selectionSettings={{ type: "Single", mode: "Row" }}
-          recordClick={handleRecordClick}
-          actionComplete={actionComplete}
-          actionBegin={actionBegin}
-          loadingIndicator={{ indicatorType: "Shimmer" }}
-          height="100%"
-        >
-          <ColumnsDirective>
-            <ColumnDirective
-              isPrimaryKey={true}
-              field="car_owner_id"
-              visible={false}
-            />
-            <ColumnDirective
-              field="users.full_name"
-              width="200"
-              template={profileTemplate}
-            />
-            <ColumnDirective
-              field="business_name"
-              headerText="Business"
-              width="150"
-              visible={false}
-            />
-          </ColumnsDirective>
-          <Inject services={[Sort, Filter, Edit, Selection, Page, Toolbar]} />
-        </GridComponent>
-      </div>
+
+      {/* --- FORM MODAL --- */}
+      <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
+        <DialogContent className="sm:max-w-[600px] h-[85vh] flex flex-col p-0 border-slate-200 shadow-xl rounded-lg overflow-hidden gap-0 bg-slate-50">
+          <DialogHeader className="p-4 border-b border-slate-200 bg-white shrink-0">
+            <DialogTitle className="text-base font-bold text-slate-800">
+              {editingPartner
+                ? "Edit Partner Details"
+                : "Add New Fleet Partner"}
+            </DialogTitle>
+          </DialogHeader>
+          <PartnerForm
+            data={
+              editingPartner
+                ? { ...editingPartner, isAdd: false }
+                : { isAdd: true }
+            }
+            closeDialog={() => setIsFormOpen(false)}
+          />
+        </DialogContent>
+      </Dialog>
     </>
   );
 });

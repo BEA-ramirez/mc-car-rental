@@ -14,113 +14,140 @@ import {
   DropdownMenuContent,
   DropdownMenuGroup,
   DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuShortcut,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-function FleetPartnersOverview() {
+export default function FleetPartnersOverview() {
   return (
-    <div className="px-3 pb-3 shadow-sm bg-card rounded-md w-full">
-      <div className="flex items-center justify-between mb-1">
-        <h2 className="text-[14px] font-semibold">Fleet Partners Overview</h2>
-        <div className="flex items-center justify-end gap-2 text-xs text-card-foreground/40 font-medium">
-          <p>Last Updated: </p>
-          <p>Today, 14:32 PM</p>
+    <div className="bg-white border-b border-slate-200 shrink-0">
+      {/* Slim Utility Bar */}
+      <div className="flex items-center justify-between px-6 py-2 border-b border-slate-100 bg-slate-50/50">
+        <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+          Live Metrics
+        </div>
+        <div className="flex items-center gap-3 text-[10px] text-slate-500 font-medium uppercase tracking-wider">
+          <p>
+            Updated:{" "}
+            <span className="text-slate-800 font-bold">Today, 14:32 PM</span>
+          </p>
+          <div className="h-3 w-[1px] bg-slate-300" /> {/* Separator */}
           <DropdownMenu modal={false}>
             <DropdownMenuTrigger asChild>
               <Button
-                variant="outline"
-                className="bg-transparent! border-none! shadow-none! cursor-pointer"
-                size={"icon-sm"}
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6 text-slate-400 hover:text-slate-800 hover:bg-slate-200 rounded"
               >
-                <EllipsisVertical className="text-card-foreground" />
+                <EllipsisVertical className="h-3.5 w-3.5" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-20">
+            <DropdownMenuContent
+              align="end"
+              className="w-40 rounded-lg shadow-md border-slate-200"
+            >
               <DropdownMenuGroup>
-                <DropdownMenuItem className="text-xs!">
-                  <div className="flex items-center gap-2">
-                    <RotateCw className="size-4" />
-                    <p>Refresh</p>
-                  </div>
+                <DropdownMenuItem className="text-xs cursor-pointer text-slate-600">
+                  <RotateCw className="w-3.5 h-3.5 mr-2" /> Refresh Data
                 </DropdownMenuItem>
-                <DropdownMenuItem className="text-xs!">
-                  <div className="flex items-center gap-2 ">
-                    <ScanSearch className="size-4" />
-                    <p>Review</p>
-                  </div>
+                <DropdownMenuItem className="text-xs cursor-pointer text-slate-600">
+                  <ScanSearch className="w-3.5 h-3.5 mr-2" /> Review Logs
                 </DropdownMenuItem>
               </DropdownMenuGroup>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
       </div>
-      <div className="grid grid-cols-5 grid-rows-1 w-full h-20">
-        <div className=" border-l-2 border-gray-300 pl-3 flex flex-col justify-between items-start">
-          <div className="flex items-center gap-1 text-card-foreground/70">
-            <Handshake className="w-4 h-4 stroke-2" />
-            <h4 className="text-[0.8rem] font-semibold">Total Partners</h4>
+
+      {/* Grid Row */}
+      <div className="grid grid-cols-2 md:grid-cols-5 divide-y md:divide-y-0 md:divide-x divide-slate-100 p-2">
+        {/* Stat 1 */}
+        <div className="flex flex-col justify-between p-4">
+          <div className="flex items-center gap-1.5 text-slate-500 mb-2">
+            <Handshake className="w-3.5 h-3.5" />
+            <h4 className="text-[10px] uppercase font-bold tracking-wider">
+              Total Partners
+            </h4>
           </div>
           <div>
-            <h5 className="font-bold text-[1.3rem]">24</h5>
-            <p className="text-card-foreground/50 text-[0.7rem] font-medium">
-              Active
+            <h5 className="font-bold text-2xl text-slate-800 leading-none mb-1">
+              24
+            </h5>
+            <p className="text-[10px] font-medium text-slate-400">
+              Active Providers
             </p>
           </div>
         </div>
-        <div className=" border-l-2 border-gray-300 pl-3 flex flex-col justify-between items-start">
-          <div className="flex items-center gap-1 text-card-foreground/70">
-            <Car className="w-4 h-4 stroke-2" />
-            <h4 className="text-[0.8rem] font-semibold">Total Fleet</h4>
+
+        {/* Stat 2 */}
+        <div className="flex flex-col justify-between p-4">
+          <div className="flex items-center gap-1.5 text-blue-600 mb-2">
+            <Car className="w-3.5 h-3.5" />
+            <h4 className="text-[10px] uppercase font-bold tracking-wider">
+              Total Fleet
+            </h4>
           </div>
           <div>
-            <h5 className="font-bold text-[1.3rem]">34</h5>
-            <p className="text-card-foreground/50 text-[0.7rem] font-medium">
+            <h5 className="font-bold text-2xl text-slate-800 leading-none mb-1">
+              34
+            </h5>
+            <p className="text-[10px] font-medium text-slate-400">
               Available: 30
             </p>
           </div>
         </div>
-        <div className=" border-l-2 border-gray-300 pl-3 flex flex-col justify-between items-start">
-          <div className="flex items-center gap-1 text-card-foreground/70">
-            <Key className="w-4 h-4 stroke-2" />
-            <h4 className="text-[0.8rem] font-semibold">Active Rentals</h4>
+
+        {/* Stat 3 */}
+        <div className="flex flex-col justify-between p-4">
+          <div className="flex items-center gap-1.5 text-emerald-600 mb-2">
+            <Key className="w-3.5 h-3.5" />
+            <h4 className="text-[10px] uppercase font-bold tracking-wider">
+              Active Rentals
+            </h4>
           </div>
           <div>
-            <h5 className="font-bold text-[1.3rem]">23</h5>
-            <p className="text-card-foreground/50 text-[0.7rem] font-medium">
+            <h5 className="font-bold text-2xl text-slate-800 leading-none mb-1">
+              23
+            </h5>
+            <p className="text-[10px] font-medium text-slate-400">
               Utilization: 26%
             </p>
           </div>
         </div>
-        <div className=" border-l-2 border-gray-300 pl-3 flex flex-col justify-between items-start">
-          <div className="flex items-center gap-1 text-card-foreground/70">
-            <TriangleAlert className="w-4 h-4 stroke-2" />
-            <h4 className="text-[0.8rem] font-semibold">Expiring Documents</h4>
+
+        {/* Stat 4 */}
+        <div className="flex flex-col justify-between p-4">
+          <div className="flex items-center gap-1.5 text-amber-600 mb-2">
+            <TriangleAlert className="w-3.5 h-3.5" />
+            <h4 className="text-[10px] uppercase font-bold tracking-wider">
+              Expiring Docs
+            </h4>
           </div>
           <div>
-            <h5 className="font-bold text-[1.3rem]">16</h5>
-            <p className="text-card-foreground/50 text-[0.7rem] font-medium">
+            <h5 className="font-bold text-2xl text-slate-800 leading-none mb-1">
+              16
+            </h5>
+            <p className="text-[10px] font-medium text-slate-400">
               Urgent Action
             </p>
           </div>
         </div>
-        <div className=" border-l-2 border-gray-300 pl-3 flex flex-col justify-between items-start">
-          <div className="flex items-center gap-1 text-card-foreground/70">
-            <Wallet className="w-4 h-4 stroke-2" />
-            <h4 className="text-[0.8rem] font-semibold">Payouts Due</h4>
+
+        {/* Stat 5 */}
+        <div className="flex flex-col justify-between p-4">
+          <div className="flex items-center gap-1.5 text-purple-600 mb-2">
+            <Wallet className="w-3.5 h-3.5" />
+            <h4 className="text-[10px] uppercase font-bold tracking-wider">
+              Payouts Due
+            </h4>
           </div>
           <div>
-            <h5 className="font-bold text-[1.3rem]">12</h5>
-            <p className="text-card-foreground/50 text-[0.7rem] font-medium">
-              For Oct 30
-            </p>
+            <h5 className="font-bold text-2xl text-slate-800 leading-none mb-1">
+              12
+            </h5>
+            <p className="text-[10px] font-medium text-slate-400">For Oct 30</p>
           </div>
         </div>
       </div>
     </div>
   );
 }
-
-export default FleetPartnersOverview;
