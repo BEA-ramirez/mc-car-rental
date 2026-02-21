@@ -348,6 +348,23 @@ function BookingMain() {
     setSplitTarget(null);
   };
 
+  const handleStatusChange = async (
+    event: SchedulerEvent,
+    newStatus: string,
+  ) => {
+    console.log(`Updating status for ${event.id} to ${newStatus}`);
+
+    // Optimistic UI Update
+    setEvents((prev) =>
+      prev.map((evt) =>
+        evt.id === event.id ? { ...evt, status: newStatus as any } : evt,
+      ),
+    );
+
+    // TODO: Call your Server Action here to update the DB
+    // await updateBookingStatusInDB(event.id, newStatus);
+  };
+
   return (
     <div className="h-[calc(100vh-80px)] bg-slate-50/50 flex flex-col">
       {/* HEADER */}
@@ -447,9 +464,7 @@ function BookingMain() {
             onAddMaintenance={handleAddMaintenance}
             onResizeBuffer={handleResizeBuffer}
             onSplitEvent={handleSplitEvent}
-            onStatusChange={(evt, status) =>
-              console.log("Change Status", evt.id, status)
-            }
+            onStatusChange={handleStatusChange}
             onDeleteClick={(evt) => console.log("Delete", evt.id)}
           />
         </div>

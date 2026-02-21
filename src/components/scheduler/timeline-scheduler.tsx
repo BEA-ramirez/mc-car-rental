@@ -44,6 +44,10 @@ import {
   Ban,
   GripVertical,
   ShieldAlert,
+  Key,
+  Flag,
+  UserX,
+  UserCircle, // NEW: For Driver details
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -104,14 +108,26 @@ export type SchedulerEvent = {
   title: string;
   subtitle?: string;
   color?: string;
-  status?: "confirmed" | "pending" | "maintenance" | "displaced";
-  bufferDuration?: number;
+  status?:
+    | "confirmed"
+    | "pending"
+    | "maintenance"
+    | "displaced"
+    | "ongoing"
+    | "completed"
+    | "no_show"
+    | "cancelled";
+  bufferDuration?: number; // In Minutes
   paymentStatus?: "Paid" | "Pending" | "Partial" | "Unpaid";
   amount?: number;
   customerPhone?: string;
   customerEmail?: string;
   pickupLocation?: string;
   dropoffLocation?: string;
+  // NEW: Driver Info
+  withDriver?: boolean;
+  driverName?: string;
+  driverPhone?: string;
 };
 
 type TimelineSchedulerProps = {
@@ -119,7 +135,6 @@ type TimelineSchedulerProps = {
   events: SchedulerEvent[];
   ghostBooking?: SchedulerEvent | null;
   onEmptyClick?: (resourceId: string, date: Date) => void;
-  // NEW: Callback for Drag-to-Create
   onTimeRangeSelect?: (resourceId: string, start: Date, end: Date) => void;
   onEditClick?: (event: SchedulerEvent) => void;
   onGhostMove?: (resourceId: string) => void;
@@ -169,13 +184,21 @@ export default function TimelineScheduler({
   const [view, setView] = useState<ViewType>("day");
   const [currentDate, setCurrentDate] = useState(new Date());
 
+  // --- HYDRATION FIX: Prevent rendering dynamic time elements on server ---
+  const [isMounted, setIsMounted] = useState(false);
+  const [now, setNow] = useState(new Date());
+  useEffect(() => {
+    setIsMounted(true);
+    const interval = setInterval(() => setNow(new Date()), 60000);
+    return () => clearInterval(interval);
+  }, []);
+
   const [openEventId, setOpenEventId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterMode, setFilterMode] = useState<"all" | "booked" | "available">(
     "all",
   );
 
-  // --- EVENT RESIZE STATE ---
   const [resizingEventId, setResizingEventId] = useState<string | null>(null);
   const [resizeMode, setResizeMode] = useState<"event" | "buffer">("event");
   const [resizePreviewEnd, setResizePreviewEnd] = useState<Date | null>(null);
@@ -189,7 +212,6 @@ export default function TimelineScheduler({
 
   const clickedTimeRef = useRef<Date | null>(null);
 
-  // --- NEW: DRAG-TO-CREATE STATE ---
   const [creationState, setCreationState] = useState<{
     isDragging: boolean;
     resourceId: string;
@@ -199,7 +221,6 @@ export default function TimelineScheduler({
   } | null>(null);
   const wasDragged = useRef(false);
 
-  // --- NAVIGATION ---
   const handleNavigate = (direction: "prev" | "next") => {
     const modifier = direction === "next" ? 1 : -1;
     if (view === "day") setCurrentDate(addDays(currentDate, modifier));
@@ -207,80 +228,54 @@ export default function TimelineScheduler({
     if (view === "month") setCurrentDate(addMonths(currentDate, modifier));
   };
 
-  // --- HEADER LOGIC ---
   const {
     timelineStart,
-
     timelineEnd,
-
     mainHeaders,
-
     subHeaders,
-
     totalWidth,
-
     pxPerMinute,
+    nowOffset,
   } = useMemo(() => {
-    let start: Date = new Date(); // Initialize to avoid 'used before assigned'
-
-    let end: Date = new Date(); // Initialize
-
-    let mainHeaders: MainHeader[] = []; // Explicit type
-
-    let subHeaders: SubHeader[] = []; // Explicit type
-
+    let start: Date = new Date();
+    let end: Date = new Date();
+    let mainHeaders: MainHeader[] = [];
+    let subHeaders: SubHeader[] = [];
     let pxPerMin = 0;
 
     if (view === "month") {
       start = startOfMonth(currentDate);
-
       end = endOfMonth(currentDate);
-
       pxPerMin = CELL_WIDTH_MONTH / 1440;
-
       mainHeaders = eachDayOfInterval({ start, end }).map((d) => ({
         label: format(d, "d"),
-
         width: CELL_WIDTH_MONTH,
-
         date: d,
       }));
-
       subHeaders = mainHeaders.map((h) => ({
         label: format(h.date, "EEEEE"),
-
         width: CELL_WIDTH_MONTH,
       }));
     } else {
       if (view === "day") {
         start = startOfDay(currentDate);
-
         end = addHours(start, 24);
       } else {
         start = startOfWeek(currentDate, { weekStartsOn: 1 });
-
         end = addWeeks(start, 1);
       }
-
       pxPerMin = CELL_WIDTH_HOUR / 60;
-
       const days = eachDayOfInterval({ start, end: addHours(end, -1) });
-
       mainHeaders = days.map((d) => ({
         label: format(d, "EEE d"),
-
         width: CELL_WIDTH_HOUR * 24,
-
         date: d,
       }));
-
       days.forEach(() => {
         for (let i = 0; i < 24; i++) {
           const hourDate = setHours(new Date(), i);
-
           subHeaders.push({
             label: format(hourDate, "h a"),
-
             width: CELL_WIDTH_HOUR,
           });
         }
@@ -288,25 +283,19 @@ export default function TimelineScheduler({
     }
 
     const totalWidth = subHeaders.reduce((acc, h) => acc + h.width, 0);
-
-    // Return explicit object
+    const calculatedNowOffset = differenceInMinutes(now, start) * pxPerMin;
 
     return {
       timelineStart: start,
-
       timelineEnd: end,
-
       mainHeaders,
-
       subHeaders,
-
       totalWidth,
-
       pxPerMinute: pxPerMin,
+      nowOffset: calculatedNowOffset,
     };
-  }, [view, currentDate]);
+  }, [view, currentDate, now]);
 
-  // --- 1. EXISTING: RESIZE HANDLERS ---
   const handleResizeStart = (
     e: React.MouseEvent,
     event: SchedulerEvent,
@@ -380,14 +369,11 @@ export default function TimelineScheduler({
     onResizeBuffer,
   ]);
 
-  // --- 2. NEW: DRAG-TO-CREATE EFFECT ---
   useEffect(() => {
     if (!creationState?.isDragging) return;
-
     const handleMouseMove = (e: MouseEvent) => {
       const deltaX = e.clientX - creationState.startClientX;
-      if (Math.abs(deltaX) > 10) wasDragged.current = true; // Mark as drag if moved > 10px
-
+      if (Math.abs(deltaX) > 10) wasDragged.current = true;
       setCreationState((prev) =>
         prev ? { ...prev, currentX: prev.startX + deltaX } : null,
       );
@@ -396,27 +382,18 @@ export default function TimelineScheduler({
     const handleMouseUp = () => {
       if (creationState && wasDragged.current) {
         const { startX, currentX, resourceId } = creationState;
-
         const minX = Math.min(startX, currentX);
         const maxX = Math.max(startX, currentX);
-
-        // Snap to nearest 30 mins
         const snapMins = 30;
         const startMins = Math.round(minX / pxPerMinute / snapMins) * snapMins;
         const endMins = Math.round(maxX / pxPerMinute / snapMins) * snapMins;
-
         const startDate = addMinutes(timelineStart, startMins);
         const endDate = addMinutes(timelineStart, endMins);
-
-        // Only trigger range select if they actually dragged a duration > 0
         if (onTimeRangeSelect && startMins !== endMins) {
           onTimeRangeSelect(resourceId, startDate, endDate);
         }
       }
-
       setCreationState(null);
-
-      // Delay resetting wasDragged so the onClick event doesn't sneak in
       setTimeout(() => {
         wasDragged.current = false;
       }, 50);
@@ -430,7 +407,6 @@ export default function TimelineScheduler({
     };
   }, [creationState, pxPerMinute, timelineStart, onTimeRangeSelect]);
 
-  // --- FILTER RESOURCES ---
   const filteredResources = useMemo(() => {
     return resources.filter((res) => {
       const matchesSearch =
@@ -442,7 +418,9 @@ export default function TimelineScheduler({
         (evt) =>
           evt.resourceId === res.id &&
           evt.end > timelineStart &&
-          evt.start < timelineEnd,
+          evt.start < timelineEnd &&
+          evt.status !== "no_show" &&
+          evt.status !== "cancelled",
       );
       if (filterMode === "booked") return hasBooking;
       if (filterMode === "available") return !hasBooking;
@@ -450,7 +428,6 @@ export default function TimelineScheduler({
     });
   }, [resources, events, searchQuery, filterMode, timelineStart, timelineEnd]);
 
-  // --- RENDER HELPERS ---
   const getEventStyle = (event: SchedulerEvent, overrideEnd?: Date) => {
     const start = event.start;
     const end = overrideEnd || event.end;
@@ -501,7 +478,7 @@ export default function TimelineScheduler({
 
   return (
     <div className="flex flex-col h-full bg-white shadow-sm overflow-hidden">
-      {/* 1. TOP TOOLBAR */}
+      {/* TOOLBAR */}
       <div className="flex flex-col gap-4 p-4 border-b bg-white shrink-0 z-30">
         <div className="flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2 bg-slate-50 p-1 rounded-lg border">
@@ -586,13 +563,13 @@ export default function TimelineScheduler({
         </div>
       </div>
 
-      {/* 2. SCROLLABLE GRID AREA */}
+      {/* GRID AREA */}
       <div className="flex-1 overflow-auto relative bg-slate-50/50">
         <div className="relative min-w-max">
-          {/* A. STICKY HEADER ROW */}
-          <div className="sticky top-0 z-20 bg-white border-b shadow-sm flex h-14">
+          {/* STICKY HEADER */}
+          <div className="sticky top-0 z-30 bg-white border-b shadow-sm flex h-14">
             <div
-              className="sticky left-0 top-0 z-30 bg-slate-100 border-r border-b h-14 flex items-center px-4 font-bold text-xs text-slate-500 uppercase tracking-wider shadow-[4px_0_24px_-12px_rgba(0,0,0,0.1)]"
+              className="sticky left-0 top-0 z-40 bg-slate-100 border-r border-b h-14 flex items-center px-4 font-bold text-xs text-slate-500 uppercase tracking-wider shadow-[4px_0_24px_-12px_rgba(0,0,0,0.1)]"
               style={{ width: `${SIDEBAR_WIDTH}px` }}
             >
               Resources ({filteredResources.length})
@@ -623,7 +600,19 @@ export default function TimelineScheduler({
             </div>
           </div>
 
-          {/* B. RESOURCE ROWS */}
+          {/* GLOBAL CURRENT TIME LINE (RED LINE) */}
+          {nowOffset >= 0 && nowOffset <= totalWidth && (
+            <div
+              className="absolute top-14 bottom-0 w-[2px] bg-red-500 z-20 pointer-events-none"
+              style={{ left: `${SIDEBAR_WIDTH + nowOffset}px` }}
+            >
+              <div className="absolute top-0 -left-1.5 w-3.5 h-3.5 bg-red-500 rounded-full shadow-md flex items-center justify-center">
+                <div className="w-1.5 h-1.5 bg-white rounded-full animate-ping" />
+              </div>
+            </div>
+          )}
+
+          {/* RESOURCE ROWS */}
           <div>
             {filteredResources.map((res) => {
               const isGhostHere =
@@ -632,8 +621,17 @@ export default function TimelineScheduler({
               const hasConflict =
                 isGhostHere &&
                 events.some((e) => {
-                  if (e.resourceId !== res.id) return false;
-                  if (e.status !== "confirmed" && e.status !== "maintenance")
+                  if (
+                    e.resourceId !== res.id ||
+                    e.status === "no_show" ||
+                    e.status === "cancelled"
+                  )
+                    return false;
+                  if (
+                    e.status !== "confirmed" &&
+                    e.status !== "maintenance" &&
+                    e.status !== "ongoing"
+                  )
                     return false;
                   const eEndWithBuffer = addMinutes(
                     e.end,
@@ -679,7 +677,7 @@ export default function TimelineScheduler({
                 >
                   {/* Sidebar Cell */}
                   <div
-                    className="sticky left-0 z-20 bg-white group-hover:bg-slate-50 border-r flex items-center px-4 gap-3 shadow-[4px_0_24px_-12px_rgba(0,0,0,0.1)]"
+                    className="sticky left-0 z-30 bg-white group-hover:bg-slate-50 border-r flex items-center px-4 gap-3 shadow-[4px_0_24px_-12px_rgba(0,0,0,0.1)]"
                     style={{ width: `${SIDEBAR_WIDTH}px` }}
                   >
                     <Avatar className="h-9 w-9 border border-slate-200">
@@ -702,7 +700,7 @@ export default function TimelineScheduler({
                     className="relative flex-1"
                     style={{ width: `${totalWidth}px` }}
                   >
-                    {/* --- TRACK INTERACTION LAYER --- */}
+                    {/* Track Background & Interactions */}
                     <ContextMenu>
                       <ContextMenuTrigger>
                         <div
@@ -710,18 +708,16 @@ export default function TimelineScheduler({
                           onContextMenu={(e) => {
                             const rect =
                               e.currentTarget.getBoundingClientRect();
-                            const offsetX = e.clientX - rect.left;
                             clickedTimeRef.current = addMinutes(
                               timelineStart,
-                              offsetX / pxPerMinute,
+                              (e.clientX - rect.left) / pxPerMinute,
                             );
                           }}
-                          // Trigger Drag Start
                           onMouseDown={(e) => {
-                            if (e.button !== 0 || e.altKey) return; // Left click only
-                            const rect =
-                              e.currentTarget.getBoundingClientRect();
-                            const offsetX = e.clientX - rect.left;
+                            if (e.button !== 0 || e.altKey) return;
+                            const offsetX =
+                              e.clientX -
+                              e.currentTarget.getBoundingClientRect().left;
                             setCreationState({
                               isDragging: true,
                               resourceId: res.id,
@@ -731,25 +727,23 @@ export default function TimelineScheduler({
                             });
                           }}
                           onClick={(e) => {
-                            // If user just dragged, DON'T fire the click event
                             if (wasDragged.current) return;
-
                             if (ghostBooking && onGhostMove) {
                               onGhostMove(res.id);
                             } else if (onEmptyClick) {
-                              const rect =
-                                e.currentTarget.getBoundingClientRect();
                               onEmptyClick(
                                 res.id,
                                 addMinutes(
                                   timelineStart,
-                                  (e.clientX - rect.left) / pxPerMinute,
+                                  (e.clientX -
+                                    e.currentTarget.getBoundingClientRect()
+                                      .left) /
+                                    pxPerMinute,
                                 ),
                               );
                             }
                           }}
                         >
-                          {/* Grid Lines */}
                           <div className="absolute inset-0 flex pointer-events-none">
                             {subHeaders.map((h: SubHeader, i: number) => (
                               <div
@@ -784,7 +778,7 @@ export default function TimelineScheduler({
                       </ContextMenuContent>
                     </ContextMenu>
 
-                    {/* --- DRAG-TO-CREATE VISUAL PREVIEW --- */}
+                    {/* Drag-to-Create Preview */}
                     {creationState?.isDragging &&
                       creationState.resourceId === res.id && (
                         <div
@@ -794,7 +788,6 @@ export default function TimelineScheduler({
                             width: `${Math.abs(creationState.currentX - creationState.startX)}px`,
                           }}
                         >
-                          {/* Only show text if box is wide enough */}
                           {Math.abs(
                             creationState.currentX - creationState.startX,
                           ) > 60 && (
@@ -812,8 +805,8 @@ export default function TimelineScheduler({
                                   ) * 30,
                                 ),
                                 "h:mm a",
-                              )}
-                              {" - "}
+                              )}{" "}
+                              -{" "}
                               {format(
                                 addMinutes(
                                   timelineStart,
@@ -833,7 +826,7 @@ export default function TimelineScheduler({
                         </div>
                       )}
 
-                    {/* Ghost */}
+                    {/* Ghost Element */}
                     {isGhostHere && ghostStyle && ghostBooking && (
                       <div
                         className={cn(
@@ -852,9 +845,14 @@ export default function TimelineScheduler({
                       </div>
                     )}
 
-                    {/* Events Loop */}
+                    {/* EVENTS LOOP */}
                     {events
-                      .filter((evt) => evt.resourceId === res.id)
+                      .filter(
+                        (evt) =>
+                          evt.resourceId === res.id &&
+                          evt.status !== "cancelled" &&
+                          evt.status !== "no_show",
+                      )
                       .map((evt) => {
                         const isResizing = resizingEventId === evt.id;
                         const displayEnd =
@@ -870,6 +868,7 @@ export default function TimelineScheduler({
                             ? resizePreviewBuffer
                             : evt.bufferDuration;
                         const style = getEventStyle(evt, displayEnd);
+
                         if (
                           displayEnd < timelineStart ||
                           evt.start > timelineEnd
@@ -878,14 +877,21 @@ export default function TimelineScheduler({
 
                         const isMaintenance = evt.status === "maintenance";
                         const isDisplaced = evt.status === "displaced";
+                        const isOngoing = evt.status === "ongoing";
+                        const isCompleted = evt.status === "completed";
+
+                        const isLate =
+                          evt.status === "confirmed" && now > evt.start;
 
                         let isOverlappingOther = false;
-                        if (!isResizing) {
+                        if (!isResizing && !isCompleted) {
                           isOverlappingOther = events.some(
                             (other) =>
                               other.id !== evt.id &&
                               other.resourceId === evt.resourceId &&
                               other.status !== "displaced" &&
+                              other.status !== "cancelled" &&
+                              other.status !== "no_show" &&
                               other.start <
                                 addMinutes(displayEnd, displayBuffer || 0) &&
                               addMinutes(other.end, other.bufferDuration || 0) >
@@ -901,12 +907,21 @@ export default function TimelineScheduler({
                         } else if (isDisplaced || isOverlappingOther) {
                           eventColorClass =
                             "bg-red-600 border-red-700 text-white shadow-md animate-pulse";
+                        } else if (isCompleted) {
+                          eventColorClass =
+                            "bg-slate-200 border-slate-300 text-slate-500 opacity-80";
+                        } else if (isOngoing) {
+                          eventColorClass =
+                            "bg-emerald-500 border-emerald-600 text-white shadow-sm";
+                        } else if (isLate) {
+                          eventColorClass =
+                            "bg-orange-100 border-orange-500 text-orange-900 shadow-md animate-pulse";
                         } else if (evt.status === "confirmed") {
                           eventColorClass =
-                            "bg-emerald-100 border-emerald-200 text-emerald-800";
+                            "bg-emerald-100 border-emerald-300 text-emerald-900";
                         } else if (evt.status === "pending") {
                           eventColorClass =
-                            "bg-amber-100 border-amber-200 text-amber-800";
+                            "bg-amber-100 border-amber-300 text-amber-900";
                         }
 
                         if (isResizing) {
@@ -929,9 +944,17 @@ export default function TimelineScheduler({
                               "bg-red-100 border-red-500 text-red-900 ring-2 ring-red-500 z-50 opacity-95";
                         }
 
+                        const textColorClass =
+                          isOngoing || isDisplaced || isOverlappingOther
+                            ? "text-white"
+                            : "text-slate-900";
+                        const subtextColorClass =
+                          isOngoing || isDisplaced || isOverlappingOther
+                            ? "text-white/80"
+                            : "opacity-80";
+
                         return (
                           <React.Fragment key={evt.id}>
-                            {/* Buffer */}
                             {displayBuffer !== undefined &&
                               displayBuffer > 0 &&
                               getBufferStyle(
@@ -962,15 +985,10 @@ export default function TimelineScheduler({
                                   >
                                     <div className="w-0.5 h-3 bg-slate-500 rounded-full" />
                                   </div>
-                                  {isResizing && resizeMode === "buffer" && (
-                                    <span className="absolute -top-6 bg-black/70 text-white px-1.5 py-0.5 rounded text-[9px] whitespace-nowrap shadow-sm z-50">
-                                      {displayBuffer / 60}h
-                                    </span>
-                                  )}
                                 </div>
                               )}
 
-                            {/* Main Bar */}
+                            {/* --- MAIN BOOKING BAR --- */}
                             <Popover
                               open={openEventId === evt.id}
                               onOpenChange={(isOpen) =>
@@ -992,13 +1010,12 @@ export default function TimelineScheduler({
                                         if (e.altKey && onSplitEvent) {
                                           const rect =
                                             e.currentTarget.getBoundingClientRect();
-                                          const minutesIntoEvent =
-                                            (e.clientX - rect.left) /
-                                            pxPerMinute;
                                           const snapMins = 30;
                                           const roundedMins =
                                             Math.round(
-                                              minutesIntoEvent / snapMins,
+                                              (e.clientX - rect.left) /
+                                                pxPerMinute /
+                                                snapMins,
                                             ) * snapMins;
                                           onSplitEvent(
                                             evt,
@@ -1008,56 +1025,63 @@ export default function TimelineScheduler({
                                         }
                                       }}
                                     >
-                                      <div className="font-bold truncate leading-tight flex justify-between items-center w-full">
+                                      <div
+                                        className={cn(
+                                          "font-bold truncate leading-tight flex justify-between items-center w-full",
+                                          textColorClass,
+                                        )}
+                                      >
                                         <span className="truncate flex items-center gap-1">
                                           {isDisplaced && (
                                             <AlertCircle className="w-3 h-3 text-white" />
+                                          )}
+                                          {isLate && (
+                                            <AlertCircle className="w-3 h-3 text-orange-600" />
                                           )}
                                           {isMaintenance && (
                                             <Wrench className="w-3 h-3" />
                                           )}
                                           {evt.title}
                                         </span>
-                                        {isResizing &&
-                                          resizeMode === "event" && (
-                                            <span className="bg-black/70 text-white px-1.5 py-0.5 rounded text-[9px] ml-1 whitespace-nowrap shadow-sm">
-                                              {format(displayEnd, "MMM d")}
-                                            </span>
-                                          )}
                                       </div>
+
                                       {evt.subtitle && !isMaintenance && (
                                         <div
                                           className={cn(
-                                            "text-[10px] truncate",
-                                            isDisplaced || isOverlappingOther
-                                              ? "text-white/80"
-                                              : "opacity-80",
+                                            "text-[10px] truncate font-medium tracking-wide",
+                                            subtextColorClass,
                                           )}
                                         >
                                           {isDisplaced
-                                            ? "DISPLACED"
-                                            : evt.subtitle}
+                                            ? "DISPLACED - ACTION NEEDED"
+                                            : isLate
+                                              ? "LATE: CUSTOMER MISSING"
+                                              : evt.subtitle}
                                         </div>
                                       )}
-                                      <div
-                                        className="absolute right-0 top-0 bottom-0 w-3 cursor-col-resize flex items-center justify-center hover:bg-black/5 transition-colors z-20 opacity-0 group-hover/event:opacity-100"
-                                        onMouseDown={(e) =>
-                                          handleResizeStart(e, evt, "event")
-                                        }
-                                        onClick={(e) => e.stopPropagation()}
-                                      >
+
+                                      {!isCompleted && (
                                         <div
-                                          className={cn(
-                                            "w-0.5 h-3 rounded-full",
-                                            isDisplaced
-                                              ? "bg-white/50"
-                                              : "bg-slate-400",
-                                          )}
-                                        />
-                                      </div>
+                                          className="absolute right-0 top-0 bottom-0 w-3 cursor-col-resize flex items-center justify-center hover:bg-black/5 transition-colors z-20 opacity-0 group-hover/event:opacity-100"
+                                          onMouseDown={(e) =>
+                                            handleResizeStart(e, evt, "event")
+                                          }
+                                          onClick={(e) => e.stopPropagation()}
+                                        >
+                                          <div
+                                            className={cn(
+                                              "w-0.5 h-3 rounded-full",
+                                              isOngoing || isDisplaced
+                                                ? "bg-white/50"
+                                                : "bg-slate-400",
+                                            )}
+                                          />
+                                        </div>
+                                      )}
                                     </div>
                                   </PopoverTrigger>
                                 </ContextMenuTrigger>
+
                                 <ContextMenuContent className="w-48 rounded-none text-xs shadow-md border-slate-200">
                                   {isMaintenance ? (
                                     <ContextMenuItem
@@ -1093,29 +1117,10 @@ export default function TimelineScheduler({
                                         ID
                                       </ContextMenuItem>
                                       <ContextMenuSeparator />
-                                      {[
-                                        "confirmed",
-                                        "ongoing",
-                                        "active",
-                                      ].includes(
-                                        evt.status?.toLowerCase() || "",
-                                      ) && (
-                                        <ContextMenuItem
-                                          className="text-xs text-emerald-700 focus:text-emerald-800 focus:bg-emerald-50"
-                                          onClick={() =>
-                                            onEarlyReturnClick &&
-                                            onEarlyReturnClick(evt)
-                                          }
-                                        >
-                                          <CheckCircle className="w-3 h-3 mr-2" />{" "}
-                                          Early Return
-                                        </ContextMenuItem>
-                                      )}
-                                      <ContextMenuSeparator />
                                       <ContextMenuSub>
                                         <ContextMenuSubTrigger className="text-xs">
                                           <CheckSquare className="w-3 h-3 mr-2" />{" "}
-                                          Change Status
+                                          Force Status Change
                                         </ContextMenuSubTrigger>
                                         <ContextMenuSubContent className="w-40 rounded-none text-xs shadow-md border-slate-200">
                                           <ContextMenuItem
@@ -1125,7 +1130,16 @@ export default function TimelineScheduler({
                                               onStatusChange(evt, "confirmed")
                                             }
                                           >
-                                            Mark as Confirmed
+                                            Set Confirmed
+                                          </ContextMenuItem>
+                                          <ContextMenuItem
+                                            className="text-xs"
+                                            onClick={() =>
+                                              onStatusChange &&
+                                              onStatusChange(evt, "ongoing")
+                                            }
+                                          >
+                                            Set Ongoing
                                           </ContextMenuItem>
                                           <ContextMenuItem
                                             className="text-xs"
@@ -1134,17 +1148,17 @@ export default function TimelineScheduler({
                                               onStatusChange(evt, "completed")
                                             }
                                           >
-                                            Mark as Completed
+                                            Set Completed
                                           </ContextMenuItem>
                                           <ContextMenuSeparator />
                                           <ContextMenuItem
-                                            className="text-xs text-red-600 focus:text-red-600"
+                                            className="text-xs text-red-600"
                                             onClick={() =>
                                               onStatusChange &&
-                                              onStatusChange(evt, "cancelled")
+                                              onStatusChange(evt, "no_show")
                                             }
                                           >
-                                            Mark as Cancelled
+                                            Set No-Show
                                           </ContextMenuItem>
                                         </ContextMenuSubContent>
                                       </ContextMenuSub>
@@ -1162,9 +1176,10 @@ export default function TimelineScheduler({
                                   )}
                                 </ContextMenuContent>
                               </ContextMenu>
-                              {/* ... (Accordion code kept exactly same) */}
+
+                              {/* --- SLEEK POPOVER --- */}
                               <PopoverContent
-                                className="w-80 p-0 shadow-xl"
+                                className="w-80 p-0 shadow-xl border-slate-200 rounded-lg overflow-hidden"
                                 align="start"
                               >
                                 {isMaintenance ? (
@@ -1180,92 +1195,97 @@ export default function TimelineScheduler({
                                   </div>
                                 ) : (
                                   <>
-                                    <div className="p-4 border-b bg-slate-50/50">
+                                    {/* HEADER */}
+                                    <div className="p-4 bg-white border-b">
                                       <div className="flex items-center justify-between mb-2">
                                         <Badge
-                                          variant={
-                                            evt.status === "confirmed"
-                                              ? "default"
-                                              : "secondary"
-                                          }
+                                          variant="outline"
                                           className={cn(
-                                            "uppercase text-[10px]",
+                                            "uppercase text-[10px] tracking-wider border",
                                             evt.status === "confirmed" &&
-                                              "bg-emerald-600 hover:bg-emerald-700",
+                                              !isLate &&
+                                              "bg-emerald-50 text-emerald-700 border-emerald-200",
+                                            evt.status === "ongoing" &&
+                                              "bg-blue-50 text-blue-700 border-blue-200",
+                                            isLate &&
+                                              "bg-orange-50 text-orange-700 border-orange-300",
                                           )}
                                         >
-                                          {evt.status || "BOOKING"}
+                                          {isLate
+                                            ? "LATE"
+                                            : evt.status || "BOOKING"}
                                         </Badge>
                                         <Button
                                           variant="ghost"
                                           size="icon"
-                                          className="h-6 w-6"
+                                          className="h-6 w-6 rounded-md hover:bg-slate-100 text-slate-400 hover:text-slate-600"
                                           onClick={() =>
                                             onEditClick && onEditClick(evt)
                                           }
                                         >
-                                          <Edit className="h-3 w-3 text-slate-500" />
+                                          <Edit className="h-3.5 w-3.5" />
                                         </Button>
                                       </div>
-                                      <div className="font-bold text-lg leading-tight">
+                                      <div className="font-bold text-base text-slate-800 leading-tight">
                                         {evt.title}
                                       </div>
-                                      <div className="text-xs text-muted-foreground mt-1">
-                                        Booking ID:{" "}
-                                        <span className="font-mono">
-                                          {evt.id}
-                                        </span>
+                                      <div className="text-[10px] text-slate-400 mt-0.5 font-mono">
+                                        ID: {evt.id}
                                       </div>
                                     </div>
+
+                                    {/* ACCORDIONS */}
                                     <Accordion
-                                      type="single"
-                                      collapsible
-                                      className="w-full"
-                                      defaultValue="schedule"
+                                      type="multiple"
+                                      className="w-full bg-slate-50/50"
+                                      defaultValue={["schedule"]}
                                     >
-                                      <AccordionItem value="schedule">
-                                        <AccordionTrigger className="px-4 py-2 text-xs font-semibold hover:no-underline bg-slate-50/30">
-                                          <div className="flex items-center gap-2">
-                                            <CalendarIcon className="w-3 h-3" />{" "}
+                                      <AccordionItem
+                                        value="schedule"
+                                        className="border-b-slate-100"
+                                      >
+                                        <AccordionTrigger className="px-4 py-2.5 text-xs font-semibold hover:no-underline hover:bg-slate-50">
+                                          <div className="flex items-center gap-2 text-slate-700">
+                                            <CalendarIcon className="w-3.5 h-3.5" />{" "}
                                             Trip Schedule
                                           </div>
                                         </AccordionTrigger>
-                                        <AccordionContent className="px-4 py-3 space-y-3">
+                                        <AccordionContent className="px-4 py-3 space-y-3 bg-white border-t border-slate-100">
                                           <div className="grid grid-cols-[20px_1fr] items-start gap-1">
-                                            <div className="mt-0.5 w-1.5 h-1.5 rounded-full bg-blue-500" />
+                                            <div className="mt-1 w-1.5 h-1.5 rounded-full bg-blue-500" />
                                             <div>
-                                              <div className="text-xs font-semibold">
+                                              <div className="text-xs font-semibold text-slate-800">
                                                 Pick-up
                                               </div>
-                                              <div className="text-[10px] text-muted-foreground">
+                                              <div className="text-[10px] text-slate-500">
                                                 {format(
                                                   evt.start,
                                                   "MMM d, yyyy • h:mm a",
                                                 )}
                                               </div>
                                               {evt.pickupLocation && (
-                                                <div className="text-[10px] text-slate-600 mt-0.5 flex gap-1">
-                                                  <MapPin className="w-3 h-3 inline" />{" "}
+                                                <div className="text-[10px] text-slate-600 mt-0.5 flex items-center gap-1">
+                                                  <MapPin className="w-3 h-3 text-slate-400" />{" "}
                                                   {evt.pickupLocation}
                                                 </div>
                                               )}
                                             </div>
                                           </div>
                                           <div className="grid grid-cols-[20px_1fr] items-start gap-1">
-                                            <div className="mt-0.5 w-1.5 h-1.5 rounded-full bg-slate-300" />
+                                            <div className="mt-1 w-1.5 h-1.5 rounded-full bg-slate-300" />
                                             <div>
-                                              <div className="text-xs font-semibold">
+                                              <div className="text-xs font-semibold text-slate-800">
                                                 Return
                                               </div>
-                                              <div className="text-[10px] text-muted-foreground">
+                                              <div className="text-[10px] text-slate-500">
                                                 {format(
                                                   evt.end,
                                                   "MMM d, yyyy • h:mm a",
                                                 )}
                                               </div>
                                               {evt.dropoffLocation && (
-                                                <div className="text-[10px] text-slate-600 mt-0.5 flex gap-1">
-                                                  <MapPin className="w-3 h-3 inline" />{" "}
+                                                <div className="text-[10px] text-slate-600 mt-0.5 flex items-center gap-1">
+                                                  <MapPin className="w-3 h-3 text-slate-400" />{" "}
                                                   {evt.dropoffLocation}
                                                 </div>
                                               )}
@@ -1273,66 +1293,103 @@ export default function TimelineScheduler({
                                                 evt.bufferDuration > 0 && (
                                                   <div className="text-[10px] text-slate-400 mt-1 italic">
                                                     + {evt.bufferDuration / 60}h
-                                                    turnaround time
+                                                    turnaround
                                                   </div>
                                                 )}
                                             </div>
                                           </div>
                                         </AccordionContent>
                                       </AccordionItem>
-                                      <AccordionItem value="contact">
-                                        <AccordionTrigger className="px-4 py-2 text-xs font-semibold hover:no-underline bg-slate-50/30">
-                                          <div className="flex items-center gap-2">
-                                            <User className="w-3 h-3" />{" "}
+
+                                      {/* OPTIONAL DRIVER */}
+                                      {evt.withDriver && (
+                                        <AccordionItem
+                                          value="driver"
+                                          className="border-b-slate-100"
+                                        >
+                                          <AccordionTrigger className="px-4 py-2.5 text-xs font-semibold hover:no-underline hover:bg-slate-50">
+                                            <div className="flex items-center gap-2 text-slate-700">
+                                              <UserCircle className="w-3.5 h-3.5" />{" "}
+                                              Assigned Driver
+                                            </div>
+                                          </AccordionTrigger>
+                                          <AccordionContent className="px-4 py-3 space-y-2 bg-white border-t border-slate-100">
+                                            <div className="flex items-center gap-2 text-xs">
+                                              <User className="w-3.5 h-3.5 text-slate-400" />
+                                              <span className="font-medium text-slate-700">
+                                                {evt.driverName ||
+                                                  "Pending Assignment"}
+                                              </span>
+                                            </div>
+                                            {evt.driverPhone && (
+                                              <div className="flex items-center gap-2 text-xs">
+                                                <Phone className="w-3.5 h-3.5 text-slate-400" />
+                                                <span className="text-slate-600">
+                                                  {evt.driverPhone}
+                                                </span>
+                                              </div>
+                                            )}
+                                          </AccordionContent>
+                                        </AccordionItem>
+                                      )}
+
+                                      <AccordionItem
+                                        value="contact"
+                                        className="border-b-slate-100"
+                                      >
+                                        <AccordionTrigger className="px-4 py-2.5 text-xs font-semibold hover:no-underline hover:bg-slate-50">
+                                          <div className="flex items-center gap-2 text-slate-700">
+                                            <User className="w-3.5 h-3.5" />{" "}
                                             Customer Info
                                           </div>
                                         </AccordionTrigger>
-                                        <AccordionContent className="px-4 py-3 space-y-2">
+                                        <AccordionContent className="px-4 py-3 space-y-2 bg-white border-t border-slate-100">
                                           <div className="flex items-center gap-2 text-xs">
-                                            <Phone className="w-3 h-3 text-slate-400" />
-                                            <span>
+                                            <Phone className="w-3.5 h-3.5 text-slate-400" />
+                                            <span className="text-slate-600">
                                               {evt.customerPhone ||
                                                 "No phone provided"}
                                             </span>
                                           </div>
                                           <div className="flex items-center gap-2 text-xs">
-                                            <Mail className="w-3 h-3 text-slate-400" />
-                                            <span className="truncate">
+                                            <Mail className="w-3.5 h-3.5 text-slate-400" />
+                                            <span className="text-slate-600 truncate">
                                               {evt.customerEmail ||
                                                 "No email provided"}
                                             </span>
                                           </div>
                                         </AccordionContent>
                                       </AccordionItem>
+
                                       <AccordionItem
                                         value="payment"
-                                        className="border-b-0"
+                                        className="border-none"
                                       >
-                                        <AccordionTrigger className="px-4 py-2 text-xs font-semibold hover:no-underline bg-slate-50/30">
-                                          <div className="flex items-center gap-2">
-                                            <CreditCard className="w-3 h-3" />{" "}
+                                        <AccordionTrigger className="px-4 py-2.5 text-xs font-semibold hover:no-underline hover:bg-slate-50">
+                                          <div className="flex items-center gap-2 text-slate-700">
+                                            <CreditCard className="w-3.5 h-3.5" />{" "}
                                             Payment
                                           </div>
                                         </AccordionTrigger>
-                                        <AccordionContent className="px-4 py-3">
+                                        <AccordionContent className="px-4 py-3 bg-white border-t border-slate-100">
                                           <div className="flex justify-between items-center mb-2">
-                                            <span className="text-xs text-muted-foreground">
+                                            <span className="text-xs text-slate-500">
                                               Total
                                             </span>
-                                            <span className="font-bold text-sm">
+                                            <span className="font-bold text-sm text-slate-800">
                                               ₱{" "}
                                               {evt.amount?.toLocaleString() ||
                                                 "0.00"}
                                             </span>
                                           </div>
                                           <div className="flex justify-between items-center">
-                                            <span className="text-xs text-muted-foreground">
+                                            <span className="text-xs text-slate-500">
                                               Status
                                             </span>
                                             <Badge
                                               variant="outline"
                                               className={cn(
-                                                "text-[10px] h-5",
+                                                "text-[10px] h-5 px-2",
                                                 evt.paymentStatus === "Paid"
                                                   ? "border-emerald-200 text-emerald-700 bg-emerald-50"
                                                   : "border-amber-200 text-amber-700 bg-amber-50",
@@ -1344,6 +1401,69 @@ export default function TimelineScheduler({
                                         </AccordionContent>
                                       </AccordionItem>
                                     </Accordion>
+
+                                    {/* --- QUICK ACTIONS BAR --- */}
+                                    <div className="p-3 bg-white border-t border-slate-100 flex gap-2">
+                                      {evt.status === "confirmed" &&
+                                        !isLate && (
+                                          <Button
+                                            size="sm"
+                                            className="w-full h-8 text-xs font-medium bg-slate-900 text-white hover:bg-slate-800 shadow-sm"
+                                            onClick={() =>
+                                              onStatusChange?.(evt, "ongoing")
+                                            }
+                                          >
+                                            <Key className="w-3.5 h-3.5 mr-2" />{" "}
+                                            Release Vehicle
+                                          </Button>
+                                        )}
+
+                                      {evt.status === "confirmed" && isLate && (
+                                        <>
+                                          <Button
+                                            size="sm"
+                                            className="flex-1 h-8 text-xs font-medium bg-slate-900 text-white hover:bg-slate-800 shadow-sm"
+                                            onClick={() =>
+                                              onStatusChange?.(evt, "ongoing")
+                                            }
+                                          >
+                                            <Key className="w-3.5 h-3.5 mr-1.5" />{" "}
+                                            Arrived
+                                          </Button>
+                                          <Button
+                                            size="sm"
+                                            variant="outline"
+                                            className="flex-1 h-8 text-xs font-medium text-red-600 border-red-200 hover:bg-red-50 hover:border-red-300 shadow-sm"
+                                            onClick={() =>
+                                              onStatusChange?.(evt, "no_show")
+                                            }
+                                          >
+                                            <UserX className="w-3.5 h-3.5 mr-1.5" />{" "}
+                                            No-Show
+                                          </Button>
+                                        </>
+                                      )}
+
+                                      {evt.status === "ongoing" && (
+                                        <Button
+                                          size="sm"
+                                          className="w-full h-8 text-xs font-medium bg-slate-900 text-white hover:bg-slate-800 shadow-sm"
+                                          onClick={() =>
+                                            onStatusChange?.(evt, "completed")
+                                          }
+                                        >
+                                          <Flag className="w-3.5 h-3.5 mr-2" />{" "}
+                                          Process Return
+                                        </Button>
+                                      )}
+
+                                      {evt.status === "completed" && (
+                                        <div className="w-full text-center text-[11px] font-medium text-slate-400 py-1.5 flex items-center justify-center bg-slate-50 rounded-md border border-slate-100">
+                                          <CheckCircle className="w-3.5 h-3.5 mr-1.5 opacity-50" />{" "}
+                                          Trip Completed
+                                        </div>
+                                      )}
+                                    </div>
                                   </>
                                 )}
                               </PopoverContent>
