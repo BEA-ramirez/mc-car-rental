@@ -41,13 +41,14 @@ import {
   Trash,
   CheckSquare,
   Wrench,
-  Ban,
-  GripVertical,
   ShieldAlert,
   Key,
   Flag,
   UserX,
-  UserCircle, // NEW: For Driver details
+  UserCircle,
+  ClockAlert,
+  MoveRight,
+  Check,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -103,11 +104,12 @@ export type SchedulerResource = {
 export type SchedulerEvent = {
   id: string;
   resourceId: string;
-  start: Date;
-  end: Date;
+  start: Date | string;
+  end: Date | string;
   title: string;
   subtitle?: string;
   color?: string;
+  group_id?: string;
   status?:
     | "confirmed"
     | "pending"
@@ -117,14 +119,13 @@ export type SchedulerEvent = {
     | "completed"
     | "no_show"
     | "cancelled";
-  bufferDuration?: number; // In Minutes
+  bufferDuration?: number;
   paymentStatus?: "Paid" | "Pending" | "Partial" | "Unpaid";
   amount?: number;
   customerPhone?: string;
   customerEmail?: string;
   pickupLocation?: string;
   dropoffLocation?: string;
-  // NEW: Driver Info
   withDriver?: boolean;
   driverName?: string;
   driverPhone?: string;
@@ -134,6 +135,7 @@ type TimelineSchedulerProps = {
   resources: SchedulerResource[];
   events: SchedulerEvent[];
   ghostBooking?: SchedulerEvent | null;
+  onDateChange?: (date: Date) => void;
   onEmptyClick?: (resourceId: string, date: Date) => void;
   onTimeRangeSelect?: (resourceId: string, start: Date, end: Date) => void;
   onEditClick?: (event: SchedulerEvent) => void;
@@ -151,14 +153,13 @@ type TimelineSchedulerProps = {
 // --- CONFIG ---
 const CELL_WIDTH_HOUR = 80;
 const CELL_WIDTH_MONTH = 60;
-const SIDEBAR_WIDTH = 240;
+const SIDEBAR_WIDTH = 260;
 
 interface MainHeader {
   label: string;
   width: number;
   date: Date;
 }
-
 interface SubHeader {
   label: string;
   width: number;
@@ -166,8 +167,9 @@ interface SubHeader {
 
 export default function TimelineScheduler({
   resources,
-  events,
+  events: rawEvents,
   ghostBooking,
+  onDateChange,
   onEmptyClick,
   onTimeRangeSelect,
   onEditClick,
@@ -184,7 +186,26 @@ export default function TimelineScheduler({
   const [view, setView] = useState<ViewType>("day");
   const [currentDate, setCurrentDate] = useState(new Date());
 
-  // --- HYDRATION FIX: Prevent rendering dynamic time elements on server ---
+  // --- NEW: State for tracking dynamic click positions ---
+  const [clickOffsets, setClickOffsets] = useState<Record<string, number>>({});
+
+  const events = useMemo(() => {
+    return rawEvents.map((evt) => ({
+      ...evt,
+      start: new Date(evt.start),
+      end: new Date(evt.end),
+    }));
+  }, [rawEvents]);
+
+  const parsedGhostBooking = useMemo(() => {
+    if (!ghostBooking) return null;
+    return {
+      ...ghostBooking,
+      start: new Date(ghostBooking.start),
+      end: new Date(ghostBooking.end),
+    };
+  }, [ghostBooking]);
+
   const [isMounted, setIsMounted] = useState(false);
   const [now, setNow] = useState(new Date());
   useEffect(() => {
@@ -192,6 +213,18 @@ export default function TimelineScheduler({
     const interval = setInterval(() => setNow(new Date()), 60000);
     return () => clearInterval(interval);
   }, []);
+
+  useEffect(() => {
+    if (parsedGhostBooking && parsedGhostBooking.start) {
+      const targetDate = parsedGhostBooking.start as Date;
+      const viewStart = startOfMonth(currentDate);
+      const viewEnd = endOfMonth(currentDate);
+      if (targetDate < viewStart || targetDate > viewEnd) {
+        setCurrentDate(targetDate);
+        if (onDateChange) onDateChange(targetDate);
+      }
+    }
+  }, [parsedGhostBooking?.id]);
 
   const [openEventId, setOpenEventId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -209,7 +242,6 @@ export default function TimelineScheduler({
   const dragStartX = useRef<number>(0);
   const originalEndRef = useRef<Date | null>(null);
   const originalBufferRef = useRef<number>(0);
-
   const clickedTimeRef = useRef<Date | null>(null);
 
   const [creationState, setCreationState] = useState<{
@@ -223,9 +255,20 @@ export default function TimelineScheduler({
 
   const handleNavigate = (direction: "prev" | "next") => {
     const modifier = direction === "next" ? 1 : -1;
-    if (view === "day") setCurrentDate(addDays(currentDate, modifier));
-    if (view === "week") setCurrentDate(addWeeks(currentDate, modifier));
-    if (view === "month") setCurrentDate(addMonths(currentDate, modifier));
+    let newDate = currentDate;
+    if (view === "day") newDate = addDays(currentDate, modifier);
+    if (view === "week") newDate = addWeeks(currentDate, modifier);
+    if (view === "month") newDate = addMonths(currentDate, modifier);
+
+    setCurrentDate(newDate);
+    if (onDateChange) onDateChange(newDate);
+  };
+
+  const handleDateSelect = (d: Date | undefined) => {
+    if (d) {
+      setCurrentDate(d);
+      if (onDateChange) onDateChange(d);
+    }
   };
 
   const {
@@ -305,10 +348,10 @@ export default function TimelineScheduler({
     e.preventDefault();
     setResizingEventId(event.id);
     setResizeMode(mode);
-    setResizePreviewEnd(event.end);
+    setResizePreviewEnd(event.end as Date);
     setResizePreviewBuffer(event.bufferDuration || 0);
     dragStartX.current = e.clientX;
-    originalEndRef.current = event.end;
+    originalEndRef.current = event.end as Date;
     originalBufferRef.current = event.bufferDuration || 0;
     document.body.style.cursor = "col-resize";
     document.body.style.userSelect = "none";
@@ -335,7 +378,7 @@ export default function TimelineScheduler({
       const evt = events.find((e) => e.id === resizingEventId);
       if (evt) {
         if (resizeMode === "event" && resizePreviewEnd && onResizeEvent) {
-          if (resizePreviewEnd.getTime() !== evt.end.getTime())
+          if (resizePreviewEnd.getTime() !== (evt.end as Date).getTime())
             onResizeEvent(evt, resizePreviewEnd);
         } else if (
           resizeMode === "buffer" &&
@@ -389,16 +432,14 @@ export default function TimelineScheduler({
         const endMins = Math.round(maxX / pxPerMinute / snapMins) * snapMins;
         const startDate = addMinutes(timelineStart, startMins);
         const endDate = addMinutes(timelineStart, endMins);
-        if (onTimeRangeSelect && startMins !== endMins) {
+        if (onTimeRangeSelect && startMins !== endMins)
           onTimeRangeSelect(resourceId, startDate, endDate);
-        }
       }
       setCreationState(null);
       setTimeout(() => {
         wasDragged.current = false;
       }, 50);
     };
-
     window.addEventListener("mousemove", handleMouseMove);
     window.addEventListener("mouseup", handleMouseUp);
     return () => {
@@ -417,8 +458,8 @@ export default function TimelineScheduler({
       const hasBooking = events.some(
         (evt) =>
           evt.resourceId === res.id &&
-          evt.end > timelineStart &&
-          evt.start < timelineEnd &&
+          (evt.end as Date) > timelineStart &&
+          (evt.start as Date) < timelineEnd &&
           evt.status !== "no_show" &&
           evt.status !== "cancelled",
       );
@@ -429,8 +470,8 @@ export default function TimelineScheduler({
   }, [resources, events, searchQuery, filterMode, timelineStart, timelineEnd]);
 
   const getEventStyle = (event: SchedulerEvent, overrideEnd?: Date) => {
-    const start = event.start;
-    const end = overrideEnd || event.end;
+    const start = event.start as Date;
+    const end = overrideEnd || (event.end as Date);
     const safeEnd = end <= start ? addDays(start, 1) : end;
     const diffStart = Math.max(0, differenceInMinutes(start, timelineStart));
     const effectiveEnd = safeEnd > timelineEnd ? timelineEnd : safeEnd;
@@ -454,7 +495,7 @@ export default function TimelineScheduler({
   ) => {
     const bufferMins = overrideDuration ?? event.bufferDuration ?? 0;
     if (bufferMins <= 0) return null;
-    const bufferStart = overrideEnd || event.end;
+    const bufferStart = overrideEnd || (event.end as Date);
     const bufferEnd = addMinutes(bufferStart, bufferMins);
     if (bufferEnd < timelineStart || bufferStart > timelineEnd) return null;
     const effectiveStart =
@@ -476,72 +517,90 @@ export default function TimelineScheduler({
     return format(currentDate, "MMMM yyyy");
   }, [view, currentDate, timelineStart, timelineEnd]);
 
+  // --- DYNAMIC FONT SIZES FOR MONTH VIEW COMPRESSION ---
+  const isMonthView = view === "month";
+
   return (
-    <div className="flex flex-col h-full bg-white shadow-sm overflow-hidden">
-      {/* TOOLBAR */}
-      <div className="flex flex-col gap-4 p-4 border-b bg-white shrink-0 z-30">
-        <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-2 bg-slate-50 p-1 rounded-lg border">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7"
-              onClick={() => handleNavigate("prev")}
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="ghost"
-                  className="h-7 text-sm font-semibold w-48 justify-center"
-                >
-                  <CalendarIcon className="mr-2 h-3 w-3 opacity-50" />
-                  {dateLabel}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="center">
-                <Calendar
-                  mode="single"
-                  selected={currentDate}
-                  onSelect={(d) => d && setCurrentDate(d)}
-                  initialFocus
-                />
-              </PopoverContent>
-            </Popover>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7"
-              onClick={() => handleNavigate("next")}
-            >
-              <ChevronRight className="h-4 w-4" />
-            </Button>
-          </div>
-          <Tabs
-            value={view}
-            onValueChange={(v) => setView(v as ViewType)}
-            className="w-auto"
+    <div className="flex flex-col h-full bg-white shadow-sm overflow-hidden border-t">
+      <div className="flex flex-wrap md:flex-nowrap items-center gap-4 px-4 py-2 border-b bg-white shrink-0 z-10 w-full">
+        <div className="flex items-center bg-slate-50 rounded-lg border shadow-sm h-8 p-0.5">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-full w-7 rounded-md"
+            onClick={() => handleNavigate("prev")}
           >
-            <TabsList className="grid w-full grid-cols-3 h-8">
-              <TabsTrigger value="day" className="text-xs px-2">
-                <Clock className="w-3 h-3 mr-1" /> Day
-              </TabsTrigger>
-              <TabsTrigger value="week" className="text-xs px-2">
-                <CalendarRange className="w-3 h-3 mr-1" /> Week
-              </TabsTrigger>
-              <TabsTrigger value="month" className="text-xs px-2">
-                <CalendarDays className="w-3 h-3 mr-1" /> Month
-              </TabsTrigger>
-            </TabsList>
-          </Tabs>
+            <ChevronLeft className="h-4 w-4 text-slate-600" />
+          </Button>
+          <Separator orientation="vertical" className="h-4" />
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant="ghost"
+                className="h-full text-xs font-semibold px-3 min-w-[140px] flex justify-center text-slate-700"
+              >
+                <CalendarIcon className="mr-2 h-3.5 w-3.5 opacity-50" />{" "}
+                {dateLabel}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent
+              className="w-auto p-0 border-slate-200 shadow-xl rounded-xl"
+              align="center"
+            >
+              <Calendar
+                mode="single"
+                selected={currentDate}
+                onSelect={handleDateSelect}
+                initialFocus
+              />
+            </PopoverContent>
+          </Popover>
+          <Separator orientation="vertical" className="h-4" />
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-full w-7 rounded-md"
+            onClick={() => handleNavigate("next")}
+          >
+            <ChevronRight className="h-4 w-4 text-slate-600" />
+          </Button>
         </div>
-        <div className="flex flex-col md:flex-row gap-2">
-          <div className="relative flex-1">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+
+        <Tabs
+          value={view}
+          onValueChange={(v) => setView(v as ViewType)}
+          className="h-8"
+        >
+          <TabsList className="grid w-[240px] grid-cols-3 h-full p-0.5 bg-slate-100 border">
+            <TabsTrigger
+              value="day"
+              className="text-[11px] font-semibold h-full data-[state=active]:shadow-sm"
+            >
+              Day
+            </TabsTrigger>
+            <TabsTrigger
+              value="week"
+              className="text-[11px] font-semibold h-full data-[state=active]:shadow-sm"
+            >
+              Week
+            </TabsTrigger>
+            <TabsTrigger
+              value="month"
+              className="text-[11px] font-semibold h-full data-[state=active]:shadow-sm"
+            >
+              Month
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
+
+        <div className="flex-1 hidden lg:block" />
+
+        <div className="flex items-center gap-2 w-full md:w-auto">
+          <div className="relative flex-1 md:w-[220px]">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
             <Input
-              placeholder="Search vehicle..."
-              className="pl-9 h-9 text-xs"
+              placeholder="Search vehicles..."
+              className="pl-8 h-8 text-xs bg-slate-50 border-slate-200 focus-visible:bg-white"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
@@ -550,47 +609,97 @@ export default function TimelineScheduler({
             value={filterMode}
             onValueChange={(v: any) => setFilterMode(v)}
           >
-            <SelectTrigger className="w-[150px] h-9 text-xs">
-              <Filter className="w-3 h-3 mr-2" />
+            <SelectTrigger className="w-[160px] h-8 text-xs bg-slate-50 border-slate-200 font-medium">
+              <Filter className="w-3 h-3 text-slate-400" />
               <SelectValue placeholder="Filter" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Show All</SelectItem>
-              <SelectItem value="booked">Booked</SelectItem>
-              <SelectItem value="available">Available</SelectItem>
+              <SelectItem value="all" className="text-xs">
+                Show All Fleet
+              </SelectItem>
+              <SelectItem value="booked" className="text-xs">
+                Currently Booked
+              </SelectItem>
+              <SelectItem value="available" className="text-xs">
+                Available Now
+              </SelectItem>
             </SelectContent>
           </Select>
         </div>
       </div>
 
-      {/* GRID AREA */}
-      <div className="flex-1 overflow-auto relative bg-slate-50/50">
-        <div className="relative min-w-max">
-          {/* STICKY HEADER */}
-          <div className="sticky top-0 z-30 bg-white border-b shadow-sm flex h-14">
+      <div className="h-8 bg-slate-50 border-b flex items-center px-6 gap-6 shrink-0 overflow-x-auto text-[10px] font-bold text-slate-500 uppercase tracking-wider custom-scrollbar select-none">
+        <div className="flex items-center gap-1.5">
+          <div className="w-2.5 h-2.5 rounded-full bg-emerald-100 border border-emerald-300" />{" "}
+          Confirmed
+        </div>
+        <div className="flex items-center gap-1.5">
+          <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 border border-emerald-600" />{" "}
+          Ongoing
+        </div>
+        <div className="flex items-center gap-1.5">
+          <div className="w-2.5 h-2.5 rounded-full bg-amber-100 border border-amber-300" />{" "}
+          Pending
+        </div>
+        <div className="flex items-center gap-1.5">
+          <div className="w-2.5 h-2.5 rounded-full bg-slate-200 border border-slate-300" />{" "}
+          Completed
+        </div>
+        <div className="flex items-center gap-1.5">
+          <div className="w-2.5 h-2.5 rounded-full bg-orange-100 border border-orange-400" />{" "}
+          Late Arrival
+        </div>
+        <div className="flex items-center gap-1.5">
+          <div className="w-2.5 h-2.5 rounded-full bg-red-100 border border-red-500" />{" "}
+          Overdue Return
+        </div>
+        <div className="flex items-center gap-1.5">
+          <div className="w-2.5 h-2.5 rounded-full bg-red-500 border border-red-600" />{" "}
+          Conflict
+        </div>
+        <div className="flex items-center gap-1.5">
+          <div className="w-2.5 h-2.5 rounded-[3px] bg-[linear-gradient(45deg,rgba(0,0,0,0.06)_25%,transparent_25%,transparent_50%,rgba(0,0,0,0.06)_50%,rgba(0,0,0,0.06)_75%,transparent_75%,transparent)] bg-[length:6px_6px] border border-slate-300" />{" "}
+          Maintenance
+        </div>
+      </div>
+
+      <div className="flex-1 overflow-auto bg-slate-50/30 custom-scrollbar relative">
+        <div
+          className="min-w-max flex flex-col"
+          style={{ width: `${SIDEBAR_WIDTH + totalWidth}px` }}
+        >
+          <div className="sticky top-0 z-40 flex border-b shadow-sm bg-white">
             <div
-              className="sticky left-0 top-0 z-40 bg-slate-100 border-r border-b h-14 flex items-center px-4 font-bold text-xs text-slate-500 uppercase tracking-wider shadow-[4px_0_24px_-12px_rgba(0,0,0,0.1)]"
-              style={{ width: `${SIDEBAR_WIDTH}px` }}
+              className="sticky left-0 z-50 bg-slate-100 border-r flex items-center px-4 shadow-[4px_0_12px_-6px_rgba(0,0,0,0.05)]"
+              style={{
+                width: `${SIDEBAR_WIDTH}px`,
+                minWidth: `${SIDEBAR_WIDTH}px`,
+              }}
             >
-              Resources ({filteredResources.length})
+              <div className="font-bold text-[11px] text-slate-500 uppercase tracking-wider">
+                Fleet Resources{" "}
+                <span className="ml-1 bg-slate-200 text-slate-600 px-1.5 py-0.5 rounded-sm">
+                  {filteredResources.length}
+                </span>
+              </div>
             </div>
-            <div className="flex flex-col">
-              <div className="flex h-7 bg-slate-50 border-b">
+            <div className="flex flex-col bg-white">
+              <div className="flex h-7 border-b bg-slate-50/80">
                 {mainHeaders.map((h: MainHeader, i: number) => (
                   <div
                     key={i}
-                    className="shrink-0 border-r flex items-center justify-center font-bold text-xs text-slate-600 uppercase tracking-wide bg-slate-50"
+                    className="shrink-0 border-r flex items-center justify-center font-bold text-[11px] text-slate-700 uppercase tracking-wide"
                     style={{ width: `${h.width}px` }}
                   >
                     {h.label}
                   </div>
                 ))}
               </div>
-              <div className="flex h-7 bg-white">
+              <div className="flex h-5 bg-white">
                 {subHeaders.map((h: SubHeader, i: number) => (
                   <div
                     key={i}
-                    className="shrink-0 border-r flex items-center justify-center text-[10px] text-slate-400 font-mono"
+                    className="shrink-0 border-r flex items-center justify-center text-[10px] text-slate-400 font-mono font-medium"
                     style={{ width: `${h.width}px` }}
                   >
                     {h.label}
@@ -600,97 +709,109 @@ export default function TimelineScheduler({
             </div>
           </div>
 
-          {/* GLOBAL CURRENT TIME LINE (RED LINE) */}
-          {nowOffset >= 0 && nowOffset <= totalWidth && (
-            <div
-              className="absolute top-14 bottom-0 w-[2px] bg-red-500 z-20 pointer-events-none"
-              style={{ left: `${SIDEBAR_WIDTH + nowOffset}px` }}
-            >
-              <div className="absolute top-0 -left-1.5 w-3.5 h-3.5 bg-red-500 rounded-full shadow-md flex items-center justify-center">
-                <div className="w-1.5 h-1.5 bg-white rounded-full animate-ping" />
+          <div className="relative flex flex-col">
+            {nowOffset >= 0 && nowOffset <= totalWidth && (
+              <div
+                className="absolute top-0 bottom-0 w-[2px] bg-red-500/80 z-20 pointer-events-none"
+                style={{ left: `${SIDEBAR_WIDTH + nowOffset}px` }}
+              >
+                <div className="absolute top-0 -left-1.5 w-3.5 h-3.5 bg-red-500 rounded-full shadow-md flex items-center justify-center">
+                  <div className="w-1.5 h-1.5 bg-white rounded-full animate-ping" />
+                </div>
               </div>
-            </div>
-          )}
+            )}
 
-          {/* RESOURCE ROWS */}
-          <div>
             {filteredResources.map((res) => {
               const isGhostHere =
-                ghostBooking && ghostBooking.resourceId === res.id;
+                parsedGhostBooking && parsedGhostBooking.resourceId === res.id;
 
               const hasConflict =
                 isGhostHere &&
                 events.some((e) => {
-                  if (
-                    e.resourceId !== res.id ||
-                    e.status === "no_show" ||
-                    e.status === "cancelled"
-                  )
+                  if (e.id === parsedGhostBooking.id) return false;
+                  const isConflictStatus = [
+                    "confirmed",
+                    "ongoing",
+                    "maintenance",
+                    "pending",
+                    "displaced",
+                  ].includes(e.status || "");
+                  if (e.resourceId !== res.id || !isConflictStatus)
                     return false;
-                  if (
-                    e.status !== "confirmed" &&
-                    e.status !== "maintenance" &&
-                    e.status !== "ongoing"
-                  )
-                    return false;
+
                   const eEndWithBuffer = addMinutes(
-                    e.end,
+                    e.end as Date,
                     e.bufferDuration || 0,
                   );
                   const ghostEndWithBuffer = addMinutes(
-                    ghostBooking.end,
-                    ghostBooking.bufferDuration || 0,
+                    parsedGhostBooking.end as Date,
+                    parsedGhostBooking.bufferDuration || 0,
                   );
                   return (
-                    ghostBooking.start < eEndWithBuffer &&
-                    ghostEndWithBuffer > e.start
+                    (parsedGhostBooking.start as Date) < eEndWithBuffer &&
+                    ghostEndWithBuffer > (e.start as Date)
                   );
                 });
 
               let ghostStyleClass =
-                "bg-emerald-100/80 border-emerald-500 text-emerald-900";
-              let ghostLabel = "PROPOSAL";
-              let ghostIcon = <CheckCircle className="w-3 h-3" />;
+                "bg-emerald-500/90 border-emerald-600 text-white shadow-xl shadow-emerald-500/20";
+              let ghostLabel = "PROPOSAL (CLEAR)";
+              let ghostIcon = (
+                <CheckCircle
+                  className={cn(isMonthView ? "w-2.5 h-2.5" : "w-3 h-3")}
+                />
+              );
 
               if (hasConflict) {
                 if (isOverrideMode) {
                   ghostStyleClass =
-                    "bg-amber-100/90 border-amber-600 text-amber-900 ring-2 ring-amber-500";
+                    "bg-amber-500/95 border-amber-600 text-white ring-4 ring-amber-500/30 shadow-xl shadow-amber-500/30";
                   ghostLabel = "FORCE OVERRIDE";
-                  ghostIcon = <ShieldAlert className="w-3 h-3" />;
+                  ghostIcon = (
+                    <ShieldAlert
+                      className={cn(isMonthView ? "w-2.5 h-2.5" : "w-3 h-3")}
+                    />
+                  );
                 } else {
-                  ghostStyleClass = "bg-red-100/80 border-red-500 text-red-900";
-                  ghostLabel = "CONFLICT";
-                  ghostIcon = <AlertCircle className="w-3 h-3" />;
+                  ghostStyleClass =
+                    "bg-red-500 border-red-600 text-white shadow-xl shadow-red-500/30 animate-pulse opacity-90 z-50";
+                  ghostLabel = "CONFLICT (MOVE ME)";
+                  ghostIcon = (
+                    <AlertCircle
+                      className={cn(isMonthView ? "w-2.5 h-2.5" : "w-3 h-3")}
+                    />
+                  );
                 }
               }
 
               const ghostStyle =
-                isGhostHere && ghostBooking
-                  ? getEventStyle(ghostBooking)
+                isGhostHere && parsedGhostBooking
+                  ? getEventStyle(parsedGhostBooking)
                   : undefined;
 
               return (
                 <div
                   key={res.id}
-                  className="flex group hover:bg-slate-100/50 transition-colors h-[72px] border-b bg-white relative"
+                  className="flex border-b border-slate-100 bg-white h-[60px] group hover:bg-blue-50/30 transition-colors relative"
                 >
-                  {/* Sidebar Cell */}
                   <div
-                    className="sticky left-0 z-30 bg-white group-hover:bg-slate-50 border-r flex items-center px-4 gap-3 shadow-[4px_0_24px_-12px_rgba(0,0,0,0.1)]"
-                    style={{ width: `${SIDEBAR_WIDTH}px` }}
+                    className="sticky left-0 z-30 bg-white group-hover:bg-blue-50/30 border-r flex items-center px-4 gap-3 shadow-[4px_0_12px_-6px_rgba(0,0,0,0.05)] transition-colors"
+                    style={{
+                      width: `${SIDEBAR_WIDTH}px`,
+                      minWidth: `${SIDEBAR_WIDTH}px`,
+                    }}
                   >
-                    <Avatar className="h-9 w-9 border border-slate-200">
-                      <AvatarImage src={res.image} />
-                      <AvatarFallback className="bg-slate-100">
+                    <Avatar className="h-9 w-9 border border-slate-200 shadow-sm">
+                      <AvatarImage src={res.image} className="object-cover" />
+                      <AvatarFallback className="bg-slate-100 font-bold text-slate-400 text-xs">
                         {res.title[0]}
                       </AvatarFallback>
                     </Avatar>
                     <div className="flex flex-col overflow-hidden">
-                      <span className="text-sm font-semibold truncate text-slate-700">
+                      <span className="text-sm font-bold truncate text-slate-800 tracking-tight">
                         {res.title}
                       </span>
-                      <span className="text-[10px] text-muted-foreground truncate">
+                      <span className="text-[10px] font-medium text-slate-500 truncate">
                         {res.subtitle}
                       </span>
                     </div>
@@ -700,7 +821,6 @@ export default function TimelineScheduler({
                     className="relative flex-1"
                     style={{ width: `${totalWidth}px` }}
                   >
-                    {/* Track Background & Interactions */}
                     <ContextMenu>
                       <ContextMenuTrigger>
                         <div
@@ -728,7 +848,7 @@ export default function TimelineScheduler({
                           }}
                           onClick={(e) => {
                             if (wasDragged.current) return;
-                            if (ghostBooking && onGhostMove) {
+                            if (parsedGhostBooking && onGhostMove) {
                               onGhostMove(res.id);
                             } else if (onEmptyClick) {
                               onEmptyClick(
@@ -751,7 +871,7 @@ export default function TimelineScheduler({
                                 className={cn(
                                   "border-r h-full",
                                   view !== "month" && i % 24 === 0
-                                    ? "border-slate-300"
+                                    ? "border-slate-300 bg-slate-50/30"
                                     : "border-slate-100",
                                 )}
                                 style={{ width: `${h.width}px` }}
@@ -760,29 +880,25 @@ export default function TimelineScheduler({
                           </div>
                         </div>
                       </ContextMenuTrigger>
-                      <ContextMenuContent className="w-56 rounded-none shadow-md border-slate-200">
-                        <ContextMenuLabel className="text-xs">
-                          Slot Actions
-                        </ContextMenuLabel>
+                      <ContextMenuContent className="w-56 rounded-lg shadow-xl border-slate-200">
                         <ContextMenuItem
-                          className="text-xs"
+                          className="text-xs font-medium cursor-pointer"
                           onClick={() =>
                             onAddMaintenance &&
                             clickedTimeRef.current &&
                             onAddMaintenance(res.id, clickedTimeRef.current)
                           }
                         >
-                          <Wrench className="w-3 h-3 mr-2" /> Block for
-                          Maintenance
+                          <Wrench className="w-3.5 h-3.5 mr-2 text-slate-400" />{" "}
+                          Add Maintenance Block
                         </ContextMenuItem>
                       </ContextMenuContent>
                     </ContextMenu>
 
-                    {/* Drag-to-Create Preview */}
                     {creationState?.isDragging &&
                       creationState.resourceId === res.id && (
                         <div
-                          className="absolute top-3 bottom-3 bg-blue-100/60 border-2 border-blue-500 border-dashed rounded-md z-40 flex items-center justify-center pointer-events-none overflow-hidden"
+                          className="absolute top-1.5 bottom-1.5 bg-blue-100/50 border-2 border-blue-500 border-dashed rounded-md z-40 flex items-center justify-center pointer-events-none overflow-hidden"
                           style={{
                             left: `${Math.min(creationState.startX, creationState.currentX)}px`,
                             width: `${Math.abs(creationState.currentX - creationState.startX)}px`,
@@ -791,7 +907,7 @@ export default function TimelineScheduler({
                           {Math.abs(
                             creationState.currentX - creationState.startX,
                           ) > 60 && (
-                            <div className="bg-white/90 px-1.5 py-0.5 rounded shadow-sm text-blue-700 font-bold text-[10px] whitespace-nowrap">
+                            <div className="bg-white px-2 py-1 rounded shadow-sm text-blue-700 font-bold text-[10px] whitespace-nowrap border border-blue-100">
                               {format(
                                 addMinutes(
                                   timelineStart,
@@ -826,26 +942,26 @@ export default function TimelineScheduler({
                         </div>
                       )}
 
-                    {/* Ghost Element */}
-                    {isGhostHere && ghostStyle && ghostBooking && (
+                    {isGhostHere && ghostStyle && parsedGhostBooking && (
                       <div
                         className={cn(
-                          "absolute top-3 bottom-3 rounded-md border-2 border-dashed px-2 text-xs shadow-lg z-50 flex flex-col justify-center animate-pulse pointer-events-none",
+                          "absolute top-1.5 bottom-1.5 rounded-md border-2 border-dashed text-xs z-50 flex flex-col justify-center pointer-events-none transition-all",
                           ghostStyleClass,
+                          isMonthView ? "px-1" : "px-2.5",
                         )}
                         style={ghostStyle}
                       >
-                        <div className="font-bold flex items-center gap-1">
-                          {ghostIcon}
-                          {ghostLabel}
+                        <div className="font-bold flex items-center gap-1.5">
+                          {ghostIcon} {!isMonthView && ghostLabel}
                         </div>
-                        <div className="text-[10px] font-medium opacity-90 truncate">
-                          {ghostBooking.title}
-                        </div>
+                        {!isMonthView && (
+                          <div className="text-[9px] font-medium opacity-90 truncate mt-0.5">
+                            {parsedGhostBooking.title}
+                          </div>
+                        )}
                       </div>
                     )}
 
-                    {/* EVENTS LOOP */}
                     {events
                       .filter(
                         (evt) =>
@@ -860,7 +976,7 @@ export default function TimelineScheduler({
                           resizeMode === "event" &&
                           resizePreviewEnd
                             ? resizePreviewEnd
-                            : evt.end;
+                            : (evt.end as Date);
                         const displayBuffer =
                           isResizing &&
                           resizeMode === "buffer" &&
@@ -870,8 +986,8 @@ export default function TimelineScheduler({
                         const style = getEventStyle(evt, displayEnd);
 
                         if (
-                          displayEnd < timelineStart ||
-                          evt.start > timelineEnd
+                          displayEnd.getTime() < timelineStart.getTime() ||
+                          (evt.start as Date).getTime() > timelineEnd.getTime()
                         )
                           return null;
 
@@ -879,9 +995,11 @@ export default function TimelineScheduler({
                         const isDisplaced = evt.status === "displaced";
                         const isOngoing = evt.status === "ongoing";
                         const isCompleted = evt.status === "completed";
-
-                        const isLate =
-                          evt.status === "confirmed" && now > evt.start;
+                        const isLateArrival =
+                          evt.status === "confirmed" &&
+                          now > (evt.start as Date);
+                        const isOverdueReturn =
+                          evt.status === "ongoing" && now > (evt.end as Date);
 
                         let isOverlappingOther = false;
                         if (!isResizing && !isCompleted) {
@@ -892,56 +1010,42 @@ export default function TimelineScheduler({
                               other.status !== "displaced" &&
                               other.status !== "cancelled" &&
                               other.status !== "no_show" &&
-                              other.start <
+                              (other.start as Date) <
                                 addMinutes(displayEnd, displayBuffer || 0) &&
-                              addMinutes(other.end, other.bufferDuration || 0) >
-                                evt.start,
+                              addMinutes(
+                                other.end as Date,
+                                other.bufferDuration || 0,
+                              ) > (evt.start as Date),
                           );
                         }
 
                         let eventColorClass =
-                          "bg-blue-100 border-blue-200 text-blue-800";
+                          "bg-blue-100 border-blue-300 text-blue-900 shadow-sm";
                         if (isMaintenance) {
                           eventColorClass =
-                            "bg-slate-100 border-slate-300 text-slate-500 bg-[linear-gradient(45deg,rgba(0,0,0,0.02)_25%,transparent_25%,transparent_50%,rgba(0,0,0,0.02)_50%,rgba(0,0,0,0.02)_75%,transparent_75%,transparent)] bg-[length:10px_10px]";
+                            "bg-slate-100 border-slate-300 text-slate-500 bg-[linear-gradient(45deg,rgba(0,0,0,0.03)_25%,transparent_25%,transparent_50%,rgba(0,0,0,0.03)_50%,rgba(0,0,0,0.03)_75%,transparent_75%,transparent)] bg-[length:10px_10px] shadow-inner";
                         } else if (isDisplaced || isOverlappingOther) {
+                          // Transparent/Blend overlap logic
                           eventColorClass =
-                            "bg-red-600 border-red-700 text-white shadow-md animate-pulse";
+                            "bg-red-500/80 border-red-600/80 text-white shadow-md animate-pulse z-20 backdrop-blur-[1px]";
                         } else if (isCompleted) {
                           eventColorClass =
-                            "bg-slate-200 border-slate-300 text-slate-500 opacity-80";
+                            "bg-slate-200 border-slate-300 text-slate-500 opacity-80 shadow-inner";
+                        } else if (isOverdueReturn) {
+                          eventColorClass =
+                            "bg-red-100 border-red-500 text-red-900 shadow-md animate-pulse";
                         } else if (isOngoing) {
                           eventColorClass =
-                            "bg-emerald-500 border-emerald-600 text-white shadow-sm";
-                        } else if (isLate) {
+                            "bg-emerald-500 border-emerald-600 text-white shadow-md";
+                        } else if (isLateArrival) {
                           eventColorClass =
-                            "bg-orange-100 border-orange-500 text-orange-900 shadow-md animate-pulse";
+                            "bg-orange-100 border-orange-400 text-orange-900 shadow-md animate-pulse";
                         } else if (evt.status === "confirmed") {
                           eventColorClass =
-                            "bg-emerald-100 border-emerald-300 text-emerald-900";
+                            "bg-emerald-100 border-emerald-300 text-emerald-900 shadow-sm";
                         } else if (evt.status === "pending") {
                           eventColorClass =
-                            "bg-amber-100 border-amber-300 text-amber-900";
-                        }
-
-                        if (isResizing) {
-                          const newBufferEnd = addMinutes(
-                            displayEnd,
-                            displayBuffer || 0,
-                          );
-                          const isResizeConflict = events.some(
-                            (other) =>
-                              other.id !== evt.id &&
-                              other.resourceId === evt.resourceId &&
-                              (other.status === "confirmed" ||
-                                other.status === "maintenance") &&
-                              other.start < newBufferEnd &&
-                              addMinutes(other.end, other.bufferDuration || 0) >
-                                evt.start,
-                          );
-                          if (isResizeConflict)
-                            eventColorClass =
-                              "bg-red-100 border-red-500 text-red-900 ring-2 ring-red-500 z-50 opacity-95";
+                            "bg-amber-100 border-amber-300 text-amber-900 shadow-sm";
                         }
 
                         const textColorClass =
@@ -950,8 +1054,14 @@ export default function TimelineScheduler({
                             : "text-slate-900";
                         const subtextColorClass =
                           isOngoing || isDisplaced || isOverlappingOther
-                            ? "text-white/80"
-                            : "opacity-80";
+                            ? "text-white/90"
+                            : "text-slate-600";
+
+                        // Icon sizing logic for compact month view
+                        const iconClass = cn(
+                          isMonthView ? "w-2.5 h-2.5" : "w-3 h-3",
+                          textColorClass,
+                        );
 
                         return (
                           <React.Fragment key={evt.id}>
@@ -963,7 +1073,7 @@ export default function TimelineScheduler({
                                 displayBuffer,
                               ) && (
                                 <div
-                                  className="absolute top-3 bottom-3 z-0 bg-slate-100 border border-slate-300/50 border-l-0 flex items-center justify-center opacity-80 group/buffer"
+                                  className="absolute top-1.5 bottom-1.5 z-0 bg-slate-100/80 border border-slate-300 border-l-0 flex items-center justify-center opacity-90 group/buffer rounded-r-md"
                                   style={{
                                     ...getBufferStyle(
                                       evt,
@@ -972,159 +1082,192 @@ export default function TimelineScheduler({
                                     ),
                                     height: undefined,
                                     backgroundImage:
-                                      "repeating-linear-gradient(45deg, transparent, transparent 5px, #cbd5e1 5px, #cbd5e1 10px)",
+                                      "repeating-linear-gradient(45deg, transparent, transparent 5px, rgba(203, 213, 225, 0.4) 5px, rgba(203, 213, 225, 0.4) 10px)",
                                   }}
                                   title={`Turnaround: ${displayBuffer / 60}h`}
                                 >
                                   <div
-                                    className="absolute right-0 top-0 bottom-0 w-3 cursor-col-resize flex items-center justify-center hover:bg-black/10 transition-colors z-20 opacity-0 group-hover/buffer:opacity-100"
+                                    className="absolute right-0 top-0 bottom-0 w-3 cursor-col-resize flex items-center justify-center hover:bg-black/10 transition-colors z-20 opacity-0 group-hover/buffer:opacity-100 rounded-r-md"
                                     onMouseDown={(e) =>
                                       handleResizeStart(e, evt, "buffer")
                                     }
                                     onClick={(e) => e.stopPropagation()}
                                   >
-                                    <div className="w-0.5 h-3 bg-slate-500 rounded-full" />
+                                    <div className="w-0.5 h-3 bg-slate-400 rounded-full" />
                                   </div>
                                 </div>
                               )}
 
-                            {/* --- MAIN BOOKING BAR --- */}
                             <Popover
                               open={openEventId === evt.id}
-                              onOpenChange={(isOpen) =>
-                                !isResizing &&
-                                setOpenEventId(isOpen ? evt.id : null)
-                              }
+                              onOpenChange={(isOpen) => {
+                                if (!isResizing)
+                                  setOpenEventId(isOpen ? evt.id : null);
+                              }}
                             >
                               <ContextMenu>
                                 <ContextMenuTrigger asChild>
-                                  <PopoverTrigger asChild>
+                                  <div
+                                    className={cn(
+                                      "absolute top-1.5 bottom-1.5 rounded-md border cursor-pointer hover:shadow-lg transition-all z-10 overflow-hidden flex flex-col justify-center group/event",
+                                      eventColorClass,
+                                      isMonthView ? "px-1" : "px-2",
+                                    )}
+                                    style={style}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      if (e.altKey && onSplitEvent) {
+                                        const rect =
+                                          e.currentTarget.getBoundingClientRect();
+                                        const snapMins = 30;
+                                        const roundedMins =
+                                          Math.round(
+                                            (e.clientX - rect.left) /
+                                              pxPerMinute /
+                                              snapMins,
+                                          ) * snapMins;
+                                        onSplitEvent(
+                                          evt,
+                                          addMinutes(
+                                            evt.start as Date,
+                                            roundedMins,
+                                          ),
+                                        );
+                                      } else {
+                                        // Save exact click position for perfect popover anchoring
+                                        const rect =
+                                          e.currentTarget.getBoundingClientRect();
+                                        setClickOffsets((prev) => ({
+                                          ...prev,
+                                          [evt.id]: e.clientX - rect.left,
+                                        }));
+                                        if (!isResizing) setOpenEventId(evt.id);
+                                      }
+                                    }}
+                                  >
+                                    {/* INVISIBLE POPOVER ANCHOR */}
+                                    <PopoverTrigger asChild>
+                                      <div
+                                        className="absolute top-1/2 w-px h-px opacity-0 pointer-events-none"
+                                        style={{
+                                          left: `${clickOffsets[evt.id] || 0}px`,
+                                        }}
+                                      />
+                                    </PopoverTrigger>
+
                                     <div
                                       className={cn(
-                                        "absolute top-3 bottom-3 rounded-md border px-2 text-xs shadow-sm cursor-pointer hover:shadow-md transition-all z-10 overflow-hidden flex flex-col justify-center group/event",
-                                        eventColorClass,
+                                        "font-bold truncate leading-tight flex justify-between items-center w-full",
+                                        textColorClass,
                                       )}
-                                      style={style}
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        if (e.altKey && onSplitEvent) {
-                                          const rect =
-                                            e.currentTarget.getBoundingClientRect();
-                                          const snapMins = 30;
-                                          const roundedMins =
-                                            Math.round(
-                                              (e.clientX - rect.left) /
-                                                pxPerMinute /
-                                                snapMins,
-                                            ) * snapMins;
-                                          onSplitEvent(
-                                            evt,
-                                            addMinutes(evt.start, roundedMins),
-                                          );
-                                          return;
-                                        }
-                                      }}
                                     >
-                                      <div
+                                      <span
                                         className={cn(
-                                          "font-bold truncate leading-tight flex justify-between items-center w-full",
-                                          textColorClass,
+                                          "truncate flex items-center",
+                                          isMonthView
+                                            ? "gap-1 text-[9px]"
+                                            : "gap-1.5 text-[11px]",
                                         )}
                                       >
-                                        <span className="truncate flex items-center gap-1">
-                                          {isDisplaced && (
-                                            <AlertCircle className="w-3 h-3 text-white" />
-                                          )}
-                                          {isLate && (
-                                            <AlertCircle className="w-3 h-3 text-orange-600" />
-                                          )}
-                                          {isMaintenance && (
-                                            <Wrench className="w-3 h-3" />
-                                          )}
-                                          {evt.title}
-                                        </span>
-                                      </div>
-
-                                      {evt.subtitle && !isMaintenance && (
-                                        <div
-                                          className={cn(
-                                            "text-[10px] truncate font-medium tracking-wide",
-                                            subtextColorClass,
-                                          )}
-                                        >
-                                          {isDisplaced
-                                            ? "DISPLACED - ACTION NEEDED"
-                                            : isLate
-                                              ? "LATE: CUSTOMER MISSING"
-                                              : evt.subtitle}
-                                        </div>
-                                      )}
-
-                                      {!isCompleted && (
-                                        <div
-                                          className="absolute right-0 top-0 bottom-0 w-3 cursor-col-resize flex items-center justify-center hover:bg-black/5 transition-colors z-20 opacity-0 group-hover/event:opacity-100"
-                                          onMouseDown={(e) =>
-                                            handleResizeStart(e, evt, "event")
-                                          }
-                                          onClick={(e) => e.stopPropagation()}
-                                        >
-                                          <div
+                                        {isDisplaced && (
+                                          <AlertCircle className={iconClass} />
+                                        )}
+                                        {isLateArrival && !isDisplaced && (
+                                          <ClockAlert
                                             className={cn(
-                                              "w-0.5 h-3 rounded-full",
-                                              isOngoing || isDisplaced
-                                                ? "bg-white/50"
-                                                : "bg-slate-400",
+                                              iconClass,
+                                              "text-orange-600",
                                             )}
                                           />
-                                        </div>
-                                      )}
+                                        )}
+                                        {isOverdueReturn && !isDisplaced && (
+                                          <ClockAlert
+                                            className={cn(
+                                              iconClass,
+                                              "text-red-600",
+                                            )}
+                                          />
+                                        )}
+                                        {isMaintenance && (
+                                          <Wrench className={iconClass} />
+                                        )}
+                                        {evt.title}
+                                      </span>
                                     </div>
-                                  </PopoverTrigger>
+                                    {evt.subtitle && !isMaintenance && (
+                                      <div
+                                        className={cn(
+                                          "truncate font-medium tracking-wide",
+                                          subtextColorClass,
+                                          isMonthView
+                                            ? "text-[7px] mt-0"
+                                            : "text-[9px] mt-[1px]",
+                                        )}
+                                      >
+                                        {isDisplaced
+                                          ? "DISPLACED"
+                                          : isLateArrival
+                                            ? "LATE ARRIVAL"
+                                            : isOverdueReturn
+                                              ? "OVERDUE RETURN"
+                                              : evt.subtitle}
+                                      </div>
+                                    )}
+                                    {!isCompleted && (
+                                      <div
+                                        className="absolute right-0 top-0 bottom-0 w-3 cursor-col-resize flex items-center justify-center hover:bg-black/10 transition-colors z-20 opacity-0 group-hover/event:opacity-100"
+                                        onMouseDown={(e) =>
+                                          handleResizeStart(e, evt, "event")
+                                        }
+                                        onClick={(e) => e.stopPropagation()}
+                                      >
+                                        <div
+                                          className={cn(
+                                            "w-0.5 h-3 rounded-full",
+                                            isOngoing || isDisplaced
+                                              ? "bg-white/70"
+                                              : "bg-slate-400",
+                                          )}
+                                        />
+                                      </div>
+                                    )}
+                                  </div>
                                 </ContextMenuTrigger>
 
-                                <ContextMenuContent className="w-48 rounded-none text-xs shadow-md border-slate-200">
+                                <ContextMenuContent className="w-48 rounded-lg shadow-xl border-slate-200">
                                   {isMaintenance ? (
                                     <ContextMenuItem
-                                      className="text-xs text-red-600 focus:text-red-600 focus:bg-red-50"
+                                      className="text-xs font-medium text-red-600 cursor-pointer"
                                       onClick={() =>
                                         onDeleteClick && onDeleteClick(evt)
                                       }
                                     >
-                                      <Trash className="w-3 h-3 mr-2" /> Delete
-                                      Block
+                                      <Trash className="w-3.5 h-3.5 mr-2" />{" "}
+                                      Delete Block
                                     </ContextMenuItem>
                                   ) : (
                                     <>
-                                      <ContextMenuLabel className="text-xs">
+                                      <ContextMenuLabel className="text-[10px] text-slate-500 uppercase tracking-wider font-bold">
                                         Booking Actions
                                       </ContextMenuLabel>
                                       <ContextMenuItem
-                                        className="text-xs"
+                                        className="text-xs font-medium cursor-pointer"
                                         onClick={() =>
                                           onEditClick && onEditClick(evt)
                                         }
                                       >
-                                        <Edit className="w-3 h-3 mr-2" /> Edit
-                                        Booking
-                                      </ContextMenuItem>
-                                      <ContextMenuItem
-                                        className="text-xs"
-                                        onClick={() =>
-                                          navigator.clipboard.writeText(evt.id)
-                                        }
-                                      >
-                                        <Copy className="w-3 h-3 mr-2" /> Copy
-                                        ID
+                                        <Edit className="w-3.5 h-3.5 mr-2 text-slate-400" />{" "}
+                                        Edit Booking
                                       </ContextMenuItem>
                                       <ContextMenuSeparator />
                                       <ContextMenuSub>
-                                        <ContextMenuSubTrigger className="text-xs">
-                                          <CheckSquare className="w-3 h-3 mr-2" />{" "}
-                                          Force Status Change
+                                        <ContextMenuSubTrigger className="text-xs font-medium cursor-pointer">
+                                          <CheckSquare className="w-3.5 h-3.5 mr-2 text-slate-400" />{" "}
+                                          Force Status
                                         </ContextMenuSubTrigger>
-                                        <ContextMenuSubContent className="w-40 rounded-none text-xs shadow-md border-slate-200">
+                                        <ContextMenuSubContent className="w-40 rounded-lg shadow-xl border-slate-200">
                                           <ContextMenuItem
-                                            className="text-xs"
+                                            className="text-xs font-medium cursor-pointer"
                                             onClick={() =>
                                               onStatusChange &&
                                               onStatusChange(evt, "confirmed")
@@ -1133,7 +1276,7 @@ export default function TimelineScheduler({
                                             Set Confirmed
                                           </ContextMenuItem>
                                           <ContextMenuItem
-                                            className="text-xs"
+                                            className="text-xs font-medium cursor-pointer"
                                             onClick={() =>
                                               onStatusChange &&
                                               onStatusChange(evt, "ongoing")
@@ -1142,7 +1285,7 @@ export default function TimelineScheduler({
                                             Set Ongoing
                                           </ContextMenuItem>
                                           <ContextMenuItem
-                                            className="text-xs"
+                                            className="text-xs font-medium cursor-pointer"
                                             onClick={() =>
                                               onStatusChange &&
                                               onStatusChange(evt, "completed")
@@ -1152,7 +1295,7 @@ export default function TimelineScheduler({
                                           </ContextMenuItem>
                                           <ContextMenuSeparator />
                                           <ContextMenuItem
-                                            className="text-xs text-red-600"
+                                            className="text-xs font-medium text-red-600 cursor-pointer"
                                             onClick={() =>
                                               onStatusChange &&
                                               onStatusChange(evt, "no_show")
@@ -1164,12 +1307,12 @@ export default function TimelineScheduler({
                                       </ContextMenuSub>
                                       <ContextMenuSeparator />
                                       <ContextMenuItem
-                                        className="text-xs text-red-600 focus:text-red-600 focus:bg-red-50"
+                                        className="text-xs font-medium text-red-600 cursor-pointer"
                                         onClick={() =>
                                           onDeleteClick && onDeleteClick(evt)
                                         }
                                       >
-                                        <Trash className="w-3 h-3 mr-2" />{" "}
+                                        <Trash className="w-3.5 h-3.5 mr-2" />{" "}
                                         Delete Booking
                                       </ContextMenuItem>
                                     </>
@@ -1177,122 +1320,145 @@ export default function TimelineScheduler({
                                 </ContextMenuContent>
                               </ContextMenu>
 
-                              {/* --- SLEEK POPOVER --- */}
                               <PopoverContent
-                                className="w-80 p-0 shadow-xl border-slate-200 rounded-lg overflow-hidden"
+                                className="w-[280px] p-0 shadow-xl border-slate-200 rounded-md overflow-hidden"
                                 align="start"
                               >
                                 {isMaintenance ? (
                                   <div className="p-4 bg-slate-50 text-center">
-                                    <Wrench className="w-8 h-8 text-slate-300 mx-auto mb-2" />
-                                    <div className="font-bold text-slate-700">
+                                    <div className="w-10 h-10 rounded-md bg-slate-200 flex items-center justify-center mx-auto mb-2">
+                                      <Wrench className="w-5 h-5 text-slate-500" />
+                                    </div>
+                                    <div className="font-semibold text-slate-800 text-sm">
                                       Maintenance Block
                                     </div>
-                                    <div className="text-xs text-slate-500 mt-1">
-                                      {format(evt.start, "MMM d, h:mm a")} -{" "}
-                                      {format(evt.end, "h:mm a")}
+                                    <div className="text-[11px] font-medium text-slate-500 mt-1">
+                                      {format(
+                                        evt.start as Date,
+                                        "MMM d, h:mm a",
+                                      )}{" "}
+                                      - {format(evt.end as Date, "h:mm a")}
                                     </div>
                                   </div>
                                 ) : (
                                   <>
-                                    {/* HEADER */}
-                                    <div className="p-4 bg-white border-b">
-                                      <div className="flex items-center justify-between mb-2">
-                                        <Badge
-                                          variant="outline"
-                                          className={cn(
-                                            "uppercase text-[10px] tracking-wider border",
-                                            evt.status === "confirmed" &&
-                                              !isLate &&
-                                              "bg-emerald-50 text-emerald-700 border-emerald-200",
-                                            evt.status === "ongoing" &&
-                                              "bg-blue-50 text-blue-700 border-blue-200",
-                                            isLate &&
-                                              "bg-orange-50 text-orange-700 border-orange-300",
-                                          )}
-                                        >
-                                          {isLate
-                                            ? "LATE"
-                                            : evt.status || "BOOKING"}
-                                        </Badge>
+                                    {/* COMPACT HEADER */}
+                                    <div className="p-3 bg-white border-b relative">
+                                      <div className="absolute top-2 right-2">
                                         <Button
                                           variant="ghost"
                                           size="icon"
-                                          className="h-6 w-6 rounded-md hover:bg-slate-100 text-slate-400 hover:text-slate-600"
+                                          className="h-6 w-6 rounded-sm hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-colors"
                                           onClick={() =>
                                             onEditClick && onEditClick(evt)
                                           }
                                         >
-                                          <Edit className="h-3.5 w-3.5" />
+                                          <Edit className="h-3 w-3" />
                                         </Button>
                                       </div>
-                                      <div className="font-bold text-base text-slate-800 leading-tight">
+                                      <div className="flex items-center mb-1.5 gap-2">
+                                        <Badge
+                                          variant="outline"
+                                          className={cn(
+                                            "uppercase text-[9px] tracking-wider font-semibold border px-1.5 py-0 rounded-sm",
+                                            evt.status === "confirmed" &&
+                                              !isLateArrival &&
+                                              "bg-emerald-50 text-emerald-700 border-emerald-200",
+                                            evt.status === "ongoing" &&
+                                              !isOverdueReturn &&
+                                              "bg-emerald-500 text-white border-emerald-600 shadow-sm",
+                                            isLateArrival &&
+                                              "bg-orange-100 text-orange-800 border-orange-300",
+                                            isOverdueReturn &&
+                                              "bg-red-100 text-red-800 border-red-300",
+                                            evt.status === "pending" &&
+                                              "bg-amber-100 text-amber-800 border-amber-300",
+                                          )}
+                                        >
+                                          {isLateArrival
+                                            ? "LATE ARRIVAL"
+                                            : isOverdueReturn
+                                              ? "OVERDUE RETURN"
+                                              : evt.status || "BOOKING"}
+                                        </Badge>
+                                      </div>
+                                      <div className="font-semibold text-sm text-slate-900 leading-tight pr-6 truncate">
                                         {evt.title}
                                       </div>
-                                      <div className="text-[10px] text-slate-400 mt-0.5 font-mono">
+                                      <div className="text-[9px] text-slate-400 mt-1 font-mono bg-slate-50 inline-block px-1.5 py-0.5 rounded-sm border border-slate-100 truncate max-w-full">
                                         ID: {evt.id}
                                       </div>
                                     </div>
 
-                                    {/* ACCORDIONS */}
+                                    {/* COMPACT ACCORDIONS */}
                                     <Accordion
                                       type="multiple"
-                                      className="w-full bg-slate-50/50"
+                                      className="w-full bg-slate-50"
                                       defaultValue={["schedule"]}
                                     >
+                                      {/* SCHEDULE ACCORDION */}
                                       <AccordionItem
                                         value="schedule"
-                                        className="border-b-slate-100"
+                                        className="border-b-slate-200"
                                       >
-                                        <AccordionTrigger className="px-4 py-2.5 text-xs font-semibold hover:no-underline hover:bg-slate-50">
+                                        <AccordionTrigger className="px-3 py-2.5 text-[11px] font-semibold hover:no-underline hover:bg-slate-100/50 transition-colors">
                                           <div className="flex items-center gap-2 text-slate-700">
-                                            <CalendarIcon className="w-3.5 h-3.5" />{" "}
+                                            <CalendarIcon className="w-3.5 h-3.5 text-slate-400" />{" "}
                                             Trip Schedule
                                           </div>
                                         </AccordionTrigger>
-                                        <AccordionContent className="px-4 py-3 space-y-3 bg-white border-t border-slate-100">
-                                          <div className="grid grid-cols-[20px_1fr] items-start gap-1">
-                                            <div className="mt-1 w-1.5 h-1.5 rounded-full bg-blue-500" />
+                                        <AccordionContent className="px-3 py-2.5 space-y-3 bg-white border-t border-slate-100">
+                                          <div className="grid grid-cols-[20px_1fr] items-start gap-2">
+                                            <div className="mt-1 w-1.5 h-1.5 rounded-full bg-emerald-500 ring-2 ring-emerald-50 mx-auto" />
                                             <div>
-                                              <div className="text-xs font-semibold text-slate-800">
+                                              <div className="text-[9px] font-bold text-slate-400 uppercase tracking-wider leading-none">
                                                 Pick-up
                                               </div>
-                                              <div className="text-[10px] text-slate-500">
+                                              <div className="text-xs font-semibold text-slate-800 mt-1 leading-none">
                                                 {format(
-                                                  evt.start,
+                                                  evt.start as Date,
                                                   "MMM d, yyyy • h:mm a",
                                                 )}
                                               </div>
                                               {evt.pickupLocation && (
-                                                <div className="text-[10px] text-slate-600 mt-0.5 flex items-center gap-1">
+                                                <div className="text-[10px] font-medium text-slate-600 mt-1 flex items-center gap-1.5">
                                                   <MapPin className="w-3 h-3 text-slate-400" />{" "}
                                                   {evt.pickupLocation}
                                                 </div>
                                               )}
                                             </div>
                                           </div>
-                                          <div className="grid grid-cols-[20px_1fr] items-start gap-1">
-                                            <div className="mt-1 w-1.5 h-1.5 rounded-full bg-slate-300" />
+                                          <div className="grid grid-cols-[20px_1fr] items-start gap-2 relative">
+                                            <div className="absolute left-[9px] top-[-16px] bottom-[20px] w-px bg-slate-200" />
+                                            <div
+                                              className={cn(
+                                                "mt-1 w-1.5 h-1.5 rounded-full ring-2 mx-auto relative z-10",
+                                                isOverdueReturn
+                                                  ? "bg-red-500 ring-red-50"
+                                                  : "bg-blue-500 ring-blue-50",
+                                              )}
+                                            />
                                             <div>
-                                              <div className="text-xs font-semibold text-slate-800">
+                                              <div className="text-[9px] font-bold text-slate-400 uppercase tracking-wider leading-none">
                                                 Return
                                               </div>
-                                              <div className="text-[10px] text-slate-500">
+                                              <div className="text-xs font-semibold text-slate-800 mt-1 leading-none">
                                                 {format(
-                                                  evt.end,
+                                                  evt.end as Date,
                                                   "MMM d, yyyy • h:mm a",
                                                 )}
                                               </div>
                                               {evt.dropoffLocation && (
-                                                <div className="text-[10px] text-slate-600 mt-0.5 flex items-center gap-1">
+                                                <div className="text-[10px] font-medium text-slate-600 mt-1 flex items-center gap-1.5">
                                                   <MapPin className="w-3 h-3 text-slate-400" />{" "}
                                                   {evt.dropoffLocation}
                                                 </div>
                                               )}
                                               {evt.bufferDuration &&
                                                 evt.bufferDuration > 0 && (
-                                                  <div className="text-[10px] text-slate-400 mt-1 italic">
-                                                    + {evt.bufferDuration / 60}h
+                                                  <div className="text-[9px] font-medium text-slate-500 mt-1.5 flex items-center gap-1 bg-slate-50 px-1.5 py-0.5 rounded-sm w-fit border border-slate-100">
+                                                    <Clock className="w-2.5 h-2.5" />{" "}
+                                                    +{evt.bufferDuration / 60}h
                                                     turnaround
                                                   </div>
                                                 )}
@@ -1301,30 +1467,31 @@ export default function TimelineScheduler({
                                         </AccordionContent>
                                       </AccordionItem>
 
-                                      {/* OPTIONAL DRIVER */}
+                                      {/* DRIVER ACCORDION */}
                                       {evt.withDriver && (
                                         <AccordionItem
                                           value="driver"
-                                          className="border-b-slate-100"
+                                          className="border-b-slate-200"
                                         >
-                                          <AccordionTrigger className="px-4 py-2.5 text-xs font-semibold hover:no-underline hover:bg-slate-50">
+                                          <AccordionTrigger className="px-3 py-2.5 text-[11px] font-semibold hover:no-underline hover:bg-slate-100/50 transition-colors">
                                             <div className="flex items-center gap-2 text-slate-700">
-                                              <UserCircle className="w-3.5 h-3.5" />{" "}
+                                              <UserCircle className="w-3.5 h-3.5 text-slate-400" />{" "}
                                               Assigned Driver
                                             </div>
                                           </AccordionTrigger>
-                                          <AccordionContent className="px-4 py-3 space-y-2 bg-white border-t border-slate-100">
-                                            <div className="flex items-center gap-2 text-xs">
-                                              <User className="w-3.5 h-3.5 text-slate-400" />
-                                              <span className="font-medium text-slate-700">
-                                                {evt.driverName ||
-                                                  "Pending Assignment"}
+                                          <AccordionContent className="px-3 py-2 space-y-2 bg-white border-t border-slate-100">
+                                            <div className="flex items-center gap-2.5 text-xs">
+                                              <div className="w-6 h-6 rounded-md bg-slate-100 flex items-center justify-center">
+                                                <User className="w-3.5 h-3.5 text-slate-500" />
+                                              </div>
+                                              <span className="font-semibold text-slate-800">
+                                                {evt.driverName || "Pending"}
                                               </span>
                                             </div>
                                             {evt.driverPhone && (
-                                              <div className="flex items-center gap-2 text-xs">
-                                                <Phone className="w-3.5 h-3.5 text-slate-400" />
-                                                <span className="text-slate-600">
+                                              <div className="flex items-center gap-2.5 text-[10px] pl-8">
+                                                <Phone className="w-3 h-3 text-slate-400" />
+                                                <span className="font-medium text-slate-600">
                                                   {evt.driverPhone}
                                                 </span>
                                               </div>
@@ -1333,63 +1500,63 @@ export default function TimelineScheduler({
                                         </AccordionItem>
                                       )}
 
+                                      {/* CONTACT ACCORDION */}
                                       <AccordionItem
                                         value="contact"
-                                        className="border-b-slate-100"
+                                        className="border-b-slate-200"
                                       >
-                                        <AccordionTrigger className="px-4 py-2.5 text-xs font-semibold hover:no-underline hover:bg-slate-50">
+                                        <AccordionTrigger className="px-3 py-2.5 text-[11px] font-semibold hover:no-underline hover:bg-slate-100/50 transition-colors">
                                           <div className="flex items-center gap-2 text-slate-700">
-                                            <User className="w-3.5 h-3.5" />{" "}
-                                            Customer Info
+                                            <User className="w-3.5 h-3.5 text-slate-400" />{" "}
+                                            Customer Contact
                                           </div>
                                         </AccordionTrigger>
-                                        <AccordionContent className="px-4 py-3 space-y-2 bg-white border-t border-slate-100">
-                                          <div className="flex items-center gap-2 text-xs">
-                                            <Phone className="w-3.5 h-3.5 text-slate-400" />
-                                            <span className="text-slate-600">
-                                              {evt.customerPhone ||
-                                                "No phone provided"}
+                                        <AccordionContent className="px-3 py-2.5 space-y-2 bg-white border-t border-slate-100">
+                                          <div className="flex items-center gap-2 text-[11px]">
+                                            <Phone className="w-3 h-3 text-slate-400" />
+                                            <span className="font-medium text-slate-700">
+                                              {evt.customerPhone || "N/A"}
                                             </span>
                                           </div>
-                                          <div className="flex items-center gap-2 text-xs">
-                                            <Mail className="w-3.5 h-3.5 text-slate-400" />
-                                            <span className="text-slate-600 truncate">
-                                              {evt.customerEmail ||
-                                                "No email provided"}
+                                          <div className="flex items-center gap-2 text-[11px]">
+                                            <Mail className="w-3 h-3 text-slate-400" />
+                                            <span className="font-medium text-slate-700 truncate">
+                                              {evt.customerEmail || "N/A"}
                                             </span>
                                           </div>
                                         </AccordionContent>
                                       </AccordionItem>
 
+                                      {/* PAYMENT ACCORDION */}
                                       <AccordionItem
                                         value="payment"
                                         className="border-none"
                                       >
-                                        <AccordionTrigger className="px-4 py-2.5 text-xs font-semibold hover:no-underline hover:bg-slate-50">
+                                        <AccordionTrigger className="px-3 py-2.5 text-[11px] font-semibold hover:no-underline hover:bg-slate-100/50 transition-colors">
                                           <div className="flex items-center gap-2 text-slate-700">
-                                            <CreditCard className="w-3.5 h-3.5" />{" "}
-                                            Payment
+                                            <CreditCard className="w-3.5 h-3.5 text-slate-400" />{" "}
+                                            Financials
                                           </div>
                                         </AccordionTrigger>
-                                        <AccordionContent className="px-4 py-3 bg-white border-t border-slate-100">
+                                        <AccordionContent className="px-3 py-2.5 bg-white border-t border-slate-100">
                                           <div className="flex justify-between items-center mb-2">
-                                            <span className="text-xs text-slate-500">
-                                              Total
+                                            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                                              Total Amount
                                             </span>
-                                            <span className="font-bold text-sm text-slate-800">
+                                            <span className="font-bold text-sm text-slate-900">
                                               ₱{" "}
                                               {evt.amount?.toLocaleString() ||
                                                 "0.00"}
                                             </span>
                                           </div>
                                           <div className="flex justify-between items-center">
-                                            <span className="text-xs text-slate-500">
+                                            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
                                               Status
                                             </span>
                                             <Badge
                                               variant="outline"
                                               className={cn(
-                                                "text-[10px] h-5 px-2",
+                                                "text-[9px] font-bold h-4 px-1.5 rounded-sm",
                                                 evt.paymentStatus === "Paid"
                                                   ? "border-emerald-200 text-emerald-700 bg-emerald-50"
                                                   : "border-amber-200 text-amber-700 bg-amber-50",
@@ -1402,64 +1569,107 @@ export default function TimelineScheduler({
                                       </AccordionItem>
                                     </Accordion>
 
-                                    {/* --- QUICK ACTIONS BAR --- */}
-                                    <div className="p-3 bg-white border-t border-slate-100 flex gap-2">
-                                      {evt.status === "confirmed" &&
-                                        !isLate && (
+                                    {/* --- COMPACT QUICK ACTIONS --- */}
+                                    <div className="p-2.5 bg-slate-50 border-t border-slate-200 flex flex-col gap-1.5">
+                                      {/* SCENARIO 0: Pending */}
+                                      {evt.status === "pending" && (
+                                        <div className="flex gap-1.5 w-full">
+                                          {now >= (evt.start as Date) && (
+                                            <Button
+                                              size="sm"
+                                              className="flex-1 h-8 text-[10px] font-semibold bg-blue-600 text-white hover:bg-blue-700 rounded-sm shadow-sm"
+                                              onClick={() =>
+                                                onStatusChange?.(evt, "ongoing")
+                                              }
+                                            >
+                                              Approve & Release
+                                            </Button>
+                                          )}
                                           <Button
                                             size="sm"
-                                            className="w-full h-8 text-xs font-medium bg-slate-900 text-white hover:bg-slate-800 shadow-sm"
+                                            variant={
+                                              now >= (evt.start as Date)
+                                                ? "outline"
+                                                : "default"
+                                            }
+                                            className={cn(
+                                              "flex-1 h-8 text-[10px] font-semibold rounded-sm shadow-sm",
+                                              now < (evt.start as Date)
+                                                ? "bg-slate-900 text-white hover:bg-slate-800"
+                                                : "bg-white text-slate-700 border-slate-300",
+                                            )}
+                                            onClick={() =>
+                                              onStatusChange?.(evt, "confirmed")
+                                            }
+                                          >
+                                            <Check className="w-3 h-3 mr-1" />{" "}
+                                            Approve
+                                          </Button>
+                                        </div>
+                                      )}
+
+                                      {/* SCENARIO 1: Confirmed (Normal) */}
+                                      {evt.status === "confirmed" &&
+                                        !isLateArrival && (
+                                          <Button
+                                            size="sm"
+                                            className="w-full h-8 text-[11px] font-semibold bg-slate-900 text-white hover:bg-slate-800 rounded-sm shadow-sm"
                                             onClick={() =>
                                               onStatusChange?.(evt, "ongoing")
                                             }
                                           >
-                                            <Key className="w-3.5 h-3.5 mr-2" />{" "}
-                                            Release Vehicle
+                                            Release Vehicle{" "}
+                                            <MoveRight className="w-3 h-3 ml-1.5" />{" "}
+                                            Start Trip
                                           </Button>
                                         )}
 
-                                      {evt.status === "confirmed" && isLate && (
-                                        <>
-                                          <Button
-                                            size="sm"
-                                            className="flex-1 h-8 text-xs font-medium bg-slate-900 text-white hover:bg-slate-800 shadow-sm"
-                                            onClick={() =>
-                                              onStatusChange?.(evt, "ongoing")
-                                            }
-                                          >
-                                            <Key className="w-3.5 h-3.5 mr-1.5" />{" "}
-                                            Arrived
-                                          </Button>
-                                          <Button
-                                            size="sm"
-                                            variant="outline"
-                                            className="flex-1 h-8 text-xs font-medium text-red-600 border-red-200 hover:bg-red-50 hover:border-red-300 shadow-sm"
-                                            onClick={() =>
-                                              onStatusChange?.(evt, "no_show")
-                                            }
-                                          >
-                                            <UserX className="w-3.5 h-3.5 mr-1.5" />{" "}
-                                            No-Show
-                                          </Button>
-                                        </>
-                                      )}
+                                      {/* SCENARIO 2: Confirmed (Customer is Late) */}
+                                      {evt.status === "confirmed" &&
+                                        isLateArrival && (
+                                          <div className="flex gap-1.5 w-full">
+                                            <Button
+                                              size="sm"
+                                              className="flex-1 h-8 text-[10px] font-semibold bg-slate-900 text-white hover:bg-slate-800 rounded-sm shadow-sm"
+                                              onClick={() =>
+                                                onStatusChange?.(evt, "ongoing")
+                                              }
+                                            >
+                                              <Key className="w-3 h-3 mr-1" />{" "}
+                                              Arrived
+                                            </Button>
+                                            <Button
+                                              size="sm"
+                                              variant="outline"
+                                              className="flex-1 h-8 text-[10px] font-semibold text-red-600 border-red-200 hover:bg-red-50 hover:border-red-300 rounded-sm shadow-sm bg-white"
+                                              onClick={() =>
+                                                onStatusChange?.(evt, "no_show")
+                                              }
+                                            >
+                                              <UserX className="w-3 h-3 mr-1" />{" "}
+                                              No-Show
+                                            </Button>
+                                          </div>
+                                        )}
 
+                                      {/* SCENARIO 3: Ongoing (Normal or Overdue) */}
                                       {evt.status === "ongoing" && (
                                         <Button
                                           size="sm"
-                                          className="w-full h-8 text-xs font-medium bg-slate-900 text-white hover:bg-slate-800 shadow-sm"
+                                          className="w-full h-8 text-[11px] font-semibold bg-blue-600 text-white hover:bg-blue-700 rounded-sm shadow-sm"
                                           onClick={() =>
                                             onStatusChange?.(evt, "completed")
                                           }
                                         >
-                                          <Flag className="w-3.5 h-3.5 mr-2" />{" "}
+                                          <Flag className="w-3 h-3 mr-1.5" />{" "}
                                           Process Return
                                         </Button>
                                       )}
 
+                                      {/* SCENARIO 4: Completed */}
                                       {evt.status === "completed" && (
-                                        <div className="w-full text-center text-[11px] font-medium text-slate-400 py-1.5 flex items-center justify-center bg-slate-50 rounded-md border border-slate-100">
-                                          <CheckCircle className="w-3.5 h-3.5 mr-1.5 opacity-50" />{" "}
+                                        <div className="w-full text-center text-[10px] font-semibold text-slate-500 py-1.5 flex items-center justify-center bg-slate-200/50 rounded-sm border border-slate-200">
+                                          <CheckCircle className="w-3 h-3 mr-1.5 text-slate-400" />{" "}
                                           Trip Completed
                                         </div>
                                       )}

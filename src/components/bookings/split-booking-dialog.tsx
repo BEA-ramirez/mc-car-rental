@@ -10,7 +10,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Calendar } from "@/components/ui/calendar"; // Assuming you have this
+import { Calendar } from "@/components/ui/calendar";
 import {
   Popover,
   PopoverContent,
@@ -22,6 +22,7 @@ import {
   Calendar as CalendarIcon,
   Clock,
   ArrowRight,
+  AlertCircle,
 } from "lucide-react";
 import {
   format,
@@ -32,14 +33,12 @@ import {
   isWithinInterval,
   addMinutes,
 } from "date-fns";
-import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
 type SplitBookingDialogProps = {
   isOpen: boolean;
   onClose: () => void;
-  // CHANGED: onConfirm now accepts the final adjusted date
   onConfirm: (finalSplitDate: Date) => void;
   event: SchedulerEvent | null;
   initialSplitDate: Date | null;
@@ -54,11 +53,9 @@ export default function SplitBookingDialog({
   initialSplitDate,
   isProcessing = false,
 }: SplitBookingDialogProps) {
-  // 1. Internal State for the Split Date
   const [splitDate, setSplitDate] = useState<Date | undefined>(undefined);
   const [timeString, setTimeString] = useState("12:00");
 
-  // 2. Initialize State when dialog opens
   useEffect(() => {
     if (isOpen && initialSplitDate) {
       setSplitDate(initialSplitDate);
@@ -68,7 +65,6 @@ export default function SplitBookingDialog({
 
   if (!event || !splitDate) return null;
 
-  // 3. Handle Time Change
   const handleTimeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const time = e.target.value;
     setTimeString(time);
@@ -79,7 +75,6 @@ export default function SplitBookingDialog({
     }
   };
 
-  // 4. Handle Date Change
   const handleDateSelect = (date: Date | undefined) => {
     if (date) {
       const [hours, minutes] = timeString.split(":").map(Number);
@@ -88,34 +83,34 @@ export default function SplitBookingDialog({
     }
   };
 
-  // 5. Validation & Duration Math
-  // Ensure split is strictly inside the event (cannot equal start or end for safety)
   const isValidSplit = isWithinInterval(splitDate, {
-    start: addMinutes(event.start, 1),
-    end: addMinutes(event.end, -1),
+    start: addMinutes(new Date(event.start), 1),
+    end: addMinutes(new Date(event.end), -1),
   });
 
-  const daysFirst = differenceInCalendarDays(splitDate, event.start);
-  const daysSecond = differenceInCalendarDays(event.end, splitDate);
+  const daysFirst = differenceInCalendarDays(splitDate, new Date(event.start));
+  const daysSecond = differenceInCalendarDays(new Date(event.end), splitDate);
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[500px]">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-slate-800">
-            <Scissors className="w-5 h-5 -rotate-90 text-indigo-600" />
-            Adjust Split Point
-          </DialogTitle>
-          <DialogDescription>
-            Choose exactly when to transfer the booking to the new car.
-          </DialogDescription>
-        </DialogHeader>
+      <DialogContent className="sm:max-w-[450px] p-0 overflow-hidden border-slate-200 rounded-lg shadow-xl">
+        <div className="p-5 border-b border-slate-100 bg-white">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-slate-800 text-base">
+              <Scissors className="w-4 h-4 -rotate-90 text-indigo-600" />
+              Split Booking
+            </DialogTitle>
+            <DialogDescription className="text-xs">
+              Select the exact date and time to cut this booking in half.
+            </DialogDescription>
+          </DialogHeader>
+        </div>
 
-        <div className="flex flex-col gap-4 py-4">
+        <div className="p-5 bg-slate-50/50 flex flex-col gap-5">
           {/* DATE PICKER CONTROLS */}
-          <div className="flex gap-4 items-end bg-slate-50 p-4 rounded-lg border">
-            <div className="flex-1 space-y-2">
-              <label className="text-xs font-semibold text-slate-500 uppercase">
+          <div className="flex gap-3 items-end bg-white p-3 rounded-md border border-slate-200 shadow-sm">
+            <div className="flex-1 space-y-1.5">
+              <label className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">
                 Split Date
               </label>
               <Popover>
@@ -123,26 +118,29 @@ export default function SplitBookingDialog({
                   <Button
                     variant={"outline"}
                     className={cn(
-                      "w-full justify-start text-left font-normal bg-white",
+                      "w-full justify-start text-left font-medium h-8 bg-slate-50 border-slate-200 text-xs shadow-none",
                       !splitDate && "text-muted-foreground",
                     )}
                   >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    <CalendarIcon className="mr-2 h-3.5 w-3.5 text-slate-400" />
                     {splitDate ? (
-                      format(splitDate, "PPP")
+                      format(splitDate, "MMM d, yyyy")
                     ) : (
-                      <span>Pick a date</span>
+                      <span>Pick date</span>
                     )}
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
+                <PopoverContent
+                  className="w-auto p-0 border-slate-200 shadow-xl rounded-xl"
+                  align="start"
+                >
                   <Calendar
                     mode="single"
                     selected={splitDate}
                     onSelect={handleDateSelect}
                     disabled={(date) =>
-                      date < startOfDay(event.start) ||
-                      date > startOfDay(event.end)
+                      date < startOfDay(new Date(event.start)) ||
+                      date > startOfDay(new Date(event.end))
                     }
                     initialFocus
                   />
@@ -150,15 +148,15 @@ export default function SplitBookingDialog({
               </Popover>
             </div>
 
-            <div className="w-32 space-y-2">
-              <label className="text-xs font-semibold text-slate-500 uppercase">
+            <div className="w-28 space-y-1.5">
+              <label className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">
                 Time
               </label>
               <div className="relative">
-                <Clock className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-400" />
+                <Clock className="absolute left-2.5 top-2 h-3.5 w-3.5 text-slate-400" />
                 <Input
                   type="time"
-                  className="pl-9 bg-white"
+                  className="pl-8 bg-slate-50 border-slate-200 h-8 text-xs font-medium shadow-none"
                   value={timeString}
                   onChange={handleTimeChange}
                 />
@@ -167,56 +165,71 @@ export default function SplitBookingDialog({
           </div>
 
           {/* VISUAL PREVIEW */}
-          <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 text-xs">
+          <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
             {/* Part 1 */}
-            <div className="border border-emerald-200 bg-emerald-50/50 p-2 rounded text-center opacity-80">
-              <div className="font-semibold text-emerald-700 mb-1">
+            <div className="border border-slate-200 bg-white p-3 rounded-md shadow-sm">
+              <div className="text-[10px] uppercase font-bold text-emerald-600 mb-1 tracking-wider">
                 Part 1 (Keep)
               </div>
-              <div className="text-slate-600">
-                {format(event.start, "MMM d")} - {format(splitDate, "MMM d")}
+              <div className="text-xs font-bold text-slate-700">
+                {format(new Date(event.start), "MMM d")} -{" "}
+                {format(splitDate, "MMM d")}
               </div>
-              <div className="font-mono text-[10px] text-slate-400 mt-1">
+              <div className="font-mono text-[10px] text-slate-400 mt-1 font-medium">
                 ~{daysFirst} Days
               </div>
             </div>
 
-            <ArrowRight className="w-4 h-4 text-slate-300" />
+            <div className="bg-slate-200 p-1 rounded-full">
+              <Scissors className="w-3 h-3 text-slate-500 -rotate-90" />
+            </div>
 
             {/* Part 2 */}
-            <div className="border border-indigo-200 bg-indigo-50/50 p-2 rounded text-center opacity-80">
-              <div className="font-semibold text-indigo-700 mb-1">
+            <div className="border border-indigo-200 bg-indigo-50 p-3 rounded-md shadow-sm">
+              <div className="text-[10px] uppercase font-bold text-indigo-600 mb-1 tracking-wider">
                 Part 2 (Move)
               </div>
-              <div className="text-slate-600">
-                {format(splitDate, "MMM d")} - {format(event.end, "MMM d")}
+              <div className="text-xs font-bold text-slate-700">
+                {format(splitDate, "MMM d")} -{" "}
+                {format(new Date(event.end), "MMM d")}
               </div>
-              <div className="font-mono text-[10px] text-slate-400 mt-1">
+              <div className="font-mono text-[10px] text-slate-400 mt-1 font-medium">
                 ~{daysSecond} Days
               </div>
             </div>
           </div>
 
           {!isValidSplit && (
-            <div className="bg-red-50 text-red-600 text-xs p-2 rounded text-center font-medium border border-red-100">
-              Invalid split date. Must be between {format(event.start, "MMM d")}{" "}
-              and {format(event.end, "MMM d")}.
+            <div className="bg-red-50 text-red-600 text-[11px] p-2.5 rounded-md font-medium border border-red-200 flex items-center gap-2 shadow-sm">
+              <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+              <span>
+                Invalid split date. Must fall strictly between{" "}
+                {format(new Date(event.start), "MMM d")} and{" "}
+                {format(new Date(event.end), "MMM d")}.
+              </span>
             </div>
           )}
         </div>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose} disabled={isProcessing}>
+        <div className="p-4 bg-white border-t border-slate-100 flex justify-end gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onClose}
+            disabled={isProcessing}
+            className="text-xs font-semibold text-slate-600"
+          >
             Cancel
           </Button>
           <Button
+            size="sm"
             onClick={() => onConfirm(splitDate)}
             disabled={!isValidSplit || isProcessing}
-            className="bg-indigo-600 hover:bg-indigo-700 text-white"
+            className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-sm"
           >
-            {isProcessing ? "Splitting..." : "Confirm & Split"}
+            {isProcessing ? "Processing..." : "Confirm Split"}
           </Button>
-        </DialogFooter>
+        </div>
       </DialogContent>
     </Dialog>
   );

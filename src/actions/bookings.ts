@@ -30,6 +30,38 @@ export async function createAdminBooking(data: unknown) {
   }
   const input = result.data;
 
+  // =========================================================================
+  // NEW: CONFLICT CHECK (The "Block and Alert" Method)
+  // =========================================================================
+  // This looks for any active booking where:
+  // Existing Start < New End  AND  Existing End > New Start
+  const { data: conflicts, error: conflictError } = await supabase
+    .from("bookings")
+    .select("booking_id")
+    .eq("car_id", input.car_id)
+    // We only care about blocking statuses. Pending requests don't block admins.
+    .in("booking_status", ["confirmed", "ongoing", "maintenance"])
+    .lt("start_date", input.end_date.toISOString())
+    .gt("end_date", input.start_date.toISOString())
+    .limit(1); // We only need to find 1 to know there's a conflict
+
+  if (conflictError) {
+    console.error("Conflict Check Error:", conflictError);
+    return {
+      success: false,
+      message: "Database error while verifying availability.",
+    };
+  }
+
+  if (conflicts && conflicts.length > 0) {
+    return {
+      success: false,
+      message:
+        "Conflict: This vehicle is already booked or under maintenance during the selected dates.",
+    };
+  }
+  // =========================================================================
+
   // 2. Calculate Base Rent Logic
   const days =
     Math.ceil(
@@ -115,8 +147,8 @@ export async function createAdminBooking(data: unknown) {
     {
       p_user_id: input.user_id,
       p_car_id: input.car_id,
-      p_start_date: input.start_date,
-      p_end_date: input.end_date,
+      p_start_date: input.start_date.toISOString(), // Ensure ISO string format
+      p_end_date: input.end_date.toISOString(), // Ensure ISO string format
       p_pickup_loc: input.pickup_location,
       p_dropoff_loc: input.dropoff_location,
 
@@ -178,23 +210,23 @@ export async function getBookingById(
 
 // --- 3. UPDATE STATUS ---
 export async function updateBookingStatus(
-  id: string,
-  status: string,
+  bookingId: string,
+  newStatus: string,
 ): Promise<ActionState> {
   const supabase = await createClient();
 
   const { error } = await supabase
     .from("bookings")
     .update({
-      booking_status: status,
+      booking_status: newStatus,
       last_updated_at: new Date().toISOString(),
     })
-    .eq("booking_id", id);
+    .eq("booking_id", bookingId);
 
   if (error) return { success: false, message: error.message };
 
   revalidatePath("/admin/bookings");
-  revalidatePath(`/admin/bookings/${id}`);
+  revalidatePath(`/admin/bookings/${bookingId}`);
   return { success: true, message: "Status updated" };
 }
 
@@ -211,4 +243,160 @@ export async function deleteBooking(id: string): Promise<ActionState> {
 
   revalidatePath("/admin/bookings");
   return { success: true, message: "Booking archived" };
+}
+
+// udpate booking dates
+export async function updateBookingDates(
+  bookingId: string,
+  newEndDate: Date,
+): Promise<ActionState> {
+  const supabase = await createClient();
+
+  const { error } = await supabase
+    .from("bookings")
+    .update({
+      end_date: newEndDate.toISOString(),
+      last_updated_at: new Date().toISOString(),
+    })
+    .eq("booking_id", bookingId);
+
+  if (error) {
+    console.error("Error updating booking dates:", error);
+    return { success: false, message: error.message };
+  }
+
+  revalidatePath("/admin/bookings");
+  return { success: true, message: "Booking dates updated" };
+}
+
+// update buffer duration
+export async function updateBufferDuration(
+  bookingId: string,
+  newBufferMinutes: number,
+): Promise<ActionState> {
+  const supabase = await createClient();
+
+  const { error } = await supabase
+    .from("bookigns")
+    .update({
+      buffer_duration_minutes: newBufferMinutes,
+      last_updated_at: new Date().toISOString(),
+    })
+    .eq("booking_id", bookingId);
+
+  if (error) {
+    console.error("Error updating buffer duration:", error);
+    return { success: false, message: error.message };
+  }
+
+  revalidatePath("/admin/bookings");
+  return { success: true, message: "Buffer duration updated" };
+}
+
+export async function processEarlyReturn(
+  bookindId: string,
+  newEndDate: Date,
+  finalPrice: number,
+  refundAmount: number,
+  shouldRefund: boolean,
+): Promise<ActionState> {
+  const supabase = await createClient();
+
+  try {
+    const { error } = await supabase.rpc("process_early_return", {
+      p_booking_id: bookindId,
+      p_new_end_date: newEndDate,
+      p_final_price: finalPrice,
+      p_refund_amount: refundAmount,
+      p_should_refund: shouldRefund,
+    });
+
+    if (error) throw error;
+    return { success: true, message: "Early return processed successfully" };
+  } catch (error) {
+    console.error("Failed to process early return via RPC:", error);
+    return { success: false, message: "Failed to process early return" };
+  }
+}
+
+export async function createMaintenanceBlock(
+  carId: string,
+  startDate: Date,
+  endDate: Date,
+): Promise<ActionState> {
+  const supabase = await createClient();
+
+  try {
+    const { data, error } = await supabase
+      .from("bookings")
+      .insert({
+        car_id: carId,
+        start_date: startDate.toISOString(),
+        end_date: endDate.toISOString(),
+        booking_status: "maintenance",
+        total_price: 0,
+      })
+      .select("booking_id")
+      .single();
+
+    if (error) throw error;
+    revalidatePath("/admin/bookings");
+    return {
+      success: true,
+      message: "Maintenance block created",
+      bookingId: data.booking_id,
+    };
+  } catch (error) {
+    console.error("Error creating maintenance block:", error);
+    return { success: false, message: "Failed to create maintenance block" };
+  }
+}
+
+export async function splitBooking(
+  bookingId: string,
+  splitDate: Date,
+): Promise<ActionState> {
+  const supabase = await createClient();
+
+  try {
+    const { error } = await supabase.rpc("split_booking", {
+      p_booking_id: bookingId,
+      p_split_date: splitDate.toISOString(),
+    });
+
+    if (error) throw error;
+    revalidatePath("/admin/bookings");
+    return { success: true, message: "Booking split successfully" };
+  } catch (error: any) {
+    console.error("Error splitting booking:", error);
+    return { success: false, message: error.message };
+  }
+}
+
+export async function reassignBooking(
+  bookingId: string,
+  newCarId: string,
+  newPrice: number,
+): Promise<ActionState> {
+  const supabase = await createClient();
+
+  try {
+    const { error } = await supabase
+      .from("bookings")
+      .update({
+        car_id: newCarId,
+        total_price: newPrice, // THE CRUCIAL PRICE UPDATE!
+        booking_status: "confirmed", // Since they accepted the proposal
+        last_updated_at: new Date().toISOString(),
+      })
+      .eq("booking_id", bookingId);
+
+    if (error) throw error;
+
+    revalidatePath("/admin/bookings");
+    return { success: true, message: "Booking reassigned and price updated" };
+  } catch (error: any) {
+    console.error("Failed to reassign booking:", error);
+    return { success: false, message: error.message };
+  }
 }

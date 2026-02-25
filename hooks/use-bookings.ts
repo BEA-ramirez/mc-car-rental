@@ -49,8 +49,9 @@ export const useBookings = () => {
       return res;
     },
     onSuccess: (data) => {
-      toast.success(data.message);
       queryClient.invalidateQueries({ queryKey: ["bookings"] });
+      queryClient.invalidateQueries({ queryKey: ["scheduler-data"] });
+      toast.success(data.message);
     },
     onError: (err) => toast.error(err.message),
   });
@@ -64,6 +65,7 @@ export const useBookings = () => {
     onSuccess: () => {
       toast.success("Status updated");
       queryClient.invalidateQueries({ queryKey: ["bookings"] });
+      queryClient.invalidateQueries({ queryKey: ["scheduler-data"] });
     },
     onError: (err) => toast.error(err.message),
   });
@@ -77,6 +79,7 @@ export const useBookings = () => {
     onSuccess: () => {
       toast.success("Booking archived");
       queryClient.invalidateQueries({ queryKey: ["bookings"] });
+      queryClient.invalidateQueries({ queryKey: ["scheduler-data"] });
     },
     onError: (err) => toast.error(err.message),
   });
