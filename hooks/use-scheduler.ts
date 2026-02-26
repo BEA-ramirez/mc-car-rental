@@ -11,6 +11,7 @@ import {
   createMaintenanceBlock,
   splitBooking,
   reassignBooking,
+  deleteBooking,
 } from "@/actions/bookings";
 import { toast } from "sonner";
 import { SchedulerEvent } from "@/components/scheduler/timeline-scheduler";
@@ -394,6 +395,37 @@ export function useScheduler(currentDate: Date) {
     },
   });
 
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const result = await deleteBooking(id);
+      if (!result.success)
+        throw new Error(result.message || "Failed to delete booking");
+      return result;
+    },
+    onMutate: async (id) => {
+      await queryClient.cancelQueries({ queryKey: currentQueryKey });
+      const previousData = queryClient.getQueryData(currentQueryKey);
+      queryClient.setQueryData(currentQueryKey, (oldData: any) => {
+        if (!oldData) return oldData;
+        return {
+          ...oldData,
+          events: oldData.events.map((evt: SchedulerEvent) => evt.id !== id),
+        };
+      });
+      return { previousData };
+    },
+    onSuccess: () => toast.success("Booking deleted successfully"),
+    onError: (err, variables, context) => {
+      if (context?.previousData) {
+        queryClient.setQueryData(currentQueryKey, context.previousData);
+      }
+      toast.error(`Failed to delete: ${err.message}`);
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: baseQueryKey });
+    },
+  });
+
   return {
     ...query,
     updateStatus: updateStatusMutation.mutate,
@@ -410,5 +442,7 @@ export function useScheduler(currentDate: Date) {
     isSplittingBooking: splitMutation.isPending,
     reassignBooking: reassignMutation.mutate,
     isReassigning: reassignMutation.isPending,
+    deleteBooking: deleteMutation.mutate,
+    isDeleting: deleteMutation.isPending,
   };
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { useFormContext } from "react-hook-form";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -92,6 +92,7 @@ import { useBookings } from "../../../hooks/use-bookings";
 import { useBookingSettings } from "../../../hooks/use-settings";
 import { useCustomers } from "../../../hooks/use-users";
 import { useUnits } from "../../../hooks/use-units";
+import { createClient } from "@/utils/supabase/client";
 
 // --- TYPES ---
 type LocationFieldProps = {
@@ -103,6 +104,7 @@ type LocationFieldProps = {
 };
 
 type AdminBookingFormProps = {
+  bookingId?: string; // NEW!
   initialCarId?: string;
   initialStartDate?: Date;
   initialDuration?: number;
@@ -286,6 +288,7 @@ const PREDEFINED_CHARGES = [
 ];
 
 export default function AdminBookingForm({
+  bookingId,
   initialCarId,
   initialStartDate,
   initialDuration,
@@ -293,17 +296,26 @@ export default function AdminBookingForm({
   onCancel,
 }: AdminBookingFormProps) {
   const router = useRouter();
-  const { createBooking, isCreating } = useBookings();
+  const { createBooking, updateBooking, isCreating, isBookingUpdating } =
+    useBookings();
   const { data: settings, isLoading: settingsLoading } = useBookingSettings();
   const { data: customers = [], isLoading: usersLoading } = useCustomers();
   const { units = [], isUnitsLoading } = useUnits();
 
+  const [isFetchingEditData, setIsFetchingEditData] = useState(!!bookingId);
   const [startTime, setStartTime] = useState("08:00");
   const [duration, setDuration] = useState(initialDuration || 1);
   const [mapOpen, setMapOpen] = useState(false);
   const [activeMapField, setActiveMapField] = useState<
     "pickup" | "dropoff" | null
   >(null);
+
+  // --- NEW: FALLBACK USER STATE ---
+  const [fallbackUser, setFallbackUser] = useState<{
+    user_id: string;
+    full_name: string;
+    email: string;
+  } | null>(null);
 
   const hubs = settings?.hubs || [];
   const fees = settings?.fees || {
@@ -332,12 +344,12 @@ export default function AdminBookingForm({
     },
   });
 
-  const { fields, append, remove } = useFieldArray({
+  const { fields, append, remove, replace } = useFieldArray({
     control: form.control,
     name: "additional_charges",
   });
 
-  const { watch, setValue, control } = form;
+  const { watch, setValue, control, reset } = form;
 
   // Watchers
   const wStart = watch("start_date");
@@ -369,9 +381,123 @@ export default function AdminBookingForm({
   const totalPayable = subTotal - (wDiscount || 0) + (wSecurityDeposit || 0);
   const balanceDue = totalPayable - (wPayment?.amount || 0);
 
+  // --- FETCH EDIT DATA ---
+  useEffect(() => {
+    async function fetchEditData() {
+      if (!bookingId) return;
+      setIsFetchingEditData(true);
+      const supabase = createClient();
+
+      try {
+        // 1. Fetch Booking AND the associated user
+        const { data: booking, error: bError } = await supabase
+          .from("bookings")
+          .select("*, users!user_id(full_name, email)")
+          .eq("booking_id", bookingId)
+          .single();
+
+        if (bError) throw bError;
+
+        // --- NEW: SET FALLBACK USER ---
+        if (booking.users) {
+          setFallbackUser({
+            user_id: booking.user_id,
+            full_name: booking.users.full_name,
+            email: booking.users.email,
+          });
+        }
+
+        // 2. Fetch Charges
+        const { data: charges } = await supabase
+          .from("booking_charges")
+          .select("*")
+          .eq("booking_id", bookingId);
+
+        // 3. Reconstruct the form state
+        const startDate = new Date(booking.start_date);
+        const endDate = new Date(booking.end_date);
+        const diffDays = Math.max(
+          1,
+          Math.ceil(
+            (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24),
+          ),
+        );
+
+        setStartTime(format(startDate, "HH:mm"));
+        setDuration(diffDays);
+
+        // Extract special charges to map back to specific fields
+        let driverFee = fees.driver_rate_per_day;
+        let discount = 0;
+        const extras: any[] = [];
+
+        charges?.forEach((c) => {
+          if (c.category === "Driver Fee") {
+            driverFee = c.amount / diffDays;
+          } else if (c.category === "Discount") {
+            discount = Math.abs(c.amount);
+          } else if (
+            c.category !== "Base Rate" &&
+            c.category !== "Delivery Fee"
+          ) {
+            extras.push({
+              category: c.category,
+              amount: c.amount,
+              description: c.description || "",
+            });
+          }
+        });
+
+        // Determine if custom rate was used (by comparing to car default)
+        const car = units.find((c) => c.car_id === booking.car_id);
+        const isCustomRate =
+          car &&
+          Number(booking.base_rate_snapshot) !==
+            Number(car.rental_rate_per_day);
+
+        // 4. Reset the form with the fetched data
+        reset({
+          user_id: booking.user_id,
+          car_id: booking.car_id,
+          start_date: startDate,
+          end_date: endDate,
+
+          pickup_type: booking.pickup_type as "hub" | "custom",
+          pickup_location: booking.pickup_location,
+          pickup_price: Number(booking.pickup_price),
+          pickup_coordinates: booking.pickup_coordinates || undefined,
+
+          dropoff_type: booking.dropoff_type as "hub" | "custom",
+          dropoff_location: booking.dropoff_location,
+          dropoff_price: Number(booking.dropoff_price),
+          dropoff_coordinates: booking.dropoff_coordinates || undefined,
+
+          with_driver: booking.is_with_driver,
+          driver_fee_per_day: driverFee,
+
+          security_deposit: Number(booking.security_deposit),
+          discount_amount: discount,
+          custom_daily_rate: isCustomRate
+            ? Number(booking.base_rate_snapshot)
+            : undefined,
+
+          additional_charges: extras,
+        });
+
+        replace(extras);
+      } catch (err) {
+        console.error("Failed to load edit data", err);
+      } finally {
+        setIsFetchingEditData(false);
+      }
+    }
+
+    fetchEditData();
+  }, [bookingId, fees.driver_rate_per_day, replace, reset, units]);
+
   // --- EFFECTS ---
   useEffect(() => {
-    if (!fees) return;
+    if (!fees || bookingId) return; // Skip default overrides if editing
     const { dirtyFields } = form.formState;
     const currentDriverFee = form.getValues("driver_fee_per_day");
     const currentDeposit = form.getValues("security_deposit");
@@ -388,7 +514,12 @@ export default function AdminBookingForm({
     ) {
       setValue("security_deposit", fees.security_deposit_default);
     }
-  }, [fees?.driver_rate_per_day, fees?.security_deposit_default, setValue]);
+  }, [
+    fees?.driver_rate_per_day,
+    fees?.security_deposit_default,
+    setValue,
+    bookingId,
+  ]);
 
   useEffect(() => {
     if (wStart && duration > 0) {
@@ -414,14 +545,18 @@ export default function AdminBookingForm({
   }, [wStart, startTime, duration, setValue]);
 
   useEffect(() => {
-    if (initialStartDate) {
+    if (initialStartDate && !bookingId) {
       setStartTime(format(initialStartDate, "HH:mm"));
     }
-  }, [initialStartDate]);
+  }, [initialStartDate, bookingId]);
 
   async function onSubmit(data: AdminBookingInput) {
     try {
-      await createBooking(data);
+      if (bookingId) {
+        await updateBooking({ id: bookingId, data });
+      } else {
+        await createBooking(data);
+      }
       if (onSuccess) onSuccess();
       else router.push("/admin/bookings");
     } catch (error) {
@@ -430,12 +565,15 @@ export default function AdminBookingForm({
   }
 
   const today = useMemo(() => new Date(new Date().setHours(0, 0, 0, 0)), []);
+  const isSaving = isCreating || isBookingUpdating;
 
-  if (settingsLoading)
+  if (settingsLoading || isFetchingEditData)
     return (
       <div className="p-6 text-center text-xs text-muted-foreground flex flex-col items-center justify-center h-full">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-slate-900 mb-4"></div>
-        Syncing configuration...
+        {isFetchingEditData
+          ? "Loading booking details..."
+          : "Syncing configuration..."}
       </div>
     );
 
@@ -449,14 +587,20 @@ export default function AdminBookingForm({
         <div className="flex items-center justify-between px-6 py-4 bg-white border-b border-slate-200 shrink-0 sticky top-0 z-20 shadow-sm pr-14">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-md bg-slate-100 flex items-center justify-center border border-slate-200">
-              <CalendarDays className="w-4 h-4 text-slate-700" />
+              {bookingId ? (
+                <Edit className="w-4 h-4 text-slate-700" />
+              ) : (
+                <CalendarDays className="w-4 h-4 text-slate-700" />
+              )}
             </div>
             <div>
               <h2 className="text-base font-bold text-slate-900 tracking-tight leading-none mb-1">
-                New Reservation
+                {bookingId ? "Edit Reservation" : "New Reservation"}
               </h2>
               <p className="text-[11px] font-medium text-slate-500 leading-none">
-                Assign vehicle, customer, and logistics
+                {bookingId
+                  ? "Update existing details."
+                  : "Assign vehicle, customer, and logistics"}
               </p>
             </div>
           </div>
@@ -476,9 +620,13 @@ export default function AdminBookingForm({
               type="submit"
               size="sm"
               className="h-8 text-xs font-bold bg-slate-900 text-white hover:bg-slate-800 shadow-sm px-4"
-              disabled={isCreating}
+              disabled={isSaving}
             >
-              {isCreating ? "Saving..." : "Confirm Booking"}
+              {isSaving
+                ? "Saving..."
+                : bookingId
+                  ? "Update Booking"
+                  : "Confirm Booking"}
             </Button>
           </div>
         </div>
@@ -524,10 +672,17 @@ export default function AdminBookingForm({
                                         field.value ? "text-slate-900" : "",
                                       )}
                                     >
+                                      {/* --- NEW: FALLBACK DISPLAY LOGIC --- */}
                                       {field.value
-                                        ? customers.find(
-                                            (u) => u.user_id === field.value,
-                                          )?.full_name
+                                        ? (
+                                            customers.find(
+                                              (u) => u.user_id === field.value,
+                                            ) ||
+                                            (fallbackUser?.user_id ===
+                                            field.value
+                                              ? fallbackUser
+                                              : null)
+                                          )?.full_name || "Unknown User"
                                         : "Search customer database..."}
                                     </span>
                                   </div>

@@ -178,6 +178,130 @@ export async function createAdminBooking(data: unknown) {
   return { success: true, message: "Booking created successfully", bookingId };
 }
 
+export async function updateAdminBooking(bookingId: string, data: unknown) {
+  const supabase = await createClient();
+
+  // 1. Validate Input
+  const result = AdminCreateBookingSchema.safeParse(data);
+  if (!result.success) {
+    return {
+      success: false,
+      message: "Validation Failed",
+      errors: result.error.flatten().fieldErrors,
+    };
+  }
+  const input = result.data;
+
+  // 2. Calculate Base Rent Logic
+  const days =
+    Math.ceil(
+      (input.end_date.getTime() - input.start_date.getTime()) /
+        (1000 * 60 * 60 * 24),
+    ) || 1;
+
+  let dailyRate = input.custom_daily_rate;
+  if (!dailyRate) {
+    const { data: car } = await supabase
+      .from("cars")
+      .select("rental_rate_per_day")
+      .eq("car_id", input.car_id)
+      .single();
+    if (!car) return { success: false, message: "Car not found" };
+    dailyRate = car.rental_rate_per_day;
+  }
+  const baseRent = days * dailyRate!;
+
+  // 3. COMPILE ALL CHARGES
+  const charges = [];
+
+  // A. Base Rent
+  charges.push({
+    category: "Base Rate",
+    amount: baseRent,
+    description: `${days} days @ ₱${dailyRate}/day`,
+  });
+
+  // B. Driver Fee
+  if (input.with_driver) {
+    const driverTotal = days * input.driver_fee_per_day;
+    charges.push({
+      category: "Driver Fee",
+      amount: driverTotal,
+      description: `Chauffeur service (${days} days)`,
+    });
+  }
+
+  // C. Pickup/Dropoff Fees
+  if (input.pickup_price > 0) {
+    charges.push({
+      category: "Delivery Fee",
+      amount: input.pickup_price,
+      description: "Pickup: " + input.pickup_location,
+    });
+  }
+  if (input.dropoff_price > 0) {
+    charges.push({
+      category: "Delivery Fee",
+      amount: input.dropoff_price,
+      description: "Dropoff: " + input.dropoff_location,
+    });
+  }
+
+  // D. Additional Charges
+  if (input.additional_charges && input.additional_charges.length > 0) {
+    input.additional_charges.forEach((c) => {
+      charges.push({
+        category: c.category,
+        amount: c.amount,
+        description: c.description || "Extra Item",
+      });
+    });
+  }
+
+  // E. Discount
+  if (input.discount_amount > 0) {
+    charges.push({
+      category: "Discount",
+      amount: -input.discount_amount,
+      description: "Admin Discount",
+    });
+  }
+
+  if (input.initial_payment && isNaN(input.initial_payment.amount)) {
+    return { success: false, message: "Invalid Payment Amount" };
+  }
+
+  // 4. Call the Update RPC
+  const { error } = await supabase.rpc("admin_update_booking_v1", {
+    p_booking_id: bookingId, // <--- THIS IS THE ONLY DIFFERENCE
+    p_user_id: input.user_id,
+    p_car_id: input.car_id,
+    p_start_date: input.start_date.toISOString(),
+    p_end_date: input.end_date.toISOString(),
+    p_pickup_loc: input.pickup_location,
+    p_dropoff_loc: input.dropoff_location,
+    p_pickup_coordinates: input.pickup_coordinates || null,
+    p_dropoff_coordinates: input.dropoff_coordinates || null,
+    p_pickup_type: input.pickup_type,
+    p_dropoff_type: input.dropoff_type,
+    p_pickup_price: input.pickup_price,
+    p_dropoff_price: input.dropoff_price,
+    p_is_with_driver: input.with_driver,
+    p_base_rate_snapshot: dailyRate,
+    p_security_deposit: input.security_deposit,
+    p_charges_json: charges,
+    p_new_payment_json: input.initial_payment ?? null, // Note: named differently in update RPC
+  });
+
+  if (error) {
+    console.error("RPC Error:", error);
+    return { success: false, message: error.message };
+  }
+
+  revalidatePath("/admin/bookings");
+  return { success: true, message: "Booking updated successfully" };
+}
+
 // --- 2. READ (Single Booking) ---
 export async function getBookingById(
   id: string,
@@ -277,9 +401,9 @@ export async function updateBufferDuration(
   const supabase = await createClient();
 
   const { error } = await supabase
-    .from("bookigns")
+    .from("bookings")
     .update({
-      buffer_duration_minutes: newBufferMinutes,
+      buffer_duration: newBufferMinutes,
       last_updated_at: new Date().toISOString(),
     })
     .eq("booking_id", bookingId);

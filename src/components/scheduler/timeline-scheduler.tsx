@@ -49,6 +49,7 @@ import {
   ClockAlert,
   MoveRight,
   Check,
+  Undo2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -147,6 +148,7 @@ type TimelineSchedulerProps = {
   onEarlyReturnClick?: (event: SchedulerEvent) => void;
   onAddMaintenance?: (resourceId: string, startDate: Date) => void;
   onSplitEvent?: (event: SchedulerEvent, splitDate: Date) => void;
+  onExtendClick?: (event: SchedulerEvent) => void;
   isOverrideMode?: boolean;
 };
 
@@ -181,12 +183,11 @@ export default function TimelineScheduler({
   onEarlyReturnClick,
   onAddMaintenance,
   onSplitEvent,
+  onExtendClick,
   isOverrideMode = false,
 }: TimelineSchedulerProps) {
   const [view, setView] = useState<ViewType>("day");
   const [currentDate, setCurrentDate] = useState(new Date());
-
-  // --- NEW: State for tracking dynamic click positions ---
   const [clickOffsets, setClickOffsets] = useState<Record<string, number>>({});
 
   const events = useMemo(() => {
@@ -517,7 +518,6 @@ export default function TimelineScheduler({
     return format(currentDate, "MMMM yyyy");
   }, [view, currentDate, timelineStart, timelineEnd]);
 
-  // --- DYNAMIC FONT SIZES FOR MONTH VIEW COMPRESSION ---
   const isMonthView = view === "month";
 
   return (
@@ -1259,6 +1259,37 @@ export default function TimelineScheduler({
                                         <Edit className="w-3.5 h-3.5 mr-2 text-slate-400" />{" "}
                                         Edit Booking
                                       </ContextMenuItem>
+                                      <ContextMenuItem
+                                        className="text-xs font-medium cursor-pointer"
+                                        onClick={() =>
+                                          onExtendClick && onExtendClick(evt)
+                                        }
+                                      >
+                                        <CalendarRange className="w-3.5 h-3.5 mr-2 text-slate-400" />{" "}
+                                        Change Dates / Extend
+                                      </ContextMenuItem>
+
+                                      {/* --- NEW RIGHT CLICK OPTION --- */}
+                                      {isOngoing && (
+                                        <ContextMenuItem
+                                          className="text-xs font-medium cursor-pointer text-emerald-700"
+                                          onClick={() => {
+                                            if (now < (evt.end as Date)) {
+                                              if (onEarlyReturnClick)
+                                                onEarlyReturnClick(evt);
+                                            } else {
+                                              if (onStatusChange)
+                                                onStatusChange(
+                                                  evt,
+                                                  "completed",
+                                                );
+                                            }
+                                          }}
+                                        >
+                                          <Flag className="w-3.5 h-3.5 mr-2 text-emerald-600" />{" "}
+                                          Process Return
+                                        </ContextMenuItem>
+                                      )}
                                       <ContextMenuSeparator />
                                       <ContextMenuSub>
                                         <ContextMenuSubTrigger className="text-xs font-medium cursor-pointer">
@@ -1266,6 +1297,15 @@ export default function TimelineScheduler({
                                           Force Status
                                         </ContextMenuSubTrigger>
                                         <ContextMenuSubContent className="w-40 rounded-lg shadow-xl border-slate-200">
+                                          <ContextMenuItem
+                                            className="text-xs font-medium cursor-pointer"
+                                            onClick={() =>
+                                              onStatusChange &&
+                                              onStatusChange(evt, "pending")
+                                            }
+                                          >
+                                            Set Pending
+                                          </ContextMenuItem>
                                           <ContextMenuItem
                                             className="text-xs font-medium cursor-pointer"
                                             onClick={() =>
@@ -1652,14 +1692,26 @@ export default function TimelineScheduler({
                                           </div>
                                         )}
 
-                                      {/* SCENARIO 3: Ongoing (Normal or Overdue) */}
+                                      {/* SCENARIO 3: Ongoing (Normal or Overdue) - THIS IS THE FIX */}
                                       {evt.status === "ongoing" && (
                                         <Button
                                           size="sm"
                                           className="w-full h-8 text-[11px] font-semibold bg-blue-600 text-white hover:bg-blue-700 rounded-sm shadow-sm"
-                                          onClick={() =>
-                                            onStatusChange?.(evt, "completed")
-                                          }
+                                          onClick={() => {
+                                            // Determine if it's early or on-time
+                                            if (now < (evt.end as Date)) {
+                                              // Early Return -> Open Dialog
+                                              if (onEarlyReturnClick)
+                                                onEarlyReturnClick(evt);
+                                            } else {
+                                              // On Time / Late Return -> Just complete it
+                                              if (onStatusChange)
+                                                onStatusChange(
+                                                  evt,
+                                                  "completed",
+                                                );
+                                            }
+                                          }}
                                         >
                                           <Flag className="w-3 h-3 mr-1.5" />{" "}
                                           Process Return

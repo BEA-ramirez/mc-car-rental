@@ -13,6 +13,7 @@ import {
   createAdminBooking,
   deleteBooking,
   updateBookingStatus,
+  updateAdminBooking,
 } from "@/actions/bookings"; // Ensure this matches filename!
 
 const fetchBookingsList = async (
@@ -84,6 +85,26 @@ export const useBookings = () => {
     onError: (err) => toast.error(err.message),
   });
 
+  const updateMutation = useMutation({
+    mutationFn: async ({
+      id,
+      data,
+    }: {
+      id: string;
+      data: AdminBookingInput;
+    }) => {
+      const res = await updateAdminBooking(id, data);
+      if (!res.success) throw new Error(res.message || "Failed");
+      return res;
+    },
+    onSuccess: () => {
+      toast.success("Booking updated successfully!");
+      queryClient.invalidateQueries({ queryKey: ["bookings"] });
+      queryClient.invalidateQueries({ queryKey: ["scheduler-data"] });
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
   return {
     bookings: query.data || [],
     isLoading: query.isLoading,
@@ -100,5 +121,7 @@ export const useBookings = () => {
     isCreating: createMutation.isPending,
     isUpdating: statusMutation.isPending,
     isDeleting: deleteMutation.isPending,
+    updateBooking: updateMutation.mutateAsync,
+    isBookingUpdating: updateMutation.isPending,
   };
 };

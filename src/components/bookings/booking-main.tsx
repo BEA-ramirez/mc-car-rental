@@ -11,6 +11,7 @@ import PendingRequestsSidebar from "./pending-request-sidebar";
 import ProposalDialog from "@/components/bookings/proposal-dialog";
 import ResizeDialog from "@/components/bookings/resize-dialog";
 import EarlyReturnDialog from "@/components/bookings/early-return-dialog";
+import ExtendBookingDialog from "./extend-booking-dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -19,6 +20,7 @@ import {
   Plus,
   Calendar as CalendarIcon,
   Loader2,
+  Trash,
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
@@ -35,6 +37,17 @@ import BufferResizeDialog from "./buffer-resize-dialog";
 import SplitBookingDialog from "./split-booking-dialog";
 import AdminBookingForm from "./admin-booking-form";
 import { useScheduler } from "../../../hooks/use-scheduler";
+
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 function BookingMain() {
   const [date, setDate] = useState(new Date());
@@ -57,6 +70,8 @@ function BookingMain() {
     isSplittingBooking,
     reassignBooking,
     isReassigning,
+    deleteBooking,
+    isDeleting,
   } = useScheduler(date);
 
   const resources = data?.resources || [];
@@ -92,6 +107,9 @@ function BookingMain() {
     event: SchedulerEvent;
     splitDate: Date;
   } | null>(null);
+  const [extendTarget, setExtendTarget] = useState<SchedulerEvent | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<SchedulerEvent | null>(null);
+  const [editTarget, setEditTarget] = useState<SchedulerEvent | null>(null);
 
   // --- SETTINGS STATE ---
   const [isOverrideMode, setIsOverrideMode] = useState(false);
@@ -342,11 +360,11 @@ function BookingMain() {
               }
             }}
             onTimeRangeSelect={handleTimeRangeSelect}
-            onEditClick={(event) => console.log("Edit booking", event.id)}
             onResizeEvent={(event, newEnd) =>
               setResizeTarget({ event, newEnd })
             }
             onEarlyReturnClick={(evt) => setEarlyReturnTarget(evt)}
+            onExtendClick={(event) => setExtendTarget(event)}
             onAddMaintenance={(resourceId, startDate) =>
               createMaintenance({
                 carId: resourceId,
@@ -363,7 +381,8 @@ function BookingMain() {
             onStatusChange={(event, newStatus) =>
               updateStatus({ id: event.id, status: newStatus })
             }
-            onDeleteClick={(evt) => console.log("Delete", evt.id)}
+            onDeleteClick={(evt) => setDeleteTarget(evt)}
+            onEditClick={(evt) => setEditTarget(evt)}
           />
         </div>
 
@@ -428,28 +447,118 @@ function BookingMain() {
         initialSplitDate={splitTarget?.splitDate || null}
         isProcessing={isSplittingBooking}
       />
+      <ExtendBookingDialog
+        isOpen={!!extendTarget}
+        onClose={() => setExtendTarget(null)}
+        onConfirm={(newEnd) => {
+          if (!extendTarget) return;
+          updateDates({ id: extendTarget.id, newEndDate: newEnd });
+          setExtendTarget(null);
+        }}
+        event={extendTarget}
+        isSaving={isUpdatingDates}
+      />
+
+      <AlertDialog
+        open={!!deleteTarget}
+        onOpenChange={() => setDeleteTarget(null)}
+      >
+        <AlertDialogContent className="border-red-100 bg-white">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-red-600 flex items-center gap-2">
+              <Trash className="w-5 h-5" /> Delete Booking?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-slate-600">
+              This will permanently remove the booking for{" "}
+              <b>{deleteTarget?.title}</b>. This action cannot be undone and
+              will delete all associated financial records.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-red-600 hover:bg-red-700 text-white"
+              disabled={isDeleting}
+              onClick={(e) => {
+                e.preventDefault(); // Prevent dialog from closing instantly
+                if (deleteTarget) {
+                  deleteBooking(deleteTarget.id, {
+                    onSuccess: () => setDeleteTarget(null),
+                  });
+                }
+              }}
+            >
+              {isDeleting ? "Deleting..." : "Yes, Delete Booking"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* FORM SHEET */}
-      <Sheet open={isFormOpen} onOpenChange={setIsFormOpen}>
+      <Sheet
+        open={isFormOpen || !!editTarget}
+        onOpenChange={(open) => {
+          if (!open) {
+            setIsFormOpen(false);
+            setEditTarget(null);
+          }
+        }}
+      >
         <SheetContent
           side="right"
           className="w-full sm:max-w-[800px] xl:max-w-[1000px] overflow-y-auto p-0 bg-slate-50 [&>button.absolute]:hidden"
         >
           <SheetHeader className="sr-only">
-            <SheetTitle>Create New Booking</SheetTitle>
+            <SheetTitle>
+              {editTarget ? "Edit Booking" : "Create New Booking"}
+            </SheetTitle>
             <SheetDescription>
-              Fill out the form to create a new vehicle booking.
+              {editTarget
+                ? "Update booking details."
+                : "Fill out the form to create a new vehicle booking."}
             </SheetDescription>
           </SheetHeader>
 
-          {isFormOpen && (
+          {/* Render the form if we are creating OR editing */}
+          {(isFormOpen || editTarget) && (
             <AdminBookingForm
-              key={`${formPrefill?.carId}-${formPrefill?.startDate?.getTime()}-${formPrefill?.duration}`}
-              initialCarId={formPrefill?.carId}
-              initialStartDate={formPrefill?.startDate}
-              initialDuration={formPrefill?.duration}
-              onSuccess={() => setIsFormOpen(false)}
-              onCancel={() => setIsFormOpen(false)}
+              // Force the form to completely remount if the target changes
+              key={
+                editTarget
+                  ? `edit-${editTarget.id}`
+                  : `create-${formPrefill?.carId}-${formPrefill?.startDate?.getTime()}`
+              }
+              // If editing, pass the existing data!
+              bookingId={editTarget?.id} // <-- We will need to add this prop to AdminBookingForm
+              // If creating, pass the pre-fills
+              initialCarId={
+                editTarget ? editTarget.resourceId : formPrefill?.carId
+              }
+              initialStartDate={
+                editTarget ? new Date(editTarget.start) : formPrefill?.startDate
+              }
+              // Use Date-Fns to calculate duration for the edit mode pre-fill
+              initialDuration={
+                editTarget
+                  ? Math.max(
+                      1,
+                      Math.ceil(
+                        differenceInHours(
+                          new Date(editTarget.end),
+                          new Date(editTarget.start),
+                        ) / 24,
+                      ),
+                    )
+                  : formPrefill?.duration
+              }
+              onSuccess={() => {
+                setIsFormOpen(false);
+                setEditTarget(null);
+              }}
+              onCancel={() => {
+                setIsFormOpen(false);
+                setEditTarget(null);
+              }}
             />
           )}
         </SheetContent>
