@@ -7,6 +7,7 @@ import {
   CompleteBookingType,
 } from "@/lib/schemas/booking";
 import { revalidatePath } from "next/cache";
+import { getInspectionTemplate } from "@/actions/settings";
 
 export type ActionState = {
   success?: boolean;
@@ -141,18 +142,33 @@ export async function createAdminBooking(data: unknown) {
     return { success: false, message: "Invalid Payment Amount" };
   }
 
+  const masterTemplate = await getInspectionTemplate();
+  let fillableChecklist = null;
+
+  if (masterTemplate && masterTemplate.length > 0) {
+    fillableChecklist = masterTemplate.map((category) => ({
+      categoryId: category.id,
+      categoryName: category.name,
+      items: category.items.map((item) => ({
+        itemId: item.id,
+        label: item.label,
+        status: "PENDING", // Pre-fill the staff action states
+        notes: "",
+        photoUrl: null,
+      })),
+    }));
+  }
+
   // 4. Call the RPC
   const { data: bookingId, error } = await supabase.rpc(
     "admin_create_booking_v1",
     {
       p_user_id: input.user_id,
       p_car_id: input.car_id,
-      p_start_date: input.start_date.toISOString(), // Ensure ISO string format
-      p_end_date: input.end_date.toISOString(), // Ensure ISO string format
+      p_start_date: input.start_date.toISOString(),
+      p_end_date: input.end_date.toISOString(),
       p_pickup_loc: input.pickup_location,
       p_dropoff_loc: input.dropoff_location,
-
-      // --- NEW PARAMS ---
       p_pickup_coordinates: input.pickup_coordinates || null,
       p_dropoff_coordinates: input.dropoff_coordinates || null,
       p_pickup_type: input.pickup_type,
@@ -160,12 +176,11 @@ export async function createAdminBooking(data: unknown) {
       p_pickup_price: input.pickup_price,
       p_dropoff_price: input.dropoff_price,
       p_is_with_driver: input.with_driver,
-      // ------------------
-
       p_base_rate_snapshot: dailyRate,
       p_security_deposit: input.security_deposit,
       p_charges_json: charges,
       p_initial_payment_json: input.initial_payment ?? null,
+      p_inspection_template: fillableChecklist, // <--- PASS THE NEW JSON HERE
     },
   );
 

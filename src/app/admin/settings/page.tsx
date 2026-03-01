@@ -1,49 +1,57 @@
 import React from "react";
 import ServiceAreaEditor from "@/components/bookings/service-area-editor";
+import InspectionTemplateBuilder from "@/components/settings/inspection-template-builder";
+import ContractTemplateBuilder from "@/components/settings/contract-template-builder";
+import { Settings as SettingsIcon } from "lucide-react";
 
 function Settings() {
   return (
-    <div className="max-w-4xl mx-auto p-6 space-y-8">
-      {/* Page Header */}
-      <div>
-        <h1 className="text-3xl font-bold text-slate-900">Platform Settings</h1>
-        <p className="text-slate-500 mt-2">
-          Manage your service areas, pricing, and system configurations.
-        </p>
-      </div>
-
-      <hr className="border-slate-200" />
-
-      {/* Service Area Section */}
-      <section className="space-y-4">
-        <div className="flex justify-between items-center">
+    <div className="flex flex-col h-[calc(100vh-80px)] bg-slate-50 font-sans overflow-y-auto">
+      {/* HEADER */}
+      <div className="flex items-center justify-between px-6 py-4 bg-white border-b border-slate-200 shrink-0 sticky top-0 z-20 shadow-sm">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-sm bg-slate-900 flex items-center justify-center shadow-sm">
+            <SettingsIcon className="w-4 h-4 text-white" />
+          </div>
           <div>
-            <h2 className="text-xl font-semibold text-slate-800">
-              Service Area Boundary
-            </h2>
-            <p className="text-sm text-slate-500">
-              Draw the polygon on the map to define where clients can book
-              rides. Bookings outside this area will be restricted.
+            <h1 className="text-base font-bold text-slate-900 tracking-tight leading-none mb-1">
+              System Settings
+            </h1>
+            <p className="text-[11px] font-medium text-slate-500 leading-none">
+              Manage global templates, configurations, and preferences.
             </p>
           </div>
         </div>
+      </div>
 
-        {/* The Editor Component */}
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-          <ServiceAreaEditor />
-        </div>
-      </section>
+      {/* BODY */}
+      <div className="p-6 max-w-[1400px] mx-auto w-full space-y-10">
+        <section>
+          <div className="mb-4">
+            <h2 className="text-sm font-black text-slate-800 uppercase tracking-widest">
+              Inspection Checklists
+            </h2>
+            <p className="text-xs text-slate-500 mt-1">
+              Configure the standardized forms used throughout the rental
+              lifecycle.
+            </p>
+          </div>
+          <InspectionTemplateBuilder />
+        </section>
 
-      {/* Placeholder for Future Settings */}
-      <section className="opacity-50 pointer-events-none grayscale">
-        <h2 className="text-xl font-semibold text-slate-800">
-          Base Rates & Pricing
-        </h2>
-        <p className="text-sm text-slate-500 mb-4">Coming soon...</p>
-        <div className="h-32 bg-slate-100 rounded-lg border border-dashed border-slate-300 flex items-center justify-center">
-          Pricing Configuration
-        </div>
-      </section>
+        {/* --- ADD THE CONTRACT SECTION HERE --- */}
+        <section>
+          <div className="mb-4">
+            <h2 className="text-sm font-black text-slate-800 uppercase tracking-widest">
+              Legal Agreements
+            </h2>
+            <p className="text-xs text-slate-500 mt-1">
+              Design the HTML contract that customers will sign digitally.
+            </p>
+          </div>
+          <ContractTemplateBuilder />
+        </section>
+      </div>
     </div>
   );
 }

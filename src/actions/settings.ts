@@ -11,6 +11,7 @@ import {
   ServiceAreaSchema,
   type ServiceArea,
 } from "@/lib/schemas/settings";
+import { createAdminClient } from "@/utils/supabase/admin";
 
 // --- 1. GET SETTINGS (Generic) ---
 export async function getSystemSettings(keys: string[]) {
@@ -124,4 +125,81 @@ export async function getServiceArea() {
 
   if (error) return [];
   return data?.value || [];
+}
+
+const INSPECTION_TEMPLATE_KEY = "inspection_template";
+
+// The shape of our template
+export type InspectionCategory = {
+  id: string;
+  name: string;
+  items: { id: string; label: string }[];
+};
+
+// 1. Fetch the template
+export async function getInspectionTemplate(): Promise<InspectionCategory[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("settings")
+    .select("value")
+    .eq("key", INSPECTION_TEMPLATE_KEY)
+    .single();
+
+  if (error && error.code !== "PGRST116") {
+    // Ignore 'Not Found' errors
+    console.error("Error fetching template:", error);
+    return [];
+  }
+
+  return data?.value ? (data.value as InspectionCategory[]) : [];
+}
+
+// 2. Save the template
+export async function saveInspectionTemplate(template: InspectionCategory[]) {
+  const supabase = await createAdminClient();
+
+  // Use upsert to update if exists, or insert if it doesn't
+  const { error } = await supabase
+    .from("settings")
+    .upsert(
+      { key: INSPECTION_TEMPLATE_KEY, value: template as any },
+      { onConflict: "key" },
+    );
+
+  if (error) throw new Error(error.message);
+  return { success: true };
+}
+
+const CONTRACT_TEMPLATE_KEY = "contract_template";
+
+// 3. Fetch the Contract Template
+export async function getContractTemplate(): Promise<string> {
+  const supabase = await createAdminClient();
+  const { data, error } = await supabase
+    .from("settings")
+    .select("value")
+    .eq("key", CONTRACT_TEMPLATE_KEY)
+    .single();
+
+  if (error && error.code !== "PGRST116") {
+    console.error("Error fetching contract template:", error);
+    return "";
+  }
+
+  return data?.value ? (data.value as string) : "";
+}
+
+// 4. Save the Contract Template
+export async function saveContractTemplate(htmlContent: string) {
+  const supabase = await createAdminClient();
+
+  const { error } = await supabase
+    .from("settings")
+    .upsert(
+      { key: CONTRACT_TEMPLATE_KEY, value: htmlContent as any },
+      { onConflict: "key" },
+    );
+
+  if (error) throw new Error(error.message);
+  return { success: true };
 }

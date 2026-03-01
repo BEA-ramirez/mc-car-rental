@@ -1,7 +1,12 @@
 import React from "react";
+import DocumentsMain from "@/components/documents/documents-main";
 
 function DocumentManagement() {
-  return <div>DocumentManagement</div>;
+  return (
+    <div>
+      <DocumentsMain />
+    </div>
+  );
 }
 
 export default DocumentManagement;
