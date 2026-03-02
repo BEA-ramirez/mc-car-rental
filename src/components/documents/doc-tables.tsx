@@ -246,25 +246,31 @@ export function ContractsTable({
                   />
                 </td>
                 <td className="px-4 py-3 text-right">
-                  {contract.is_signed ? (
+                  <div className="flex items-center justify-end gap-2">
+                    {!contract.is_signed && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 text-[10px] font-bold text-slate-500 hover:text-amber-600 hover:bg-amber-50 rounded-sm opacity-0 group-hover:opacity-100 transition-opacity"
+                        onClick={() => onRemind(contract)}
+                      >
+                        Remind
+                      </Button>
+                    )}
                     <Button
                       variant="outline"
                       size="sm"
-                      className="h-7 px-2 text-[10px] font-bold border-slate-200 rounded-sm text-slate-600"
+                      className={cn(
+                        "h-7 text-[10px] font-bold rounded-sm shadow-sm",
+                        contract.is_signed
+                          ? "border-slate-200 text-slate-700 hover:bg-slate-100"
+                          : "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100",
+                      )}
                       onClick={() => onPreview(contract)}
                     >
-                      <Download className="w-3 h-3 mr-1.5" /> PDF
+                      {contract.is_signed ? "View" : "Review & Sign"}
                     </Button>
-                  ) : (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-7 px-2 text-[10px] font-bold text-orange-600 hover:text-orange-700 hover:bg-orange-50 rounded-sm"
-                      onClick={() => onRemind(contract)}
-                    >
-                      <Mail className="w-3 h-3 mr-1.5" /> Remind
-                    </Button>
-                  )}
+                  </div>
                 </td>
               </tr>
             );

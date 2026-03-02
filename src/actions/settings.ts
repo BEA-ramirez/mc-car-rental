@@ -203,3 +203,219 @@ export async function saveContractTemplate(htmlContent: string) {
   if (error) throw new Error(error.message);
   return { success: true };
 }
+
+const COMPANY_PROFILE_KEY = "company_profile";
+
+export type CompanyProfile = {
+  name: string;
+  email: string;
+  address: string;
+  website: string;
+  contact_number: string;
+};
+
+// 5. Fetch Company Profile
+export async function getCompanyProfile(): Promise<CompanyProfile | null> {
+  const supabase = await createAdminClient();
+  const { data, error } = await supabase
+    .from("settings")
+    .select("value")
+    .eq("key", COMPANY_PROFILE_KEY)
+    .single();
+
+  if (error && error.code !== "PGRST116") {
+    console.error("Error fetching company profile:", error);
+    return null;
+  }
+
+  return data?.value ? (data.value as CompanyProfile) : null;
+}
+
+// 6. Save Company Profile
+export async function saveCompanyProfile(profile: CompanyProfile) {
+  const supabase = await createAdminClient();
+
+  const { error } = await supabase
+    .from("settings")
+    .upsert(
+      { key: COMPANY_PROFILE_KEY, value: profile as any },
+      { onConflict: "key" },
+    );
+
+  if (error) throw new Error(error.message);
+  return { success: true };
+}
+
+const PAYMENT_METHODS_KEY = "payment_methods";
+
+export type PaymentMethodDetail = {
+  enabled: boolean;
+  account_name?: string;
+  account_number?: string;
+};
+
+export type PaymentMethods = {
+  bdo: PaymentMethodDetail;
+  cash: PaymentMethodDetail;
+  gcash: PaymentMethodDetail;
+  [key: string]: PaymentMethodDetail; // Allows flexibility if you add BPI, UnionBank, etc. later
+};
+
+// 7. Fetch Payment Methods
+export async function getPaymentMethods(): Promise<PaymentMethods | null> {
+  const supabase = await createAdminClient();
+  const { data, error } = await supabase
+    .from("settings")
+    .select("value")
+    .eq("key", PAYMENT_METHODS_KEY)
+    .single();
+
+  if (error && error.code !== "PGRST116") {
+    console.error("Error fetching payment methods:", error);
+    return null;
+  }
+
+  return data?.value ? (data.value as PaymentMethods) : null;
+}
+
+// 8. Save Payment Methods
+export async function savePaymentMethods(methods: PaymentMethods) {
+  const supabase = await createAdminClient();
+
+  const { error } = await supabase
+    .from("settings")
+    .upsert(
+      { key: PAYMENT_METHODS_KEY, value: methods as any },
+      { onConflict: "key" },
+    );
+
+  if (error) throw new Error(error.message);
+  return { success: true };
+}
+
+const BOOKING_FEES_KEY = "booking_fees";
+
+export type BookingFees = {
+  rush_fee: number;
+  custom_pickup_fee: number;
+  custom_dropoff_fee: number;
+  driver_rate_per_day: number;
+  security_deposit_default: number;
+};
+
+// 9. Fetch Booking Fees
+export async function getBookingFees(): Promise<BookingFees | null> {
+  const supabase = await createAdminClient();
+  const { data, error } = await supabase
+    .from("settings")
+    .select("value")
+    .eq("key", BOOKING_FEES_KEY)
+    .single();
+
+  if (error && error.code !== "PGRST116") {
+    console.error("Error fetching booking fees:", error);
+    return null;
+  }
+
+  return data?.value ? (data.value as BookingFees) : null;
+}
+
+// 10. Save Booking Fees
+export async function saveBookingFees(fees: BookingFees) {
+  const supabase = await createAdminClient();
+
+  const { error } = await supabase
+    .from("settings")
+    .upsert(
+      { key: BOOKING_FEES_KEY, value: fees as any },
+      { onConflict: "key" },
+    );
+
+  if (error) throw new Error(error.message);
+  return { success: true };
+}
+
+const TAX_SETTINGS_KEY = "tax_settings";
+
+export type TaxSettings = {
+  enabled: boolean;
+  tax_name: string;
+  percentage: number;
+  is_inclusive: boolean;
+  registration_number: string;
+};
+
+// 11. Fetch Tax Settings
+export async function getTaxSettings(): Promise<TaxSettings | null> {
+  const supabase = await createAdminClient();
+  const { data, error } = await supabase
+    .from("settings")
+    .select("value")
+    .eq("key", TAX_SETTINGS_KEY)
+    .single();
+
+  if (error && error.code !== "PGRST116") {
+    console.error("Error fetching tax settings:", error);
+    return null;
+  }
+
+  return data?.value ? (data.value as TaxSettings) : null;
+}
+
+// 12. Save Tax Settings
+export async function saveTaxSettings(settings: TaxSettings) {
+  const supabase = await createAdminClient();
+
+  const { error } = await supabase
+    .from("settings")
+    .upsert(
+      { key: TAX_SETTINGS_KEY, value: settings as any },
+      { onConflict: "key" },
+    );
+
+  if (error) throw new Error(error.message);
+  return { success: true };
+}
+
+const BUSINESS_HUBS_KEY = "business_hubs";
+
+export type BusinessHub = {
+  id: string;
+  name: string;
+  address: string;
+  lat: number;
+  lng: number;
+  is_active: boolean;
+};
+
+// 13. Fetch Business Hubs
+export async function getBusinessHubs(): Promise<BusinessHub[]> {
+  const supabase = await createAdminClient();
+  const { data, error } = await supabase
+    .from("settings")
+    .select("value")
+    .eq("key", BUSINESS_HUBS_KEY)
+    .single();
+
+  if (error && error.code !== "PGRST116") {
+    console.error("Error fetching business hubs:", error);
+    return [];
+  }
+
+  return data?.value ? (data.value as BusinessHub[]) : [];
+}
+
+// 14. Save Business Hubs
+export async function saveBusinessHubs(hubs: BusinessHub[]) {
+  const supabase = await createAdminClient();
+
+  const { error } = await supabase
+    .from("settings")
+    .upsert(
+      { key: BUSINESS_HUBS_KEY, value: hubs as any },
+      { onConflict: "key" },
+    );
+
+  if (error) throw new Error(error.message);
+  return { success: true };
+}

@@ -7,7 +7,7 @@ import {
   CompleteBookingType,
 } from "@/lib/schemas/booking";
 import { revalidatePath } from "next/cache";
-import { getInspectionTemplate } from "@/actions/settings";
+import { getInspectionTemplate, getContractTemplate } from "@/actions/settings";
 
 export type ActionState = {
   success?: boolean;
@@ -159,6 +159,40 @@ export async function createAdminBooking(data: unknown) {
     }));
   }
 
+  const rawContract = await getContractTemplate();
+  let filledContractHtml = null;
+
+  // 2. Fetch the Customer & Car details (if you don't already have them in 'input')
+  const { data: customer } = await supabase
+    .from("users")
+    .select("full_name, address")
+    .eq("user_id", input.user_id)
+    .single();
+  const { data: carData } = await supabase
+    .from("cars")
+    .select("brand, model, plate_number")
+    .eq("car_id", input.car_id)
+    .single();
+
+  if (rawContract && customer && carData) {
+    // 3. Inject variables into the HTML
+    filledContractHtml = rawContract
+      .replace(/{{CUSTOMER_NAME}}/g, customer.full_name || "Unknown Customer")
+      .replace(
+        /{{CUSTOMER_ADDRESS}}/g,
+        customer.address || "Address not provided",
+      )
+      .replace(/{{CAR_BRAND_MODEL}}/g, `${carData.brand} ${carData.model}`)
+      .replace(/{{PLATE_NUMBER}}/g, carData.plate_number)
+      .replace(/{{START_DATE}}/g, input.start_date.toLocaleDateString())
+      .replace(/{{END_DATE}}/g, input.end_date.toLocaleDateString())
+      .replace(/{{TOTAL_PRICE}}/g, baseRent.toFixed(2)) // Or total including charges
+      .replace(
+        /{{SECURITY_DEPOSIT}}/g,
+        (input.security_deposit || 0).toFixed(2),
+      );
+  }
+
   // 4. Call the RPC
   const { data: bookingId, error } = await supabase.rpc(
     "admin_create_booking_v1",
@@ -180,7 +214,8 @@ export async function createAdminBooking(data: unknown) {
       p_security_deposit: input.security_deposit,
       p_charges_json: charges,
       p_initial_payment_json: input.initial_payment ?? null,
-      p_inspection_template: fillableChecklist, // <--- PASS THE NEW JSON HERE
+      p_inspection_template: fillableChecklist,
+      p_contract_html: filledContractHtml,
     },
   );
 

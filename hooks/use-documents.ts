@@ -20,6 +20,7 @@ import {
   getCustomersForDropdown,
   getBookingsForDropdown,
   adminUploadDocumentAction,
+  saveContractSignature,
 } from "@/actions/docs-mutations";
 
 export function useKYCDocuments() {
@@ -126,6 +127,22 @@ export function useDocumentMutations() {
     onError: (error) => toast.error(`Upload failed: ${error.message}`),
   });
 
+  const signContract = useMutation({
+    mutationFn: ({
+      id,
+      signatureDataUrl,
+    }: {
+      id: string;
+      signatureDataUrl: string;
+    }) => saveContractSignature(id, signatureDataUrl),
+    onSuccess: () => {
+      toast.success("Contract successfully executed!");
+      invalidateDocs();
+    },
+    onError: (error) =>
+      toast.error(`Failed to sign contract: ${error.message}`),
+  });
+
   return {
     verifyDoc,
     rejectDoc,
@@ -133,12 +150,14 @@ export function useDocumentMutations() {
     updateNote,
     deleteDoc,
     uploadDoc,
+    signContract,
     isPending:
       verifyDoc.isPending ||
       rejectDoc.isPending ||
       revokeDoc.isPending ||
       deleteDoc.isPending ||
-      uploadDoc.isPending,
+      uploadDoc.isPending ||
+      signContract.isPending,
   };
 }
 

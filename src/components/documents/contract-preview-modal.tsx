@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useRef, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -9,9 +9,18 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { X, Download, FileSignature, CheckCircle, Printer } from "lucide-react";
+import {
+  X,
+  Download,
+  FileSignature,
+  Printer,
+  PenTool,
+  Eraser,
+  Check,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import SignatureCanvas from "react-signature-canvas";
 
 export type ContractPreview = {
   id: string; // Booking Ref
@@ -20,6 +29,8 @@ export type ContractPreview = {
   rentalDates: string;
   status: "SIGNED" | "UNSIGNED";
   signedAt?: string;
+  htmlContent?: string; // NEW: The raw HTML from the database
+  signatureUrl?: string; // NEW: The saved signature image
 };
 
 type ContractPreviewModalProps = {
@@ -27,6 +38,7 @@ type ContractPreviewModalProps = {
   onClose: () => void;
   contract: ContractPreview | null;
   onDownload?: (id: string) => void;
+  onSign?: (id: string, signatureDataUrl: string) => void; // NEW: Action to save signature
 };
 
 export default function ContractPreviewModal({
@@ -34,17 +46,42 @@ export default function ContractPreviewModal({
   onClose,
   contract,
   onDownload,
+  onSign,
 }: ContractPreviewModalProps) {
+  const sigCanvas = useRef<SignatureCanvas>(null);
+  const [isSigning, setIsSigning] = useState(false);
+
   if (!contract) return null;
 
   const isSigned = contract.status === "SIGNED";
 
+  const handleClearSignature = () => {
+    sigCanvas.current?.clear();
+  };
+
+  const handleSaveSignature = () => {
+    if (sigCanvas.current?.isEmpty()) {
+      alert("Please provide a signature before saving.");
+      return;
+    }
+
+    setIsSigning(true);
+    // Gets the signature as a transparent PNG data URL
+    const dataUrl = sigCanvas.current
+      ?.getTrimmedCanvas()
+      .toDataURL("image/png");
+
+    if (onSign && dataUrl) {
+      onSign(contract.id, dataUrl);
+    }
+    setIsSigning(false);
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      {/* 4xl is the perfect width for a portrait document preview */}
-      <DialogContent className="max-w-4xl p-0 overflow-hidden border-slate-200 shadow-2xl rounded-sm flex flex-col h-[85vh] max-h-[850px] [&>button.absolute]:hidden">
-        {/* HEADER */}
-        <DialogHeader className="px-5 py-4 border-b border-slate-100 bg-white shrink-0 flex flex-row items-center justify-between z-10 shadow-sm">
+      <DialogContent className="max-w-[80vw] xl:max-w-[1000px] p-0 overflow-hidden border-slate-200 shadow-2xl rounded-sm flex flex-col h-[85vh] max-h-[850px] [&>button.absolute]:hidden bg-slate-200/50">
+        {/* --- HEADER --- */}
+        <DialogHeader className="px-5 py-4 border-b border-slate-200 bg-white shrink-0 flex flex-row items-center justify-between z-10 shadow-sm">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-sm bg-slate-900 flex items-center justify-center shadow-sm">
               <FileSignature className="w-4 h-4 text-white" />
@@ -58,11 +95,11 @@ export default function ContractPreviewModal({
               </span>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
             <Badge
               variant="outline"
               className={cn(
-                "text-[10px] font-bold uppercase tracking-widest rounded-sm h-7 px-3 border",
+                "text-[10px] font-bold uppercase tracking-widest rounded-sm h-7 px-3 border shadow-sm",
                 isSigned
                   ? "bg-emerald-50 text-emerald-700 border-emerald-200"
                   : "bg-amber-50 text-amber-700 border-amber-200",
@@ -82,167 +119,106 @@ export default function ContractPreviewModal({
           </div>
         </DialogHeader>
 
-        {/* BODY (PDF VIEWER STYLE) */}
-        <div className="flex flex-1 overflow-hidden bg-slate-200/50">
-          <ScrollArea className="flex-1 h-full p-4 sm:p-8">
-            {/* The "Paper" Document */}
-            <div className="w-full max-w-[700px] mx-auto bg-white shadow-md border border-slate-200 p-8 sm:p-12 min-h-[800px] flex flex-col rounded-sm">
-              {/* Document Header */}
-              <div className="flex justify-between items-start border-b-2 border-slate-900 pb-6 mb-6">
-                <div>
-                  <h1 className="text-2xl font-black text-slate-900 tracking-tight uppercase">
-                    Rental Agreement
-                  </h1>
-                  <p className="text-xs font-bold text-slate-500 mt-1 uppercase tracking-widest">
-                    Ref: {contract.id}
-                  </p>
-                </div>
-                <div className="text-right">
-                  <h2 className="text-sm font-bold text-slate-800">
-                    Your Car Rental Company
-                  </h2>
-                  <p className="text-[10px] text-slate-500 mt-0.5">
-                    Ormoc City, Leyte, Philippines
-                  </p>
-                  <p className="text-[10px] text-slate-500">
-                    contact@rentalcompany.com
-                  </p>
-                </div>
+        {/* --- BODY (PDF VIEWER STYLE) --- */}
+        <ScrollArea className="flex-1 h-full p-4 sm:p-8">
+          {/* THE PAPER DOCUMENT */}
+          <div className="w-full max-w-[700px] mx-auto bg-white shadow-md border border-slate-200 p-8 sm:p-12 min-h-[800px] flex flex-col rounded-sm relative">
+            {/* If we have the dynamic HTML, render it! */}
+            {contract.htmlContent ? (
+              <div
+                className="prose prose-sm prose-slate max-w-none prose-p:leading-relaxed prose-headings:text-slate-900"
+                dangerouslySetInnerHTML={{ __html: contract.htmlContent }}
+              />
+            ) : (
+              /* Fallback for old contracts without HTML */
+              <div className="text-center py-20 text-slate-400 font-medium text-sm">
+                Legacy contract data not available for rendering.
+              </div>
+            )}
+
+            {/* Overlaid Signature Image (if already signed) */}
+            {isSigned && contract.signatureUrl && (
+              <div className="absolute bottom-[100px] left-[10%] w-[40%] flex justify-center items-end h-24 pointer-events-none">
+                <img
+                  src={contract.signatureUrl}
+                  alt="Customer Signature"
+                  className="max-h-full object-contain drop-shadow-sm opacity-90 mix-blend-multiply"
+                />
+                <span className="absolute -bottom-6 bg-white px-2 text-[9px] font-bold text-emerald-600 uppercase tracking-widest">
+                  Verified: {contract.signedAt}
+                </span>
+              </div>
+            )}
+          </div>
+
+          {/* THE SIGNATURE EXECUTION PANEL */}
+          {!isSigned && (
+            <div className="w-full max-w-[700px] mx-auto mt-6 bg-white border border-slate-300 rounded-sm shadow-sm overflow-hidden animate-in slide-in-from-bottom-4 fade-in duration-500">
+              <div className="bg-slate-900 px-5 py-3 flex items-center gap-2">
+                <PenTool className="w-4 h-4 text-emerald-400" />
+                <h3 className="text-xs font-bold text-white uppercase tracking-widest">
+                  Digital Signature Required
+                </h3>
               </div>
 
-              {/* Document Details Grid */}
-              <div className="grid grid-cols-2 gap-6 mb-8 bg-slate-50 p-4 border border-slate-100 rounded-sm">
-                <div>
-                  <span className="block text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">
-                    Renter Name
-                  </span>
-                  <span className="block text-sm font-bold text-slate-800">
-                    {contract.customerName}
-                  </span>
-                </div>
-                <div>
-                  <span className="block text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">
-                    Vehicle Details
-                  </span>
-                  <span className="block text-sm font-bold text-slate-800">
-                    {contract.vehicle}
-                  </span>
-                </div>
-                <div>
-                  <span className="block text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">
-                    Rental Period
-                  </span>
-                  <span className="block text-sm font-bold text-slate-800">
-                    {contract.rentalDates}
-                  </span>
-                </div>
-                <div>
-                  <span className="block text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">
-                    Agreement Date
-                  </span>
-                  <span className="block text-sm font-bold text-slate-800">
-                    October 14, 2025
-                  </span>
-                </div>
-              </div>
+              <div className="p-6 bg-slate-50">
+                <p className="text-[11px] font-medium text-slate-500 mb-3 uppercase tracking-widest text-center">
+                  Please draw your signature below
+                </p>
 
-              {/* Terms and Conditions (Mock Text) */}
-              <div className="flex-1 space-y-4 text-[11px] leading-relaxed text-slate-600 font-medium text-justify">
-                <p>
-                  <strong>1. ACCEPTANCE OF TERMS:</strong> By signing this
-                  agreement, the Renter acknowledges having received the vehicle
-                  described above in good condition and agrees to return it in
-                  the same condition, subject to normal wear and tear, on the
-                  return date specified.
-                </p>
-                <p>
-                  <strong>2. USE OF VEHICLE:</strong> The vehicle shall not be
-                  used to carry passengers or property for hire, to tow or push
-                  anything, to be operated in a test, race, or contest, or while
-                  the Renter is under the influence of alcohol or narcotics.
-                </p>
-                <p>
-                  <strong>3. LIABILITY:</strong> The Renter assumes full
-                  responsibility for any damage to the vehicle, loss of the
-                  vehicle, and any third-party claims arising from the use of
-                  the vehicle during the rental period.
-                </p>
-                <p>
-                  <strong>4. LATE RETURN:</strong> A penalty fee applies if the
-                  vehicle is not returned at the agreed date and time. Any
-                  extension must be requested and approved in writing prior to
-                  the expiration of the current rental period.
-                </p>
-                <div className="h-20" /> {/* Spacer */}
-              </div>
-
-              {/* Signature Block */}
-              <div className="mt-8 pt-8 border-t border-slate-200 grid grid-cols-2 gap-12">
-                {/* Company Signature */}
-                <div>
-                  <span className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-4">
-                    Authorized Representative
-                  </span>
-                  <div className="h-12 border-b border-slate-300 mb-2 flex items-end pb-1">
-                    <span className="font-serif text-lg text-slate-800 italic">
-                      Management Signature
-                    </span>
-                  </div>
-                  <span className="text-[10px] font-medium text-slate-500">
-                    Date: Oct 14, 2025
-                  </span>
+                {/* Canvas Container */}
+                <div className="bg-white border-2 border-dashed border-slate-300 rounded-sm relative shadow-inner touch-none">
+                  <SignatureCanvas
+                    ref={sigCanvas}
+                    canvasProps={{
+                      className: "w-full h-[200px] cursor-crosshair",
+                    }}
+                    backgroundColor="rgba(0,0,0,0)"
+                    penColor="#0f172a" // Deep slate color for realistic ink
+                  />
                 </div>
 
-                {/* Customer Signature */}
-                <div>
-                  <span className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-4">
-                    Renter Signature
-                  </span>
-                  {isSigned ? (
-                    <div className="relative">
-                      {/* Simulating a digital signature */}
-                      <div className="absolute -top-4 left-2 rotate-[-5deg] text-blue-800 font-serif text-3xl italic opacity-80">
-                        {contract.customerName}
-                      </div>
-                      <div className="h-12 border-b border-slate-300 mb-2 flex items-end pb-1 relative z-10">
-                        {/* Empty to let the absolute sig float above */}
-                      </div>
-                      <span className="flex items-center gap-1.5 text-[10px] font-bold text-emerald-600">
-                        <CheckCircle className="w-3 h-3" /> Digitally Signed (
-                        {contract.signedAt})
-                      </span>
-                    </div>
-                  ) : (
-                    <div>
-                      <div className="h-12 border-b border-dashed border-slate-300 mb-2 flex items-center justify-center bg-slate-50">
-                        <span className="text-[10px] font-bold text-amber-500 uppercase tracking-widest">
-                          Awaiting Signature
-                        </span>
-                      </div>
-                      <span className="text-[10px] font-medium text-slate-400">
-                        Date: ---
-                      </span>
-                    </div>
-                  )}
+                <div className="mt-4 flex justify-between items-center">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 text-[10px] font-bold text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-sm uppercase tracking-wider"
+                    onClick={handleClearSignature}
+                  >
+                    <Eraser className="w-3.5 h-3.5 mr-1.5" /> Clear Pad
+                  </Button>
+
+                  <Button
+                    size="sm"
+                    className="h-9 px-6 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white rounded-sm shadow-sm"
+                    onClick={handleSaveSignature}
+                    disabled={isSigning}
+                  >
+                    <Check className="w-4 h-4 mr-1.5" />
+                    {isSigning ? "Executing..." : "Execute Agreement"}
+                  </Button>
                 </div>
               </div>
             </div>
-          </ScrollArea>
-        </div>
+          )}
 
-        {/* FOOTER */}
-        <div className="bg-white border-t border-slate-200 p-4 shrink-0 flex justify-end gap-2 shadow-[0_-4px_12px_rgba(0,0,0,0.03)] z-10">
+          {/* Bottom spacing so the modal doesn't cut off the signature box */}
+          <div className="h-12" />
+        </ScrollArea>
+
+        {/* --- FOOTER ACTIONS --- */}
+        <div className="bg-white border-t border-slate-200 p-4 shrink-0 flex justify-end gap-2 z-10">
           <Button
             variant="ghost"
             className="h-9 px-4 text-xs font-bold text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-sm"
             onClick={onClose}
           >
-            Close Preview
+            Close
           </Button>
           <Button
             variant="outline"
             className="h-9 px-4 text-xs font-bold border-slate-300 text-slate-700 hover:bg-slate-50 rounded-sm shadow-sm"
-            onClick={() => console.log("Printing...")}
+            onClick={() => window.print()}
           >
             <Printer className="w-3.5 h-3.5 mr-2" /> Print
           </Button>

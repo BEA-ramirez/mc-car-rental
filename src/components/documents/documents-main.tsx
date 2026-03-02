@@ -57,8 +57,15 @@ export default function DocumentsMain() {
   const { data: expiringDocs = [], isLoading: loadingExpiring } =
     useExpiringDocuments();
 
-  const { verifyDoc, rejectDoc, revokeDoc, deleteDoc, updateNote, isPending } =
-    useDocumentMutations();
+  const {
+    verifyDoc,
+    rejectDoc,
+    revokeDoc,
+    deleteDoc,
+    updateNote,
+    signContract,
+    isPending,
+  } = useDocumentMutations();
 
   // New state for the interactive Digital Clipboard
   const [activeInspection, setActiveInspection] = useState<any | null>(null);
@@ -364,6 +371,8 @@ export default function DocumentsMain() {
                               "MMM dd, yyyy HH:mm",
                             )
                           : undefined,
+                        htmlContent: row.contract_html, // <--- Add this!
+                        signatureUrl: row.customer_signature_url, // <--- Add this!
                       })
                     }
                   />
@@ -439,6 +448,15 @@ export default function DocumentsMain() {
         onClose={() => setContractDoc(null)}
         contract={contractDoc}
         onDownload={(id) => console.log("Downloading contract PDF:", id)}
+        onSign={(id, signatureDataUrl) => {
+          // Simply call the mutation and let React Query handle the rest!
+          signContract.mutate(
+            { id, signatureDataUrl },
+            {
+              onSuccess: () => setContractDoc(null), // Close modal on success
+            },
+          );
+        }}
       />
 
       {/* NEW: Digital Clipboard Execution Modal */}
