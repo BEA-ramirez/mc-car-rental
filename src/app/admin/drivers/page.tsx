@@ -1,10 +1,10 @@
 import React from "react";
-import DriverDashboard from "@/components/drivers/driver-dashboard";
+import DriversMain from "@/components/drivers/drivers-main";
 
 function Driver() {
   return (
     <>
-      <DriverDashboard />
+      <DriversMain />
     </>
   );
 }

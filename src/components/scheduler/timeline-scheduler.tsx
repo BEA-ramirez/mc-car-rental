@@ -50,10 +50,11 @@ import {
   MoveRight,
   Check,
   Undo2,
+  AlertTriangle,
+  ShieldCheck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-// Shadcn UI Imports
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import {
@@ -149,6 +150,7 @@ type TimelineSchedulerProps = {
   onAddMaintenance?: (resourceId: string, startDate: Date) => void;
   onSplitEvent?: (event: SchedulerEvent, splitDate: Date) => void;
   onExtendClick?: (event: SchedulerEvent) => void;
+  onDispatchClick?: (event: SchedulerEvent) => void; // NEW PROP
   isOverrideMode?: boolean;
 };
 
@@ -184,6 +186,7 @@ export default function TimelineScheduler({
   onAddMaintenance,
   onSplitEvent,
   onExtendClick,
+  onDispatchClick, // Added to props
   isOverrideMode = false,
 }: TimelineSchedulerProps) {
   const [view, setView] = useState<ViewType>("day");
@@ -610,7 +613,7 @@ export default function TimelineScheduler({
             onValueChange={(v: any) => setFilterMode(v)}
           >
             <SelectTrigger className="w-[160px] h-8 text-xs bg-slate-50 border-slate-200 font-medium">
-              <Filter className="w-3 h-3 text-slate-400" />
+              <Filter className="w-3 h-3 text-slate-400" />{" "}
               <SelectValue placeholder="Filter" />
             </SelectTrigger>
             <SelectContent>
@@ -724,7 +727,6 @@ export default function TimelineScheduler({
             {filteredResources.map((res) => {
               const isGhostHere =
                 parsedGhostBooking && parsedGhostBooking.resourceId === res.id;
-
               const hasConflict =
                 isGhostHere &&
                 events.some((e) => {
@@ -738,7 +740,6 @@ export default function TimelineScheduler({
                   ].includes(e.status || "");
                   if (e.resourceId !== res.id || !isConflictStatus)
                     return false;
-
                   const eEndWithBuffer = addMinutes(
                     e.end as Date,
                     e.bufferDuration || 0,
@@ -1001,6 +1002,16 @@ export default function TimelineScheduler({
                         const isOverdueReturn =
                           evt.status === "ongoing" && now > (evt.end as Date);
 
+                        // --- DRIVER ASSIGNMENT LOGIC ---
+                        const needsDriver = evt.withDriver === true;
+                        const hasAssignedDriver =
+                          evt.driverName && evt.driverName.trim() !== "";
+                        const missingDriverWarning =
+                          needsDriver &&
+                          !hasAssignedDriver &&
+                          evt.status !== "completed" &&
+                          evt.status !== "maintenance";
+
                         let isOverlappingOther = false;
                         if (!isResizing && !isCompleted) {
                           isOverlappingOther = events.some(
@@ -1025,7 +1036,6 @@ export default function TimelineScheduler({
                           eventColorClass =
                             "bg-slate-100 border-slate-300 text-slate-500 bg-[linear-gradient(45deg,rgba(0,0,0,0.03)_25%,transparent_25%,transparent_50%,rgba(0,0,0,0.03)_50%,rgba(0,0,0,0.03)_75%,transparent_75%,transparent)] bg-[length:10px_10px] shadow-inner";
                         } else if (isDisplaced || isOverlappingOther) {
-                          // Transparent/Blend overlap logic
                           eventColorClass =
                             "bg-red-500/80 border-red-600/80 text-white shadow-md animate-pulse z-20 backdrop-blur-[1px]";
                         } else if (isCompleted) {
@@ -1056,8 +1066,6 @@ export default function TimelineScheduler({
                           isOngoing || isDisplaced || isOverlappingOther
                             ? "text-white/90"
                             : "text-slate-600";
-
-                        // Icon sizing logic for compact month view
                         const iconClass = cn(
                           isMonthView ? "w-2.5 h-2.5" : "w-3 h-3",
                           textColorClass,
@@ -1134,7 +1142,6 @@ export default function TimelineScheduler({
                                           ),
                                         );
                                       } else {
-                                        // Save exact click position for perfect popover anchoring
                                         const rect =
                                           e.currentTarget.getBoundingClientRect();
                                         setClickOffsets((prev) => ({
@@ -1145,7 +1152,14 @@ export default function TimelineScheduler({
                                       }
                                     }}
                                   >
-                                    {/* INVISIBLE POPOVER ANCHOR */}
+                                    {/* MISSING DRIVER WARNING BADGE (Visible on the block) */}
+                                    {missingDriverWarning && !isMonthView && (
+                                      <div className="absolute top-0 right-0 bg-red-600 text-white text-[8px] font-bold px-1.5 py-0.5 rounded-bl-sm z-20 flex items-center gap-0.5">
+                                        <ShieldAlert className="w-2.5 h-2.5" />{" "}
+                                        Dispatch Needed
+                                      </div>
+                                    )}
+
                                     <PopoverTrigger asChild>
                                       <div
                                         className="absolute top-1/2 w-px h-px opacity-0 pointer-events-none"
@@ -1269,7 +1283,20 @@ export default function TimelineScheduler({
                                         Change Dates / Extend
                                       </ContextMenuItem>
 
-                                      {/* --- NEW RIGHT CLICK OPTION --- */}
+                                      {/* DISPATCH ACTION IN RIGHT CLICK MENU */}
+                                      {needsDriver && (
+                                        <ContextMenuItem
+                                          className="text-xs font-medium cursor-pointer"
+                                          onClick={() =>
+                                            onDispatchClick &&
+                                            onDispatchClick(evt)
+                                          }
+                                        >
+                                          <Car className="w-3.5 h-3.5 mr-2 text-slate-400" />{" "}
+                                          Manage Dispatch
+                                        </ContextMenuItem>
+                                      )}
+
                                       {isOngoing && (
                                         <ContextMenuItem
                                           className="text-xs font-medium cursor-pointer text-emerald-700"
@@ -1382,7 +1409,6 @@ export default function TimelineScheduler({
                                   </div>
                                 ) : (
                                   <>
-                                    {/* COMPACT HEADER */}
                                     <div className="p-3 bg-white border-b relative">
                                       <div className="absolute top-2 right-2">
                                         <Button
@@ -1430,13 +1456,11 @@ export default function TimelineScheduler({
                                       </div>
                                     </div>
 
-                                    {/* COMPACT ACCORDIONS */}
                                     <Accordion
                                       type="multiple"
                                       className="w-full bg-slate-50"
-                                      defaultValue={["schedule"]}
+                                      defaultValue={["schedule", "driver"]}
                                     >
-                                      {/* SCHEDULE ACCORDION */}
                                       <AccordionItem
                                         value="schedule"
                                         className="border-b-slate-200"
@@ -1507,8 +1531,8 @@ export default function TimelineScheduler({
                                         </AccordionContent>
                                       </AccordionItem>
 
-                                      {/* DRIVER ACCORDION */}
-                                      {evt.withDriver && (
+                                      {/* --- DRIVER DISPATCH ACCORDION --- */}
+                                      {needsDriver && (
                                         <AccordionItem
                                           value="driver"
                                           className="border-b-slate-200"
@@ -1517,30 +1541,66 @@ export default function TimelineScheduler({
                                             <div className="flex items-center gap-2 text-slate-700">
                                               <UserCircle className="w-3.5 h-3.5 text-slate-400" />{" "}
                                               Assigned Driver
+                                              {missingDriverWarning && (
+                                                <span className="flex h-2 w-2 rounded-full bg-red-500 ml-1"></span>
+                                              )}
                                             </div>
                                           </AccordionTrigger>
-                                          <AccordionContent className="px-3 py-2 space-y-2 bg-white border-t border-slate-100">
-                                            <div className="flex items-center gap-2.5 text-xs">
-                                              <div className="w-6 h-6 rounded-md bg-slate-100 flex items-center justify-center">
-                                                <User className="w-3.5 h-3.5 text-slate-500" />
-                                              </div>
-                                              <span className="font-semibold text-slate-800">
-                                                {evt.driverName || "Pending"}
-                                              </span>
-                                            </div>
-                                            {evt.driverPhone && (
-                                              <div className="flex items-center gap-2.5 text-[10px] pl-8">
-                                                <Phone className="w-3 h-3 text-slate-400" />
-                                                <span className="font-medium text-slate-600">
-                                                  {evt.driverPhone}
-                                                </span>
+                                          <AccordionContent className="px-3 py-3 space-y-3 bg-white border-t border-slate-100">
+                                            {hasAssignedDriver ? (
+                                              <>
+                                                <div className="flex items-center gap-2.5 text-xs">
+                                                  <div className="w-6 h-6 rounded-md bg-slate-100 flex items-center justify-center">
+                                                    <User className="w-3.5 h-3.5 text-slate-500" />
+                                                  </div>
+                                                  <span className="font-semibold text-slate-800">
+                                                    {evt.driverName}
+                                                  </span>
+                                                </div>
+                                                {evt.driverPhone && (
+                                                  <div className="flex items-center gap-2.5 text-[10px] pl-8">
+                                                    <Phone className="w-3 h-3 text-slate-400" />
+                                                    <span className="font-medium text-slate-600">
+                                                      {evt.driverPhone}
+                                                    </span>
+                                                  </div>
+                                                )}
+                                                <Button
+                                                  variant="outline"
+                                                  size="sm"
+                                                  className="w-full mt-2 h-7 text-[10px]"
+                                                  onClick={() =>
+                                                    onDispatchClick &&
+                                                    onDispatchClick(evt)
+                                                  }
+                                                >
+                                                  Change Driver
+                                                </Button>
+                                              </>
+                                            ) : (
+                                              <div className="flex flex-col items-center justify-center gap-2 py-2">
+                                                <ShieldAlert className="w-6 h-6 text-red-400 opacity-50" />
+                                                <p className="text-[10px] text-slate-500 text-center max-w-[180px]">
+                                                  This booking requested a
+                                                  driver but none is assigned
+                                                  yet.
+                                                </p>
+                                                <Button
+                                                  size="sm"
+                                                  className="w-full h-7 text-[10px] bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-700 border border-red-200 mt-1 shadow-none"
+                                                  onClick={() =>
+                                                    onDispatchClick &&
+                                                    onDispatchClick(evt)
+                                                  }
+                                                >
+                                                  Assign Driver Now
+                                                </Button>
                                               </div>
                                             )}
                                           </AccordionContent>
                                         </AccordionItem>
                                       )}
 
-                                      {/* CONTACT ACCORDION */}
                                       <AccordionItem
                                         value="contact"
                                         className="border-b-slate-200"
@@ -1567,7 +1627,6 @@ export default function TimelineScheduler({
                                         </AccordionContent>
                                       </AccordionItem>
 
-                                      {/* PAYMENT ACCORDION */}
                                       <AccordionItem
                                         value="payment"
                                         className="border-none"
@@ -1609,9 +1668,7 @@ export default function TimelineScheduler({
                                       </AccordionItem>
                                     </Accordion>
 
-                                    {/* --- COMPACT QUICK ACTIONS --- */}
                                     <div className="p-2.5 bg-slate-50 border-t border-slate-200 flex flex-col gap-1.5">
-                                      {/* SCENARIO 0: Pending */}
                                       {evt.status === "pending" && (
                                         <div className="flex gap-1.5 w-full">
                                           {now >= (evt.start as Date) && (
@@ -1647,8 +1704,6 @@ export default function TimelineScheduler({
                                           </Button>
                                         </div>
                                       )}
-
-                                      {/* SCENARIO 1: Confirmed (Normal) */}
                                       {evt.status === "confirmed" &&
                                         !isLateArrival && (
                                           <Button
@@ -1663,8 +1718,6 @@ export default function TimelineScheduler({
                                             Start Trip
                                           </Button>
                                         )}
-
-                                      {/* SCENARIO 2: Confirmed (Customer is Late) */}
                                       {evt.status === "confirmed" &&
                                         isLateArrival && (
                                           <div className="flex gap-1.5 w-full">
@@ -1691,20 +1744,15 @@ export default function TimelineScheduler({
                                             </Button>
                                           </div>
                                         )}
-
-                                      {/* SCENARIO 3: Ongoing (Normal or Overdue) - THIS IS THE FIX */}
                                       {evt.status === "ongoing" && (
                                         <Button
                                           size="sm"
                                           className="w-full h-8 text-[11px] font-semibold bg-blue-600 text-white hover:bg-blue-700 rounded-sm shadow-sm"
                                           onClick={() => {
-                                            // Determine if it's early or on-time
                                             if (now < (evt.end as Date)) {
-                                              // Early Return -> Open Dialog
                                               if (onEarlyReturnClick)
                                                 onEarlyReturnClick(evt);
                                             } else {
-                                              // On Time / Late Return -> Just complete it
                                               if (onStatusChange)
                                                 onStatusChange(
                                                   evt,
@@ -1717,8 +1765,6 @@ export default function TimelineScheduler({
                                           Process Return
                                         </Button>
                                       )}
-
-                                      {/* SCENARIO 4: Completed */}
                                       {evt.status === "completed" && (
                                         <div className="w-full text-center text-[10px] font-semibold text-slate-500 py-1.5 flex items-center justify-center bg-slate-200/50 rounded-sm border border-slate-200">
                                           <CheckCircle className="w-3 h-3 mr-1.5 text-slate-400" />{" "}

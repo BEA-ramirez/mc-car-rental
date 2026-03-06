@@ -35,6 +35,7 @@ import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import BufferResizeDialog from "./buffer-resize-dialog";
 import SplitBookingDialog from "./split-booking-dialog";
+import DispatchDialog from "./dispatch-dialog";
 import AdminBookingForm from "./admin-booking-form";
 import { useScheduler } from "../../../hooks/use-scheduler";
 
@@ -110,6 +111,9 @@ function BookingMain() {
   const [extendTarget, setExtendTarget] = useState<SchedulerEvent | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<SchedulerEvent | null>(null);
   const [editTarget, setEditTarget] = useState<SchedulerEvent | null>(null);
+  const [dispatchTarget, setDispatchTarget] = useState<SchedulerEvent | null>(
+    null,
+  );
 
   // --- SETTINGS STATE ---
   const [isOverrideMode, setIsOverrideMode] = useState(false);
@@ -383,6 +387,7 @@ function BookingMain() {
             }
             onDeleteClick={(evt) => setDeleteTarget(evt)}
             onEditClick={(evt) => setEditTarget(evt)}
+            onDispatchClick={(evt) => setDispatchTarget(evt)}
           />
         </div>
 
@@ -457,6 +462,14 @@ function BookingMain() {
         }}
         event={extendTarget}
         isSaving={isUpdatingDates}
+      />
+      <DispatchDialog
+        key={dispatchTarget?.id || "empty"}
+        open={!!dispatchTarget}
+        onOpenChange={(open) => {
+          if (!open) setDispatchTarget(null);
+        }}
+        booking={dispatchTarget} // Pass the selected booking!
       />
 
       <AlertDialog

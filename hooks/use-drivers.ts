@@ -6,6 +6,10 @@ import {
   deleteDriver,
   getDriverById,
 } from "@/actions/manage-driver";
+import {
+  fetchDispatchAvailability,
+  saveDispatchPlan,
+} from "@/actions/dispatch";
 
 const fetchDrivers = async () => {
   const response = await fetch("/api/drivers");
@@ -51,5 +55,52 @@ export const useDrivers = () => {
     deleteDriver: deleteMutation.mutate,
     isSaving: saveMutation.isPending,
     isDeleting: deleteMutation.isPending,
+  };
+};
+
+export const useDriverDispatch = (startDate?: Date, endDate?: Date) => {
+  const queryClient = useQueryClient();
+
+  // 1. Fetch available drivers for the specific date range
+  const availabilityQuery = useQuery({
+    queryKey: [
+      "dispatch-availability",
+      startDate?.toISOString(),
+      endDate?.toISOString(),
+    ],
+    queryFn: async () => {
+      if (!startDate || !endDate) return [];
+      return await fetchDispatchAvailability(startDate, endDate);
+    },
+    // Only run this query if we actually have dates (i.e., the modal is open)
+    enabled: !!startDate && !!endDate,
+    staleTime: 0, // Always fetch fresh data for dispatching to prevent double-booking
+  });
+
+  // 2. Save the dispatch segments
+  const savePlanMutation = useMutation({
+    mutationFn: async (params: {
+      bookingId: string;
+      segments: { driverId: string; start: Date; end: Date }[];
+    }) => {
+      return await saveDispatchPlan(params.bookingId, params.segments);
+    },
+    onSuccess: () => {
+      toast.success("Dispatch plan saved successfully!");
+      // Invalidate the scheduler so the timeline immediately updates with the new driver names
+      queryClient.invalidateQueries({ queryKey: ["scheduler_data"] });
+      // Invalidate availability so the next time we open it, it's accurate
+      queryClient.invalidateQueries({ queryKey: ["dispatch-availability"] });
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || "Failed to save dispatch plan.");
+    },
+  });
+
+  return {
+    availableDrivers: availabilityQuery.data || [],
+    isLoadingAvailability: availabilityQuery.isLoading,
+    saveDispatchPlan: savePlanMutation.mutateAsync,
+    isSavingDispatch: savePlanMutation.isPending,
   };
 };
