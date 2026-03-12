@@ -35,47 +35,8 @@ import {
 } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useDashboard } from "../../../hooks/use-dashboard";
+import { useDashboard, useQuickInsights } from "../../../hooks/use-dashboard"; // <-- Added useQuickInsights
 import { cn } from "@/lib/utils";
-
-// --- MOCK DATA ---
-const inventory = [
-  { label: "SUVs", percentage: 85, indicatorClass: "[&>div]:bg-amber-500" },
-  { label: "Sedans", percentage: 40, indicatorClass: "[&>div]:bg-emerald-500" },
-  {
-    label: "Vans / MPVs",
-    percentage: 100,
-    indicatorClass: "[&>div]:bg-red-500",
-  },
-  { label: "Pickups", percentage: 20, indicatorClass: "[&>div]:bg-blue-500" },
-];
-
-const logs = [
-  {
-    time: "10m ago",
-    title: "Driver Assigned",
-    text: "Ricardo Dalisay assigned to BKG-101",
-    dotClass: "bg-emerald-500 ring-emerald-100",
-  },
-  {
-    time: "1h ago",
-    title: "New Booking",
-    text: "BKG-102 was created via Web Portal",
-    dotClass: "bg-blue-500 ring-blue-100",
-  },
-  {
-    time: "2h ago",
-    title: "Payment Received",
-    text: "₱12,000 received for BKG-099 via GCash",
-    dotClass: "bg-purple-500 ring-purple-100",
-  },
-  {
-    time: "3h ago",
-    title: "Incident Report",
-    text: "Ford Territory [XYZ] reported scratch on front bumper",
-    dotClass: "bg-red-500 ring-red-100",
-  },
-];
 
 export default function QuickInsightsSheet({
   open,
@@ -86,27 +47,21 @@ export default function QuickInsightsSheet({
 }) {
   const [date, setDate] = useState<Date | undefined>(new Date());
   const [category, setCategory] = useState("any");
-  // State Machine: "idle" | "loading" | "results"
   const [searchState, setSearchState] = useState<
     "idle" | "loading" | "results"
   >("idle");
-  const [availableCars, setAvailableCars] = useState<any[]>([]); // Add state to hold results
+  const [availableCars, setAvailableCars] = useState<any[]>([]);
 
+  // Call the hooks!
   const { checkAvailability } = useDashboard();
+  const { data: insights, isLoading: isInsightsLoading } = useQuickInsights();
 
   const handleSearch = async () => {
     if (!date) return;
-
     setSearchState("loading");
-
     try {
-      // Pass the selected category and date to the database
-      const results = await checkAvailability({
-        category: category,
-        date: date,
-      });
-
-      setAvailableCars(results); // Store the real available cars!
+      const results = await checkAvailability({ category, date });
+      setAvailableCars(results);
       setSearchState("results");
     } catch (error) {
       console.error(error);
@@ -167,9 +122,9 @@ export default function QuickInsightsSheet({
                   </SelectTrigger>
                   <SelectContent className="text-xs">
                     <SelectItem value="any">Any Category</SelectItem>
-                    <SelectItem value="suv">SUV</SelectItem>
-                    <SelectItem value="sedan">Sedan</SelectItem>
-                    <SelectItem value="van">Van / MPV</SelectItem>
+                    <SelectItem value="SUV">SUV</SelectItem>
+                    <SelectItem value="Sedan">Sedan</SelectItem>
+                    <SelectItem value="Van">Van / MPV</SelectItem>
                   </SelectContent>
                 </Select>
 
@@ -209,75 +164,102 @@ export default function QuickInsightsSheet({
               </div>
             </div>
 
-            {/* STATE: IDLE (Show Default Dashboards) */}
+            {/* STATE: IDLE (Show Real Data from Hook) */}
             {searchState === "idle" && (
               <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                {/* TOOL 2: LIVE INVENTORY */}
-                <div className="space-y-4">
-                  <h3 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-1.5 mb-2 border-t border-slate-200 pt-6">
-                    <Car className="w-3.5 h-3.5" /> Live Inventory (Today)
-                  </h3>
-                  <div className="bg-white border border-slate-200 p-5 rounded-sm shadow-sm space-y-5">
-                    {inventory.map((inv, i) => (
-                      <div key={i} className="space-y-2">
-                        <div className="flex justify-between text-[10px] font-bold uppercase tracking-wider">
-                          <span className="text-slate-700">{inv.label}</span>
-                          <span
-                            className={cn(
-                              "text-slate-500",
-                              inv.percentage === 100 && "text-red-600",
-                            )}
-                          >
-                            {inv.percentage}% Booked
-                          </span>
-                        </div>
-                        <Progress
-                          value={inv.percentage}
-                          className={cn(
-                            "h-1.5 bg-slate-100",
-                            inv.indicatorClass,
-                          )}
-                        />
-                      </div>
-                    ))}
+                {isInsightsLoading || !insights ? (
+                  // Skeleton Loading State
+                  <div className="space-y-8">
+                    <div className="space-y-4">
+                      <Skeleton className="h-3 w-32 bg-slate-200 mt-6" />
+                      <Skeleton className="h-[150px] w-full bg-slate-100 rounded-sm" />
+                    </div>
+                    <div className="space-y-4">
+                      <Skeleton className="h-3 w-32 bg-slate-200 mt-6" />
+                      <Skeleton className="h-[250px] w-full bg-slate-100 rounded-sm" />
+                    </div>
                   </div>
-                </div>
-
-                {/* TOOL 3: SYSTEM ACTIVITY */}
-                <div className="space-y-4">
-                  <h3 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-1.5 mb-2 border-t border-slate-200 pt-6">
-                    <Activity className="w-3.5 h-3.5" /> Recent Activity
-                  </h3>
-                  <div className="relative border-l border-slate-200 ml-2 pl-4 space-y-5 py-1">
-                    {logs.map((log, i) => (
-                      <div key={i} className="relative group cursor-default">
-                        <div
-                          className={cn(
-                            "absolute -left-[21px] top-1 w-2.5 h-2.5 rounded-full ring-4 ring-slate-50",
-                            log.dotClass,
-                          )}
-                        />
-                        <div className="flex flex-col">
-                          <div className="flex items-center gap-2 mb-0.5">
-                            <span className="text-xs font-bold text-slate-900 leading-none">
-                              {log.title}
-                            </span>
-                            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider leading-none mt-0.5">
-                              {log.time}
-                            </span>
+                ) : (
+                  <>
+                    {/* TOOL 2: LIVE INVENTORY */}
+                    <div className="space-y-4">
+                      <h3 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-1.5 mb-2 border-t border-slate-200 pt-6">
+                        <Car className="w-3.5 h-3.5" /> Live Inventory (Today)
+                      </h3>
+                      <div className="bg-white border border-slate-200 p-5 rounded-sm shadow-sm space-y-5">
+                        {insights.inventory.map((inv: any, i: number) => (
+                          <div key={i} className="space-y-2">
+                            <div className="flex justify-between text-[10px] font-bold uppercase tracking-wider">
+                              <span className="text-slate-700">
+                                {inv.label}
+                              </span>
+                              <span
+                                className={cn(
+                                  "text-slate-500",
+                                  inv.percentage >= 100 && "text-red-600",
+                                )}
+                              >
+                                {inv.percentage}% Booked
+                              </span>
+                            </div>
+                            <Progress
+                              value={inv.percentage}
+                              className={cn(
+                                "h-1.5 bg-slate-100",
+                                inv.indicatorClass,
+                              )}
+                            />
                           </div>
-                          <p className="text-[11px] font-medium text-slate-600 leading-snug pr-2">
-                            {log.text}
-                          </p>
-                        </div>
+                        ))}
                       </div>
-                    ))}
-                  </div>
-                </div>
+                    </div>
+
+                    {/* TOOL 3: SYSTEM ACTIVITY */}
+                    <div className="space-y-4">
+                      <h3 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-1.5 mb-2 border-t border-slate-200 pt-6">
+                        <Activity className="w-3.5 h-3.5" /> Recent Activity
+                      </h3>
+                      <div className="relative border-l border-slate-200 ml-2 pl-4 space-y-5 py-1">
+                        {insights.logs.length === 0 ? (
+                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                            No recent logs.
+                          </span>
+                        ) : (
+                          insights.logs.map((log: any) => (
+                            <div
+                              key={log.id}
+                              className="relative group cursor-default"
+                            >
+                              <div
+                                className={cn(
+                                  "absolute -left-[21px] top-1 w-2.5 h-2.5 rounded-full ring-4 ring-slate-50",
+                                  log.dotClass,
+                                )}
+                              />
+                              <div className="flex flex-col">
+                                <div className="flex items-center gap-2 mb-0.5">
+                                  <span className="text-xs font-bold text-slate-900 leading-none">
+                                    {log.title}
+                                  </span>
+                                  <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider leading-none mt-0.5">
+                                    {log.time}
+                                  </span>
+                                </div>
+                                <p className="text-[11px] font-medium text-slate-600 leading-snug pr-2">
+                                  {log.text}
+                                </p>
+                              </div>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </div>
+                  </>
+                )}
               </div>
             )}
 
-            {/* STATE: LOADING (Show Skeletons) */}
+            {/* STATE: LOADING (Search) */}
             {searchState === "loading" && (
               <div className="space-y-4 animate-in fade-in duration-300">
                 <h3 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-1.5 mb-2 border-t border-slate-200 pt-6">
@@ -306,8 +288,8 @@ export default function QuickInsightsSheet({
               <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
                 <div className="flex items-center justify-between border-t border-slate-200 pt-6 mb-2">
                   <h3 className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest flex items-center gap-1.5">
-                    <CheckCircle2 className="w-3.5 h-3.5" /> 3 Vehicles
-                    Available
+                    <CheckCircle2 className="w-3.5 h-3.5" />{" "}
+                    {availableCars.length} Vehicles Available
                   </h3>
                 </div>
 
@@ -317,37 +299,32 @@ export default function QuickInsightsSheet({
                       key={car.car_id}
                       className="bg-white border border-slate-200 p-3 rounded-sm shadow-sm flex items-center gap-3 group hover:border-slate-300 transition-colors"
                     >
-                      {/* Left: Icon Block */}
                       <div className="w-10 h-10 bg-slate-50 border border-slate-100 rounded-sm flex items-center justify-center shrink-0">
                         <CarFront className="w-5 h-5 text-slate-400 group-hover:text-slate-900 transition-colors" />
                       </div>
-
-                      {/* Middle: Details */}
                       <div className="flex-1 min-w-0">
                         <h4 className="text-[11px] font-bold text-slate-900 truncate">
-                          {car.model}
+                          {car.brand} {car.model}
                         </h4>
                         <div className="flex items-center gap-2 mt-1">
                           <span className="text-[9px] font-mono text-slate-500 uppercase tracking-wider bg-slate-100 px-1 rounded-sm leading-tight">
-                            {car.plate}
+                            {car.plate_number}
                           </span>
                           <span
                             className={cn(
                               "text-[9px] font-bold uppercase tracking-wider flex items-center gap-1",
-                              car.status === "Ready"
+                              car.availability_status === "Available"
                                 ? "text-emerald-600"
                                 : "text-amber-500",
                             )}
                           >
-                            • {car.status}
+                            • {car.availability_status}
                           </span>
                         </div>
                       </div>
-
-                      {/* Right: Price & Action */}
                       <div className="flex flex-col items-end shrink-0 gap-1.5 border-l border-slate-100 pl-3">
                         <span className="text-[11px] font-black text-slate-900 font-mono">
-                          ₱{car.price.toLocaleString()}{" "}
+                          ₱{car.rental_rate_per_day?.toLocaleString() || "0"}{" "}
                           <span className="text-[9px] text-slate-400 font-sans font-medium">
                             /day
                           </span>

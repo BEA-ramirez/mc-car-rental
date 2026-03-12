@@ -168,3 +168,57 @@ export async function getChartAnalytics(
     return { success: false, message: "Failed to load chart data." };
   }
 }
+
+export async function getQuickInsightsData(): Promise<ActionResponse> {
+  const supabase = await createClient();
+  try {
+    const { data, error } = await supabase.rpc("get_quick_insights");
+    if (error) throw new Error(error.message);
+
+    // Apply UI classes for Inventory based on percentage
+    const inventory = (data.inventory || []).map((inv: any) => {
+      let indicatorClass = "[&>div]:bg-emerald-500"; // Safe (Green)
+      if (inv.percentage >= 100)
+        indicatorClass = "[&>div]:bg-red-500"; // Sold Out (Red)
+      else if (inv.percentage > 75)
+        indicatorClass = "[&>div]:bg-amber-500"; // High (Amber)
+      else if (inv.percentage > 50) indicatorClass = "[&>div]:bg-blue-500"; // Normal (Blue)
+
+      return { ...inv, indicatorClass };
+    });
+
+    // Apply UI classes and format time for Logs
+    const logs = (data.logs || []).map((log: any) => {
+      let dotClass = "bg-slate-500 ring-slate-100";
+      const type = log.title.toUpperCase();
+
+      if (type.includes("PAYMENT")) dotClass = "bg-purple-500 ring-purple-100";
+      else if (type.includes("BOOKING") || type.includes("CREATE"))
+        dotClass = "bg-blue-500 ring-blue-100";
+      else if (type.includes("DRIVER") || type.includes("COMPLETE"))
+        dotClass = "bg-emerald-500 ring-emerald-100";
+      else if (
+        type.includes("INCIDENT") ||
+        type.includes("MAINTENANCE") ||
+        type.includes("CANCEL")
+      )
+        dotClass = "bg-red-500 ring-red-100";
+
+      const time = new Intl.DateTimeFormat("en-US", {
+        hour: "numeric",
+        minute: "numeric",
+      }).format(new Date(log.created_at));
+
+      return { ...log, time, dotClass };
+    });
+
+    return {
+      success: true,
+      message: "Insights fetched",
+      data: { inventory, logs },
+    };
+  } catch (error) {
+    console.error("Error fetching quick insights:", error);
+    return { success: false, message: "Failed to load insights." };
+  }
+}

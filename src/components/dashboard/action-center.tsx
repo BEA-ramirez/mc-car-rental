@@ -19,6 +19,7 @@ import { cn } from "@/lib/utils";
 // Tailwind color maps for the themes
 const themeStyles = {
   red: "bg-red-100 text-red-600",
+  orange: "bg-orange-100 text-orange-600", // Added for Late Arrivals!
   amber: "bg-amber-100 text-amber-600",
   blue: "bg-blue-100 text-blue-600",
   slate: "bg-slate-100 text-slate-600",
@@ -26,58 +27,12 @@ const themeStyles = {
 
 export default function ActionCenter() {
   const donutRef = useRef<HTMLDivElement>(null);
-
   const { summary, isSummaryLoading } = useDashboard();
 
-  const alerts = summary
-    ? [
-        {
-          id: 1,
-          title: `${summary.alerts.overdueReturns} Overdue Returns`,
-          desc: "Requires immediate action",
-          icon: Clock,
-          theme: "red",
-          href: "/admin/bookings?status=overdue",
-          count: summary.alerts.overdueReturns,
-        },
-        {
-          id: 2,
-          title: `${summary.alerts.pendingApprovals} Pending Approvals`,
-          desc: "Awaiting confirmation",
-          icon: Clock,
-          theme: "amber",
-          href: "/admin/bookings?status=pending",
-          count: summary.alerts.pendingApprovals,
-        },
-        {
-          id: 3,
-          title: `${summary.alerts.dispatchGaps} Dispatch Gaps`,
-          desc: "Drivers needed for upcoming trips",
-          icon: ShieldAlert,
-          theme: "blue",
-          href: "/admin/drivers?filter=unassigned",
-          count: summary.alerts.dispatchGaps,
-        },
-        {
-          id: 4,
-          title: `Maintenance Checks`, // You can hook this to a real DB count later!
-          desc: "Vehicles hitting mileage limit",
-          icon: Wrench,
-          theme: "slate",
-          href: "/admin/units?filter=maintenance",
-          count: 1, // Placeholder until we add maintenance to RPC
-        },
-      ]
-    : [];
-
-  // Filter out alerts that have 0 count to keep the UI clean (optional, but good UX!)
-  const activeAlerts = alerts.filter((a) => a.count > 0);
-
+  // 3. ECharts initialization
   useEffect(() => {
-    // 1. Do not attempt to draw the chart if we are still loading or if the ref is missing
-    if (isSummaryLoading || !summary || !donutRef.current) return;
+    if (!donutRef.current || !summary.dailyStatus) return;
 
-    // 2. Clean up any existing chart instance to prevent "already initialized" warnings
     const existingChart = echarts.getInstanceByDom(donutRef.current);
     if (existingChart) {
       existingChart.dispose();
@@ -124,7 +79,7 @@ export default function ActionCenter() {
         "#cbd5e1", // Completed
         "#f97316", // Late Arrival
         "#ef4444", // Overdue Return
-        "#b91c1c", // Conflict
+        "#b91c1c", // Conflict (Hidden via 0 value for now)
         "#64748b", // Maintenance
         "#f1f5f9", // Cancelled
       ],
@@ -143,17 +98,16 @@ export default function ActionCenter() {
           avoidLabelOverlap: false,
           label: { show: false },
           labelLine: { show: false },
-          // Note: This data is still static!
           data: [
-            { value: 15, name: "Pending" },
-            { value: 20, name: "Confirmed" },
-            { value: 35, name: "Ongoing" },
-            { value: 12, name: "Completed" },
-            { value: 5, name: "Late Arrival" },
-            { value: 4, name: "Overdue Return" },
-            { value: 2, name: "Conflict" },
-            { value: 6, name: "Maintenance" },
-            { value: 3, name: "Cancelled" },
+            { value: summary.dailyStatus.pending, name: "Pending" },
+            { value: summary.dailyStatus.confirmed, name: "Confirmed" },
+            { value: summary.dailyStatus.ongoing, name: "Ongoing" },
+            { value: summary.dailyStatus.completed, name: "Completed" },
+            { value: summary.dailyStatus.lateArrival, name: "Late Arrival" },
+            { value: summary.dailyStatus.overdue, name: "Overdue Return" },
+            { value: 0, name: "Conflict" },
+            { value: summary.dailyStatus.maintenance, name: "Maintenance" },
+            { value: summary.dailyStatus.cancelled, name: "Cancelled" },
           ],
         },
       ],
@@ -166,8 +120,68 @@ export default function ActionCenter() {
       chart.dispose();
       window.removeEventListener("resize", handleResize);
     };
-    // 3. THE MAGIC FIX: Tell the effect to re-run once the summary data changes
-  }, [summary, isSummaryLoading]);
+  }, [summary]); // Automatically redraws if summary data refreshes in the background
+
+  // 1. BULLETPROOF LOADING CHECK: Catch missing data before ANY rendering happens
+  if (isSummaryLoading || !summary || !summary.logistics || !summary.alerts) {
+    return (
+      <div className="flex flex-col gap-6 h-full">
+        <Skeleton className="h-[250px] w-full bg-slate-100 rounded-sm" />
+        <Skeleton className="h-[300px] w-full bg-slate-100 rounded-sm" />
+      </div>
+    );
+  }
+
+  // 2. Safely build the alerts array since we know `summary` is fully loaded
+  const alerts = [
+    {
+      id: 1,
+      title: `${summary.alerts.overdueReturns} Overdue Returns`,
+      desc: "Requires immediate action",
+      icon: Clock,
+      theme: "red",
+      href: "/admin/bookings?status=overdue",
+      count: summary.alerts.overdueReturns,
+    },
+    {
+      id: 2,
+      title: `${summary.alerts.lateArrivals} Late Arrivals`,
+      desc: "Customer has not picked up vehicle",
+      icon: AlertCircle,
+      theme: "orange",
+      href: "/admin/bookings?status=late",
+      count: summary.alerts.lateArrivals,
+    },
+    {
+      id: 3,
+      title: `${summary.alerts.pendingApprovals} Pending Approvals`,
+      desc: "Awaiting confirmation",
+      icon: Clock,
+      theme: "amber",
+      href: "/admin/bookings?status=pending",
+      count: summary.alerts.pendingApprovals,
+    },
+    {
+      id: 4,
+      title: `${summary.alerts.dispatchGaps} Dispatch Gaps`,
+      desc: "Drivers needed for upcoming trips",
+      icon: ShieldAlert,
+      theme: "blue",
+      href: "/admin/drivers?filter=unassigned",
+      count: summary.alerts.dispatchGaps,
+    },
+    {
+      id: 5,
+      title: `Maintenance Checks`,
+      desc: "Vehicles currently in shop",
+      icon: Wrench,
+      theme: "slate",
+      href: "/admin/units?filter=maintenance",
+      count: summary.dailyStatus.maintenance,
+    },
+  ];
+
+  const activeAlerts = alerts.filter((a) => a.count > 0);
 
   return (
     <div className="flex flex-col gap-6 h-full">
@@ -227,7 +241,9 @@ export default function ActionCenter() {
                 Pick-ups
               </span>
             </div>
-            <span className="text-xl font-black text-emerald-700">12</span>
+            <span className="text-xl font-black text-emerald-700">
+              {summary.logistics.pickupsToday}
+            </span>
           </div>
           <div className="flex flex-col bg-blue-50 border border-blue-100 p-2 rounded-sm items-center justify-center">
             <div className="flex items-center gap-1.5 text-blue-700 mb-1">
@@ -236,7 +252,9 @@ export default function ActionCenter() {
                 Returns
               </span>
             </div>
-            <span className="text-xl font-black text-blue-700">8</span>
+            <span className="text-xl font-black text-blue-700">
+              {summary.logistics.returnsToday}
+            </span>
           </div>
         </div>
 

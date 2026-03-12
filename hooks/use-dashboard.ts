@@ -5,6 +5,7 @@ import {
   getRecentBookings,
   checkFleetAvailability,
   getChartAnalytics,
+  getQuickInsightsData,
 } from "@/actions/dashboard";
 
 // Internal fetchers to unpack the ActionResponse
@@ -22,6 +23,12 @@ const fetchRecent = async (limit: number) => {
 
 const fetchCharts = async (timeframe: string) => {
   const res = await getChartAnalytics(timeframe);
+  if (!res.success) throw new Error(res.message);
+  return res.data;
+};
+
+const fetchQuickInsights = async () => {
+  const res = await getQuickInsightsData();
   if (!res.success) throw new Error(res.message);
   return res.data;
 };
@@ -82,5 +89,14 @@ export function useDashboardCharts(
     queryKey: ["dashboard", "charts", timeframe],
     queryFn: () => fetchCharts(timeframe),
     staleTime: 5 * 60 * 1000, // Cache for 5 minutes
+  });
+}
+
+export function useQuickInsights() {
+  return useQuery({
+    queryKey: ["dashboard", "quick-insights"],
+    queryFn: fetchQuickInsights,
+    staleTime: 60 * 1000,
+    refetchInterval: 60 * 1000, // Poll every minute so logs stay fresh!
   });
 }

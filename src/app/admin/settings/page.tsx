@@ -201,7 +201,7 @@ export default function SettingsPage() {
 
         {/* RIGHT MAIN CONTENT AREA */}
         <main className="flex-1 overflow-y-auto bg-slate-50/50 p-6 lg:p-10">
-          <div className="max-w-4xl mx-auto animate-in fade-in slide-in-from-bottom-2 duration-300">
+          <div className="max-w-3xl mx-auto animate-in fade-in slide-in-from-bottom-2 duration-300">
             {/* Dynamic Section Header */}
             {activeTabData && (
               <div className="mb-6">
