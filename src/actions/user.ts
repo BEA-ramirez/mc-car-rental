@@ -1,9 +1,9 @@
 "use server";
 
 import { createClient } from "@/utils/supabase/server";
-import { UserType } from "@/lib/schemas/user";
+import { ClientRow } from "../../hooks/use-clients";
 
-export async function getEligibleUsers(): Promise<UserType[]> {
+export async function getEligibleUsers(): Promise<ClientRow[]> {
   const supabase = await createClient();
 
   //get all customers

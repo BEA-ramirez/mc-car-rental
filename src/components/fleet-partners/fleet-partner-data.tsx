@@ -1,6 +1,6 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import ActivePartners from "./active-partners";
-import { UserType } from "@/lib/schemas/user";
+import { UserType } from "@/lib/schemas/client";
 import { Users, UserPlus } from "lucide-react";
 
 export default function FleetPartnerData({

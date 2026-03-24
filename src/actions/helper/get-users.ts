@@ -1,5 +1,5 @@
 import { createClient } from "@/utils/supabase/server";
-import { UserType } from "@/lib/schemas/user";
+import { UserType } from "@/lib/schemas/client";
 
 export async function getUsers(): Promise<UserType[]> {
   const supabase = await createClient();

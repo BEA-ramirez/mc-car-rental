@@ -4,7 +4,7 @@ import z from "zod";
 import { carOwnerSchema } from "@/lib/schemas/car-owner";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/utils/supabase/server";
-import { UserType } from "@/lib/schemas/user";
+import { UserType } from "@/lib/schemas/client";
 
 // define the state shape for useactionstate
 export type ActionState = {

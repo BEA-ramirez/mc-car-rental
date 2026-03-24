@@ -1,27 +1,62 @@
 "use server";
 
 import z from "zod";
-import { userSchema } from "@/lib/schemas/user";
+import { baseClientSchema } from "@/lib/schemas/client";
 import { createAdminClient } from "@/utils/supabase/admin";
 import { revalidatePath } from "next/cache";
-import { uploadFile } from "./helper/upload-file";
+import { uploadFile, deleteDocumentRecord } from "./helper/upload-file";
+import { createClient } from "@/utils/supabase/client";
+import {
+  sendVerificationEmail,
+  sendRejectionEmail,
+  sendCustomEmail,
+} from "./helper/mail";
+import { DataManager } from "@syncfusion/ej2-data";
 
-// 1. Extend Schema
-const manageUserSchema = userSchema
-  .extend({
-    password: z
-      .string()
-      .min(6, { message: "Password must be at least 6 characters." })
-      .optional(),
-    valid_id_expiry_date: z.coerce.date().optional().nullable(),
-  })
-  .partial({
-    user_id: true,
-    first_name: true,
-    last_name: true,
-    created_at: true,
-    last_updated_at: true,
-  });
+export async function sendCustomEmailAction(
+  userId: string,
+  subject: string,
+  body: string,
+) {
+  try {
+    const supabaseAdmin = createAdminClient();
+
+    // 1. Fetch user details to get their email address
+    const { data: user, error: fetchError } = await supabaseAdmin
+      .from("users")
+      .select("email, full_name")
+      .eq("user_id", userId)
+      .single();
+
+    if (fetchError || !user?.email) {
+      throw new Error("Could not find user email address.");
+    }
+
+    // 2. Send the custom email
+    await sendCustomEmail(
+      user.email,
+      user.full_name || "Applicant",
+      subject,
+      body,
+    );
+
+    return { success: true, message: "Message sent successfully!" };
+  } catch (error: any) {
+    console.error("Custom email error:", error);
+    return {
+      success: false,
+      message: error.message || "Failed to send the message.",
+    };
+  }
+}
+
+const serverManageUserSchema = baseClientSchema.extend({
+  user_id: z.string().optional(),
+  trust_score: z.coerce.number().min(0).max(5),
+  is_archived: z.preprocess((val) => val === "true", z.boolean()),
+  license_expiry_date: z.string().optional().nullable(),
+  valid_id_expiry_date: z.string().optional().nullable(),
+});
 
 export type ActionState = {
   message: string | null;
@@ -29,25 +64,45 @@ export type ActionState = {
   success?: boolean;
 };
 
-// Helper: Create Document DB Record
+// ============================================================================
+// HELPER: Form Extraction
+// ============================================================================
+function extractFormData(formData: FormData) {
+  const fields: Record<string, any> = {};
+  const files: Record<string, File> = {};
+
+  formData.forEach((value, key) => {
+    if (value instanceof File) {
+      if (value.size > 0) files[key] = value;
+    } else {
+      fields[key] = value === "" ? undefined : value;
+    }
+  });
+  return { fields, files };
+}
+
+// ============================================================================
+// HELPERS: Document Management
+// ============================================================================
 async function createDocumentRecord(
   supabase: any,
   userId: string,
   file: File,
   category: "valid_id" | "license_id",
   filePath: string,
-  expiryDate?: Date | null,
+  expiryDate?: string | null,
 ) {
-  const validExpiry = expiryDate ? new Date(expiryDate).toISOString() : null;
+  const validExpiry = expiryDate || null;
 
   const { error } = await supabase.from("documents").insert({
     user_id: userId,
     category: category,
     file_name: file.name,
-    file_path: filePath, // This must be a string, not null
+    file_path: filePath,
+    file_type: file.type || "application/octet-stream",
     status: "pending",
     expiry_date: validExpiry,
-    created_at: new Date(),
+    created_at: new Date().toISOString(),
   });
 
   if (error) {
@@ -56,235 +111,333 @@ async function createDocumentRecord(
   }
 }
 
-export async function manageUser(
+async function processDocumentUpload(
+  supabase: any,
+  userId: string,
+  file: File | undefined,
+  folder: string,
+  category: "valid_id" | "license_id",
+  expiryDate?: string | null,
+) {
+  if (!file) return;
+
+  const uploadResult = await uploadFile(file, "documents", folder, userId);
+  if (uploadResult) {
+    await createDocumentRecord(
+      supabase,
+      userId,
+      file,
+      category,
+      uploadResult.path,
+      expiryDate,
+    );
+  }
+}
+
+// ============================================================================
+// ACTION 1: CREATE NEW CLIENT
+// ============================================================================
+export async function createClientAction(
   prevState: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
-  const rawData = Object.fromEntries(formData.entries());
-
-  // Files
-  const profilePicFile = formData.get("profile_picture_url") as File;
-  const validIdFile = formData.get("valid_id_url") as File;
-  const licenseFile = formData.get("license_id_url") as File;
-
-  // Clean Data
-  const processedData = {
-    ...rawData,
-    phone_number: rawData.phone_number === "" ? null : rawData.phone_number,
-    address: rawData.address === "" ? null : rawData.address,
-    license_number:
-      rawData.license_number === "" ? null : rawData.license_number,
-    license_expiry_date: rawData.license_expiry_date
-      ? new Date(rawData.license_expiry_date as string)
-      : null,
-    valid_id_expiry_date: rawData.valid_id_expiry_date
-      ? new Date(rawData.valid_id_expiry_date as string)
-      : null,
-    trust_score: rawData.trust_score ? Number(rawData.trust_score) : 5.0,
-  };
-
-  delete (processedData as any).profile_picture_url;
-  delete (processedData as any).valid_id_url;
-  delete (processedData as any).license_id_url;
-
-  // Validate
-  const validateFields = manageUserSchema.safeParse(processedData);
+  const rawData = extractFormData(formData);
+  const validateFields = serverManageUserSchema.safeParse(rawData.fields);
 
   if (!validateFields.success) {
     return {
       success: false,
-      message: "Please fix the errors below",
+      message: "Please fix errors",
       errors: validateFields.error.flatten().fieldErrors,
     };
   }
 
-  const { user_id, password, email, valid_id_expiry_date, ...profileData } =
-    validateFields.data;
+  const {
+    password,
+    email,
+    valid_id_expiry_date,
+    license_expiry_date,
+    license_id_url,
+    valid_id_url,
+    ...profileData
+  } = validateFields.data;
+
+  if (!password) {
+    return {
+      success: false,
+      message: "Password is required for new users.",
+      errors: { password: ["Required"] },
+    };
+  }
 
   try {
     const supabaseAdmin = createAdminClient();
+    const full_name =
+      `${profileData.first_name || ""} ${profileData.last_name || ""}`.trim();
 
-    // ==========================================================
-    // CASE A: UPDATE EXISTING USER
-    // ==========================================================
-    if (user_id && user_id.length > 5) {
-      // 1. Avatar
-      let profile_picture_url = undefined;
-      if (profilePicFile && profilePicFile.size > 0) {
-        // We use || undefined here because uploadFile returns string | null
-        // and 'undefined' tells Supabase to ignore the field during update
-        profile_picture_url =
-          (await uploadFile(profilePicFile, "avatars", "profiles", user_id)) ||
-          undefined;
-      }
+    // 1. Auth Creation
+    const { data: authUser, error: authError } =
+      await supabaseAdmin.auth.admin.createUser({
+        email: email!,
+        password: password,
+        email_confirm: true,
+        user_metadata: { full_name, role: profileData.role },
+      });
+    if (authError) throw authError;
 
-      // 2. Document: Valid ID
-      if (validIdFile && validIdFile.size > 0) {
-        const url = await uploadFile(
-          validIdFile,
-          "documents",
-          "valid_ids",
-          user_id,
-        );
-        if (url) {
-          // Only create record if upload succeeded
-          await createDocumentRecord(
-            supabaseAdmin,
-            user_id,
-            validIdFile,
-            "valid_id",
-            url,
-            valid_id_expiry_date,
-          );
-        }
-      }
+    const newUserId = authUser.user.id;
 
-      // 3. Document: License
-      if (licenseFile && licenseFile.size > 0) {
-        const url = await uploadFile(
-          licenseFile,
-          "documents",
-          "license_ids",
-          user_id,
-        );
-        if (url) {
-          // <--- SAFETY CHECK
-          await createDocumentRecord(
-            supabaseAdmin,
-            user_id,
-            licenseFile,
-            "license_id",
-            url,
-            profileData.license_expiry_date,
-          );
-        }
-      }
-
-      // 4. Update User Table
-      const updateData: any = {
-        ...profileData,
-        last_updated_at: new Date().toISOString(),
-      };
-
-      if (profile_picture_url)
-        updateData.profile_picture_url = profile_picture_url;
-
-      const { error } = await supabaseAdmin
-        .from("users")
-        .update(updateData)
-        .eq("user_id", user_id);
-
-      if (error) throw error;
-
-      revalidatePath("/admin/clients");
-      return { success: true, message: "User updated successfully" };
+    // 2. Avatar Upload
+    let profile_picture_url = undefined;
+    if (rawData.files.profile_picture_url) {
+      const avatarResult = await uploadFile(
+        rawData.files.profile_picture_url,
+        "avatars",
+        "profiles",
+        newUserId,
+      );
+      profile_picture_url = avatarResult?.url;
     }
 
-    // ==========================================================
-    // CASE B: CREATE NEW USER
-    // ==========================================================
-    else {
-      if (!password) {
-        return {
-          success: false,
-          message: "Password is required.",
-          errors: { password: ["Required"] },
-        };
-      }
+    // 3. Document Uploads
+    await processDocumentUpload(
+      supabaseAdmin,
+      newUserId,
+      rawData.files.valid_id_url,
+      "valid_ids",
+      "valid_id",
+      valid_id_expiry_date,
+    );
+    await processDocumentUpload(
+      supabaseAdmin,
+      newUserId,
+      rawData.files.license_id_url,
+      "license_ids",
+      "license_id",
+      license_expiry_date,
+    );
 
-      const { data: authUser, error: authError } =
-        await supabaseAdmin.auth.admin.createUser({
-          email: email,
-          password: password,
-          email_confirm: true,
-          user_metadata: {
-            full_name: profileData.full_name,
-            role: profileData.role,
-          },
-        });
-      if (authError) throw authError;
+    // 4. Master User Record Update
+    const updateData: any = {
+      ...profileData,
+      full_name,
+      last_updated_at: new Date().toISOString(),
+    };
+    if (profile_picture_url)
+      updateData.profile_picture_url = profile_picture_url;
+    if (email) updateData.email = email;
 
-      const newUserId = authUser.user.id;
-      let profile_picture_url = null;
+    const { error: dbError } = await supabaseAdmin
+      .from("users")
+      .update(updateData)
+      .eq("user_id", newUserId);
+    if (dbError) throw dbError;
 
-      if (profilePicFile && profilePicFile.size > 0) {
-        profile_picture_url = await uploadFile(
-          profilePicFile,
-          "avatars",
-          "profiles",
-          newUserId,
-        );
-      }
-
-      // Valid ID
-      if (validIdFile && validIdFile.size > 0) {
-        const url = await uploadFile(
-          validIdFile,
-          "documents",
-          "valid_ids",
-          newUserId,
-        );
-        if (url) {
-          await createDocumentRecord(
-            supabaseAdmin,
-            newUserId,
-            validIdFile,
-            "valid_id",
-            url,
-            valid_id_expiry_date,
-          );
-        }
-      }
-
-      // License
-      if (licenseFile && licenseFile.size > 0) {
-        const url = await uploadFile(
-          licenseFile,
-          "documents",
-          "license_ids",
-          newUserId,
-        );
-        if (url) {
-          await createDocumentRecord(
-            supabaseAdmin,
-            newUserId,
-            licenseFile,
-            "license_id",
-            url,
-            profileData.license_expiry_date,
-          );
-        }
-      }
-
-      // Update User Row
-      if (authUser.user) {
-        const { error: dbError } = await supabaseAdmin
-          .from("users")
-          .update({
-            ...profileData,
-            profile_picture_url: profile_picture_url,
-            created_at: new Date(),
-            last_updated_at: new Date(),
-          })
-          .eq("user_id", newUserId);
-
-        if (dbError) {
-          await supabaseAdmin.auth.admin.deleteUser(newUserId);
-          throw dbError;
-        }
-      }
-
-      revalidatePath("/admin/clients");
-      return {
-        success: true,
-        message: "New user account created successfully.",
-      };
-    }
+    revalidatePath("/admin/clients");
+    return { success: true, message: "New user created successfully" };
   } catch (error: any) {
-    console.error("Error managing user:", error);
+    console.error("Error creating user:", error);
+    return { success: false, message: error.message || "An error occurred." };
+  }
+}
+
+// ============================================================================
+// ACTION 2: UPDATE EXISTING CLIENT (Uses RPC Transaction)
+// ============================================================================
+export async function updateClientAction(
+  prevState: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const rawData = extractFormData(formData);
+  const validateFields = serverManageUserSchema.safeParse(rawData.fields);
+
+  if (!validateFields.success) {
     return {
       success: false,
-      message: "An error occurred while managing the user.",
+      message: "Please fix errors",
+      errors: validateFields.error.flatten().fieldErrors,
     };
+  }
+
+  const {
+    user_id,
+    password,
+    email,
+    valid_id_expiry_date,
+    license_expiry_date,
+    license_id_url,
+    valid_id_url,
+    ...profileData
+  } = validateFields.data;
+
+  if (!user_id) return { success: false, message: "Missing User ID" };
+
+  try {
+    const supabaseAdmin = createAdminClient();
+    const full_name =
+      `${profileData.first_name || ""} ${profileData.last_name || ""}`.trim();
+
+    // 1. Avatar Replacement
+    let profile_picture_url = undefined;
+    if (rawData.files.profile_picture_url) {
+      const avatarResult = await uploadFile(
+        rawData.files.profile_picture_url,
+        "avatars",
+        "profiles",
+        user_id,
+      );
+      profile_picture_url = avatarResult?.url;
+    }
+
+    // 2. Process New Documents (if attached)
+    await processDocumentUpload(
+      supabaseAdmin,
+      user_id,
+      rawData.files.valid_id_url,
+      "valid_ids",
+      "valid_id",
+      valid_id_expiry_date,
+    );
+    await processDocumentUpload(
+      supabaseAdmin,
+      user_id,
+      rawData.files.license_id_url,
+      "license_ids",
+      "license_id",
+      license_expiry_date,
+    );
+
+    // 3. Cleanup Deleted Documents
+    let deleteDocs = formData.get("deleted_documents");
+    if (deleteDocs) {
+      const parsedDocs = JSON.parse(deleteDocs as string);
+      if (Array.isArray(parsedDocs)) {
+        await Promise.all(
+          parsedDocs.map(
+            async (docId: string) => await deleteDocumentRecord(docId),
+          ),
+        );
+      }
+    }
+
+    // 4. Perform Atomic Database Transaction via RPC
+    const { error: rpcError } = await supabaseAdmin.rpc("sync_client_profile", {
+      p_user_id: user_id,
+      p_first_name: profileData.first_name || null,
+      p_last_name: profileData.last_name || null,
+      p_full_name: full_name,
+      p_email: email || null,
+      p_role: profileData.role,
+      p_account_status: profileData.account_status,
+      p_phone_number: profileData.phone_number || null,
+      p_address: profileData.address || null,
+      p_license_number: profileData.license_number || null,
+      p_trust_score: profileData.trust_score,
+      p_profile_picture_url: profile_picture_url || null,
+      p_license_expiry: license_expiry_date || null,
+      p_valid_id_expiry: valid_id_expiry_date || null,
+    });
+
+    if (rpcError) throw rpcError;
+
+    revalidatePath("/admin/clients");
+    return { success: true, message: "User updated successfully" };
+  } catch (error: any) {
+    console.error("Error updating user:", error);
+    return { success: false, message: error.message || "An error occurred." };
+  }
+}
+
+export async function verifyApplicantAction(
+  userId: string,
+  licenseExpiry: string,
+  validIdExpiry: string,
+) {
+  try {
+    const supabaseAdmin = createAdminClient();
+    const { data, error } = await supabaseAdmin.rpc("verify_applicant", {
+      p_user_id: userId,
+      p_license_expiry: licenseExpiry || null,
+      p_valid_id_expiry: validIdExpiry || null,
+    });
+    if (error) throw error;
+
+    const user = data?.[0];
+    if (user?.email && user.email.trim() !== "") {
+      try {
+        await sendVerificationEmail(user.email, user.full_name || "Applicant");
+      } catch (mailError) {
+        console.error("Email failed, but user was verified:", mailError);
+      }
+    }
+
+    revalidatePath("/admin/clients");
+    return { success: true, message: "Applicant verified successfully!" };
+  } catch (error: any) {
+    console.error("Verification error:", error);
+    return {
+      success: false,
+      message: error.message || "Failed to verify applicant.",
+    };
+  }
+}
+
+export async function rejectApplicantAction(
+  userId: string,
+  reason: string,
+  rejectLicense: boolean,
+  rejectValidId: boolean,
+) {
+  try {
+    const supabaseAdmin = createAdminClient();
+
+    // Pass the boolean flags to the database
+    const { data, error } = await supabaseAdmin.rpc("reject_applicant", {
+      p_user_id: userId,
+      p_reason: reason,
+      p_reject_license: rejectLicense,
+      p_reject_valid_id: rejectValidId,
+    });
+
+    if (error) throw error;
+
+    const user = data?.[0];
+    if (user?.email && user.email.trim() !== "") {
+      try {
+        await sendRejectionEmail(
+          data.email,
+          data.full_name,
+          reason,
+          rejectLicense,
+          rejectValidId,
+        );
+      } catch (mailError) {
+        console.error("Email failed, but user was rejected:", mailError);
+      }
+    }
+
+    revalidatePath("/admin/clients");
+    return { success: true, message: "Applicant rejected and notified." };
+  } catch (error: any) {
+    console.error("Rejection error:", error);
+    return {
+      success: false,
+      message: error.message || "Failed to reject applicant.",
+    };
+  }
+}
+
+export async function getClientsKpiAction() {
+  try {
+    const supabaseAdmin = createAdminClient();
+
+    const { data, error } = await supabaseAdmin.rpc("get_clients_kpi");
+
+    if (error) throw error;
+
+    return { success: true, data: data?.[0] };
+  } catch (error: any) {
+    console.error("Failed to fetch KPIs:", error);
+    return { success: false, data: null, message: error.message };
   }
 }

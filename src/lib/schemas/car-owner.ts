@@ -1,5 +1,5 @@
 import z from "zod";
-import { userSchema } from "./user";
+import { clientFormSchema } from "./client";
 
 export const carOwnerSchema = z.object({
   car_owner_id: z.string().uuid(),
@@ -41,7 +41,7 @@ export const carOwnerSchema = z.object({
 });
 
 export const fleetPartnerSchema = carOwnerSchema.extend({
-  users: userSchema,
+  users: clientFormSchema,
   total_units: z.number().default(0),
 });
 

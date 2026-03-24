@@ -1,6 +1,7 @@
 import ExcelJS from "exceljs";
 import { saveAs } from "file-saver";
 import { format } from "date-fns";
+import { ClientRow } from "../../hooks/use-clients";
 
 // --- HELPER FUNCTIONS FOR PROFESSIONAL STYLING ---
 const styleHeaderRow = (row: ExcelJS.Row) => {
@@ -324,5 +325,69 @@ export async function generateExcelReport(
   });
 
   const fileName = `Fleet_Intelligence_${format(startDate, "MMM_dd")}-${format(endDate, "MMM_dd_yyyy")}.xlsx`;
+  saveAs(blob, fileName);
+}
+
+export async function exportClientsToExcel(filteredUsers: ClientRow[]) {
+  const workbook = new ExcelJS.Workbook();
+  workbook.creator = "Car Rental ERP System";
+  workbook.created = new Date();
+
+  const clientSheet = workbook.addWorksheet("Client Directory");
+  clientSheet.columns = [
+    { header: "ID", key: "id", width: 20 },
+    { header: "Name", key: "name", width: 25 },
+    { header: "Email", key: "email", width: 30 },
+    { header: "Phone", key: "phone", width: 20 },
+    { header: "Address", key: "address", width: 40 },
+    { header: "Role", key: "role", width: 15 },
+    { header: "Status", key: "status", width: 15 },
+    { header: "Trust Score", key: "trustScore", width: 15 },
+    { header: "License No.", key: "licenseNo", width: 20 },
+    { header: "License Expiry", key: "licenseExpiry", width: 18 },
+    { header: "Sec. ID Expiry", key: "secIdExpiry", width: 18 },
+    { header: "Joined Date", key: "joinedDate", width: 20 },
+  ];
+
+  styleHeaderRow(clientSheet.getRow(1));
+
+  if (filteredUsers && filteredUsers.length > 0) {
+    filteredUsers.forEach((user: any) => {
+      const formatDateSafe = (dateString: string | null | undefined) => {
+        if (!dateString) return "N/A";
+        try {
+          return format(new Date(dateString), "MMM dd, yyyy");
+        } catch (e) {
+          return "Invalid Date";
+        }
+      };
+
+      const row = clientSheet.addRow({
+        id: user.user_id?.split("-")[0].toUpperCase() || "N/A", // Cleaner ID
+        name:
+          user.full_name ||
+          `${user.first_name || ""} ${user.last_name || ""}`.trim() ||
+          "N/A",
+        email: user.email,
+        phone: user.phone_number || "N/A",
+        address: user.address || "N/A",
+        role: (user.role || "N/A").toUpperCase(),
+        status: (user.account_status || "N/A").toUpperCase(),
+        trustScore: user.trust_score || 0,
+        licenseNo: user.license_number || "N/A",
+        licenseExpiry: formatDateSafe(user.license_expiry_date),
+        secIdExpiry: formatDateSafe(user.valid_id_expiry_date),
+        joinedDate: formatDateSafe(user.created_at),
+      });
+      styleChildRow(row);
+    });
+  }
+
+  const buffer = await workbook.xlsx.writeBuffer();
+  const blob = new Blob([buffer], {
+    type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  });
+
+  const fileName = `Client_Directory_Export_${format(new Date(), "MMM_dd_yyyy")}.xlsx`;
   saveAs(blob, fileName);
 }

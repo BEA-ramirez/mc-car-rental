@@ -200,14 +200,11 @@ function BookingMain() {
 
   const handleConfirmProposal = async (agreedPrice: number) => {
     if (!ghostBooking || !originalBooking) return;
-
-    // Using the hook's mutation directly without local loading state!
     reassignBooking({
       id: originalBooking.id,
       newCarId: ghostBooking.resourceId,
       newPrice: agreedPrice,
     });
-
     setIsProposalOpen(false);
     setSelectedPendingId(null);
     setGhostBooking(null);
@@ -225,7 +222,6 @@ function BookingMain() {
   ) => {
     if (!earlyReturnTarget) return;
     const originalAmount = earlyReturnTarget.amount || 0;
-
     processEarlyReturn({
       id: earlyReturnTarget.id,
       newEnd: new Date(),
@@ -252,28 +248,36 @@ function BookingMain() {
   };
 
   return (
-    <div className="h-[calc(100vh-80px)] bg-slate-50 flex flex-col font-sans">
-      {/* HEADER (Glassmorphism & Compact) */}
-      <div className="h-16 px-6 border-b bg-white/80 backdrop-blur-md sticky top-0 z-10 flex items-center justify-between shrink-0 shadow-sm">
-        <div className="flex items-center gap-6">
+    <div className="flex flex-col h-[calc(100vh-80px)] bg-slate-50 font-sans overflow-hidden">
+      {/* GLOBAL PAGE HEADER WITH INTEGRATED CONTROLS */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between px-6 py-4 bg-white border-b border-slate-200 shrink-0 z-20 shadow-sm gap-4">
+        {/* Left Side: Identity */}
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-sm bg-slate-900 flex items-center justify-center shadow-sm shrink-0">
+            <CalendarIcon className="w-4 h-4 text-white" />
+          </div>
           <div>
-            <h1 className="text-lg font-bold tracking-tight text-slate-900 leading-tight">
-              Schedule Overview
+            <h1 className="text-base font-bold text-slate-900 tracking-tight leading-none mb-1">
+              Fleet Schedule
             </h1>
-            <div className="flex items-center gap-1.5 text-xs font-medium text-slate-500 mt-0.5">
-              <CalendarIcon className="w-3.5 h-3.5" />
-              {format(date, "MMMM yyyy")}
+            <div className="flex items-center gap-1.5 text-[11px] font-medium text-slate-500 leading-none">
+              <span className="font-bold text-slate-700">
+                {format(date, "MMMM yyyy")}
+              </span>{" "}
+              • Timeline reservations and dispatch.
             </div>
           </div>
         </div>
 
-        {/* TOOLBAR */}
-        <div className="flex items-center bg-white border border-slate-200 rounded-md p-1 shadow-sm h-9 gap-1">
-          {/* 1. COMPACT OVERRIDE TOGGLE */}
+        {/* Right Side: Integrated Toolbar */}
+        <div className="flex flex-wrap items-center gap-2">
+          {/* OVERRIDE TOGGLE */}
           <div
             className={cn(
-              "flex items-center gap-1.5 px-2 h-7 rounded-sm transition-colors",
-              isOverrideMode ? "bg-amber-50" : "hover:bg-slate-50",
+              "flex items-center gap-1.5 px-2 h-8 rounded-sm transition-colors border",
+              isOverrideMode
+                ? "bg-amber-50 border-amber-200"
+                : "bg-white border-slate-200 hover:bg-slate-50",
             )}
           >
             <Switch
@@ -285,7 +289,7 @@ function BookingMain() {
             <Label
               htmlFor="override-mode"
               className={cn(
-                "text-[9px] font-bold uppercase tracking-wider cursor-pointer select-none",
+                "text-[9px] font-bold uppercase tracking-widest cursor-pointer select-none",
                 isOverrideMode ? "text-amber-700" : "text-slate-500",
               )}
             >
@@ -293,40 +297,38 @@ function BookingMain() {
             </Label>
           </div>
 
-          {/* Divider */}
-          <div className="h-4 w-px bg-slate-200 mx-1" />
+          <div className="h-5 w-px bg-slate-200 mx-1 hidden sm:block" />
 
-          {/* 2. NEW BOOKING (Primary Action) */}
+          {/* NEW BOOKING */}
           <Button
             size="sm"
             onClick={() => handleOpenNewBooking()}
-            className="h-7 text-xs font-semibold bg-slate-900 hover:bg-slate-800 text-white px-3 rounded-sm shadow-none"
+            className="h-8 text-[10px] font-bold uppercase tracking-widest bg-slate-900 hover:bg-slate-800 text-white px-3 rounded-sm shadow-none"
           >
             <Plus className="w-3.5 h-3.5 mr-1.5" />
-            New
+            New Booking
           </Button>
 
-          {/* 3. QUEUE TOGGLE (Ghost Action with Integrated Badge) */}
+          {/* QUEUE TOGGLE */}
           <Button
-            variant="ghost"
+            variant="outline"
             size="sm"
             onClick={() => setIsSidebarOpen(!isSidebarOpen)}
             className={cn(
-              "h-7 text-xs font-medium px-2.5 rounded-sm transition-all hover:bg-slate-100 text-slate-600",
-              !isSidebarOpen &&
-                pendingRequests.length > 0 &&
-                "text-amber-700 hover:text-amber-800 hover:bg-amber-50",
+              "h-8 text-[10px] font-bold uppercase tracking-widest px-3 rounded-sm shadow-none transition-all",
+              !isSidebarOpen && pendingRequests.length > 0
+                ? "border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100 hover:text-amber-800"
+                : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-slate-900",
             )}
           >
             {isSidebarOpen ? (
-              <PanelRightClose className="w-4 h-4 mr-1.5 opacity-70" />
+              <PanelRightClose className="w-3.5 h-3.5 mr-1.5" />
             ) : (
-              <Inbox className="w-4 h-4 mr-1.5 opacity-70" />
+              <Inbox className="w-3.5 h-3.5 mr-1.5" />
             )}
             Queue
-            {/* Conditional Micro-Badge */}
             {!isSidebarOpen && pendingRequests.length > 0 && (
-              <span className="ml-1.5 flex h-4 min-w-[16px] items-center justify-center rounded-sm bg-amber-100 px-1 text-[9px] font-bold text-amber-700">
+              <span className="ml-1.5 flex h-4 min-w-[16px] items-center justify-center rounded-sm bg-amber-200 px-1 text-[9px] font-black text-amber-800">
                 {pendingRequests.length}
               </span>
             )}
@@ -334,80 +336,85 @@ function BookingMain() {
         </div>
       </div>
 
-      {/* BODY */}
-      <div className="flex-1 flex overflow-hidden">
-        {/* TIMELINE */}
-        <div className="flex-1 flex flex-col relative min-w-0 transition-all duration-300 ease-in-out">
-          {/* MODERN LOADING OVERLAY */}
-          {loading && (
-            <div className="absolute inset-0 z-50 bg-slate-50/40 backdrop-blur-[2px] flex flex-col items-center justify-center gap-3 transition-opacity">
-              <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
-              <span className="text-sm font-semibold text-slate-700 tracking-tight">
-                Syncing schedule...
-              </span>
+      {/* FULL-HEIGHT BODY WRAPPER */}
+      {/* Note: overflow-hidden is critical here so the Timeline handles its own scrollbars! */}
+      <div className="flex-1 w-full overflow-hidden bg-slate-50/50">
+        <div className="max-w-[1400px] mx-auto p-4 md:p-6 h-full flex flex-col">
+          {/* MAIN CARD SPLIT (Timeline + Sidebar) */}
+          <div className="flex-1 flex overflow-hidden bg-white border border-slate-200 rounded-sm shadow-sm relative">
+            {/* TIMELINE AREA */}
+            <div className="flex-1 flex flex-col relative min-w-0 transition-all duration-300 ease-in-out">
+              {/* MODERN LOADING OVERLAY */}
+              {loading && (
+                <div className="absolute inset-0 z-50 bg-white/60 backdrop-blur-[2px] flex flex-col items-center justify-center gap-3 transition-opacity">
+                  <Loader2 className="w-8 h-8 animate-spin text-slate-900" />
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-slate-600">
+                    Syncing schedule...
+                  </span>
+                </div>
+              )}
+
+              <TimelineScheduler
+                resources={resources}
+                events={confirmedEvents}
+                ghostBooking={ghostBooking}
+                isOverrideMode={isOverrideMode}
+                onDateChange={(newDate) => setDate(newDate)}
+                onGhostMove={handleGhostMove}
+                onEmptyClick={(resourceId, clickedDate) => {
+                  if (ghostBooking) {
+                    handleGhostMove(resourceId);
+                  } else {
+                    handleOpenNewBooking(resourceId, clickedDate);
+                  }
+                }}
+                onTimeRangeSelect={handleTimeRangeSelect}
+                onResizeEvent={(event, newEnd) =>
+                  setResizeTarget({ event, newEnd })
+                }
+                onEarlyReturnClick={(evt) => setEarlyReturnTarget(evt)}
+                onExtendClick={(event) => setExtendTarget(event)}
+                onAddMaintenance={(resourceId, startDate) =>
+                  createMaintenance({
+                    carId: resourceId,
+                    start: startDate,
+                    end: addDays(startDate, 1),
+                  })
+                }
+                onResizeBuffer={(event, newBuffer) =>
+                  setBufferTarget({ event, newBuffer })
+                }
+                onSplitEvent={(event, splitDate) =>
+                  setSplitTarget({ event, splitDate })
+                }
+                onStatusChange={(event, newStatus) =>
+                  updateStatus({ id: event.id, status: newStatus })
+                }
+                onDeleteClick={(evt) => setDeleteTarget(evt)}
+                onEditClick={(evt) => setEditTarget(evt)}
+                onDispatchClick={(evt) => setDispatchTarget(evt)}
+              />
             </div>
-          )}
 
-          <TimelineScheduler
-            resources={resources}
-            events={confirmedEvents}
-            ghostBooking={ghostBooking}
-            isOverrideMode={isOverrideMode}
-            // CRITICAL ADDITION: Keep the hook's date in sync with the timeline's view!
-            onDateChange={(newDate) => setDate(newDate)}
-            onGhostMove={handleGhostMove}
-            onEmptyClick={(resourceId, clickedDate) => {
-              if (ghostBooking) {
-                handleGhostMove(resourceId);
-              } else {
-                handleOpenNewBooking(resourceId, clickedDate);
-              }
-            }}
-            onTimeRangeSelect={handleTimeRangeSelect}
-            onResizeEvent={(event, newEnd) =>
-              setResizeTarget({ event, newEnd })
-            }
-            onEarlyReturnClick={(evt) => setEarlyReturnTarget(evt)}
-            onExtendClick={(event) => setExtendTarget(event)}
-            onAddMaintenance={(resourceId, startDate) =>
-              createMaintenance({
-                carId: resourceId,
-                start: startDate,
-                end: addDays(startDate, 1),
-              })
-            }
-            onResizeBuffer={(event, newBuffer) =>
-              setBufferTarget({ event, newBuffer })
-            }
-            onSplitEvent={(event, splitDate) =>
-              setSplitTarget({ event, splitDate })
-            }
-            onStatusChange={(event, newStatus) =>
-              updateStatus({ id: event.id, status: newStatus })
-            }
-            onDeleteClick={(evt) => setDeleteTarget(evt)}
-            onEditClick={(evt) => setEditTarget(evt)}
-            onDispatchClick={(evt) => setDispatchTarget(evt)}
-          />
-        </div>
-
-        {/* SIDEBAR */}
-        <div
-          className={cn(
-            "border-l bg-white shadow-2xl z-40 transition-all duration-300 ease-in-out overflow-hidden flex flex-col",
-            isSidebarOpen ? "w-[280px] opacity-100" : "w-0 opacity-0",
-          )}
-        >
-          <div className="w-[280px] h-full flex flex-col">
-            <PendingRequestsSidebar
-              requests={pendingRequests}
-              selectedId={selectedPendingId}
-              onSelect={handleSelectRequest}
-              onApprove={handleApproveClick}
-              onReject={(req) =>
-                updateStatus({ id: req.id, status: "rejected" })
-              }
-            />
+            {/* QUEUE SIDEBAR */}
+            <div
+              className={cn(
+                "border-l border-slate-200 bg-slate-50 z-40 transition-all duration-300 ease-in-out overflow-hidden flex flex-col",
+                isSidebarOpen ? "w-[280px] opacity-100" : "w-0 opacity-0",
+              )}
+            >
+              <div className="w-[280px] h-full flex flex-col custom-scrollbar overflow-y-auto">
+                <PendingRequestsSidebar
+                  requests={pendingRequests}
+                  selectedId={selectedPendingId}
+                  onSelect={handleSelectRequest}
+                  onApprove={handleApproveClick}
+                  onReject={(req) =>
+                    updateStatus({ id: req.id, status: "rejected" })
+                  }
+                />
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -419,7 +426,7 @@ function BookingMain() {
         onConfirm={handleConfirmProposal}
         original={originalBooking}
         proposed={ghostBooking}
-        isSending={isReassigning} // Used the hook's state!
+        isSending={isReassigning}
       />
       <ResizeDialog
         isOpen={!!resizeTarget}
@@ -469,31 +476,37 @@ function BookingMain() {
         onOpenChange={(open) => {
           if (!open) setDispatchTarget(null);
         }}
-        booking={dispatchTarget} // Pass the selected booking!
+        booking={dispatchTarget}
       />
 
       <AlertDialog
         open={!!deleteTarget}
         onOpenChange={() => setDeleteTarget(null)}
       >
-        <AlertDialogContent className="border-red-100 bg-white">
+        <AlertDialogContent className="border-red-100 bg-white shadow-xl rounded-sm">
           <AlertDialogHeader>
-            <AlertDialogTitle className="text-red-600 flex items-center gap-2">
-              <Trash className="w-5 h-5" /> Delete Booking?
+            <AlertDialogTitle className="text-red-600 flex items-center gap-2 text-sm font-bold uppercase tracking-widest">
+              <Trash className="w-4 h-4" /> Delete Booking?
             </AlertDialogTitle>
-            <AlertDialogDescription className="text-slate-600">
+            <AlertDialogDescription className="text-xs text-slate-600 leading-relaxed mt-2">
               This will permanently remove the booking for{" "}
-              <b>{deleteTarget?.title}</b>. This action cannot be undone and
-              will delete all associated financial records.
+              <b className="text-slate-900">{deleteTarget?.title}</b>. This
+              action cannot be undone and will delete all associated financial
+              records.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+          <AlertDialogFooter className="mt-4 border-t border-slate-100 pt-4">
+            <AlertDialogCancel
+              disabled={isDeleting}
+              className="h-8 text-[10px] font-bold uppercase tracking-widest bg-white border-slate-200 hover:bg-slate-50 rounded-sm shadow-none"
+            >
+              Cancel
+            </AlertDialogCancel>
             <AlertDialogAction
-              className="bg-red-600 hover:bg-red-700 text-white"
+              className="h-8 text-[10px] font-bold uppercase tracking-widest bg-red-600 hover:bg-red-700 text-white rounded-sm shadow-none"
               disabled={isDeleting}
               onClick={(e) => {
-                e.preventDefault(); // Prevent dialog from closing instantly
+                e.preventDefault();
                 if (deleteTarget) {
                   deleteBooking(deleteTarget.id, {
                     onSuccess: () => setDeleteTarget(null),
@@ -519,7 +532,7 @@ function BookingMain() {
       >
         <SheetContent
           side="right"
-          className="w-full sm:max-w-[800px] xl:max-w-[1000px] overflow-y-auto p-0 bg-slate-50 [&>button.absolute]:hidden"
+          className="w-full sm:max-w-[800px] xl:max-w-[1000px] overflow-y-auto p-0 bg-slate-50 [&>button.absolute]:hidden shadow-[-10px_0_15px_-3px_rgba(0,0,0,0.05)] border-l-slate-200"
         >
           <SheetHeader className="sr-only">
             <SheetTitle>
@@ -535,22 +548,18 @@ function BookingMain() {
           {/* Render the form if we are creating OR editing */}
           {(isFormOpen || editTarget) && (
             <AdminBookingForm
-              // Force the form to completely remount if the target changes
               key={
                 editTarget
                   ? `edit-${editTarget.id}`
                   : `create-${formPrefill?.carId}-${formPrefill?.startDate?.getTime()}`
               }
-              // If editing, pass the existing data!
-              bookingId={editTarget?.id} // <-- We will need to add this prop to AdminBookingForm
-              // If creating, pass the pre-fills
+              bookingId={editTarget?.id}
               initialCarId={
                 editTarget ? editTarget.resourceId : formPrefill?.carId
               }
               initialStartDate={
                 editTarget ? new Date(editTarget.start) : formPrefill?.startDate
               }
-              // Use Date-Fns to calculate duration for the edit mode pre-fill
               initialDuration={
                 editTarget
                   ? Math.max(

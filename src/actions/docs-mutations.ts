@@ -2,7 +2,6 @@
 
 import { createClient } from "@/utils/supabase/server";
 import { createAdminClient } from "@/utils/supabase/admin";
-import { createPrerenderParamsForClientSegment } from "next/dist/server/app-render/entry-base";
 import { uploadFile } from "@/actions/helper/upload-file";
 
 export async function verifyDocumentAction(

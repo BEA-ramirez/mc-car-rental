@@ -1,6 +1,8 @@
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { format } from "date-fns";
+import { ClientRow } from "../../hooks/use-clients";
+import { toTitleCase } from "@/actions/helper/format-text";
 
 export async function generatePDFReport(
   reportData: any,
@@ -254,5 +256,68 @@ export async function generatePDFReport(
   });
 
   const fileName = `Fleet_Prospectus_${format(startDate, "MMM_dd")}-${format(endDate, "MMM_dd_yyyy")}.pdf`;
+  doc.save(fileName);
+}
+
+export async function exportClientsToPDF(filteredUsers: ClientRow[]) {
+  const doc = new jsPDF("p", "mm", "a4");
+
+  doc.setFontSize(22);
+  doc.setFont("helvetica", "bold");
+  doc.text("CLIENT DIRECTORY REPORT", 14, 20);
+
+  doc.setFontSize(10);
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(100, 100, 100);
+  doc.text(`Generated on: ${format(new Date(), "PPpp")}`, 14, 28);
+  doc.text(`Total Clients: ${filteredUsers.length}`, 14, 34);
+
+  const formatDateSafe = (dateString: string | null | undefined) => {
+    if (!dateString) return "N/A";
+    try {
+      return format(new Date(dateString), "MMM dd, yyyy");
+    } catch (e) {
+      return "Invalid Date";
+    }
+  };
+
+  const clientRows =
+    filteredUsers?.map((user: ClientRow) => {
+      const name =
+        user.full_name ||
+        [user.first_name, user.last_name].filter(Boolean).join(" ") ||
+        "N/A";
+      const contactArr = [];
+      if (user.email) contactArr.push(user.email.toLowerCase());
+      if (user.phone_number) contactArr.push(user.phone_number);
+      const contact = contactArr.length > 0 ? contactArr.join("\n") : "N/A";
+
+      return [
+        name,
+        contact,
+        user.role?.toUpperCase() || "N/A",
+        user.account_status?.toUpperCase() || "N/A",
+        `${user.trust_score || "0.0"} / 5.0`,
+        formatDateSafe(user.created_at),
+      ];
+    }) || [];
+
+  autoTable(doc, {
+    startY: 42, //Pushed down slightly to accommodate the second header line
+    head: [["Client", "Contact", "Role", "Status", "Trust Score", "Joined"]],
+    body: clientRows,
+    theme: "grid",
+    headStyles: { fillColor: [15, 23, 42], textColor: 255, fontSize: 9 }, // Added white text
+    bodyStyles: { fontSize: 8, textColor: [71, 85, 105] }, // Slate 600 text
+    alternateRowStyles: { fillColor: [248, 250, 252] },
+    columnStyles: {
+      2: { halign: "center" }, // Center Role
+      3: { halign: "center" },
+      4: { halign: "center", fontStyle: "bold", textColor: [5, 150, 105] }, // Center & Green Trust Score
+      5: { halign: "right" }, // Right align dates
+    },
+  });
+
+  const fileName = `Client_Directory_Export_${format(new Date(), "MMM_dd_yyyy")}.pdf`;
   doc.save(fileName);
 }

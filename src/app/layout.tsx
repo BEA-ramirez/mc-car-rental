@@ -4,6 +4,8 @@ import SyncfusionProvider from "@/components/syncfusion-provider";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
 import QueryProvider from "@/components/providers/query-provider";
+import { AuthProvider } from "@/providers/auth-provider";
+import { createClient } from "@/utils/supabase/server";
 
 // 1. Unified Style Imports
 import "./globals.css";
@@ -54,11 +56,16 @@ const generalSans = localFont({
   display: "swap",
 });
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
   return (
     <html
       lang="en"
@@ -73,7 +80,9 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <QueryProvider>
-            <SyncfusionProvider>{children}</SyncfusionProvider>
+            <SyncfusionProvider>
+              <AuthProvider initialUser={user}>{children}</AuthProvider>
+            </SyncfusionProvider>
             <Toaster richColors position="top-right" />
           </QueryProvider>
         </ThemeProvider>

@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { FleetPartnerType } from "@/lib/schemas/car-owner";
 import { deletePartner } from "@/actions/helper/delete-partner";
-import { UserType } from "@/lib/schemas/user";
+import { UserType } from "@/lib/schemas/client";
 
 const fetchFleetPartners = async (): Promise<FleetPartnerType[]> => {
   const response = await fetch("/api/fleet-partners");
