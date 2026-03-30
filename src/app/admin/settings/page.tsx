@@ -13,6 +13,7 @@ import {
   FileSignature,
   Monitor,
   Wrench,
+  CarFront,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -25,6 +26,7 @@ import BookingFeesForm from "@/components/settings/booking-fees-form";
 import TaxSettingsForm from "@/components/settings/tax-settings-form";
 import BusinessHubsManager from "@/components/settings/business-hubs-manager";
 import ServiceAreaEditor from "@/components/bookings/service-area-editor";
+import VehicleTypesManager from "@/components/settings/vehicle-types-manager";
 
 // --- SIDEBAR CONFIGURATION ---
 const SETTINGS_TABS = [
@@ -76,6 +78,12 @@ const SETTINGS_TABS = [
         label: "Service Area Map",
         icon: Map,
         description: "Define delivery boundaries via GMaps.",
+      },
+      {
+        id: "vehicle_types",
+        label: "Vehicle Classes",
+        icon: CarFront,
+        description: "Manage car categories like Sedan, SUV, etc.",
       },
     ],
   },
@@ -228,6 +236,7 @@ export default function SettingsPage() {
 
               {/* Operations */}
               {activeTab === "service_area" && <ServiceAreaEditor />}
+              {activeTab === "vehicle_types" && <VehicleTypesManager />}
 
               {/* Documents (Your completed modules!) */}
               {activeTab === "inspection_template" && (

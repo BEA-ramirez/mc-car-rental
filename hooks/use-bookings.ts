@@ -14,6 +14,9 @@ import {
   deleteBooking,
   updateBookingStatus,
   updateAdminBooking,
+  createCustomerBooking,
+  getCustomerBookings,
+  submitPaymentReceipt,
 } from "@/actions/bookings"; // Ensure this matches filename!
 
 const fetchBookingsList = async (
@@ -105,6 +108,31 @@ export const useBookings = () => {
     onError: (err) => toast.error(err.message),
   });
 
+  const customerCreateMutation = useMutation({
+    mutationFn: async (data: any) => {
+      const res = await createCustomerBooking(data);
+      if (!res.success) throw new Error(res.message || "Failed");
+      return res;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["customer-bookings"] }); // Invalidate customer's personal list
+      queryClient.invalidateQueries({ queryKey: ["bookings"] }); // Invalidate admin list
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const paymentMutation = useMutation({
+    mutationFn: async ({ bookingId, amount, ref, url }: any) => {
+      const res = await submitPaymentReceipt(bookingId, amount, ref, url);
+      if (!res.success) throw new Error(res.message || "Failed");
+      return res;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["customer-bookings"] });
+      queryClient.invalidateQueries({ queryKey: ["bookings"] });
+    },
+  });
+
   return {
     bookings: query.data || [],
     isLoading: query.isLoading,
@@ -123,5 +151,20 @@ export const useBookings = () => {
     isDeleting: deleteMutation.isPending,
     updateBooking: updateMutation.mutateAsync,
     isBookingUpdating: updateMutation.isPending,
+    submitCustomerBooking: customerCreateMutation.mutateAsync,
+    isSubmittingCustomerBooking: customerCreateMutation.isPending,
+    submitPayment: paymentMutation.mutateAsync, // <-- EXPORTED HERE!
+    isSubmittingPayment: paymentMutation.isPending,
   };
+};
+
+export const useCustomerBookings = () => {
+  return useQuery({
+    queryKey: ["customer-bookings"],
+    queryFn: async () => {
+      const res = await getCustomerBookings();
+      if (!res.success) throw new Error(res.message);
+      return res.data;
+    },
+  });
 };

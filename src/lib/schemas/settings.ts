@@ -106,3 +106,13 @@ export const UpdateSettingSchema = z.object({
 });
 
 export type UpdateSettingInput = z.infer<typeof UpdateSettingSchema>;
+
+export const VehicleTypesSchema = z.array(
+  z.object({
+    id: z.string(),
+    label: z.string(),
+    isActive: z.boolean().default(true),
+  }),
+);
+
+export type VehicleType = z.infer<typeof VehicleTypesSchema>[0];

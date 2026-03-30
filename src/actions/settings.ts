@@ -9,7 +9,9 @@ import {
   PaymentMethodsSchema,
   CompanyProfileSchema,
   ServiceAreaSchema,
+  VehicleTypesSchema,
   type ServiceArea,
+  type VehicleType,
 } from "@/lib/schemas/settings";
 import { createAdminClient } from "@/utils/supabase/admin";
 
@@ -57,6 +59,9 @@ export async function updateSystemSetting(key: string, rawValue: unknown) {
       break;
     case "company_profile":
       schema = CompanyProfileSchema;
+      break;
+    case "vehicle_types":
+      schema = VehicleTypesSchema;
       break;
     default:
       return { success: false, message: "Invalid settings key" };
@@ -413,6 +418,41 @@ export async function saveBusinessHubs(hubs: BusinessHub[]) {
     .from("settings")
     .upsert(
       { key: BUSINESS_HUBS_KEY, value: hubs as any },
+      { onConflict: "key" },
+    );
+
+  if (error) throw new Error(error.message);
+  return { success: true };
+}
+
+const VEHICLE_TYPES_KEY = "vehicle_types";
+
+// Note: You must import VehicleType from your schemas at the top of the file if you haven't already:
+// import { VehicleType } from "@/lib/schemas/settings";
+
+export async function getVehicleTypes(): Promise<VehicleType[]> {
+  const supabase = await createAdminClient();
+  const { data, error } = await supabase
+    .from("settings")
+    .select("value")
+    .eq("key", VEHICLE_TYPES_KEY)
+    .single();
+
+  if (error && error.code !== "PGRST116") {
+    console.error("Error fetching vehicle types:", error);
+    return [];
+  }
+
+  return data?.value ? (data.value as VehicleType[]) : [];
+}
+
+export async function saveVehicleTypes(types: VehicleType[]) {
+  const supabase = await createAdminClient();
+
+  const { error } = await supabase
+    .from("settings")
+    .upsert(
+      { key: VEHICLE_TYPES_KEY, value: types as any },
       { onConflict: "key" },
     );
 
