@@ -13,7 +13,7 @@ export async function getCustomerProfile() {
 
   if (authError || !user) throw new Error("Unauthorized");
 
-  // Fetch the user AND their associated documents
+  // Fetch the user and their associated documents
   const { data, error } = await supabase
     .from("users")
     .select(
@@ -26,6 +26,7 @@ export async function getCustomerProfile() {
     .single();
 
   if (error) throw error;
+  console.log("Users: ", data);
   return data;
 }
 
@@ -36,14 +37,12 @@ export async function updateCustomerDetails(formData: FormData) {
   } = await supabase.auth.getUser();
   if (!user) throw new Error("Unauthorized");
 
-  const fullName = formData.get("fullName") as string;
+  const firstName = formData.get("first_name") as string;
+  const lastName = formData.get("last_name") as string;
   const phone = formData.get("phone") as string;
   const address = formData.get("address") as string;
 
-  // Split the full name just in case your DB relies on first/last
-  const nameParts = fullName.split(" ");
-  const firstName = nameParts[0];
-  const lastName = nameParts.slice(1).join(" ");
+  const fullName = `${firstName} ${lastName}`.trim();
 
   const { error } = await supabase
     .from("users")
@@ -75,13 +74,13 @@ export async function uploadCustomerDocument(formData: FormData) {
 
   if (!file || file.size === 0) throw new Error("No file provided.");
 
-  // 1. Use your existing upload helper!
+  // Use the existing upload helper
   const folderName = category === "license_id" ? "license_ids" : "valid_ids";
   const uploadResult = await uploadFile(file, "documents", folderName, user.id);
 
   if (!uploadResult) throw new Error("Failed to upload document to storage.");
 
-  // 2. Create the record in your 'documents' table
+  // Create the record in documents table
   const { error: docError } = await supabase.from("documents").insert({
     user_id: user.id,
     category: category,
@@ -93,13 +92,6 @@ export async function uploadCustomerDocument(formData: FormData) {
   });
 
   if (docError) throw docError;
-
-  // 3. Optional: Update user account status to pending if it was unverified
-  await supabase
-    .from("users")
-    .update({ account_status: "pending" })
-    .eq("user_id", user.id)
-    .eq("account_status", "unverified");
 
   revalidatePath("/customer/profile");
   return { success: true, message: "Document submitted for verification!" };

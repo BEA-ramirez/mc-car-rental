@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { FleetPartnerType } from "@/lib/schemas/car-owner";
 import { deletePartner } from "@/actions/helper/delete-partner";
-import { UserType } from "@/lib/schemas/client";
+import { saveFleetPartnerApplication } from "@/actions/manage-partner";
 
 const fetchFleetPartners = async (): Promise<FleetPartnerType[]> => {
   const response = await fetch("/api/fleet-partners");
@@ -12,11 +12,11 @@ const fetchFleetPartners = async (): Promise<FleetPartnerType[]> => {
   return result.fleetPartners as FleetPartnerType[];
 };
 
-const fetchUnassignedCarOwners = async (): Promise<UserType[]> => {
+const fetchUnassignedCarOwners = async (): Promise<any[]> => {
   const response = await fetch("/api/fleet-partners/unassigned");
   if (!response.ok) throw new Error("Failed to fetch unassigned car owners");
   const result = await response.json();
-  return result as UserType[];
+  return result as any[];
 };
 
 export const useFleetPartners = () => {
@@ -64,4 +64,30 @@ export const useUnassignedCarOwners = () => {
     queryFn: fetchUnassignedCarOwners,
     staleTime: 0, // Always fetch fresh data when opening the form
   });
+};
+
+export const useFleetPartnerApplication = () => {
+  const queryClient = useQueryClient();
+
+  const saveMutation = useMutation({
+    mutationFn: async (formData: FormData) => {
+      const result = await saveFleetPartnerApplication(formData);
+      if (!result.success) {
+        throw new Error(result.message || "Failed to save application.");
+      }
+      return result;
+    },
+    onSuccess: (data) => {
+      toast.success(data.message || "Application submitted successfully.");
+      queryClient.invalidateQueries({ queryKey: ["fleet-partners"] });
+    },
+    onError: (error: Error) => {
+      toast.error(error.message);
+    },
+  });
+
+  return {
+    applyForFleetPartner: saveMutation.mutateAsync,
+    isApplying: saveMutation.isPending,
+  };
 };

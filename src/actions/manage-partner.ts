@@ -4,7 +4,6 @@ import z from "zod";
 import { carOwnerSchema } from "@/lib/schemas/car-owner";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/utils/supabase/server";
-import { UserType } from "@/lib/schemas/client";
 
 // define the state shape for useactionstate
 export type ActionState = {
@@ -84,7 +83,7 @@ export async function managePartner(
   }
 }
 
-export async function getUnassignedCarOwners(): Promise<UserType[]> {
+export async function getUnassignedCarOwners(): Promise<any[]> {
   const supabase = await createClient();
 
   const { data: existingPartners, error: partnersError } = await supabase
@@ -114,5 +113,61 @@ export async function getUnassignedCarOwners(): Promise<UserType[]> {
     return [];
   }
 
-  return availableUsers as UserType[];
+  return availableUsers as any[];
+}
+
+export async function saveFleetPartnerApplication(
+  formData: FormData,
+): Promise<ActionState> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
+
+  if (userError || !user) {
+    console.error("User authentication error:", userError);
+    return {
+      success: false,
+      message: "You must be logged in to apply as a fleet partner.",
+    };
+  }
+
+  const businessName = formData.get("businessName") as string;
+  const bankName = formData.get("bankName") as string;
+  const bankAccountName = formData.get("bankAccountName") as string;
+  const bankAccountNumber = formData.get("bankAccountNumber") as string;
+
+  try {
+    const { error } = await supabase.from("car_owner").insert({
+      user_id: user.id,
+      verification_status: "pending",
+      active_status: false,
+      revenue_share_percentage: 70,
+      business_name: businessName,
+      bank_name: bankName,
+      bank_account_name: bankAccountName,
+      bank_account_number: bankAccountNumber,
+      created_at: new Date().toISOString(),
+      last_updated_at: new Date().toISOString(),
+    });
+
+    if (error) {
+      console.error("Error saving fleet partner application:", error);
+      return {
+        success: false,
+        message: "Failed to save fleet partner application.",
+      };
+    }
+    return {
+      success: true,
+      message: "Fleet partner application submitted successfully.",
+    };
+  } catch (error) {
+    console.error("Unexpected error saving fleet partner application:", error);
+    return {
+      success: false,
+      message: "An unexpected error occurred. Please try again later.",
+    };
+  }
 }

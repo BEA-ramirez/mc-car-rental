@@ -15,6 +15,9 @@ import {
 import { cn } from "@/lib/utils";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { z } from "zod";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,11 +25,24 @@ import { Label } from "@/components/ui/label";
 
 import { useProfile } from "../../../../hooks/use-profile";
 
+// Form zod schema
+const ProfileSchema = z.object({
+  first_name: z.string().min(2, "First name is required"),
+  last_name: z.string().min(2, "Last name is required"),
+  phone_number: z
+    .string()
+    .min(10, "Valid phone number required")
+    .optional()
+    .or(z.literal("")),
+  address: z.string().optional().or(z.literal("")),
+});
+
+type ProfileFormValues = z.infer<typeof ProfileSchema>;
+
 export default function CustomerProfilePage() {
   const router = useRouter();
   const [isEditing, setIsEditing] = useState(false);
 
-  // Real Data Hook
   const {
     profile,
     isLoading,
@@ -36,33 +52,37 @@ export default function CustomerProfilePage() {
     isUploadingDoc,
   } = useProfile();
 
-  // Local Form State
-  const [formData, setFormData] = useState({
-    fullName: "",
-    phone: "",
-    address: "",
+  // Initialize useForm
+  const form = useForm<ProfileFormValues>({
+    resolver: zodResolver(ProfileSchema),
+    defaultValues: {
+      first_name: "",
+      last_name: "",
+      phone_number: "",
+      address: "",
+    },
   });
 
-  // Sync Form State when profile loads
   useEffect(() => {
     if (profile) {
-      setFormData({
-        fullName: profile.full_name || "",
-        phone: profile.phone_number || "",
+      form.reset({
+        first_name: profile.first_name || "",
+        last_name: profile.last_name || "",
+        phone_number: profile.phone_number || "",
         address: profile.address || "",
       });
     }
-  }, [profile]);
+  }, [profile, form]);
 
-  const handleSave = async () => {
-    if (isEditing) {
-      const submitData = new FormData();
-      submitData.append("fullName", formData.fullName);
-      submitData.append("phone", formData.phone);
-      submitData.append("address", formData.address);
-      await updateProfile(submitData);
-    }
-    setIsEditing(!isEditing);
+  const onSubmit = async (data: ProfileFormValues) => {
+    const submitData = new FormData();
+    submitData.append("first_name", data.first_name);
+    submitData.append("last_name", data.last_name);
+    submitData.append("phone", data.phone_number || "");
+    submitData.append("address", data.address || "");
+
+    await updateProfile(submitData);
+    setIsEditing(false);
   };
 
   const handleFileUpload = async (
@@ -89,7 +109,7 @@ export default function CustomerProfilePage() {
   };
 
   const getStatusBadge = (status: string) => {
-    if (status === "verified" || status === "approved")
+    if (status === "verified")
       return (
         <span className="flex items-center gap-1 text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-md border border-emerald-200">
           <CheckCircle2 className="w-3 h-3" /> Verified
@@ -101,6 +121,13 @@ export default function CustomerProfilePage() {
           <Clock className="w-3 h-3" /> In Review
         </span>
       );
+    if (status === "expired" || status === "rejected") {
+      return (
+        <span className="flex items-center gap-1 text-xs font-bold text-red-500 bg-red-50 px-2 py-1 rounded-md border border-red-200">
+          <AlertCircle className="w-3 h-3" /> Re-upload Document
+        </span>
+      );
+    }
     return (
       <span className="flex items-center gap-1 text-xs font-bold text-slate-500 bg-slate-100 px-2 py-1 rounded-md border border-slate-200">
         <AlertCircle className="w-3 h-3" /> Action Needed
@@ -124,21 +151,10 @@ export default function CustomerProfilePage() {
     );
   }
 
-  // --- Find Most Recent Documents ---
+  // Find most recent docs
   const documents = profile.documents || [];
-  const latestLicense = documents
-    .filter((d: any) => d.category === "license_id")
-    .sort(
-      (a: any, b: any) =>
-        new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
-    )[0];
-
-  const latestValidId = documents
-    .filter((d: any) => d.category === "valid_id")
-    .sort(
-      (a: any, b: any) =>
-        new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
-    )[0];
+  const latestLicense = documents.find((d: any) => d.category === "license_id");
+  const latestValidId = documents.find((d: any) => d.category === "valid_id");
 
   const licenseStatus = latestLicense?.status || "unverified";
   const validIdStatus = latestValidId?.status || "unverified";
@@ -146,7 +162,7 @@ export default function CustomerProfilePage() {
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] font-sans pb-24">
-      {/* Premium Header */}
+      {/* Profile Header */}
       <div className="bg-slate-900 text-white pt-16 pb-24 px-6">
         <div className="max-w-5xl mx-auto flex flex-col md:flex-row items-center gap-6">
           <div className="w-24 h-24 rounded-full bg-blue-600 flex items-center justify-center text-3xl font-black border-4 border-slate-800 shrink-0 uppercase">
@@ -175,8 +191,10 @@ export default function CustomerProfilePage() {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           {/* LEFT COLUMN: Personal Info & Documents */}
           <div className="lg:col-span-8 space-y-8">
-            {/* Personal Details Form */}
-            <div className="bg-white rounded-3xl p-6 md:p-8 shadow-sm border border-slate-100">
+            <form
+              onSubmit={form.handleSubmit(onSubmit)}
+              className="bg-white rounded-3xl p-6 md:p-8 shadow-sm border border-slate-100"
+            >
               <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-2xl bg-blue-50 flex items-center justify-center text-blue-600">
@@ -186,40 +204,68 @@ export default function CustomerProfilePage() {
                     Personal Details
                   </h2>
                 </div>
-                <Button
-                  variant={isEditing ? "default" : "outline"}
-                  size="sm"
-                  disabled={isUpdating}
-                  className={cn(
-                    "rounded-xl font-bold",
-                    isEditing
-                      ? "bg-blue-600 hover:bg-blue-700 text-white"
-                      : "border-slate-200 text-slate-600",
-                  )}
-                  onClick={handleSave}
-                >
-                  {isUpdating
-                    ? "Saving..."
-                    : isEditing
-                      ? "Save Changes"
-                      : "Edit Profile"}
-                </Button>
+
+                {isEditing ? (
+                  <Button
+                    type="submit"
+                    size="sm"
+                    disabled={isUpdating}
+                    className="rounded-xl font-bold bg-blue-600 hover:bg-blue-700 text-white"
+                  >
+                    {isUpdating ? "Saving..." : "Save Changes"}
+                  </Button>
+                ) : (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setIsEditing(true)}
+                    className="rounded-xl font-bold border-slate-200 text-slate-600"
+                  >
+                    Edit Profile
+                  </Button>
+                )}
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
                   <Label className="text-xs font-bold text-slate-500 uppercase tracking-widest">
-                    Full Name
+                    First Name
                   </Label>
                   <Input
-                    value={formData.fullName}
-                    onChange={(e) =>
-                      setFormData({ ...formData, fullName: e.target.value })
-                    }
+                    {...form.register("first_name")}
                     disabled={!isEditing}
-                    className="h-12 rounded-xl border-slate-200 bg-slate-50 disabled:opacity-100 disabled:text-slate-900 font-medium"
+                    className={cn(
+                      "h-12 rounded-xl border-slate-200 bg-slate-50 disabled:opacity-100 disabled:text-slate-900 font-medium",
+                      form.formState.errors.first_name && "border-red-500",
+                    )}
                   />
+                  {form.formState.errors.first_name && (
+                    <p className="text-xs text-red-500">
+                      {form.formState.errors.first_name.message}
+                    </p>
+                  )}
                 </div>
+
+                <div className="space-y-2">
+                  <Label className="text-xs font-bold text-slate-500 uppercase tracking-widest">
+                    Last Name
+                  </Label>
+                  <Input
+                    {...form.register("last_name")}
+                    disabled={!isEditing}
+                    className={cn(
+                      "h-12 rounded-xl border-slate-200 bg-slate-50 disabled:opacity-100 disabled:text-slate-900 font-medium",
+                      form.formState.errors.last_name && "border-red-500",
+                    )}
+                  />
+                  {form.formState.errors.last_name && (
+                    <p className="text-xs text-red-500">
+                      {form.formState.errors.last_name.message}
+                    </p>
+                  )}
+                </div>
+
                 <div className="space-y-2">
                   <Label className="text-xs font-bold text-slate-500 uppercase tracking-widest">
                     Email Address
@@ -230,34 +276,38 @@ export default function CustomerProfilePage() {
                     className="h-12 rounded-xl border-slate-200 bg-slate-50 opacity-60 font-medium"
                   />
                 </div>
+
                 <div className="space-y-2">
                   <Label className="text-xs font-bold text-slate-500 uppercase tracking-widest">
                     Phone Number
                   </Label>
                   <Input
-                    value={formData.phone}
-                    onChange={(e) =>
-                      setFormData({ ...formData, phone: e.target.value })
-                    }
+                    {...form.register("phone_number")}
                     disabled={!isEditing}
-                    className="h-12 rounded-xl border-slate-200 bg-slate-50 disabled:opacity-100 disabled:text-slate-900 font-medium"
+                    className={cn(
+                      "h-12 rounded-xl border-slate-200 bg-slate-50 disabled:opacity-100 disabled:text-slate-900 font-medium",
+                      form.formState.errors.phone_number && "border-red-500",
+                    )}
                   />
+                  {form.formState.errors.phone_number && (
+                    <p className="text-xs text-red-500">
+                      {form.formState.errors.phone_number.message}
+                    </p>
+                  )}
                 </div>
+
                 <div className="space-y-2">
                   <Label className="text-xs font-bold text-slate-500 uppercase tracking-widest">
                     Complete Address
                   </Label>
                   <Input
-                    value={formData.address}
-                    onChange={(e) =>
-                      setFormData({ ...formData, address: e.target.value })
-                    }
+                    {...form.register("address")}
                     disabled={!isEditing}
                     className="h-12 rounded-xl border-slate-200 bg-slate-50 disabled:opacity-100 disabled:text-slate-900 font-medium"
                   />
                 </div>
               </div>
-            </div>
+            </form>
 
             {/* Identity Verification (KYC) */}
             <div className="bg-white rounded-3xl p-6 md:p-8 shadow-sm border border-slate-100">
@@ -299,8 +349,10 @@ export default function CustomerProfilePage() {
                       )}
                     </div>
                   </div>
-                  {(licenseStatus === "unverified" ||
-                    licenseStatus === "rejected") && (
+                  {(licenseStatus === "expired" ||
+                    licenseStatus === "rejected" ||
+                    licenseStatus === "pending" ||
+                    licenseStatus === "unverified") && (
                     <div className="relative">
                       <Input
                         type="file"
@@ -342,8 +394,10 @@ export default function CustomerProfilePage() {
                       )}
                     </div>
                   </div>
-                  {(validIdStatus === "unverified" ||
-                    validIdStatus === "rejected") && (
+                  {(validIdStatus === "expired" ||
+                    validIdStatus === "rejected" ||
+                    licenseStatus === "pending" ||
+                    validIdStatus === "unverified") && (
                     <div className="relative">
                       <Input
                         type="file"
@@ -380,41 +434,45 @@ export default function CustomerProfilePage() {
               </p>
 
               <div className="space-y-4 relative z-10">
-                <div
-                  onClick={() => router.push("/customer/apply-driver")}
-                  className="bg-slate-800/50 hover:bg-slate-800 border border-slate-700 p-4 rounded-2xl transition-colors cursor-pointer group"
-                >
-                  <div className="flex items-center gap-3 mb-2">
-                    <div className="p-2 bg-blue-500/10 text-blue-400 rounded-lg">
-                      <Key className="w-5 h-5" />
+                {profile.role !== "driver" && (
+                  <div
+                    onClick={() => router.push("/customer/apply-driver")}
+                    className="bg-slate-800/50 hover:bg-slate-800 border border-slate-700 p-4 rounded-2xl transition-colors cursor-pointer group"
+                  >
+                    <div className="flex items-center gap-3 mb-2">
+                      <div className="p-2 bg-blue-500/10 text-blue-400 rounded-lg">
+                        <Key className="w-5 h-5" />
+                      </div>
+                      <h3 className="font-bold text-slate-100 group-hover:text-blue-400 transition-colors">
+                        Become a Driver
+                      </h3>
                     </div>
-                    <h3 className="font-bold text-slate-100 group-hover:text-blue-400 transition-colors">
-                      Become a Driver
-                    </h3>
+                    <p className="text-xs text-slate-400 pl-11">
+                      Apply to be an official company driver. Drive our fleet,
+                      set your schedule, and earn daily fees.
+                    </p>
                   </div>
-                  <p className="text-xs text-slate-400 pl-11">
-                    Apply to be an official company driver. Drive our fleet, set
-                    your schedule, and earn daily fees.
-                  </p>
-                </div>
+                )}
 
-                <div
-                  onClick={() => router.push("/customer/list-vehicle")}
-                  className="bg-slate-800/50 hover:bg-slate-800 border border-slate-700 p-4 rounded-2xl transition-colors cursor-pointer group"
-                >
-                  <div className="flex items-center gap-3 mb-2">
-                    <div className="p-2 bg-emerald-500/10 text-emerald-400 rounded-lg">
-                      <Car className="w-5 h-5" />
+                {profile.role !== "fleet_partner" && (
+                  <div
+                    onClick={() => router.push("/customer/list-vehicle")}
+                    className="bg-slate-800/50 hover:bg-slate-800 border border-slate-700 p-4 rounded-2xl transition-colors cursor-pointer group"
+                  >
+                    <div className="flex items-center gap-3 mb-2">
+                      <div className="p-2 bg-emerald-500/10 text-emerald-400 rounded-lg">
+                        <Car className="w-5 h-5" />
+                      </div>
+                      <h3 className="font-bold text-slate-100 group-hover:text-emerald-400 transition-colors">
+                        List Your Vehicle
+                      </h3>
                     </div>
-                    <h3 className="font-bold text-slate-100 group-hover:text-emerald-400 transition-colors">
-                      List Your Vehicle
-                    </h3>
+                    <p className="text-xs text-slate-400 pl-11">
+                      Become a Fleet Partner. Enroll your SUV or Sedan and earn
+                      up to 70% revenue share per booking.
+                    </p>
                   </div>
-                  <p className="text-xs text-slate-400 pl-11">
-                    Become a Fleet Partner. Enroll your SUV or Sedan and earn up
-                    to 70% revenue share per booking.
-                  </p>
-                </div>
+                )}
               </div>
             </div>
           </div>

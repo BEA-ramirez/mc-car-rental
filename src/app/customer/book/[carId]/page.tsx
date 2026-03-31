@@ -30,6 +30,7 @@ import {
   Dialog,
   DialogContent,
   DialogHeader,
+  DialogDescription,
   DialogTitle,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
@@ -210,6 +211,7 @@ export default function CustomerBookingPage({
     );
   }
 
+  // Fallback
   if (!car && !isLoadingUnit) {
     return (
       <div className="min-h-screen bg-[#F8FAFC] flex flex-col items-center justify-center text-slate-500">
@@ -270,7 +272,7 @@ export default function CustomerBookingPage({
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           <div className="lg:col-span-7 xl:col-span-8 space-y-8">
-            {/* Step 1: Schedule & Driver */}
+            {/* Schedule & Driver */}
             <section className="bg-white rounded-3xl p-6 md:p-8 shadow-sm border border-slate-100">
               <div className="flex items-center gap-3 mb-6">
                 <div className="w-10 h-10 rounded-2xl bg-blue-50 flex items-center justify-center text-blue-600">
@@ -333,8 +335,7 @@ export default function CustomerBookingPage({
               </div>
             </section>
 
-            {/* Step 2: Location Logistics */}
-            {/* Step 2: Location Logistics */}
+            {/* Location Logistics */}
             <section className="bg-white rounded-3xl p-6 md:p-8 shadow-sm border border-slate-100">
               <div className="flex items-center gap-3 mb-8">
                 <div className="w-10 h-10 rounded-2xl bg-emerald-50 flex items-center justify-center text-emerald-600">
@@ -352,8 +353,8 @@ export default function CustomerBookingPage({
                     Pick-up Location
                   </Label>
                   <div className="flex flex-col sm:flex-row gap-3">
-                    {/* The Hub Selector */}
-                    <div className="flex-1 relative">
+                    {/* Hub Selector */}
+                    <div className="flex-1 relative h-12">
                       {pickupType === "custom" && (
                         <div className="absolute inset-0 bg-blue-50 border border-blue-200 rounded-xl z-10 flex items-center px-4">
                           <MapPin className="text-blue-600 w-4 h-4 shrink-0 mr-2" />
@@ -369,7 +370,7 @@ export default function CustomerBookingPage({
                           setPickupLocation(val);
                         }}
                       >
-                        <SelectTrigger className="h-12 rounded-xl text-sm font-bold border-slate-200 bg-white shadow-sm w-full">
+                        <SelectTrigger className="h-full! rounded-xl text-sm font-bold border-slate-200 bg-white shadow-sm w-full">
                           <SelectValue placeholder="Select an Official Hub" />
                         </SelectTrigger>
                         <SelectContent className="rounded-xl">
@@ -394,7 +395,7 @@ export default function CustomerBookingPage({
                       variant={pickupType === "custom" ? "default" : "outline"}
                       onClick={() => openMapFor("pickup")}
                       className={cn(
-                        "h-12 px-5 rounded-xl text-sm font-bold shrink-0 shadow-sm transition-all",
+                        "h-12 px-5 py-0 rounded-xl text-sm font-bold shrink-0 shadow-sm transition-all",
                         pickupType === "custom"
                           ? "bg-blue-600 text-white hover:bg-blue-700 border-transparent"
                           : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50",
@@ -426,8 +427,8 @@ export default function CustomerBookingPage({
                     Drop-off Location
                   </Label>
                   <div className="flex flex-col sm:flex-row gap-3">
-                    {/* The Hub Selector */}
-                    <div className="flex-1 relative">
+                    {/* Hub Selector */}
+                    <div className="flex-1 relative h-12">
                       {dropoffType === "custom" && (
                         <div className="absolute inset-0 bg-blue-50 border border-blue-200 rounded-xl z-10 flex items-center px-4">
                           <MapPin className="text-blue-600 w-4 h-4 shrink-0 mr-2" />
@@ -443,7 +444,7 @@ export default function CustomerBookingPage({
                           setDropoffLocation(val);
                         }}
                       >
-                        <SelectTrigger className="h-12 rounded-xl text-sm font-bold border-slate-200 bg-white shadow-sm w-full">
+                        <SelectTrigger className="h-full! rounded-xl text-sm font-bold border-slate-200 bg-white shadow-sm w-full">
                           <SelectValue placeholder="Select an Official Hub" />
                         </SelectTrigger>
                         <SelectContent className="rounded-xl">
@@ -500,7 +501,7 @@ export default function CustomerBookingPage({
           <div className="lg:col-span-5 xl:col-span-4 relative">
             <div className="bg-white rounded-3xl border border-slate-200 shadow-xl overflow-hidden sticky top-24">
               <div className="p-6 border-b border-slate-100 flex gap-4 items-center bg-slate-900 text-white">
-                <div className="relative w-24 h-16 rounded-xl bg-white overflow-hidden shrink-0 border border-slate-700">
+                <div className="relative w-24 h-16 rounded-xl bg-white/20 overflow-hidden shrink-0 border border-slate-700">
                   <Image
                     src={car?.image}
                     alt="Car"
@@ -606,19 +607,25 @@ export default function CustomerBookingPage({
 
       {/* --- MAP DIALOG PASSING REAL HUBS --- */}
       <Dialog open={mapOpen} onOpenChange={setMapOpen}>
-        <DialogContent className="max-w-4xl w-[90vw] h-[80vh] p-0 overflow-hidden flex flex-col rounded-3xl border-slate-200 shadow-2xl">
-          <DialogHeader className="p-5 bg-white border-b border-slate-100 z-10 shadow-sm shrink-0">
-            <DialogTitle className="text-xl font-bold text-slate-900">
+        <DialogContent className="max-w-4xl w-[95vw] h-[85vh] p-0 overflow-hidden flex flex-col rounded-3xl border-slate-200 shadow-2xl gap-0">
+          {/* 1. Added 'gap-0' to DialogContent 
+            2. Kept shrink-0 so it doesn't crush the header 
+            3. Ensured no bottom padding or margin bleeds out 
+          */}
+          <DialogHeader className="p-5 bg-white border-b border-slate-100 z-10 shadow-sm shrink-0 space-y-1 pb-4">
+            <DialogTitle className="text-xl font-bold text-slate-900 m-0">
               Select {activeMapField === "pickup" ? "Pick-up" : "Drop-off"}{" "}
               Location
             </DialogTitle>
-            <p className="text-xs font-medium text-slate-500">
+            <DialogDescription className="text-xs font-medium text-slate-500 m-0">
               Click a blue pin to use a Hub (Free), or click anywhere else
               inside the green zone to set a Custom Delivery Location (+₱
               {realFees.custom_pickup_fee}).
-            </p>
+            </DialogDescription>
           </DialogHeader>
-          <div className="flex-1 relative h-full bg-slate-100">
+
+          {/* Map Container */}
+          <div className="flex-1 w-full bg-slate-100 relative">
             <OrmocMapSelector
               hubs={realHubs}
               onLocationSelect={handleLocationSelect}

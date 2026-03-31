@@ -2,27 +2,48 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Key, ShieldCheck, CheckCircle2, Clock } from "lucide-react";
+import { ArrowLeft, Key, CheckCircle2, Clock, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
+import { useDriverApplication } from "../../../../hooks/use-drivers";
+import { useProfile } from "../../../../hooks/use-profile";
+import { cn } from "@/lib/utils";
 
 export default function ApplyDriverPage() {
   const router = useRouter();
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [agreed, setAgreed] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
 
+  const { applyForDriver, isApplying } = useDriverApplication();
+
+  // Fetch real profile data
+  const { profile, isLoading: isProfileLoading } = useProfile();
+
   const handleSubmit = async () => {
-    setIsSubmitting(true);
     try {
-      // TODO: Insert into `drivers` table with `is_verified: false`
-      await new Promise((resolve) => setTimeout(resolve, 1500));
+      await applyForDriver();
       setIsSuccess(true);
-    } finally {
-      setIsSubmitting(false);
+    } catch (error) {
+      // The error is handled by the hook's toast, but we catch it here to prevent
+      // the success screen from showing if the mutation fails.
     }
   };
+
+  if (isProfileLoading) {
+    return (
+      <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center">
+        <span className="text-slate-500 font-bold animate-pulse">
+          Loading Application Data...
+        </span>
+      </div>
+    );
+  }
+
+  // Check if the user has a verified license
+  const documents = profile?.documents || [];
+  const latestLicense = documents.find((d: any) => d.category === "license_id");
+  const hasVerifiedLicense = latestLicense?.status === "verified";
 
   if (isSuccess) {
     return (
@@ -39,7 +60,7 @@ export default function ApplyDriverPage() {
             contact you shortly for your interview and driving test.
           </p>
 
-          {/* --- NEW: WHAT HAPPENS NEXT BOX --- */}
+          {/* What happens next box*/}
           <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 mb-8 text-left">
             <p className="text-xs font-bold text-blue-900 mb-1">
               What happens next?
@@ -94,18 +115,41 @@ export default function ApplyDriverPage() {
           </h2>
 
           <div className="space-y-4 mb-10">
-            <div className="flex items-start gap-4 p-4 rounded-2xl bg-emerald-50 border border-emerald-100">
-              <CheckCircle2 className="w-6 h-6 text-emerald-600 mt-0.5 shrink-0" />
-              <div>
-                <h3 className="font-bold text-emerald-900">
-                  Professional Driver's License
-                </h3>
-                <p className="text-xs text-emerald-700 mt-1">
-                  We found a verified Professional License attached to your
-                  profile.
-                </p>
+            {/* Dynamic License Check */}
+            {hasVerifiedLicense ? (
+              <div className="flex items-start gap-4 p-4 rounded-2xl bg-emerald-50 border border-emerald-100">
+                <CheckCircle2 className="w-6 h-6 text-emerald-600 mt-0.5 shrink-0" />
+                <div>
+                  <h3 className="font-bold text-emerald-900">
+                    Professional Driver's License
+                  </h3>
+                  <p className="text-xs text-emerald-700 mt-1">
+                    We found a verified Professional License attached to your
+                    profile.
+                  </p>
+                </div>
               </div>
-            </div>
+            ) : (
+              <div className="flex items-start gap-4 p-4 rounded-2xl bg-red-50 border border-red-100">
+                <AlertCircle className="w-6 h-6 text-red-600 mt-0.5 shrink-0" />
+                <div className="flex-1">
+                  <h3 className="font-bold text-red-900">
+                    License Missing or Unverified
+                  </h3>
+                  <p className="text-xs text-red-700 mt-1 mb-3">
+                    You must have a verified Professional Driver's License on
+                    your profile before applying.
+                  </p>
+                  <Button
+                    size="sm"
+                    onClick={() => router.push("/customer/profile")}
+                    className="bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-lg shadow-sm"
+                  >
+                    Go to Profile to Upload
+                  </Button>
+                </div>
+              </div>
+            )}
 
             <div className="flex items-start gap-4 p-4 rounded-2xl bg-amber-50 border border-amber-100">
               <Clock className="w-6 h-6 text-amber-600 mt-0.5 shrink-0" />
@@ -130,11 +174,17 @@ export default function ApplyDriverPage() {
                 id="terms"
                 checked={agreed}
                 onCheckedChange={(c) => setAgreed(c as boolean)}
-                className="mt-1 border-slate-300 data-[state=checked]:bg-blue-600"
+                disabled={!hasVerifiedLicense} // Disable if they don't meet requirements
+                className="mt-1 border-slate-300 data-[state=checked]:bg-blue-600 disabled:opacity-50"
               />
               <Label
                 htmlFor="terms"
-                className="text-sm text-slate-600 leading-relaxed cursor-pointer font-medium"
+                className={cn(
+                  "text-sm leading-relaxed font-medium",
+                  hasVerifiedLicense
+                    ? "text-slate-600 cursor-pointer"
+                    : "text-slate-400 cursor-not-allowed",
+                )}
               >
                 I confirm that I have a clean driving record and I agree to the
                 MC Ormoc Driver Partner Terms of Service. I understand that my
@@ -147,10 +197,10 @@ export default function ApplyDriverPage() {
           <Button
             size="lg"
             onClick={handleSubmit}
-            disabled={!agreed || isSubmitting}
+            disabled={!agreed || isApplying || !hasVerifiedLicense}
             className="w-full bg-blue-600 hover:bg-blue-700 text-white rounded-2xl h-14 font-bold text-base shadow-md disabled:opacity-50"
           >
-            {isSubmitting ? "Submitting..." : "Submit Driver Application"}
+            {isApplying ? "Submitting..." : "Submit Driver Application"}
           </Button>
         </div>
       </div>

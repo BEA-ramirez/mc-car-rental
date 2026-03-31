@@ -5,6 +5,7 @@ import {
   saveDriver,
   deleteDriver,
   getDriverById,
+  saveDriverApplication,
 } from "@/actions/manage-driver";
 import {
   fetchDispatchAvailability,
@@ -102,5 +103,32 @@ export const useDriverDispatch = (startDate?: Date, endDate?: Date) => {
     isLoadingAvailability: availabilityQuery.isLoading,
     saveDispatchPlan: savePlanMutation.mutateAsync,
     isSavingDispatch: savePlanMutation.isPending,
+  };
+};
+
+export const useDriverApplication = () => {
+  const queryClient = useQueryClient();
+  const saveApplicationMutation = useMutation({
+    mutationFn: async () => {
+      const result = await saveDriverApplication();
+      if (!result.success) {
+        throw new Error(
+          result.message || "Failed to submit driver application",
+        );
+      }
+      return result;
+    },
+    onSuccess: () => {
+      toast.success("Driver application submitted successfully!");
+      queryClient.invalidateQueries({ queryKey: ["drivers"] });
+    },
+    onError: (error: Error) => {
+      toast.error(error.message);
+    },
+  });
+
+  return {
+    applyForDriver: saveApplicationMutation.mutateAsync,
+    isApplying: saveApplicationMutation.isPending,
   };
 };

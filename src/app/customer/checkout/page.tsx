@@ -12,8 +12,6 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-
-// Import the scanner we just built!
 import ReceiptScanner from "@/components/bookings/receipt-scanner";
 
 // Mock data for the booking (In reality, you'd fetch this based on the booking ID in the URL)

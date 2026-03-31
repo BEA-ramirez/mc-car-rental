@@ -3,6 +3,7 @@ import { createClient } from "@/utils/supabase/server";
 import { CompleteDriverType } from "@/lib/schemas/driver";
 import { create } from "domain";
 import { SupabaseClient } from "@supabase/supabase-js";
+import { Action } from "sonner";
 
 export type ActionState = {
   message: string | null;
@@ -71,4 +72,42 @@ export async function deleteDriver(driverId: string): Promise<ActionState> {
     throw new Error("Failed to delete driver");
   }
   return { success: true, message: "Driver deleted successfully" };
+}
+
+export async function saveDriverApplication(): Promise<ActionState> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
+
+  if (userError || !user) {
+    console.error("User authentication error:", userError);
+    throw new Error("Unauthorized");
+  }
+  try {
+    const { error } = await supabase.from("drivers").insert({
+      user_id: user.id,
+      driver_status: "pending",
+      is_verified: false,
+      is_archived: false,
+      created_at: new Date().toISOString(),
+      last_updated_at: new Date().toISOString(),
+    });
+
+    if (error) {
+      console.error("Error saving driver application:", error);
+      throw new Error("Failed to save driver application");
+    }
+
+    return {
+      success: true,
+      message: "Driver application submitted successfully",
+    };
+  } catch (error) {
+    console.error("Unexpected error:", error);
+    throw new Error(
+      "An unexpected error occurred while submitting your application. Please try again later.",
+    );
+  }
 }

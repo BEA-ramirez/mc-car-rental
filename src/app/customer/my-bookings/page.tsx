@@ -13,10 +13,8 @@ const TABS = ["All Trips", "Action Needed", "Upcoming", "Past History"];
 export default function MyBookingsPage() {
   const [activeTab, setActiveTab] = useState("All Trips");
 
-  // FETCH REAL DATA
   const { data: dbBookings, isLoading } = useCustomerBookings();
 
-  // ADAPT DB DATA TO UI SHAPE
   const formattedBookings = (dbBookings || []).map((b: any) => {
     // Calculate if they still owe money
     const balance = b.totalAmount - b.amountPaid;

@@ -238,9 +238,7 @@ export default function BookingCard({ booking }: BookingCardProps) {
           }
         }}
       >
-        {/* SCROLL FIX APPLIED HERE: max-h-[90vh] flex flex-col */}
         <DialogContent className="sm:max-w-xl rounded-3xl p-0 overflow-hidden border-slate-200 bg-white max-h-[90vh] flex flex-col">
-          {/* HEADER FIXED AT TOP: shrink-0 */}
           <DialogHeader className="p-6 bg-slate-50 border-b border-slate-100 shrink-0">
             <DialogTitle className="text-xl font-bold text-slate-900">
               Make a Payment
@@ -250,7 +248,6 @@ export default function BookingCard({ booking }: BookingCardProps) {
             </p>
           </DialogHeader>
 
-          {/* SCROLLABLE BODY: overflow-y-auto flex-1 */}
           <div className="p-6 overflow-y-auto flex-1 custom-scrollbar">
             {/* Payment Method Selector */}
             <div className="grid grid-cols-3 gap-3 mb-6 shrink-0">

@@ -143,3 +143,35 @@ export function ClientOverviewSkeleton() {
     </div>
   );
 }
+
+export function CarCardSkeleton() {
+  return (
+    <div className="bg-white rounded-3xl border border-slate-200 overflow-hidden flex flex-col h-[380px]">
+      <div className="relative h-44 w-full bg-slate-100 flex items-center justify-center border-b border-slate-100/50">
+        <Skeleton className="w-full h-full rounded-xl" />
+        <Skeleton className="absolute top-3 left-3 w-12 h-6 rounded-full" />
+      </div>
+
+      <div className="p-5 flex flex-col flex-1">
+        <div className="flex flex-col mb-3 space-y-2">
+          <Skeleton className="w-16 h-3 rounded-md" />
+          <Skeleton className="w-32 h-6 rounded-md" />
+        </div>
+
+        <div className="flex flex-wrap gap-1.5 mb-4 mt-auto">
+          <Skeleton className="w-12 h-6 rounded-md" />
+          <Skeleton className="w-16 h-6 rounded-md" />
+          <Skeleton className="w-14 h-6 rounded-md" />
+        </div>
+
+        <div className="pt-3 border-t border-slate-100 flex items-center justify-between mt-auto">
+          <div className="space-y-1">
+            <Skeleton className="w-16 h-3 rounded-md" />
+            <Skeleton className="w-24 h-6 rounded-md" />
+          </div>
+          <Skeleton className="w-20 h-9 rounded-xl" />
+        </div>
+      </div>
+    </div>
+  );
+}

@@ -9,36 +9,59 @@ import {
   CheckCircle2,
   ShieldAlert,
 } from "lucide-react";
+import { z } from "zod";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
+import { cn } from "@/lib/utils";
+import { useFleetPartnerApplication } from "../../../../hooks/use-fleetPartners";
+
+const PartnerSchema = z.object({
+  businessName: z.string().min(2, "Business or Owner Name is required"),
+  bankName: z.string().min(2, "Bank Name is required"),
+  bankAccountName: z.string().min(2, "Account Name is required"),
+  bankAccountNumber: z.string().min(5, "Valid Account Number is required"),
+});
+
+type PartnerFormValues = z.infer<typeof PartnerSchema>;
 
 export default function ListVehiclePage() {
   const router = useRouter();
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [agreed, setAgreed] = useState(false); // <-- Added agreement state
 
-  // Payout State (car_owner)
-  const [businessName, setBusinessName] = useState("");
-  const [bankName, setBankName] = useState("");
-  const [bankAccountName, setBankAccountName] = useState("");
-  const [bankAccountNumber, setBankAccountNumber] = useState("");
+  const { applyForFleetPartner, isApplying } = useFleetPartnerApplication();
 
-  const handleSubmit = async () => {
-    setIsSubmitting(true);
+  const form = useForm<PartnerFormValues>({
+    resolver: zodResolver(PartnerSchema),
+    defaultValues: {
+      businessName: "",
+      bankName: "",
+      bankAccountName: "",
+      bankAccountNumber: "",
+    },
+  });
+
+  console.log("Form Errors:", form.formState.errors);
+
+  const onSubmit = async (data: PartnerFormValues) => {
+    const submitData = new FormData();
+    submitData.append("businessName", data.businessName);
+    submitData.append("bankName", data.bankName);
+    submitData.append("bankAccountName", data.bankAccountName);
+    submitData.append("bankAccountNumber", data.bankAccountNumber);
+
     try {
-      // TODO:
-      // Insert into `car_owner` (with verification_status: 'pending')
-      // Note: We do NOT insert into `cars` here anymore. They do that in their dashboard later.
-      await new Promise((resolve) => setTimeout(resolve, 2000));
+      await applyForFleetPartner(submitData);
       setIsSuccess(true);
-    } finally {
-      setIsSubmitting(false);
+    } catch (error) {
+      // The hook's toast will handle the error message display
     }
   };
-
-  const isFormValid =
-    businessName && bankName && bankAccountName && bankAccountNumber;
 
   if (isSuccess) {
     return (
@@ -58,7 +81,7 @@ export default function ListVehiclePage() {
             <p className="text-xs font-bold text-blue-900 mb-1">
               What happens next?
             </p>
-            <p className="text-xs text-blue-800">
+            <p className="text-xs text-blue-800 leading-relaxed">
               Once approved, you will receive an email notification granting you
               access to the <strong>Fleet Partner Dashboard</strong>. From
               there, you will be able to add and manage your specific vehicles.
@@ -100,88 +123,147 @@ export default function ListVehiclePage() {
       </div>
 
       <div className="max-w-3xl mx-auto px-4 sm:px-6 -mt-14">
-        {/* Single Centered Column */}
-        <div className="bg-white rounded-3xl p-6 md:p-8 shadow-md border border-slate-100 mb-8">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="w-10 h-10 rounded-2xl bg-blue-50 flex items-center justify-center text-blue-600">
-              <Landmark className="w-5 h-5" />
-            </div>
-            <h2 className="text-xl font-bold text-slate-900">
-              Payout & Business Details
-            </h2>
-          </div>
-
-          <div className="space-y-6">
-            <div className="space-y-2">
-              <Label className="text-xs font-bold text-slate-500 uppercase tracking-widest">
-                Business or Owner Name
-              </Label>
-              <Input
-                value={businessName}
-                onChange={(e) => setBusinessName(e.target.value)}
-                placeholder="e.g. John Doe Rentals"
-                className="h-12 rounded-xl bg-slate-50 border-slate-200 focus-visible:ring-blue-500 font-medium"
-              />
+        <form onSubmit={form.handleSubmit(onSubmit)}>
+          <div className="bg-white rounded-3xl p-6 md:p-8 shadow-md border border-slate-100 mb-8">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-10 h-10 rounded-2xl bg-blue-50 flex items-center justify-center text-blue-600">
+                <Landmark className="w-5 h-5" />
+              </div>
+              <h2 className="text-xl font-bold text-slate-900">
+                Payout & Business Details
+              </h2>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-6">
               <div className="space-y-2">
                 <Label className="text-xs font-bold text-slate-500 uppercase tracking-widest">
-                  Bank / Wallet Name
+                  Business or Owner Name
                 </Label>
                 <Input
-                  value={bankName}
-                  onChange={(e) => setBankName(e.target.value)}
-                  placeholder="e.g. BDO, UnionBank, GCash"
-                  className="h-12 rounded-xl bg-slate-50 border-slate-200 focus-visible:ring-blue-500 font-medium"
+                  {...form.register("businessName")}
+                  placeholder="e.g. John Doe Rentals"
+                  className={cn(
+                    "h-12 rounded-xl bg-slate-50 border-slate-200 focus-visible:ring-blue-500 font-medium",
+                    form.formState.errors.businessName &&
+                      "border-red-500 focus-visible:ring-red-500",
+                  )}
                 />
+                {form.formState.errors.businessName && (
+                  <p className="text-xs text-red-500">
+                    {form.formState.errors.businessName.message}
+                  </p>
+                )}
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <Label className="text-xs font-bold text-slate-500 uppercase tracking-widest">
+                    Bank / Wallet Name
+                  </Label>
+                  <Input
+                    {...form.register("bankName")}
+                    placeholder="e.g. BDO, UnionBank, GCash"
+                    className={cn(
+                      "h-12 rounded-xl bg-slate-50 border-slate-200 focus-visible:ring-blue-500 font-medium",
+                      form.formState.errors.bankName &&
+                        "border-red-500 focus-visible:ring-red-500",
+                    )}
+                  />
+                  {form.formState.errors.bankName && (
+                    <p className="text-xs text-red-500">
+                      {form.formState.errors.bankName.message}
+                    </p>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-xs font-bold text-slate-500 uppercase tracking-widest">
+                    Account Name
+                  </Label>
+                  <Input
+                    {...form.register("bankAccountName")}
+                    placeholder="Registered Name"
+                    className={cn(
+                      "h-12 rounded-xl bg-slate-50 border-slate-200 focus-visible:ring-blue-500 font-medium",
+                      form.formState.errors.bankAccountName &&
+                        "border-red-500 focus-visible:ring-red-500",
+                    )}
+                  />
+                  {form.formState.errors.bankAccountName && (
+                    <p className="text-xs text-red-500">
+                      {form.formState.errors.bankAccountName.message}
+                    </p>
+                  )}
+                </div>
               </div>
 
               <div className="space-y-2">
                 <Label className="text-xs font-bold text-slate-500 uppercase tracking-widest">
-                  Account Name
+                  Account Number
                 </Label>
                 <Input
-                  value={bankAccountName}
-                  onChange={(e) => setBankAccountName(e.target.value)}
-                  placeholder="Registered Name"
-                  className="h-12 rounded-xl bg-slate-50 border-slate-200 focus-visible:ring-blue-500 font-medium"
+                  {...form.register("bankAccountNumber")}
+                  placeholder="1234 5678 9000"
+                  className={cn(
+                    "h-12 rounded-xl bg-slate-50 border-slate-200 focus-visible:ring-blue-500 font-medium font-mono text-lg tracking-wider",
+                    form.formState.errors.bankAccountNumber &&
+                      "border-red-500 focus-visible:ring-red-500",
+                  )}
                 />
+                {form.formState.errors.bankAccountNumber && (
+                  <p className="text-xs text-red-500">
+                    {form.formState.errors.bankAccountNumber.message}
+                  </p>
+                )}
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label className="text-xs font-bold text-slate-500 uppercase tracking-widest">
-                Account Number
-              </Label>
-              <Input
-                value={bankAccountNumber}
-                onChange={(e) => setBankAccountNumber(e.target.value)}
-                placeholder="1234 5678 9000"
-                className="h-12 rounded-xl bg-slate-50 border-slate-200 focus-visible:ring-blue-500 font-medium font-mono text-lg tracking-wider"
-              />
+            {/* Partnership Agreement Section --- */}
+            <div className="border-t border-slate-100 pt-8 mt-8">
+              <h2 className="text-lg font-bold text-slate-900 mb-4">
+                Partnership Agreement
+              </h2>
+              <div className="flex items-start space-x-3 p-4 bg-slate-50 rounded-xl border border-slate-100">
+                <Checkbox
+                  id="terms"
+                  checked={agreed}
+                  onCheckedChange={(c) => setAgreed(c as boolean)}
+                  className="mt-1 border-slate-300 data-[state=checked]:bg-blue-600"
+                />
+                <Label
+                  htmlFor="terms"
+                  className="text-sm text-slate-600 leading-relaxed cursor-pointer font-medium"
+                >
+                  I confirm that the information provided is accurate and I
+                  agree to the MC Ormoc Fleet Partner Terms of Service. I
+                  consent to the collection and processing of my business and
+                  banking details solely for payout purposes.
+                </Label>
+              </div>
+            </div>
+            {/* ---------------------------------------- */}
+          </div>
+
+          <div className="flex flex-col items-center">
+            {/* Added '!agreed' to the disabled prop */}
+            <Button
+              type="submit"
+              size="lg"
+              disabled={!form.formState.isValid || isApplying || !agreed}
+              className="w-full bg-slate-900 hover:bg-slate-800 text-white rounded-2xl h-14 font-bold text-base shadow-lg disabled:opacity-50 mb-4"
+            >
+              {isApplying ? "Processing..." : "Submit Partner Application"}
+            </Button>
+
+            <div className="flex items-center gap-2 text-[11px] text-slate-400 font-medium">
+              <ShieldAlert className="w-4 h-4 shrink-0" />
+              <p>
+                Your account must be approved before you can add vehicles to the
+                fleet.
+              </p>
             </div>
           </div>
-        </div>
-
-        <div className="flex flex-col items-center">
-          <Button
-            size="lg"
-            onClick={handleSubmit}
-            disabled={!isFormValid || isSubmitting}
-            className="w-full bg-slate-900 hover:bg-slate-800 text-white rounded-2xl h-14 font-bold text-base shadow-lg disabled:opacity-50 mb-4"
-          >
-            {isSubmitting ? "Processing..." : "Submit Partner Application"}
-          </Button>
-
-          <div className="flex items-center gap-2 text-[11px] text-slate-400 font-medium">
-            <ShieldAlert className="w-4 h-4 shrink-0" />
-            <p>
-              Your account must be approved before you can add vehicles to the
-              fleet.
-            </p>
-          </div>
-        </div>
+        </form>
       </div>
     </div>
   );
