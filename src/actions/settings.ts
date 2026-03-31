@@ -35,7 +35,7 @@ export async function getSystemSettings(keys: string[]) {
     },
     {} as Record<string, any>,
   );
-
+  console.dir(settingsMap, { depth: null }); // Log the entire settings map for debugging
   return settingsMap;
 }
 

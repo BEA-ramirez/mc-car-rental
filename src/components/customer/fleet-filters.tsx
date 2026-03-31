@@ -21,7 +21,7 @@ interface FleetFiltersProps {
   setFilters: (filters: FilterState) => void;
 }
 
-const TRANSMISSIONS = ["Any", "Automatic", "Manual"];
+const TRANSMISSIONS = ["Any", "Auto", "Manual", "CVT"];
 const SEATING_CAPACITIES = [
   { label: "Any", value: null },
   { label: "4+ Seats", value: 4 },
@@ -34,12 +34,10 @@ export default function FleetFilters({
   filters,
   setFilters,
 }: FleetFiltersProps) {
-  // Pull real vehicle types from DB settings
+  // Get vehicle types from the booking settings API
   const { data: settings, isLoading } = useBookingSettings();
 
   // Safely extract the active vehicle types from the settings object
-  // (Checking both variations just in case the hook mapping was missed)
-
   const rawVehicleTypes = settings?.vehicleTypes || [];
   const activeVehicleTypes = [
     { id: "all", label: "All", isActive: true },
@@ -79,7 +77,7 @@ export default function FleetFilters({
         />
       </div>
 
-      {/* Vehicle Type (Dynamic from DB) */}
+      {/* Vehicle Type */}
       <div className="mb-8">
         <h3 className="text-sm font-bold text-slate-900 mb-3 flex items-center justify-between">
           Vehicle Type
@@ -90,7 +88,7 @@ export default function FleetFilters({
           )}
         </h3>
         <div className="flex flex-wrap gap-2">
-          {/* If it's loading, we just show 'All' temporarily to avoid layout shifts */}
+          {/* If it's loading, show 'All' temporarily to avoid layout shifts */}
           {activeVehicleTypes.map((cat) => {
             const isActive = filters.type === cat.label;
             return (

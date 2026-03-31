@@ -25,7 +25,7 @@ import { cn } from "@/lib/utils";
 
 import { useUnits } from "../../../../hooks/use-units";
 
-// --- MOCK NOTIFICATIONS ---
+// Mock notifs
 const MOCK_NOTIFICATIONS = [
   {
     id: 1,
@@ -64,9 +64,9 @@ export default function CustomerFleetPage() {
   const formattedCars = units.map((unit: any) => {
     // Sort images so the primary image is ALWAYS first ---
     const sortedImages = [...(unit.images || [])].sort((a: any, b: any) => {
-      if (a.is_primary && !b.is_primary) return -1; // Move a to the front
-      if (!a.is_primary && b.is_primary) return 1; // Move b to the front
-      return 0; // Keep original order for the rest
+      if (a.is_primary && !b.is_primary) return -1;
+      if (!a.is_primary && b.is_primary) return 1;
+      return 0;
     });
 
     // Extract just the URLs into an array, fallback if empty
@@ -85,8 +85,44 @@ export default function CustomerFleetPage() {
       seats: unit.specifications?.passenger_capacity || 5,
       fuel: unit.specifications?.fuel_type || "Fuel",
       price: Number(unit.rental_rate_per_day) || 0,
-      images: imageUrls, // Now guaranteed to have the primary image at index 0!
+      images: imageUrls,
     };
+  });
+
+  const filteredCars = formattedCars.filter((car) => {
+    // Search Filter (Brand or Model)
+    if (filters.search) {
+      const searchTerm = filters.search.toLowerCase();
+      const matchesBrand = car.brand.toLowerCase().includes(searchTerm);
+      const matchesModel = car.model.toLowerCase().includes(searchTerm);
+      if (!matchesBrand && !matchesModel) return false;
+    }
+
+    // Vehicle Type Filter
+    if (filters.type !== "All" && car.type !== filters.type) {
+      return false;
+    }
+
+    // Transmission Filter
+    if (filters.transmission !== "Any") {
+      // Using includes allows "Auto" to match "Automatic"
+      const carTrans = car.transmission.toLowerCase();
+      const filterTrans = filters.transmission.toLowerCase();
+      if (!carTrans.includes(filterTrans)) return false;
+    }
+
+    // Seating Capacity Filter
+    if (filters.minSeating !== null && car.seats < filters.minSeating) {
+      return false;
+    }
+
+    // Max Price Filter
+    if (filters.maxPrice !== null && car.price > filters.maxPrice) {
+      return false;
+    }
+
+    // If it passes all checks, keep it in the array
+    return true;
   });
 
   const handleViewDetails = (car: any) => {
@@ -243,7 +279,8 @@ export default function CustomerFleetPage() {
                   <>
                     Showing{" "}
                     <span className="text-slate-900">
-                      {formattedCars.length}
+                      {/* Changed to filteredCars.length */}
+                      {filteredCars.length}
                     </span>{" "}
                     vehicles
                   </>
@@ -266,8 +303,9 @@ export default function CustomerFleetPage() {
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                {formattedCars.length > 0 ? (
-                  formattedCars.map((car: any) => (
+                {/* Check filteredCars instead of formattedCars */}
+                {filteredCars.length > 0 ? (
+                  filteredCars.map((car: any) => (
                     <CarCard
                       key={car.id}
                       car={car}
@@ -276,7 +314,8 @@ export default function CustomerFleetPage() {
                   ))
                 ) : (
                   <div className="col-span-full text-center py-12 text-slate-500">
-                    No vehicles available at the moment.
+                    No vehicles match your current filters. Try adjusting your
+                    search!
                   </div>
                 )}
               </div>

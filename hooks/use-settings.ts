@@ -8,7 +8,7 @@ const BOOKING_KEYS = [
   "business_hubs",
   "tax_settings",
   "payment_methods",
-  "vehicle_types", // <-- 1. ADD THIS KEY
+  "vehicle_types",
 ];
 
 export const useBookingSettings = () => {
@@ -21,7 +21,7 @@ export const useBookingSettings = () => {
         hubs: data.business_hubs || [],
         tax: data.tax_settings || {},
         payments: data.payment_methods || {},
-        vehicleTypes: data.vehicle_types || [], // <-- 2. EXPOSE IT TO THE UI
+        vehicleTypes: data.vehicle_types || [],
       };
     },
     // Reduced to 2 minutes so updates appear faster for admins
