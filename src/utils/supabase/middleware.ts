@@ -33,7 +33,7 @@ export async function updateSession(request: NextRequest) {
     },
   );
 
-  // Calling getUser() refreshes the session token if it is expired.
+  //Calling getUser() refreshes the session token if it is expired.
   const {
     data: { user },
   } = await supabase.auth.getUser();

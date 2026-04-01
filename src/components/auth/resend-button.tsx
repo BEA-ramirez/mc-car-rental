@@ -27,7 +27,7 @@ export function ResendButton({ email }: { email: string }) {
       <Button
         variant="outline"
         size="sm"
-        className="w-full rounded-sm"
+        className="w-full rounded-sm text-black/80 cursor-pointer"
         onClick={handleResend}
         disabled={loading}
       >

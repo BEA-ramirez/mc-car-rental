@@ -1,5 +1,7 @@
 "use client";
 
+import { useActionState } from "react";
+import { login, LoginState } from "@/actions/login";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -10,96 +12,154 @@ import {
   FieldSeparator,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-
-import { useActionState } from "react";
-import { login, LoginState } from "@/actions/login";
+import Link from "next/link";
+import { ArrowRight } from "lucide-react";
 
 const initialState: LoginState = {
+  success: false,
   errors: {},
   message: null,
 };
+
+// --- CUSTOM HIGH-END LOGO ---
+const PremiumLogo = () => (
+  <div className="relative w-7 h-7 flex items-center justify-center group cursor-pointer mx-auto mb-2">
+    <div className="absolute w-full h-full border-[1.5px] border-white/80 rounded-sm transform rotate-45 transition-transform duration-700 group-hover:rotate-90" />
+    <div className="absolute w-full h-full border-[1.5px] border-blue-500/80 rounded-sm transform -rotate-45 transition-transform duration-700 group-hover:-rotate-90" />
+    <span className="relative z-10 text-[9px] font-black text-white tracking-tighter">
+      M
+    </span>
+  </div>
+);
 
 export function LoginForm({
   className,
   ...props
 }: React.ComponentProps<"form">) {
   const [state, formAction, isPending] = useActionState(login, initialState);
+
   return (
     <form
       action={formAction}
-      className={cn("flex flex-col gap-6", className)}
+      className={cn("flex flex-col w-full", className)}
       {...props}
     >
-      <FieldGroup>
-        <div className="flex flex-col items-center gap-1 text-center">
-          <h1 className="text-2xl font-bold">Login to your account</h1>
-          <p className="text-muted-foreground text-sm text-balance">
-            Enter your email below to login to your account
+      {/* Reduced internal padding to p-6 to keep it compact vertically */}
+      <FieldGroup className="border border-white/5 bg-white/[0.02] backdrop-blur-2xl shadow-2xl p-6 rounded-2xl w-full relative overflow-hidden">
+        {/* Subtle inner top glow for the glass effect */}
+        <div className="absolute top-0 left-0 w-full h-1/3 bg-gradient-to-b from-white/5 to-transparent pointer-events-none" />
+
+        {/* Tighter margins (mb-4 instead of mb-6) */}
+        <div className="relative z-10 flex flex-col gap-1 text-center mb-4">
+          <PremiumLogo />
+          <h1 className="text-2xl font-light text-white tracking-tight">
+            Client{" "}
+            <span className="italic font-normal text-white/50">Access.</span>
+          </h1>
+          <p className="text-white/40 text-[9px] font-medium uppercase tracking-[0.2em] mt-0.5">
+            Authenticate to continue
           </p>
         </div>
+
         {state.message && (
-          <div className="p-3 text-sm text-red-500 bg-red-50 border border-red-200 rounded-md text-center">
+          <div className="relative z-10 p-2 mb-3 text-[10px] font-medium uppercase tracking-wider text-red-400 bg-red-950/20 border border-red-900/50 rounded-sm backdrop-blur-sm text-center">
             {state.message}
           </div>
         )}
-        <Field>
-          <FieldLabel htmlFor="email">Email</FieldLabel>
-          <Input
-            id="email"
-            name="email"
-            type="email"
-            placeholder="m@example.com"
-            required
-            className={state.errors?.email ? "border-red-500" : ""}
-          />
-          {state.errors?.email && (
-            <p className="text-xs text-red-500 mt-1">{state.errors.email[0]}</p>
-          )}
-        </Field>
-        <Field>
-          <div className="flex items-center">
-            <FieldLabel htmlFor="password">Password</FieldLabel>
-            <a
-              href="#"
-              className="ml-auto text-sm underline-offset-4 hover:underline"
+
+        {/* Tighter spacing between fields (space-y-3 instead of space-y-4) */}
+        <div className="relative z-10 space-y-3">
+          <Field className="space-y-1">
+            <FieldLabel
+              htmlFor="email"
+              className="text-[9px] font-medium uppercase tracking-[0.2em] text-slate-500"
             >
-              Forgot your password?
-            </a>
-          </div>
-          <Input
-            id="password"
-            name="password"
-            type="password"
-            required
-            className={state.errors?.password ? "border-red-500" : ""}
-          />
-          {state.errors?.password && (
-            <p className="text-xs text-red-500 mt-1">
-              {state.errors.password[0]}
-            </p>
-          )}
-        </Field>
-        <Field>
-          <Button type="submit" disabled={isPending}>
-            {isPending ? "Loggin in..." : "Login"}
+              Email Address
+            </FieldLabel>
+            {/* Reduced height (h-10 instead of h-11) */}
+            <Input
+              id="email"
+              name="email"
+              type="email"
+              placeholder="client@example.com"
+              required
+              className={cn(
+                "h-10 bg-white/5 border-white/10 text-white placeholder:text-white/20 rounded-lg focus-visible:ring-1 focus-visible:ring-blue-500 focus-visible:border-blue-500 transition-all duration-300",
+                state.errors?.email &&
+                  "border-red-500/50 focus-visible:ring-red-500",
+              )}
+            />
+            {state.errors?.email && (
+              <p className="text-[9px] text-red-400 mt-1 uppercase tracking-wider">
+                {state.errors.email[0]}
+              </p>
+            )}
+          </Field>
+
+          <Field className="space-y-1">
+            <div className="flex justify-between items-end mb-1">
+              <FieldLabel
+                htmlFor="password"
+                className="text-[9px] font-medium uppercase tracking-[0.2em] text-slate-500"
+              >
+                Secure Password
+              </FieldLabel>
+              <a
+                href="#"
+                className="text-[8px] text-white/30 hover:text-white transition-colors uppercase tracking-widest"
+              >
+                Reset Password
+              </a>
+            </div>
+            {/* Reduced height (h-10 instead of h-11) */}
+            <Input
+              id="password"
+              name="password"
+              type="password"
+              placeholder="••••••••"
+              required
+              className={cn(
+                "h-10 bg-white/5 border-white/10 text-white placeholder:text-white/20 rounded-lg focus-visible:ring-1 focus-visible:ring-blue-500 focus-visible:border-blue-500 transition-all duration-300",
+                state.errors?.password &&
+                  "border-red-500/50 focus-visible:ring-red-500",
+              )}
+            />
+            {state.errors?.password && (
+              <p className="text-[9px] text-red-400 mt-1 uppercase tracking-wider">
+                {state.errors.password[0]}
+              </p>
+            )}
+          </Field>
+        </div>
+
+        {/* Tighter margin-top (mt-4 instead of mt-6) */}
+        <Field className="relative z-10 mt-4">
+          {/* Reduced height (h-10 instead of h-12) */}
+          <Button
+            type="submit"
+            disabled={isPending}
+            className="w-full h-10 bg-white text-[#0A0C10] hover:bg-blue-600 hover:text-white rounded-lg font-bold text-[9px] uppercase tracking-[0.3em] transition-all duration-500 group"
+          >
+            {isPending ? (
+              "Authenticating..."
+            ) : (
+              <span className="flex items-center gap-3">
+                Authenticate{" "}
+                <ArrowRight className="w-3 h-3 group-hover:translate-x-1 transition-transform" />
+              </span>
+            )}
           </Button>
         </Field>
-        <FieldSeparator>Or continue with</FieldSeparator>
-        <Field>
-          <Button variant="outline" type="button">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-              <path
-                d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"
-                fill="currentColor"
-              />
-            </svg>
-            Login with GitHub
-          </Button>
-          <FieldDescription className="text-center">
-            Don&apos;t have an account?{" "}
-            <a href="/auth/signup" className="underline underline-offset-4">
-              Sign up
-            </a>
+
+        <Field className="relative z-10 text-center">
+          <FieldDescription className="text-[9px] text-white/40 font-light">
+            Require credentials?{" "}
+            <Link
+              href="/auth/signup"
+              className="text-blue-400 hover:text-white font-medium transition-colors ml-1 uppercase tracking-widest"
+            >
+              Register Here
+            </Link>
           </FieldDescription>
         </Field>
       </FieldGroup>

@@ -183,7 +183,7 @@ export default function LandingPage() {
         </div>
       </nav>
 
-      {/* --- 1. HERO SECTION (Floating Wheel Concept) --- */}
+      {/* HERO SECTION (Floating Wheel Concept)  */}
       <section className="relative min-h-screen flex flex-col justify-center bg-[#0A0C10] overflow-hidden pt-16 lg:pt-0">
         {/* Subtle Ambient Background */}
         <div className="absolute inset-0 z-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-blue-900/10 via-[#0A0C10] to-[#0A0C10]" />
@@ -224,7 +224,7 @@ export default function LandingPage() {
               vehicles, zero friction, absolute discretion.
             </motion.p>
 
-            {/* Premium Search Bar */}
+            {/* Search Bar */}
             <motion.form
               variants={fadeUp}
               onSubmit={handleSearch}

@@ -1,4 +1,5 @@
 "use client";
+
 import { useActionState } from "react";
 import { signup, SignupState } from "@/actions/signup";
 import { cn } from "@/lib/utils";
@@ -8,9 +9,10 @@ import {
   FieldDescription,
   FieldGroup,
   FieldLabel,
-  FieldSeparator,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import Link from "next/link";
+import { ArrowRight } from "lucide-react";
 
 const initialState: SignupState = {
   message: null,
@@ -26,106 +28,176 @@ export function SignupForm({
   return (
     <form
       action={formAction}
-      className={cn("flex flex-col gap-6", className)}
+      className={cn("flex flex-col w-full", className)}
       {...props}
     >
-      <FieldGroup>
-        <div className="flex flex-col items-center gap-1 text-center">
-          <h1 className="text-2xl font-bold">Create your account</h1>
-          <p className="text-muted-foreground text-sm text-balance">
-            Fill in the form below to create your account
+      {/* Reduced padding (p-6 md:p-8) to save vertical space */}
+      <FieldGroup className="border border-white/5 bg-white/[0.02] backdrop-blur-2xl shadow-2xl p-6 md:p-8 rounded-2xl w-full">
+        {/* Tighter margins (mb-6) and simplified clear text */}
+        <div className="flex flex-col gap-1 text-left mb-6">
+          <h1 className="text-2xl md:text-3xl font-light text-white tracking-tight">
+            Create{" "}
+            <span className="italic font-normal text-white/50">Account.</span>
+          </h1>
+          <p className="text-white/40 text-[9px] font-medium uppercase tracking-[0.2em] mt-1">
+            Enter your details below
           </p>
         </div>
 
         {state.message && (
-          <div className="p-3 text-sm text-red-500 bg-red-50 border border-red-200 rounded-md">
+          <div className="p-2 mb-4 text-[9px] font-medium uppercase tracking-wider text-red-400 bg-red-950/20 border border-red-900/50 rounded-sm backdrop-blur-sm text-center">
             {state.message}
           </div>
         )}
 
-        <Field>
-          <FieldLabel htmlFor="name">Full Name</FieldLabel>
-          <Input
-            id="name"
-            name="name"
-            type="text"
-            placeholder="John Doe"
-            required
-            className={state.errors?.name ? "border-red-500" : ""}
-          />
-          {state.errors?.name && (
-            <p className="text-xs text-red-500 mt-1">{state.errors.name[0]}</p>
-          )}
-        </Field>
-        <Field>
-          <FieldLabel htmlFor="email">Email</FieldLabel>
-          <Input
-            id="email"
-            name="email"
-            type="email"
-            placeholder="m@example.com"
-            required
-            className={state.errors?.email ? "border-red-500" : ""}
-          />
-          {state.errors?.email && (
-            <p className="text-xs text-red-500 mt-1">{state.errors.email[0]}</p>
-          )}
-        </Field>
-        <Field>
-          <FieldLabel htmlFor="password">Password</FieldLabel>
-          <Input
-            id="password"
-            name="password"
-            type="password"
-            required
-            className={state.errors?.password ? "border-red-500" : ""}
-          />
-          {state.errors?.password ? (
-            <p className="text-xs text-red-500 mt-1">
-              {state.errors.password[0]}
-            </p>
-          ) : (
-            <FieldDescription>
-              Must be at least 8 characters long.
-            </FieldDescription>
-          )}
-        </Field>
-        <Field>
-          <FieldLabel htmlFor="confirm-password">Confirm Password</FieldLabel>
-          <Input
-            id="confirm-password"
-            name="confirm-password"
-            type="password"
-            required
-            className={state.errors?.confirmPassword ? "border-red-500" : ""}
-          />
-          {state.errors?.confirmPassword && (
-            <p className="text-xs text-red-500 mt-1">
-              {state.errors.confirmPassword[0]}
-            </p>
-          )}
-          <FieldDescription>Please confirm your password.</FieldDescription>
-        </Field>
-        <Field>
-          <Button type="submit" disabled={isPending}>
-            {isPending ? "Creating account..." : "Sign Up"}
-          </Button>
-        </Field>
-        <FieldSeparator>Or continue with</FieldSeparator>
-        <Field>
-          <Button variant="outline" type="button">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-              <path
-                d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"
-                fill="currentColor"
+        {/* Tighter spacing between input rows (space-y-4 instead of 5) */}
+        <div className="space-y-4">
+          {/* Row 1: Name and Email side-by-side */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Field className="space-y-1.5">
+              <FieldLabel
+                htmlFor="name"
+                className="text-[9px] font-medium uppercase tracking-[0.2em] text-slate-500"
+              >
+                Full Name
+              </FieldLabel>
+              {/* Shorter inputs (h-10 instead of h-11) */}
+              <Input
+                id="name"
+                name="name"
+                type="text"
+                placeholder="e.g. John Doe"
+                required
+                className={cn(
+                  "h-10 bg-white/5 border-white/10 text-white placeholder:text-white/20 rounded-lg focus-visible:ring-1 focus-visible:ring-blue-500 focus-visible:border-blue-500 transition-all duration-300",
+                  state.errors?.name &&
+                    "border-red-500/50 focus-visible:ring-red-500",
+                )}
               />
-            </svg>
-            Sign up with GitHub
+              {state.errors?.name && (
+                <p className="text-[9px] text-red-400 mt-1 uppercase tracking-wider">
+                  {state.errors.name[0]}
+                </p>
+              )}
+            </Field>
+
+            <Field className="space-y-1.5">
+              <FieldLabel
+                htmlFor="email"
+                className="text-[9px] font-medium uppercase tracking-[0.2em] text-slate-500"
+              >
+                Email Address
+              </FieldLabel>
+              <Input
+                id="email"
+                name="email"
+                type="email"
+                placeholder="m@example.com"
+                required
+                className={cn(
+                  "h-10 bg-white/5 border-white/10 text-white placeholder:text-white/20 rounded-lg focus-visible:ring-1 focus-visible:ring-blue-500 focus-visible:border-blue-500 transition-all duration-300",
+                  state.errors?.email &&
+                    "border-red-500/50 focus-visible:ring-red-500",
+                )}
+              />
+              {state.errors?.email && (
+                <p className="text-[9px] text-red-400 mt-1 uppercase tracking-wider">
+                  {state.errors.email[0]}
+                </p>
+              )}
+            </Field>
+          </div>
+
+          {/* Row 2: Passwords side-by-side */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Field className="space-y-1.5">
+              <FieldLabel
+                htmlFor="password"
+                className="text-[9px] font-medium uppercase tracking-[0.2em] text-slate-500"
+              >
+                Password
+              </FieldLabel>
+              <Input
+                id="password"
+                name="password"
+                type="password"
+                placeholder="••••••••"
+                required
+                className={cn(
+                  "h-10 bg-white/5 border-white/10 text-white placeholder:text-white/20 rounded-lg focus-visible:ring-1 focus-visible:ring-blue-500 focus-visible:border-blue-500 transition-all duration-300",
+                  state.errors?.password &&
+                    "border-red-500/50 focus-visible:ring-red-500",
+                )}
+              />
+              {state.errors?.password ? (
+                <p className="text-[9px] text-red-400 mt-1 uppercase tracking-wider">
+                  {state.errors.password[0]}
+                </p>
+              ) : (
+                <FieldDescription className="text-[9px] text-white/30 font-light mt-1">
+                  At least 8 characters.
+                </FieldDescription>
+              )}
+            </Field>
+
+            <Field className="space-y-1.5">
+              <FieldLabel
+                htmlFor="confirm-password"
+                className="text-[9px] font-medium uppercase tracking-[0.2em] text-slate-500"
+              >
+                Confirm Password
+              </FieldLabel>
+              <Input
+                id="confirm-password"
+                name="confirm-password"
+                type="password"
+                placeholder="••••••••"
+                required
+                className={cn(
+                  "h-10 bg-white/5 border-white/10 text-white placeholder:text-white/20 rounded-lg focus-visible:ring-1 focus-visible:ring-blue-500 focus-visible:border-blue-500 transition-all duration-300",
+                  state.errors?.confirmPassword &&
+                    "border-red-500/50 focus-visible:ring-red-500",
+                )}
+              />
+              {state.errors?.confirmPassword && (
+                <p className="text-[9px] text-red-400 mt-1 uppercase tracking-wider">
+                  {state.errors.confirmPassword[0]}
+                </p>
+              )}
+            </Field>
+          </div>
+        </div>
+
+        {/* Tighter top margin for the button (mt-6) and shorter button height (h-10) */}
+        <Field className="mt-6">
+          <Button
+            type="submit"
+            disabled={isPending}
+            className="w-full h-10 bg-white text-[#0A0C10] hover:bg-blue-600 hover:text-white rounded-lg font-bold text-[10px] uppercase tracking-[0.3em] transition-all duration-500 group"
+          >
+            {isPending ? (
+              "Creating..."
+            ) : (
+              <span className="flex items-center gap-3">
+                Create Account{" "}
+                <ArrowRight className="w-3 h-3 group-hover:translate-x-1 transition-transform" />
+              </span>
+            )}
           </Button>
-          <FieldDescription className="px-6 text-center">
-            Already have an account? <a href="#">Sign in</a>
-          </FieldDescription>
         </Field>
+
+        {/* Tighter bottom text section */}
+        <div className="mt-6 text-center">
+          <FieldDescription className="text-[10px] text-white/40 font-light">
+            Already have an account?{" "}
+            <Link
+              href="/auth/login"
+              className="text-blue-400 hover:text-white transition-colors font-medium ml-1 uppercase tracking-widest"
+            >
+              Log In
+            </Link>
+          </FieldDescription>
+        </div>
       </FieldGroup>
     </form>
   );
