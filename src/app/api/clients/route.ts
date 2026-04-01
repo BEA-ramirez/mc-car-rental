@@ -7,7 +7,7 @@ export async function GET(request: NextRequest) {
     const supabase = await createClient();
     const { searchParams } = new URL(request.url);
 
-    // 1. Grab all parameters
+    // Grab all parameters
     const page = parseInt(searchParams.get("page") || "1");
     const limit = parseInt(searchParams.get("limit") || "10");
     const search = searchParams.get("search") || "";
@@ -15,19 +15,19 @@ export async function GET(request: NextRequest) {
     const roleParam = searchParams.get("role") || "";
     const isExport = searchParams.get("export") === "true";
 
-    // 2. Base Query with joined documents
+    // Base Query with joined documents
     let query = supabase
       .from("users")
       .select("*, documents(*)", { count: "exact" })
       .eq("is_archived", false)
       .order("created_at", { ascending: false });
 
-    // 3. Apply Search
+    // Apply Search
     if (search) {
       query = query.or(`full_name.ilike.%${search}%,email.ilike.%${search}%`);
     }
 
-    // 4. Apply Array Filters
+    // Apply Array Filters
     if (statusParam) {
       const statuses = statusParam.split(",");
       query = query.in("account_status", statuses);
@@ -38,19 +38,19 @@ export async function GET(request: NextRequest) {
       query = query.in("role", roles);
     }
 
-    // 5. Apply Pagination (Skip if Exporting)
+    // Apply Pagination (Skip if Exporting)
     if (!isExport) {
       const from = (page - 1) * limit;
       const to = from + limit - 1;
       query = query.range(from, to);
     }
 
-    // 6. Execute!
+    // Execute query
     const { data, count, error } = await query;
 
     if (error) throw error;
 
-    // 7. Flatten the data & fetch URLs (Now much faster because it only processes 10 items!)
+    // Flatten the data & fetch URLs
     const formattedUsers = await Promise.all(
       (data || []).map(async (user) => {
         const licenseDoc = user.documents?.find(
@@ -80,7 +80,7 @@ export async function GET(request: NextRequest) {
       }),
     );
 
-    // 8. Return formatted users + pagination math
+    // Return formatted users + pagination calcs
     return NextResponse.json(
       {
         users: formattedUsers,

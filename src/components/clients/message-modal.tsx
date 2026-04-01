@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Mail, X, Send, Loader2, Info } from "lucide-react";
-import { useClients } from "../../../hooks/use-clients"; // Adjust path if needed
+import { useClients } from "../../../hooks/use-clients";
 import { cn } from "@/lib/utils";
 
 interface MessageModalProps {
@@ -29,8 +29,7 @@ export default function MessageModal({
   recipientName,
   recipientEmail,
 }: MessageModalProps) {
-  // --- NEW: Destructure the custom email functions from your hook ---
-  const { sendCustomEmail, isSendingCustomEmail } = useClients();
+  const { sendCustomEmail, isSendingCustomEmail } = useClients(null);
 
   const [subject, setSubject] = useState("");
   const [message, setMessage] = useState("");
@@ -48,7 +47,6 @@ export default function MessageModal({
     if (!subject.trim() || !message.trim()) return;
 
     try {
-      // --- UPDATED: Call the actual mutation ---
       await sendCustomEmail({
         userId,
         subject,
@@ -64,7 +62,7 @@ export default function MessageModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-[550px] p-0 overflow-hidden border-slate-200 shadow-2xl rounded-sm flex flex-col [&>button.absolute]:hidden bg-white">
+      <DialogContent className="sm:max-w-137.5 p-0 overflow-hidden border-slate-200 shadow-2xl rounded-sm flex flex-col [&>button.absolute]:hidden bg-white">
         {/* CUSTOM HIGH-CONTRAST HEADER */}
         <DialogHeader className="px-5 py-4 border-b border-slate-200 bg-white shrink-0 flex flex-row items-center justify-between">
           <div className="flex items-center gap-3">
@@ -114,7 +112,7 @@ export default function MessageModal({
             <div className="space-y-1.5">
               <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center justify-between">
                 Subject
-                <span className="text-red-500 text-[9px] lowercase normal-case font-medium">
+                <span className="text-red-500 text-[9px] normal-case font-medium">
                   *
                 </span>
               </label>
@@ -133,13 +131,13 @@ export default function MessageModal({
             <div className="space-y-1.5">
               <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center justify-between">
                 Message Body
-                <span className="text-red-500 text-[9px] lowercase normal-case font-medium">
+                <span className="text-red-500 text-[9px] normal-case font-medium">
                   *
                 </span>
               </label>
               <Textarea
                 placeholder="Type your message here..."
-                className="min-h-[160px] text-xs shadow-sm border-slate-200 rounded-sm resize-none focus-visible:ring-blue-500 leading-relaxed"
+                className="min-h-40 text-xs shadow-sm border-slate-200 rounded-sm resize-none focus-visible:ring-blue-500 leading-relaxed"
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
                 disabled={isSendingCustomEmail}
@@ -173,7 +171,7 @@ export default function MessageModal({
               disabled={
                 isSendingCustomEmail || !subject.trim() || !message.trim()
               }
-              className="h-9 min-w-[130px] text-[10px] font-bold uppercase tracking-widest rounded-sm shadow-none bg-blue-600 text-white hover:bg-blue-700 transition-colors"
+              className="h-9 min-w-32.5 text-[10px] font-bold uppercase tracking-widest rounded-sm shadow-none bg-blue-600 text-white hover:bg-blue-700 transition-colors"
             >
               {isSendingCustomEmail ? (
                 <Loader2 className="w-3.5 h-3.5 mr-2 animate-spin" />

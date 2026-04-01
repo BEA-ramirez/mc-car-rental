@@ -26,7 +26,6 @@ export interface KpiData {
   active_drivers: number;
 }
 
-// --- NEW: Define payloads for fetching ---
 export interface FetchClientsParams {
   page: number;
   limit: number;
@@ -42,7 +41,6 @@ export interface FetchClientsResponse {
   currentPage: number;
 }
 
-// --- Define payloads for the multiple arguments ---
 interface VerifyPayload {
   userId: string;
   licenseExpiry: string;
@@ -62,7 +60,6 @@ interface SendCustomEmailPayload {
   body: string;
 }
 
-// --- UPDATED: Fetch function to handle parameters ---
 const fetchClients = async (
   params: FetchClientsParams,
 ): Promise<FetchClientsResponse> => {
@@ -88,14 +85,14 @@ const fetchClients = async (
   return await response.json();
 };
 
-// --- UPDATED: The Hook now accepts parameters ---
-export const useClients = (params: FetchClientsParams) => {
+export const useClients = (params: FetchClientsParams | null) => {
   const queryClient = useQueryClient();
 
   const query = useQuery({
     // Adding params to the queryKey forces a refetch when a parameter changes!
     queryKey: ["clients", params],
-    queryFn: () => fetchClients(params),
+    queryFn: () => fetchClients(params!),
+    enabled: !!params, // Don't run the query until we have params
     placeholderData: keepPreviousData, // Keeps old data on screen while fetching the next page
     staleTime: 60 * 1000,
   });
@@ -231,15 +228,14 @@ export const useClients = (params: FetchClientsParams) => {
 
   return {
     ...query,
-    // --- NEW: Safe fallbacks in case data is still loading ---
     data: query.data?.users || [],
     totalCount: query.data?.totalCount || 0,
     totalPages: query.data?.totalPages || 1,
 
     saveClient: saveMutation.mutateAsync,
     isSaving: saveMutation.isPending,
-    deleteClient: deleteMutation.mutate,
-    bulkDelete: bulkDeleteMutation.mutate,
+    deleteClient: deleteMutation.mutateAsync,
+    bulkDelete: bulkDeleteMutation.mutateAsync,
     isDeleting: deleteMutation.isPending || bulkDeleteMutation.isPending,
     verifyApplicant: verifyMutation.mutateAsync,
     isVerifying: verifyMutation.isPending,

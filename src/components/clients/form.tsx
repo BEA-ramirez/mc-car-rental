@@ -52,7 +52,7 @@ export function ClientForm({ data: rawData, closeDialog }: ClientFormProps) {
 
   console.log("Raw data", rawData);
 
-  const { saveClient, isSaving } = useClients();
+  const { saveClient, isSaving } = useClients(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [files, setFiles] = useState<any>({});
   const [documentsToDelete, setDocumentsToDelete] = useState<string[]>([]);
@@ -200,7 +200,7 @@ export function ClientForm({ data: rawData, closeDialog }: ClientFormProps) {
     <FormProvider {...methods}>
       <form
         onSubmit={methods.handleSubmit(onSubmit)}
-        className="flex flex-col h-[85vh] sm:h-[650px] bg-white relative text-slate-800 overflow-hidden"
+        className="flex flex-col h-[85vh] sm:h-162.5 bg-white relative text-slate-800 overflow-hidden"
       >
         {/* --- CUSTOM HIGH-CONTRAST HEADER --- */}
         <div className="px-5 py-4 border-b border-slate-200 bg-white shrink-0 flex flex-row items-center justify-between">
@@ -466,7 +466,7 @@ export function ClientForm({ data: rawData, closeDialog }: ClientFormProps) {
                     Complete Address
                   </label>
                   <Textarea
-                    className="text-xs shadow-sm resize-none min-h-[100px] border-slate-200 rounded-sm"
+                    className="text-xs shadow-sm resize-none min-h-25 border-slate-200 rounded-sm"
                     {...methods.register("address")}
                   />
                   {methods.formState.errors.address && (
@@ -498,7 +498,7 @@ export function ClientForm({ data: rawData, closeDialog }: ClientFormProps) {
                       <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center justify-between">
                         License Number
                         {methods.formState.errors.license_number && (
-                          <span className="text-red-500 text-[9px] font-medium lowercase normal-case">
+                          <span className="text-red-500 text-[9px] font-medium normal-case">
                             Required
                           </span>
                         )}
@@ -533,7 +533,7 @@ export function ClientForm({ data: rawData, closeDialog }: ClientFormProps) {
                     />
 
                     {files.license_id_url ? (
-                      <div className="border border-slate-300 rounded-sm h-full min-h-[90px] flex flex-col items-center justify-center bg-white p-3 text-center gap-2 relative shadow-sm">
+                      <div className="border border-slate-300 rounded-sm h-full min-h-22.5 flex flex-col items-center justify-center bg-white p-3 text-center gap-2 relative shadow-sm">
                         <FileBadge className="w-6 h-6 text-emerald-600" />
                         <span className="text-[10px] font-medium text-slate-700 break-all">
                           {files.license_id_url.name}
@@ -549,7 +549,7 @@ export function ClientForm({ data: rawData, closeDialog }: ClientFormProps) {
                         </Button>
                       </div>
                     ) : rawData?.license_id_url ? (
-                      <div className="border border-slate-300 rounded-sm h-full min-h-[90px] flex flex-col items-center justify-center bg-white p-3 text-center gap-2 shadow-sm">
+                      <div className="border border-slate-300 rounded-sm h-full min-h-22.5 flex flex-col items-center justify-center bg-white p-3 text-center gap-2 shadow-sm">
                         <a
                           href={rawData.license_id_url}
                           target="_blank"
@@ -571,7 +571,7 @@ export function ClientForm({ data: rawData, closeDialog }: ClientFormProps) {
                       </div>
                     ) : (
                       <div
-                        className="border border-dashed border-slate-300 rounded-sm h-full min-h-[90px] flex flex-col items-center justify-center bg-white hover:bg-slate-50 transition-colors cursor-pointer p-4 text-center group"
+                        className="border border-dashed border-slate-300 rounded-sm h-full min-h-22.5 flex flex-col items-center justify-center bg-white hover:bg-slate-50 transition-colors cursor-pointer p-4 text-center group"
                         onClick={() => licenseInputRef.current?.click()}
                       >
                         <UploadCloud className="w-5 h-5 text-slate-400 group-hover:text-slate-600 mb-1.5 transition-colors" />
@@ -627,7 +627,7 @@ export function ClientForm({ data: rawData, closeDialog }: ClientFormProps) {
                     />
 
                     {files.valid_id_url ? (
-                      <div className="border border-slate-300 rounded-sm h-full min-h-[90px] flex flex-col items-center justify-center bg-white p-3 text-center gap-2 relative shadow-sm">
+                      <div className="border border-slate-300 rounded-sm h-full min-h-22.5 flex flex-col items-center justify-center bg-white p-3 text-center gap-2 relative shadow-sm">
                         <FileBadge className="w-6 h-6 text-emerald-600" />
                         <span className="text-[10px] font-medium text-slate-700 break-all">
                           {files.valid_id_url.name}
@@ -643,7 +643,7 @@ export function ClientForm({ data: rawData, closeDialog }: ClientFormProps) {
                         </Button>
                       </div>
                     ) : rawData?.valid_id_url ? (
-                      <div className="border border-slate-300 rounded-sm h-full min-h-[90px] flex flex-col items-center justify-center bg-white p-3 text-center gap-2 shadow-sm">
+                      <div className="border border-slate-300 rounded-sm h-full min-h-22.5 flex flex-col items-center justify-center bg-white p-3 text-center gap-2 shadow-sm">
                         <a
                           href={rawData.valid_id_url}
                           target="_blank"
@@ -665,7 +665,7 @@ export function ClientForm({ data: rawData, closeDialog }: ClientFormProps) {
                       </div>
                     ) : (
                       <div
-                        className="border border-dashed border-slate-300 rounded-sm h-full min-h-[90px] flex flex-col items-center justify-center bg-white hover:bg-slate-50 transition-colors cursor-pointer p-4 text-center group"
+                        className="border border-dashed border-slate-300 rounded-sm h-full min-h-22.5 flex flex-col items-center justify-center bg-white hover:bg-slate-50 transition-colors cursor-pointer p-4 text-center group"
                         onClick={() => validInputRef.current?.click()}
                       >
                         <UploadCloud className="w-5 h-5 text-slate-400 group-hover:text-slate-600 mb-1.5 transition-colors" />
@@ -694,7 +694,7 @@ export function ClientForm({ data: rawData, closeDialog }: ClientFormProps) {
           <Button
             type="submit"
             disabled={isSubmitting}
-            className="h-9 min-w-[120px] text-[10px] font-bold uppercase tracking-widest rounded-sm shadow-none bg-slate-900 text-white hover:bg-slate-800"
+            className="h-9 min-w-30 text-[10px] font-bold uppercase tracking-widest rounded-sm shadow-none bg-slate-900 text-white hover:bg-slate-800"
           >
             {isSubmitting ? (
               <Loader2 className="w-3.5 h-3.5 mr-2 animate-spin" />

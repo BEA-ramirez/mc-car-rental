@@ -79,12 +79,10 @@ export default function AdminLayout({
             </BreadcrumbList>
           </Breadcrumb>
 
-          {/* 3. RIGHT ACTIONS CLUSTER */}
+          {/* RIGHT ACTIONS CLUSTER */}
           <div className="flex items-center gap-2">
-            {/* INJECT THE MODAL COMPONENT HERE! */}
             <CarCatalogueModal />
 
-            {/* Subtle Divider */}
             <div className="h-4 w-px bg-slate-200 mx-1 hidden sm:block" />
 
             {/* Notifications */}

@@ -76,10 +76,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       className="border-r border-slate-200 bg-white"
       {...props}
     >
-      {/* FIX 1: Changed p-4 to p-3, and added group-data-[collapsible=icon]:p-2
+      {/* Changed p-4 to p-3, and added group-data-[collapsible=icon]:p-2
         This gives the logo enough room to perfectly center when collapsed!
       */}
-      <SidebarHeader className="p-3 group-data-[collapsible=icon]:p-2 border-b border-slate-100 bg-white transition-all duration-200">
+      <SidebarHeader className="p-3 group-data-[collapsible=icon]:p-2  border-slate-100 bg-white transition-all duration-200">
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton

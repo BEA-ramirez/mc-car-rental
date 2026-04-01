@@ -2,11 +2,10 @@
 import { User, IdCard, Car, Handshake, LifeBuoy, RotateCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ClientOverviewSkeleton } from "../skeletons";
-import { useClientsKpi } from "../../../hooks/use-clients"; // Adjust path as needed
+import { useClientsKpi } from "../../../hooks/use-clients";
 import { format } from "date-fns";
 
 export default function ClientsOverview() {
-  // --- NEW: Consume the React Query hook ---
   const {
     data: kpiData,
     isLoading,

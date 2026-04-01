@@ -116,7 +116,7 @@ export default function ReviewModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-[90vw] xl:max-w-[1100px] p-0 overflow-hidden border-slate-200 shadow-2xl rounded-sm flex flex-col h-[85vh] [&>button.absolute]:hidden bg-slate-50">
+      <DialogContent className="max-w-[90vw] xl:max-w-275 p-0 overflow-hidden border-slate-200 shadow-2xl rounded-sm flex flex-col h-[85vh] [&>button.absolute]:hidden bg-slate-50">
         {/* HEADER */}
         <DialogHeader className="px-5 py-3 border-b border-slate-200 bg-white shrink-0 flex flex-row items-center justify-between">
           <div className="flex items-center gap-3">
@@ -154,7 +154,7 @@ export default function ReviewModal({
         {/* SPLIT BODY */}
         <div className="flex flex-1 overflow-hidden min-h-0">
           {/* --- LEFT: DARK MODE IMAGE VIEWER --- */}
-          <div className="flex-[5] bg-slate-950 relative flex flex-col border-r border-slate-800 min-w-0">
+          <div className="flex-5 bg-slate-950 relative flex flex-col border-r border-slate-800 min-w-0">
             <div className="flex items-center justify-between p-3 border-b border-slate-800 bg-slate-900/50">
               <Tabs
                 value={activeDoc}
@@ -162,7 +162,7 @@ export default function ReviewModal({
                   setActiveDoc(v as any);
                   setRotation(0);
                 }}
-                className="w-[300px]"
+                className="w-75"
               >
                 <TabsList className="bg-slate-800/50 p-1 h-8 rounded-sm w-full grid grid-cols-2">
                   <TabsTrigger
@@ -203,7 +203,7 @@ export default function ReviewModal({
 
             <div className="flex-1 flex items-center justify-center p-6 overflow-hidden relative">
               <div className="w-full h-full flex items-center justify-center relative">
-                <div className="absolute inset-0 opacity-10 bg-[linear-gradient(45deg,#000_25%,transparent_25%,transparent_75%,#000_75%,#000_100%),linear-gradient(45deg,#000_25%,transparent_25%,transparent_75%,#000_75%,#000_100%)] bg-[length:20px_20px] bg-[position:0_0,10px_10px]" />
+                <div className="absolute inset-0 opacity-10 bg-[linear-gradient(45deg,#000_25%,transparent_25%,transparent_75%,#000_75%,#000_100%),linear-gradient(45deg,#000_25%,transparent_25%,transparent_75%,#000_75%,#000_100%)] bg-size-[20px_20px] bg-position-[0_0,10px_10px]" />
                 {currentImageUrl ? (
                   <img
                     src={currentImageUrl}
@@ -224,7 +224,7 @@ export default function ReviewModal({
           </div>
 
           {/* --- RIGHT: DATA & ACTIONS --- */}
-          <div className="w-[380px] bg-slate-50 flex flex-col shrink-0 min-w-0">
+          <div className="w-95 bg-slate-50 flex flex-col shrink-0 min-w-0">
             <div className="flex-1 overflow-y-auto p-5 space-y-5 custom-scrollbar">
               {/* Customer Info Box */}
               <div className="bg-white border border-slate-200 rounded-sm shadow-sm overflow-hidden">

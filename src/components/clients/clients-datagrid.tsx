@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react"; // Removed useMemo
+import { useState } from "react";
 import { ClientRow } from "../../../hooks/use-clients";
 import { ClientForm } from "./form";
 import { useClients } from "../../../hooks/use-clients";
@@ -96,13 +96,22 @@ function getStatusBadge(status: string) {
         Verified
       </Badge>
     );
-  if (status === "banned")
+  if (status === "suspended")
+    return (
+      <Badge
+        variant="outline"
+        className="text-[9px] uppercase tracking-widest bg-slate-50 text-slate-700 border-red-200 px-1.5 rounded-sm"
+      >
+        Suspended
+      </Badge>
+    );
+  if (status === "rejected")
     return (
       <Badge
         variant="outline"
         className="text-[9px] uppercase tracking-widest bg-red-50 text-red-700 border-red-200 px-1.5 rounded-sm"
       >
-        Banned
+        Rejected
       </Badge>
     );
   return (
@@ -123,9 +132,8 @@ export default function ClientsDataGrid() {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
-  // --- UPDATED: Pass state directly to the hook ---
   const {
-    data: paginatedUsers = [], // Now comes straight from the server
+    data: paginatedUsers = [],
     totalCount,
     totalPages,
     isLoading,
@@ -214,7 +222,7 @@ export default function ClientsDataGrid() {
     }
   };
 
-  // --- NEW: Export handlers bypass pagination ---
+  // Export bypass pagination
   const handleExportExcel = async () => {
     const urlParams = new URLSearchParams({ search: searchQuery });
     if (statusFilter.length > 0)
@@ -425,7 +433,6 @@ export default function ClientsDataGrid() {
                 align="end"
                 className="w-32 rounded-sm border-slate-200 shadow-lg"
               >
-                {/* UPDATED: Call the new bypass functions */}
                 <DropdownMenuItem
                   className="text-xs font-medium cursor-pointer"
                   onClick={handleExportPDF}
@@ -567,8 +574,8 @@ export default function ClientsDataGrid() {
                                 className={cn(
                                   "truncate",
                                   selectedUser
-                                    ? "max-w-[100px]"
-                                    : "max-w-[140px] xl:max-w-[200px]",
+                                    ? "max-w-25"
+                                    : "max-w-35 xl:max-w-50",
                                 )}
                               >
                                 {user.email}
@@ -643,7 +650,7 @@ export default function ClientsDataGrid() {
           )}
         </div>
 
-        {/* --- UPDATED: Pagination Footer --- */}
+        {/* Pagination Footer */}
         <div className="flex items-center justify-between px-4 py-3 border-t border-slate-200 bg-white shrink-0 z-10">
           <div className="text-[10px] font-bold uppercase tracking-widest text-slate-500">
             Showing{" "}
@@ -696,7 +703,7 @@ export default function ClientsDataGrid() {
         </div>
       </div>
 
-      {/* --- RIGHT SIDEBAR: DOSSIER --- */}
+      {/* RIGHT SIDEBAR: DOSSIER */}
       <div
         className={cn(
           "bg-white transition-all duration-300 ease-in-out shrink-0 overflow-hidden flex flex-col shadow-[-10px_0_15px_-3px_rgba(0,0,0,0.05)]",
@@ -1070,7 +1077,7 @@ export default function ClientsDataGrid() {
       <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
         <DialogContent
           showCloseButton={false}
-          className="sm:max-w-[600px] flex flex-col p-0 border-slate-200 shadow-xl rounded-sm overflow-hidden gap-0 bg-white"
+          className="sm:max-w-150 flex flex-col p-0 border-slate-200 shadow-xl rounded-sm overflow-hidden gap-0 bg-white"
         >
           <DialogHeader className="p-0 ">
             <DialogTitle className="sr-only text-xs font-bold text-slate-900 uppercase tracking-widest">

@@ -5,13 +5,11 @@ import { baseClientSchema } from "@/lib/schemas/client";
 import { createAdminClient } from "@/utils/supabase/admin";
 import { revalidatePath } from "next/cache";
 import { uploadFile, deleteDocumentRecord } from "./helper/upload-file";
-import { createClient } from "@/utils/supabase/client";
 import {
   sendVerificationEmail,
   sendRejectionEmail,
   sendCustomEmail,
 } from "./helper/mail";
-import { DataManager } from "@syncfusion/ej2-data";
 
 export async function sendCustomEmailAction(
   userId: string,
@@ -21,7 +19,7 @@ export async function sendCustomEmailAction(
   try {
     const supabaseAdmin = createAdminClient();
 
-    // 1. Fetch user details to get their email address
+    // Fetch user details to get their email address
     const { data: user, error: fetchError } = await supabaseAdmin
       .from("users")
       .select("email, full_name")
@@ -32,7 +30,7 @@ export async function sendCustomEmailAction(
       throw new Error("Could not find user email address.");
     }
 
-    // 2. Send the custom email
+    // Send the custom email
     await sendCustomEmail(
       user.email,
       user.full_name || "Applicant",
@@ -64,9 +62,6 @@ export type ActionState = {
   success?: boolean;
 };
 
-// ============================================================================
-// HELPER: Form Extraction
-// ============================================================================
 function extractFormData(formData: FormData) {
   const fields: Record<string, any> = {};
   const files: Record<string, File> = {};
@@ -81,9 +76,6 @@ function extractFormData(formData: FormData) {
   return { fields, files };
 }
 
-// ============================================================================
-// HELPERS: Document Management
-// ============================================================================
 async function createDocumentRecord(
   supabase: any,
   userId: string,
@@ -134,9 +126,6 @@ async function processDocumentUpload(
   }
 }
 
-// ============================================================================
-// ACTION 1: CREATE NEW CLIENT
-// ============================================================================
 export async function createClientAction(
   prevState: ActionState,
   formData: FormData,
@@ -175,7 +164,7 @@ export async function createClientAction(
     const full_name =
       `${profileData.first_name || ""} ${profileData.last_name || ""}`.trim();
 
-    // 1. Auth Creation
+    // Auth Creation
     const { data: authUser, error: authError } =
       await supabaseAdmin.auth.admin.createUser({
         email: email!,
@@ -187,7 +176,7 @@ export async function createClientAction(
 
     const newUserId = authUser.user.id;
 
-    // 2. Avatar Upload
+    // Avatar Upload
     let profile_picture_url = undefined;
     if (rawData.files.profile_picture_url) {
       const avatarResult = await uploadFile(
@@ -199,7 +188,7 @@ export async function createClientAction(
       profile_picture_url = avatarResult?.url;
     }
 
-    // 3. Document Uploads
+    // Document Uploads
     await processDocumentUpload(
       supabaseAdmin,
       newUserId,
@@ -217,7 +206,7 @@ export async function createClientAction(
       license_expiry_date,
     );
 
-    // 4. Master User Record Update
+    // Master User Record Update
     const updateData: any = {
       ...profileData,
       full_name,
@@ -241,9 +230,6 @@ export async function createClientAction(
   }
 }
 
-// ============================================================================
-// ACTION 2: UPDATE EXISTING CLIENT (Uses RPC Transaction)
-// ============================================================================
 export async function updateClientAction(
   prevState: ActionState,
   formData: FormData,
@@ -277,7 +263,7 @@ export async function updateClientAction(
     const full_name =
       `${profileData.first_name || ""} ${profileData.last_name || ""}`.trim();
 
-    // 1. Avatar Replacement
+    // Avatar Replacement
     let profile_picture_url = undefined;
     if (rawData.files.profile_picture_url) {
       const avatarResult = await uploadFile(
@@ -289,7 +275,7 @@ export async function updateClientAction(
       profile_picture_url = avatarResult?.url;
     }
 
-    // 2. Process New Documents (if attached)
+    // Process New Documents (if attached)
     await processDocumentUpload(
       supabaseAdmin,
       user_id,
@@ -307,7 +293,7 @@ export async function updateClientAction(
       license_expiry_date,
     );
 
-    // 3. Cleanup Deleted Documents
+    // Cleanup Deleted Documents
     let deleteDocs = formData.get("deleted_documents");
     if (deleteDocs) {
       const parsedDocs = JSON.parse(deleteDocs as string);
@@ -320,7 +306,7 @@ export async function updateClientAction(
       }
     }
 
-    // 4. Perform Atomic Database Transaction via RPC
+    // Perform Atomic Database Transaction via RPC
     const { error: rpcError } = await supabaseAdmin.rpc("sync_client_profile", {
       p_user_id: user_id,
       p_first_name: profileData.first_name || null,
