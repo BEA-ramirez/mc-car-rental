@@ -1,9 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { Car, Search } from "lucide-react";
+import { Car, Search, MapPin } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
+import { motion } from "framer-motion";
 
 import BookingCard from "@/components/customer/booking-card";
 import { useCustomerBookings } from "../../../../hooks/use-bookings";
@@ -12,14 +13,11 @@ const TABS = ["All Trips", "Action Needed", "Upcoming", "Past History"];
 
 export default function MyBookingsPage() {
   const [activeTab, setActiveTab] = useState("All Trips");
-
   const { data: dbBookings, isLoading } = useCustomerBookings();
 
   const formattedBookings = (dbBookings || []).map((b: any) => {
-    // Calculate if they still owe money
     const balance = b.totalAmount - b.amountPaid;
 
-    // Map the raw DB status to the exact UI Badges we want
     let displayStatus = "Pending Approval";
     if (b.status === "confirmed" && balance > 0)
       displayStatus = "Awaiting Payment";
@@ -28,14 +26,13 @@ export default function MyBookingsPage() {
     if (b.status === "completed") displayStatus = "Completed";
 
     return {
-      ...b, // Keep all the nicely formatted data from the server action (id, totalAmount, pendingAmount, etc.)
-      startDate: new Date(b.startDate), // Re-hydrate dates from JSON strings back into Date objects
+      ...b,
+      startDate: new Date(b.startDate),
       endDate: new Date(b.endDate),
-      status: displayStatus, // Override the raw DB status with our specific UI badge string
+      status: displayStatus,
     };
   });
 
-  // Apply Tabs Filter
   const filteredBookings = formattedBookings.filter((booking: any) => {
     if (activeTab === "All Trips") return true;
     if (activeTab === "Action Needed")
@@ -49,33 +46,40 @@ export default function MyBookingsPage() {
   });
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] font-sans pb-24">
-      {/* Premium Header */}
-      <div className="bg-slate-900 text-white pt-16 pb-20 px-6">
+    <div className="min-h-screen bg-[#0A0C10] text-slate-300 font-sans selection:bg-blue-900 pb-24">
+      {/* --- Premium Header --- */}
+      <div className="relative pt-20 pb-24 px-6 overflow-hidden border-b border-white/5">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,_var(--tw-gradient-stops))] from-blue-900/10 via-[#0A0C10] to-[#0A0C10] -z-10" />
         <div className="max-w-5xl mx-auto">
-          <h1 className="text-3xl md:text-4xl font-black tracking-tight mb-2 flex items-center gap-3">
-            <Car className="w-8 h-8 text-blue-500" /> My Trips
+          <div className="flex items-center gap-4 mb-4">
+            <div className="h-[1px] w-12 bg-blue-500/50" />
+            <span className="text-blue-400 text-[9px] font-medium uppercase tracking-[0.4em]">
+              Member Dashboard
+            </span>
+          </div>
+          <h1 className="text-4xl md:text-6xl font-light text-white tracking-tighter leading-none mb-6">
+            My <span className="italic font-normal text-white/50">Trips.</span>
           </h1>
-          <p className="text-slate-400 text-sm md:text-base">
+          <p className="text-slate-400 text-sm max-w-lg font-light leading-relaxed">
             Track your reservations, manage payments, and view your rental
-            history.
+            history with MC Ormoc.
           </p>
         </div>
       </div>
 
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 -mt-8">
-        {/* Filters & Search Bar */}
-        <div className="bg-white rounded-2xl p-2 shadow-sm border border-slate-100 flex flex-col md:flex-row items-center justify-between gap-4 mb-8">
-          <div className="flex w-full md:w-auto overflow-x-auto custom-scrollbar p-1">
+      <div className="max-w-5xl mx-auto px-6 -mt-10 relative z-10">
+        {/* --- Filters & Search Bar --- */}
+        <div className="bg-white/[0.03] backdrop-blur-2xl rounded-sm p-3 border border-white/5 flex flex-col md:flex-row items-center justify-between gap-6 mb-12 shadow-2xl">
+          <div className="flex w-full md:w-auto overflow-x-auto custom-scrollbar p-1 gap-2">
             {TABS.map((tab) => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
                 className={cn(
-                  "px-5 py-2.5 rounded-xl text-sm font-bold whitespace-nowrap transition-all",
+                  "px-6 py-2 rounded-sm text-[10px] font-medium uppercase tracking-[0.2em] transition-all duration-300",
                   activeTab === tab
-                    ? "bg-slate-900 text-white shadow-md"
-                    : "text-slate-500 hover:text-slate-900 hover:bg-slate-50",
+                    ? "bg-white text-[#0A0C10] shadow-xl"
+                    : "text-white/40 hover:text-white hover:bg-white/5",
                 )}
               >
                 {tab}
@@ -83,34 +87,35 @@ export default function MyBookingsPage() {
             ))}
           </div>
 
-          <div className="relative w-full md:w-64 shrink-0 px-2 md:px-0 md:pr-2 pb-2 md:pb-0">
-            <Search className="absolute left-5 md:left-3 top-2.5 w-4 h-4 text-slate-400" />
+          <div className="relative w-full md:w-72 shrink-0">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-white/30" />
             <Input
-              placeholder="Search booking ID..."
-              className="pl-10 h-10 rounded-xl bg-slate-50 border-slate-200 text-xs focus-visible:ring-blue-500 w-full"
+              placeholder="SEARCH BOOKING ID..."
+              className="pl-11 h-11 rounded-none bg-white/5 border-white/10 text-[10px] uppercase tracking-widest text-white placeholder:text-white/20 focus-visible:ring-1 focus-visible:ring-blue-500 w-full"
             />
           </div>
         </div>
 
-        {/* The Booking List */}
-        <div className="space-y-6">
+        {/* --- The Booking List --- */}
+        <div className="space-y-8">
           {isLoading ? (
-            <div className="flex justify-center py-12">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            <div className="flex flex-col items-center justify-center py-24 gap-4">
+              <div className="w-12 h-12 border-2 border-blue-500/20 border-t-blue-500 rounded-full animate-spin" />
+              <span className="text-[10px] uppercase tracking-[0.3em] text-white/30">
+                Authenticating Reservations...
+              </span>
             </div>
           ) : filteredBookings.length > 0 ? (
             filteredBookings.map((booking: any) => (
               <BookingCard key={booking.original_id} booking={booking} />
             ))
           ) : (
-            <div className="bg-white rounded-3xl border border-slate-100 p-12 flex flex-col items-center justify-center text-center">
-              <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mb-4">
-                <Car className="w-8 h-8 text-slate-300" />
-              </div>
-              <h3 className="text-lg font-bold text-slate-900 mb-1">
+            <div className="bg-white/[0.02] rounded-sm border border-white/5 p-20 flex flex-col items-center justify-center text-center">
+              <PremiumLogo />
+              <h3 className="text-xl font-light text-white mb-2 mt-6">
                 No trips found
               </h3>
-              <p className="text-sm text-slate-500 max-w-sm">
+              <p className="text-xs text-white/30 uppercase tracking-widest max-w-sm">
                 You don't have any reservations under the "{activeTab}"
                 category.
               </p>
@@ -121,3 +126,11 @@ export default function MyBookingsPage() {
     </div>
   );
 }
+
+// --- Helper Logo for Empty State ---
+const PremiumLogo = () => (
+  <div className="relative w-10 h-10 flex items-center justify-center opacity-20">
+    <div className="absolute w-full h-full border border-white rounded-sm transform rotate-45" />
+    <div className="absolute w-full h-full border border-blue-500 rounded-sm transform -rotate-45" />
+  </div>
+);

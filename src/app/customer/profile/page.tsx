@@ -24,6 +24,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 import { useProfile } from "../../../../hooks/use-profile";
+import Link from "next/link";
 
 // Form zod schema
 const ProfileSchema = z.object({
@@ -38,6 +39,17 @@ const ProfileSchema = z.object({
 });
 
 type ProfileFormValues = z.infer<typeof ProfileSchema>;
+
+// --- CUSTOM HIGH-END LOGO ---
+const PremiumLogo = () => (
+  <div className="relative w-6 h-6 flex items-center justify-center group cursor-pointer">
+    <div className="absolute w-full h-full border-[1.5px] border-white/80 rounded-sm transform rotate-45 transition-transform duration-700 group-hover:rotate-90" />
+    <div className="absolute w-full h-full border-[1.5px] border-blue-500/80 rounded-sm transform -rotate-45 transition-transform duration-700 group-hover:-rotate-90" />
+    <span className="relative z-10 text-[8px] font-black text-white tracking-tighter">
+      M
+    </span>
+  </div>
+);
 
 export default function CustomerProfilePage() {
   const router = useRouter();
@@ -108,36 +120,64 @@ export default function CustomerProfilePage() {
     }
   };
 
+  // Main Account Status Badge
   const getStatusBadge = (status: string) => {
     if (status === "verified")
       return (
-        <span className="flex items-center gap-1 text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-md border border-emerald-200">
+        <span className="flex items-center gap-1 text-[9px] uppercase tracking-widest font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-sm border border-emerald-500/20">
           <CheckCircle2 className="w-3 h-3" /> Verified
         </span>
       );
     if (status === "pending")
       return (
-        <span className="flex items-center gap-1 text-xs font-bold text-amber-600 bg-amber-50 px-2 py-1 rounded-md border border-amber-200">
+        <span className="flex items-center gap-1 text-[9px] uppercase tracking-widest font-bold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-sm border border-amber-500/20">
           <Clock className="w-3 h-3" /> In Review
         </span>
       );
     if (status === "expired" || status === "rejected") {
       return (
-        <span className="flex items-center gap-1 text-xs font-bold text-red-500 bg-red-50 px-2 py-1 rounded-md border border-red-200">
+        <span className="flex items-center gap-1 text-[9px] uppercase tracking-widest font-bold text-red-400 bg-red-500/10 px-2 py-0.5 rounded-sm border border-red-500/20">
           <AlertCircle className="w-3 h-3" /> Re-upload Document
         </span>
       );
     }
     return (
-      <span className="flex items-center gap-1 text-xs font-bold text-slate-500 bg-slate-100 px-2 py-1 rounded-md border border-slate-200">
+      <span className="flex items-center gap-1 text-[9px] uppercase tracking-widest font-bold text-slate-400 bg-white/5 px-2 py-0.5 rounded-sm border border-white/10">
         <AlertCircle className="w-3 h-3" /> Action Needed
+      </span>
+    );
+  };
+
+  // Specific colored badges for the document list
+  const getDocStatusBadge = (status: string) => {
+    if (status === "verified")
+      return (
+        <span className="text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-1.5 py-0.5 rounded-sm text-[8px] uppercase tracking-widest font-bold">
+          Verified
+        </span>
+      );
+    if (status === "pending")
+      return (
+        <span className="text-amber-400 bg-amber-500/10 border border-amber-500/20 px-1.5 py-0.5 rounded-sm text-[8px] uppercase tracking-widest font-bold">
+          Pending Review
+        </span>
+      );
+    if (status === "expired" || status === "rejected")
+      return (
+        <span className="text-red-400 bg-red-500/10 border border-red-500/20 px-1.5 py-0.5 rounded-sm text-[8px] uppercase tracking-widest font-bold">
+          Rejected / Expired
+        </span>
+      );
+    return (
+      <span className="text-slate-400 bg-white/5 border border-white/10 px-1.5 py-0.5 rounded-sm text-[8px] uppercase tracking-widest font-bold">
+        Unverified
       </span>
     );
   };
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen bg-[#0A0C10] flex items-center justify-center text-[10px] uppercase tracking-widest text-slate-500 font-medium">
         Loading...
       </div>
     );
@@ -145,7 +185,7 @@ export default function CustomerProfilePage() {
 
   if (!profile) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen bg-[#0A0C10] flex items-center justify-center text-[10px] uppercase tracking-widest text-red-400 font-medium">
         Error loading profile.
       </div>
     );
@@ -161,21 +201,53 @@ export default function CustomerProfilePage() {
   const accountStatus = profile.account_status || "unverified";
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] font-sans pb-24">
+    <div className="min-h-screen bg-[#0A0C10] font-sans selection:bg-blue-900 selection:text-white pb-24">
+      {/* Top Nav (Premium Frosted Glass) */}
+      <nav className="fixed top-0 w-full z-50 bg-[#0A0C10]/80 backdrop-blur-xl border-b border-white/5 transition-all duration-500">
+        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
+          <Link
+            href="/"
+            className="flex items-center gap-4 cursor-pointer group"
+          >
+            <PremiumLogo />
+            <span className="text-[10px] font-medium text-white tracking-[0.3em] uppercase mt-0.5 group-hover:text-blue-400 transition-colors duration-500">
+              MC Ormoc
+            </span>
+          </Link>
+          <div className="flex items-center gap-6">
+            <Link
+              href="/customer/fleet"
+              className="text-[9px] font-medium uppercase tracking-[0.2em] text-white/50 hover:text-white transition-colors"
+            >
+              Fleet
+            </Link>
+            <Link
+              href="/customer/my-bookings"
+              className="text-[9px] font-medium uppercase tracking-[0.2em] text-white/50 hover:text-white transition-colors"
+            >
+              Itinerary
+            </Link>
+          </div>
+        </div>
+      </nav>
+
       {/* Profile Header */}
-      <div className="bg-slate-900 text-white pt-16 pb-24 px-6">
-        <div className="max-w-5xl mx-auto flex flex-col md:flex-row items-center gap-6">
-          <div className="w-24 h-24 rounded-full bg-blue-600 flex items-center justify-center text-3xl font-black border-4 border-slate-800 shrink-0 uppercase">
+      <div className="relative pt-32 pb-16 px-6 overflow-hidden border-b border-white/5">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,_var(--tw-gradient-stops))] from-blue-900/10 via-[#0A0C10] to-[#0A0C10] -z-10" />
+        <div className="max-w-5xl mx-auto flex flex-col md:flex-row items-center gap-8">
+          <div className="w-24 h-24 rounded-full bg-[#111623] flex items-center justify-center text-3xl font-light text-white border border-white/10 shrink-0 uppercase shadow-2xl">
             {profile.full_name ? profile.full_name.charAt(0) : "?"}
           </div>
           <div className="text-center md:text-left">
-            <h1 className="text-3xl font-black tracking-tight mb-1">
+            <h1 className="text-4xl font-light text-white tracking-tighter mb-2">
               {profile.full_name || "New User"}
             </h1>
-            <p className="text-slate-400 text-sm mb-3">{profile.email}</p>
-            <div className="flex items-center justify-center md:justify-start gap-2">
+            <p className="text-slate-400 text-[10px] font-medium uppercase tracking-widest mb-4">
+              {profile.email}
+            </p>
+            <div className="flex items-center justify-center md:justify-start gap-3">
               {getStatusBadge(accountStatus)}
-              <span className="text-xs font-medium text-slate-500 bg-slate-800 px-2 py-1 rounded-md">
+              <span className="text-[9px] font-medium text-slate-400 uppercase tracking-widest bg-white/5 border border-white/10 px-2 py-0.5 rounded-sm">
                 Trust Score:{" "}
                 {profile.trust_score
                   ? Number(profile.trust_score).toFixed(1)
@@ -187,165 +259,176 @@ export default function CustomerProfilePage() {
       </div>
 
       {/* Main Content Area */}
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 -mt-8">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+      <div className="max-w-5xl mx-auto px-6 mt-12">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12">
           {/* LEFT COLUMN: Personal Info & Documents */}
-          <div className="lg:col-span-8 space-y-8">
+          <div className="lg:col-span-8 space-y-12">
+            {/* Form */}
             <form
               onSubmit={form.handleSubmit(onSubmit)}
-              className="bg-white rounded-3xl p-6 md:p-8 shadow-sm border border-slate-100"
+              className="bg-white/[0.02] backdrop-blur-xl rounded-sm p-8 shadow-2xl border border-white/5 relative overflow-hidden"
             >
-              <div className="flex items-center justify-between mb-6">
+              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-white/10 to-transparent" />
+
+              <div className="flex items-center justify-between mb-10 pb-4 border-b border-white/5">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-2xl bg-blue-50 flex items-center justify-center text-blue-600">
-                    <User className="w-5 h-5" />
-                  </div>
-                  <h2 className="text-xl font-bold text-slate-900">
+                  <User className="w-5 h-5 text-blue-500" />
+                  <h2 className="text-lg font-light text-white tracking-wide">
                     Personal Details
                   </h2>
                 </div>
 
                 {isEditing ? (
                   <Button
+                    key="save-btn" // FIX: Forces React to treat this as a distinct element
                     type="submit"
                     size="sm"
                     disabled={isUpdating}
-                    className="rounded-xl font-bold bg-blue-600 hover:bg-blue-700 text-white"
+                    className="rounded-none h-8 px-4 font-bold text-[9px] uppercase tracking-widest bg-white text-[#0A0C10] hover:bg-blue-600 hover:text-white transition-all duration-300"
                   >
                     {isUpdating ? "Saving..." : "Save Changes"}
                   </Button>
                 ) : (
                   <Button
-                    type="button"
+                    key="edit-btn" // FIX: Forces React to treat this as a distinct element
+                    type="button" // FIX: Explicitly prevents form submission
                     variant="outline"
                     size="sm"
-                    onClick={() => setIsEditing(true)}
-                    className="rounded-xl font-bold border-slate-200 text-slate-600"
+                    onClick={(e) => {
+                      e.preventDefault(); // FIX: Completely blocks any native browser submit action
+                      setIsEditing(true);
+                    }}
+                    className="rounded-none h-8 px-4 font-bold text-[9px] uppercase tracking-widest bg-transparent border-white/20 text-white hover:bg-white hover:text-[#0A0C10] transition-all duration-300"
                   >
                     Edit Profile
                   </Button>
                 )}
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 <div className="space-y-2">
-                  <Label className="text-xs font-bold text-slate-500 uppercase tracking-widest">
+                  <Label className="text-[9px] font-medium text-slate-500 uppercase tracking-[0.2em]">
                     First Name
                   </Label>
                   <Input
                     {...form.register("first_name")}
                     disabled={!isEditing}
                     className={cn(
-                      "h-12 rounded-xl border-slate-200 bg-slate-50 disabled:opacity-100 disabled:text-slate-900 font-medium",
-                      form.formState.errors.first_name && "border-red-500",
+                      "h-11 rounded-none border-white/10 bg-white/5 text-white placeholder:text-white/20 focus-visible:ring-1 focus-visible:ring-blue-500 transition-all duration-300 disabled:opacity-50",
+                      form.formState.errors.first_name && "border-red-500/50",
                     )}
                   />
                   {form.formState.errors.first_name && (
-                    <p className="text-xs text-red-500">
+                    <p className="text-[9px] text-red-400 mt-1 uppercase tracking-wider">
                       {form.formState.errors.first_name.message}
                     </p>
                   )}
                 </div>
 
                 <div className="space-y-2">
-                  <Label className="text-xs font-bold text-slate-500 uppercase tracking-widest">
+                  <Label className="text-[9px] font-medium text-slate-500 uppercase tracking-[0.2em]">
                     Last Name
                   </Label>
                   <Input
                     {...form.register("last_name")}
                     disabled={!isEditing}
                     className={cn(
-                      "h-12 rounded-xl border-slate-200 bg-slate-50 disabled:opacity-100 disabled:text-slate-900 font-medium",
-                      form.formState.errors.last_name && "border-red-500",
+                      "h-11 rounded-none border-white/10 bg-white/5 text-white placeholder:text-white/20 focus-visible:ring-1 focus-visible:ring-blue-500 transition-all duration-300 disabled:opacity-50",
+                      form.formState.errors.last_name && "border-red-500/50",
                     )}
                   />
                   {form.formState.errors.last_name && (
-                    <p className="text-xs text-red-500">
+                    <p className="text-[9px] text-red-400 mt-1 uppercase tracking-wider">
                       {form.formState.errors.last_name.message}
                     </p>
                   )}
                 </div>
 
                 <div className="space-y-2">
-                  <Label className="text-xs font-bold text-slate-500 uppercase tracking-widest">
+                  <Label className="text-[9px] font-medium text-slate-500 uppercase tracking-[0.2em]">
                     Email Address
                   </Label>
                   <Input
                     value={profile.email || ""}
                     disabled={true}
-                    className="h-12 rounded-xl border-slate-200 bg-slate-50 opacity-60 font-medium"
+                    className="h-11 rounded-none border-transparent bg-transparent text-slate-400 opacity-60 font-light cursor-not-allowed px-0"
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label className="text-xs font-bold text-slate-500 uppercase tracking-widest">
+                  <Label className="text-[9px] font-medium text-slate-500 uppercase tracking-[0.2em]">
                     Phone Number
                   </Label>
                   <Input
                     {...form.register("phone_number")}
                     disabled={!isEditing}
                     className={cn(
-                      "h-12 rounded-xl border-slate-200 bg-slate-50 disabled:opacity-100 disabled:text-slate-900 font-medium",
-                      form.formState.errors.phone_number && "border-red-500",
+                      "h-11 rounded-none border-white/10 bg-white/5 text-white placeholder:text-white/20 focus-visible:ring-1 focus-visible:ring-blue-500 transition-all duration-300 disabled:opacity-50",
+                      form.formState.errors.phone_number && "border-red-500/50",
                     )}
                   />
                   {form.formState.errors.phone_number && (
-                    <p className="text-xs text-red-500">
+                    <p className="text-[9px] text-red-400 mt-1 uppercase tracking-wider">
                       {form.formState.errors.phone_number.message}
                     </p>
                   )}
                 </div>
 
-                <div className="space-y-2">
-                  <Label className="text-xs font-bold text-slate-500 uppercase tracking-widest">
+                <div className="space-y-2 md:col-span-2">
+                  <Label className="text-[9px] font-medium text-slate-500 uppercase tracking-[0.2em]">
                     Complete Address
                   </Label>
                   <Input
                     {...form.register("address")}
                     disabled={!isEditing}
-                    className="h-12 rounded-xl border-slate-200 bg-slate-50 disabled:opacity-100 disabled:text-slate-900 font-medium"
+                    className="h-11 rounded-none border-white/10 bg-white/5 text-white placeholder:text-white/20 focus-visible:ring-1 focus-visible:ring-blue-500 transition-all duration-300 disabled:opacity-50"
                   />
                 </div>
               </div>
             </form>
 
             {/* Identity Verification (KYC) */}
-            <div className="bg-white rounded-3xl p-6 md:p-8 shadow-sm border border-slate-100">
-              <div className="flex items-center justify-between mb-2">
+            <div className="bg-white/[0.02] backdrop-blur-xl rounded-sm p-8 shadow-2xl border border-white/5 relative overflow-hidden">
+              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-white/10 to-transparent" />
+
+              <div className="flex items-center justify-between mb-4 pb-4 border-b border-white/5">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-2xl bg-emerald-50 flex items-center justify-center text-emerald-600">
-                    <ShieldCheck className="w-5 h-5" />
-                  </div>
-                  <h2 className="text-xl font-bold text-slate-900">
+                  <ShieldCheck className="w-5 h-5 text-emerald-500" />
+                  <h2 className="text-lg font-light text-white tracking-wide">
                     Identity Verification
                   </h2>
                 </div>
               </div>
-              <p className="text-sm text-slate-500 mb-6 max-w-lg">
+              <p className="text-[10px] text-slate-500 uppercase tracking-widest font-light mb-8 max-w-lg leading-relaxed">
                 To keep our fleet and community safe, we require a valid
                 Driver's License and one additional Government ID.
               </p>
 
               <div className="space-y-4">
                 {/* Driver's License */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-slate-50 border border-slate-100 rounded-2xl gap-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between p-5 bg-[#050608] border border-white/5 rounded-sm gap-4 transition-all hover:border-white/10">
                   <div className="flex items-start gap-4">
-                    <div className="p-3 bg-white rounded-xl border border-slate-200 shadow-sm shrink-0">
-                      <Car className="w-6 h-6 text-slate-400" />
+                    <div className="p-3 bg-white/5 rounded-sm border border-white/10 shrink-0">
+                      <Car className="w-5 h-5 text-slate-400" />
                     </div>
                     <div>
-                      <h4 className="text-sm font-bold text-slate-900 mb-1 flex items-center gap-2">
+                      <h4 className="text-[11px] font-medium text-slate-200 uppercase tracking-widest mb-1 flex items-center gap-3">
                         Professional Driver's License
-                        {getStatusBadge(licenseStatus)}
                       </h4>
                       {latestLicense ? (
-                        <p className="text-xs text-slate-500 font-mono">
-                          File: {latestLicense.file_name}
-                        </p>
+                        <div className="mt-3 flex items-center gap-3">
+                          {getDocStatusBadge(licenseStatus)}
+                          <p className="text-[9px] text-slate-500 font-mono tracking-widest">
+                            {latestLicense.file_name}
+                          </p>
+                        </div>
                       ) : (
-                        <p className="text-xs text-slate-500">
-                          Required for self-drive rentals.
-                        </p>
+                        <div className="mt-3 flex items-center gap-3">
+                          {getDocStatusBadge(licenseStatus)}
+                          <p className="text-[9px] text-slate-500 uppercase tracking-widest">
+                            Required for self-drive rentals.
+                          </p>
+                        </div>
                       )}
                     </div>
                   </div>
@@ -364,39 +447,44 @@ export default function CustomerProfilePage() {
                       <Button
                         variant="outline"
                         size="sm"
-                        className="rounded-lg border-slate-200 text-blue-600 hover:bg-blue-50 hover:text-blue-700 bg-white shadow-sm shrink-0 w-full sm:w-auto"
+                        className="rounded-none h-9 px-4 font-bold text-[9px] uppercase tracking-widest bg-transparent border-white/20 text-white hover:bg-white hover:text-[#0A0C10] transition-all shrink-0 w-full sm:w-auto"
                       >
-                        <UploadCloud className="w-4 h-4 mr-2" /> Upload
+                        <UploadCloud className="w-3 h-3 mr-2" /> Upload
                       </Button>
                     </div>
                   )}
                 </div>
 
                 {/* Valid ID */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-slate-50 border border-slate-100 rounded-2xl gap-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between p-5 bg-[#050608] border border-white/5 rounded-sm gap-4 transition-all hover:border-white/10">
                   <div className="flex items-start gap-4">
-                    <div className="p-3 bg-white rounded-xl border border-slate-200 shadow-sm shrink-0">
-                      <FileText className="w-6 h-6 text-slate-400" />
+                    <div className="p-3 bg-white/5 rounded-sm border border-white/10 shrink-0">
+                      <FileText className="w-5 h-5 text-slate-400" />
                     </div>
                     <div>
-                      <h4 className="text-sm font-bold text-slate-900 mb-1 flex items-center gap-2">
+                      <h4 className="text-[11px] font-medium text-slate-200 uppercase tracking-widest mb-1 flex items-center gap-3">
                         Secondary Valid ID
-                        {getStatusBadge(validIdStatus)}
                       </h4>
                       {latestValidId ? (
-                        <p className="text-xs text-slate-500 font-mono">
-                          File: {latestValidId.file_name}
-                        </p>
+                        <div className="mt-3 flex items-center gap-3">
+                          {getDocStatusBadge(validIdStatus)}
+                          <p className="text-[9px] text-slate-500 font-mono tracking-widest">
+                            {latestValidId.file_name}
+                          </p>
+                        </div>
                       ) : (
-                        <p className="text-xs text-slate-500">
-                          Passport, UMID, Postal, or National ID.
-                        </p>
+                        <div className="mt-3 flex items-center gap-3">
+                          {getDocStatusBadge(validIdStatus)}
+                          <p className="text-[9px] text-slate-500 uppercase tracking-widest">
+                            Passport, UMID, Postal, or National ID.
+                          </p>
+                        </div>
                       )}
                     </div>
                   </div>
                   {(validIdStatus === "expired" ||
                     validIdStatus === "rejected" ||
-                    licenseStatus === "pending" ||
+                    validIdStatus === "pending" ||
                     validIdStatus === "unverified") && (
                     <div className="relative">
                       <Input
@@ -409,9 +497,9 @@ export default function CustomerProfilePage() {
                       <Button
                         variant="outline"
                         size="sm"
-                        className="rounded-lg border-slate-200 text-blue-600 hover:bg-blue-50 hover:text-blue-700 bg-white shadow-sm shrink-0 w-full sm:w-auto"
+                        className="rounded-none h-9 px-4 font-bold text-[9px] uppercase tracking-widest bg-transparent border-white/20 text-white hover:bg-white hover:text-[#0A0C10] transition-all shrink-0 w-full sm:w-auto"
                       >
-                        <UploadCloud className="w-4 h-4 mr-2" /> Upload
+                        <UploadCloud className="w-3 h-3 mr-2" /> Upload
                       </Button>
                     </div>
                   )}
@@ -422,13 +510,13 @@ export default function CustomerProfilePage() {
 
           {/* RIGHT COLUMN: The Partner Hub */}
           <div className="lg:col-span-4 space-y-6">
-            <div className="bg-slate-900 rounded-3xl p-6 md:p-8 shadow-lg text-white border border-slate-800 overflow-hidden relative">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/20 rounded-full blur-3xl -mr-10 -mt-10" />
+            <div className="bg-[#111623]/80 backdrop-blur-xl rounded-sm p-8 shadow-2xl text-white border border-white/5 relative overflow-hidden h-full flex flex-col">
+              <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/10 rounded-full blur-[80px] pointer-events-none" />
 
-              <h2 className="text-xl font-black mb-2 relative z-10">
+              <h2 className="text-2xl font-light tracking-tight mb-2 relative z-10">
                 Partner with Us
               </h2>
-              <p className="text-sm text-slate-400 mb-8 relative z-10 leading-relaxed">
+              <p className="text-[10px] text-slate-400 uppercase tracking-widest font-light mb-10 relative z-10 leading-relaxed border-b border-white/5 pb-6">
                 Turn your driving skills or your idle vehicle into a consistent
                 source of income.
               </p>
@@ -437,17 +525,17 @@ export default function CustomerProfilePage() {
                 {profile.role !== "driver" && (
                   <div
                     onClick={() => router.push("/customer/apply-driver")}
-                    className="bg-slate-800/50 hover:bg-slate-800 border border-slate-700 p-4 rounded-2xl transition-colors cursor-pointer group"
+                    className="bg-[#050608]/50 hover:bg-[#050608] border border-white/5 p-5 rounded-sm transition-all cursor-pointer group"
                   >
                     <div className="flex items-center gap-3 mb-2">
-                      <div className="p-2 bg-blue-500/10 text-blue-400 rounded-lg">
-                        <Key className="w-5 h-5" />
+                      <div className="p-2 bg-blue-500/10 text-blue-400 rounded-sm">
+                        <Key className="w-4 h-4" />
                       </div>
-                      <h3 className="font-bold text-slate-100 group-hover:text-blue-400 transition-colors">
+                      <h3 className="text-[11px] font-medium uppercase tracking-widest text-slate-200 group-hover:text-white transition-colors">
                         Become a Driver
                       </h3>
                     </div>
-                    <p className="text-xs text-slate-400 pl-11">
+                    <p className="text-[9px] text-slate-500 uppercase tracking-widest font-light leading-relaxed pl-10">
                       Apply to be an official company driver. Drive our fleet,
                       set your schedule, and earn daily fees.
                     </p>
@@ -457,17 +545,17 @@ export default function CustomerProfilePage() {
                 {profile.role !== "fleet_partner" && (
                   <div
                     onClick={() => router.push("/customer/list-vehicle")}
-                    className="bg-slate-800/50 hover:bg-slate-800 border border-slate-700 p-4 rounded-2xl transition-colors cursor-pointer group"
+                    className="bg-[#050608]/50 hover:bg-[#050608] border border-white/5 p-5 rounded-sm transition-all cursor-pointer group"
                   >
                     <div className="flex items-center gap-3 mb-2">
-                      <div className="p-2 bg-emerald-500/10 text-emerald-400 rounded-lg">
-                        <Car className="w-5 h-5" />
+                      <div className="p-2 bg-emerald-500/10 text-emerald-400 rounded-sm">
+                        <Car className="w-4 h-4" />
                       </div>
-                      <h3 className="font-bold text-slate-100 group-hover:text-emerald-400 transition-colors">
+                      <h3 className="text-[11px] font-medium uppercase tracking-widest text-slate-200 group-hover:text-white transition-colors">
                         List Your Vehicle
                       </h3>
                     </div>
-                    <p className="text-xs text-slate-400 pl-11">
+                    <p className="text-[9px] text-slate-500 uppercase tracking-widest font-light leading-relaxed pl-10">
                       Become a Fleet Partner. Enroll your SUV or Sedan and earn
                       up to 70% revenue share per booking.
                     </p>

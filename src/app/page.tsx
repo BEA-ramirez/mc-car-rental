@@ -165,11 +165,14 @@ export default function LandingPage() {
 
           {/* Right: Actions (Desktop) */}
           <div className="hidden lg:flex items-center gap-6 text-[9px] font-medium tracking-[0.2em] text-white/60 uppercase mt-0.5">
-            <Link href="/login" className="hover:text-white transition-colors">
+            <Link
+              href="/auth/login"
+              className="hover:text-white transition-colors"
+            >
               Login
             </Link>
             <Button
-              onClick={() => router.push("/login")}
+              onClick={() => router.push("/auth/signup")}
               className="bg-blue-600 text-white hover:bg-white hover:text-black rounded-none px-5 py-2.5 h-auto uppercase tracking-widest font-bold transition-colors duration-300"
             >
               Register

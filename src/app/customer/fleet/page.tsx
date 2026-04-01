@@ -10,6 +10,7 @@ import {
   CheckCircle2,
   ShieldCheck,
 } from "lucide-react";
+import { motion } from "framer-motion";
 
 import FleetFilters, { FilterState } from "@/components/customer/fleet-filters";
 import CarCard from "@/components/customer/car-card";
@@ -25,12 +26,23 @@ import { cn } from "@/lib/utils";
 
 import { useUnits } from "../../../../hooks/use-units";
 
+// --- CUSTOM HIGH-END LOGO ---
+const PremiumLogo = () => (
+  <div className="relative w-6 h-6 flex items-center justify-center group cursor-pointer">
+    <div className="absolute w-full h-full border-[1.5px] border-white/80 rounded-sm transform rotate-45 transition-transform duration-700 group-hover:rotate-90" />
+    <div className="absolute w-full h-full border-[1.5px] border-blue-500/80 rounded-sm transform -rotate-45 transition-transform duration-700 group-hover:-rotate-90" />
+    <span className="relative z-10 text-[8px] font-black text-white tracking-tighter">
+      M
+    </span>
+  </div>
+);
+
 // Mock notifs
 const MOCK_NOTIFICATIONS = [
   {
     id: 1,
-    title: "Booking Approved!",
-    message: "Your request is approved.",
+    title: "Booking Approved",
+    message: "Your request has been verified and approved.",
     time: "10 mins ago",
     unread: true,
     type: "booking",
@@ -38,7 +50,7 @@ const MOCK_NOTIFICATIONS = [
   {
     id: 2,
     title: "Identity Verified",
-    message: "Your License was verified.",
+    message: "Your credentials have been securely authenticated.",
     time: "2 hours ago",
     unread: false,
     type: "system",
@@ -57,23 +69,19 @@ export default function CustomerFleetPage() {
     maxPrice: null,
   });
 
-  // Fetch the units
   const { units, isUnitsLoading } = useUnits();
 
-  // Format data to UI shape
   const formattedCars = units.map((unit: any) => {
-    // Sort images so the primary image is ALWAYS first ---
     const sortedImages = [...(unit.images || [])].sort((a: any, b: any) => {
       if (a.is_primary && !b.is_primary) return -1;
       if (!a.is_primary && b.is_primary) return 1;
       return 0;
     });
 
-    // Extract just the URLs into an array, fallback if empty
     const imageUrls =
       sortedImages.length > 0
         ? sortedImages.map((img: any) => img.image_url)
-        : ["https://placehold.co/600x400?text=No+Image"];
+        : ["https://placehold.co/1200x800?text=No+Image"];
 
     return {
       id: unit.car_id,
@@ -90,38 +98,21 @@ export default function CustomerFleetPage() {
   });
 
   const filteredCars = formattedCars.filter((car) => {
-    // Search Filter (Brand or Model)
     if (filters.search) {
       const searchTerm = filters.search.toLowerCase();
       const matchesBrand = car.brand.toLowerCase().includes(searchTerm);
       const matchesModel = car.model.toLowerCase().includes(searchTerm);
       if (!matchesBrand && !matchesModel) return false;
     }
-
-    // Vehicle Type Filter
-    if (filters.type !== "All" && car.type !== filters.type) {
-      return false;
-    }
-
-    // Transmission Filter
+    if (filters.type !== "All" && car.type !== filters.type) return false;
     if (filters.transmission !== "Any") {
-      // Using includes allows "Auto" to match "Automatic"
       const carTrans = car.transmission.toLowerCase();
       const filterTrans = filters.transmission.toLowerCase();
       if (!carTrans.includes(filterTrans)) return false;
     }
-
-    // Seating Capacity Filter
-    if (filters.minSeating !== null && car.seats < filters.minSeating) {
+    if (filters.minSeating !== null && car.seats < filters.minSeating)
       return false;
-    }
-
-    // Max Price Filter
-    if (filters.maxPrice !== null && car.price > filters.maxPrice) {
-      return false;
-    }
-
-    // If it passes all checks, keep it in the array
+    if (filters.maxPrice !== null && car.price > filters.maxPrice) return false;
     return true;
   });
 
@@ -133,46 +124,45 @@ export default function CustomerFleetPage() {
   const unreadCount = MOCK_NOTIFICATIONS.filter((n) => n.unread).length;
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] font-sans">
-      {/* Hero Header Section */}
-      <div className="bg-slate-900 text-white pb-32">
-        <nav className="max-w-7xl mx-auto px-6 py-6 flex items-center justify-between">
+    <div className="min-h-screen bg-[#0A0C10] text-slate-300 font-sans selection:bg-blue-900 selection:text-white">
+      {/* Top Nav (Premium Frosted Glass) */}
+      <nav className="fixed top-0 w-full z-50 bg-[#0A0C10]/80 backdrop-blur-xl border-b border-white/5 transition-all duration-500">
+        <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
           <Link
             href="/"
-            className="flex items-center gap-2 transition-opacity hover:opacity-80"
+            className="flex items-center gap-4 cursor-pointer group"
           >
-            <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center shadow-lg">
-              <Car className="w-4 h-4 text-white" />
-            </div>
-            <span className="text-xl font-black text-white tracking-tight">
+            <PremiumLogo />
+            <span className="text-[10px] font-medium text-white tracking-[0.3em] uppercase hidden sm:block mt-0.5 group-hover:text-blue-400 transition-colors duration-500">
               MC Ormoc
             </span>
           </Link>
 
-          <div className="flex items-center gap-1 sm:gap-3">
-            {/* Notifications Popover */}
+          <div className="flex items-center gap-2 sm:gap-6">
             <Popover>
               <PopoverTrigger asChild>
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="relative text-slate-300 hover:text-white hover:bg-slate-800 rounded-full transition-all"
+                  className="relative text-white/50 hover:text-white hover:bg-white/5 rounded-full transition-all duration-300"
                 >
-                  <Bell className="w-5 h-5" />
+                  <Bell className="w-4 h-4" />
                   {unreadCount > 0 && (
-                    <span className="absolute top-1.5 right-2 w-2 h-2 bg-red-500 rounded-full border border-slate-900" />
+                    <span className="absolute top-2 right-2 w-1.5 h-1.5 bg-blue-500 rounded-full" />
                   )}
                 </Button>
               </PopoverTrigger>
               <PopoverContent
                 align="end"
-                sideOffset={8}
-                className="w-80 sm:w-96 p-0 rounded-3xl border-slate-100 shadow-2xl overflow-hidden"
+                sideOffset={12}
+                className="w-80 sm:w-96 p-0 rounded-2xl border-white/10 bg-[#111623]/95 backdrop-blur-2xl shadow-2xl overflow-hidden"
               >
-                <div className="bg-slate-50 border-b border-slate-100 p-4 flex items-center justify-between">
-                  <h3 className="font-bold text-slate-900">Notifications</h3>
+                <div className="bg-white/5 border-b border-white/5 p-4 flex items-center justify-between">
+                  <h3 className="font-light text-white text-sm tracking-wide">
+                    Notifications
+                  </h3>
                   {unreadCount > 0 && (
-                    <span className="text-[10px] font-bold text-blue-600 bg-blue-100 px-2 py-0.5 rounded-full">
+                    <span className="text-[9px] font-medium text-blue-400 bg-blue-500/10 border border-blue-500/20 px-2 py-0.5 rounded-sm uppercase tracking-widest">
                       {unreadCount} New
                     </span>
                   )}
@@ -184,36 +174,28 @@ export default function CustomerFleetPage() {
                         <div
                           key={notif.id}
                           className={cn(
-                            "p-4 border-b border-slate-50 flex gap-4 hover:bg-slate-50 transition-colors cursor-pointer",
-                            notif.unread ? "bg-blue-50/30" : "bg-white",
+                            "p-5 border-b border-white/5 flex gap-4 hover:bg-white/5 transition-colors cursor-pointer",
+                            notif.unread ? "bg-blue-900/10" : "bg-transparent",
                           )}
                         >
                           <div className="shrink-0 mt-1">
                             {notif.type === "booking" && (
-                              <CheckCircle2 className="w-5 h-5 text-emerald-500" />
+                              <CheckCircle2 className="w-4 h-4 text-blue-400" />
                             )}
                             {notif.type === "system" && (
-                              <ShieldCheck className="w-5 h-5 text-blue-500" />
+                              <ShieldCheck className="w-4 h-4 text-slate-400" />
                             )}
                           </div>
                           <div>
-                            <div className="flex justify-between items-start mb-0.5">
-                              <h4
-                                className={cn(
-                                  "text-sm font-bold text-slate-900 leading-tight",
-                                  notif.unread && "text-blue-900",
-                                )}
-                              >
+                            <div className="flex justify-between items-start mb-1">
+                              <h4 className="text-sm font-medium text-white tracking-wide">
                                 {notif.title}
                               </h4>
-                              {notif.unread && (
-                                <span className="w-1.5 h-1.5 bg-blue-600 rounded-full mt-1.5 shrink-0" />
-                              )}
                             </div>
-                            <p className="text-xs text-slate-500 leading-relaxed mb-1.5">
+                            <p className="text-[11px] text-slate-400 font-light leading-relaxed mb-2">
                               {notif.message}
                             </p>
-                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                            <span className="text-[9px] font-medium text-white/30 uppercase tracking-[0.2em]">
                               {notif.time}
                             </span>
                           </div>
@@ -221,8 +203,8 @@ export default function CustomerFleetPage() {
                       ))}
                     </div>
                   ) : (
-                    <div className="p-8 text-center text-sm text-slate-500">
-                      You're all caught up!
+                    <div className="p-8 text-center text-xs font-light text-white/40 uppercase tracking-widest">
+                      No new notifications
                     </div>
                   )}
                 </div>
@@ -232,90 +214,106 @@ export default function CustomerFleetPage() {
             <Link href="/customer/my-bookings">
               <Button
                 variant="ghost"
-                className="text-slate-300 hover:text-white hover:bg-slate-800 rounded-xl text-sm font-bold transition-all px-3"
+                className="text-white/50 hover:text-white hover:bg-white/5 rounded-none h-10 px-4 text-[9px] font-medium uppercase tracking-[0.2em] transition-all duration-300"
               >
                 <CalendarDays className="w-4 h-4 sm:mr-2" />
-                <span className="hidden sm:inline">My Trips</span>
+                <span className="hidden sm:inline">Itinerary</span>
               </Button>
             </Link>
 
             <Link href="/customer/profile">
               <Button
                 variant="ghost"
-                className="text-slate-300 hover:text-white hover:bg-slate-800 rounded-xl text-sm font-bold transition-all px-3"
+                className="text-white/50 hover:text-white hover:bg-white/5 rounded-none h-10 px-4 text-[9px] font-medium uppercase tracking-[0.2em] transition-all duration-300"
               >
                 <User className="w-4 h-4 sm:mr-2" />
                 <span className="hidden sm:inline">Profile</span>
               </Button>
             </Link>
           </div>
-        </nav>
+        </div>
+      </nav>
 
-        {/* Hero Text */}
-        <div className="max-w-7xl mx-auto px-6 pt-10">
-          <h1 className="text-4xl md:text-5xl font-black tracking-tight mb-4">
-            Find your perfect drive.
-          </h1>
-          <p className="text-slate-400 text-lg max-w-xl leading-relaxed">
-            From compact sedans for city cruising to tough SUVs for Eastern
-            Visayas adventures. Book instantly.
+      {/* Hero Header Section */}
+      <div className="relative pt-32 pb-16 px-6 overflow-hidden">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,_var(--tw-gradient-stops))] from-blue-900/10 via-[#0A0C10] to-[#0A0C10] -z-10" />
+        <div className="max-w-7xl mx-auto flex flex-col md:flex-row md:items-end justify-between gap-8 border-b border-white/5 pb-12">
+          <div>
+            <div className="flex items-center gap-4 mb-4">
+              <div className="h-[1px] w-12 bg-blue-500/50" />
+              <span className="text-blue-400 text-[9px] font-medium uppercase tracking-[0.4em]">
+                The Portfolio
+              </span>
+            </div>
+            <h1 className="text-4xl md:text-6xl font-light text-white tracking-tighter leading-none">
+              Curated{" "}
+              <span className="italic font-normal text-white/50">
+                collection.
+              </span>
+            </h1>
+          </div>
+          <p className="text-slate-400 text-sm max-w-sm font-light leading-relaxed md:text-right">
+            Select from our meticulously maintained fleet. Engineered for
+            comfort, prepared for your journey.
           </p>
         </div>
       </div>
 
       {/* Main Content Area */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 -mt-16 pb-24">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-          <div className="hidden lg:block lg:col-span-3">
+      <div className="max-w-7xl mx-auto px-6 pb-32">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12">
+          <div className="lg:col-span-3">
             <FleetFilters filters={filters} setFilters={setFilters} />
           </div>
 
           <div className="lg:col-span-9">
-            <div className="bg-white rounded-2xl p-4 mb-6 shadow-sm border border-slate-100 flex items-center justify-between">
-              <p className="text-sm font-bold text-slate-500">
+            <div className="flex items-center justify-between mb-8 pb-4 border-b border-white/5">
+              <p className="text-[10px] font-medium text-white/40 uppercase tracking-[0.2em]">
                 {isUnitsLoading ? (
-                  "Loading..."
+                  "Curating..."
                 ) : (
                   <>
-                    Showing{" "}
-                    <span className="text-slate-900">
-                      {/* Changed to filteredCars.length */}
-                      {filteredCars.length}
-                    </span>{" "}
-                    vehicles
+                    <span className="text-white">{filteredCars.length}</span>{" "}
+                    Vehicles Available
                   </>
                 )}
               </p>
-              <div className="text-sm font-medium text-slate-500">
-                Sort by:{" "}
-                <span className="text-slate-900 font-bold cursor-pointer">
+              <div className="text-[10px] font-medium text-white/40 uppercase tracking-[0.2em] flex items-center gap-2">
+                Sort:{" "}
+                <span className="text-white cursor-pointer hover:text-blue-400 transition-colors">
                   Recommended
                 </span>
               </div>
             </div>
 
-            {/* RENDER REAL DATA */}
+            {/* RENDER REAL DATA - Updated to xl:grid-cols-3 and gap-6 for compactness */}
             {isUnitsLoading ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
                 {Array.from({ length: 9 }).map((_, i) => (
                   <CarCardSkeleton key={i} />
                 ))}
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                {/* Check filteredCars instead of formattedCars */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
                 {filteredCars.length > 0 ? (
                   filteredCars.map((car: any) => (
-                    <CarCard
+                    <motion.div
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
                       key={car.id}
-                      car={car}
-                      onViewDetails={() => handleViewDetails(car)}
-                    />
+                      className="h-full"
+                    >
+                      <CarCard
+                        car={car}
+                        onViewDetails={() => handleViewDetails(car)}
+                      />
+                    </motion.div>
                   ))
                 ) : (
-                  <div className="col-span-full text-center py-12 text-slate-500">
-                    No vehicles match your current filters. Try adjusting your
-                    search!
+                  <div className="col-span-full text-center py-24 border border-white/5 rounded-xl bg-[#111623]/30">
+                    <p className="text-white/40 font-light text-sm uppercase tracking-widest">
+                      No vehicles match your refined criteria.
+                    </p>
                   </div>
                 )}
               </div>

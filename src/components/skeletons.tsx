@@ -146,30 +146,40 @@ export function ClientOverviewSkeleton() {
 
 export function CarCardSkeleton() {
   return (
-    <div className="bg-white rounded-3xl border border-slate-200 overflow-hidden flex flex-col h-[380px]">
-      <div className="relative h-44 w-full bg-slate-100 flex items-center justify-center border-b border-slate-100/50">
-        <Skeleton className="w-full h-full rounded-xl" />
-        <Skeleton className="absolute top-3 left-3 w-12 h-6 rounded-full" />
+    <div className="bg-[#111623]/80 backdrop-blur-md rounded-xl border border-white/5 overflow-hidden flex flex-col h-full animate-pulse">
+      {/* Image Area Skeleton - Darkened */}
+      <div className="relative h-44 w-full bg-[#050608] flex items-center justify-center border-b border-white/5">
+        <Skeleton className="w-full h-full bg-white/[0.03] rounded-none" />
+        {/* Compact Year badge skeleton */}
+        <Skeleton className="absolute top-3 left-3 w-10 h-4 bg-white/5 rounded-sm" />
       </div>
 
-      <div className="p-5 flex flex-col flex-1">
-        <div className="flex flex-col mb-3 space-y-2">
-          <Skeleton className="w-16 h-3 rounded-md" />
-          <Skeleton className="w-32 h-6 rounded-md" />
+      {/* Content Area Skeleton */}
+      <div className="p-4 flex flex-col flex-1">
+        <div className="mb-4 space-y-2">
+          {/* Brand skeleton */}
+          <Skeleton className="w-12 h-2 bg-blue-500/10 rounded-none" />
+          {/* Model skeleton */}
+          <Skeleton className="w-32 h-5 bg-white/5 rounded-none" />
         </div>
 
-        <div className="flex flex-wrap gap-1.5 mb-4 mt-auto">
-          <Skeleton className="w-12 h-6 rounded-md" />
-          <Skeleton className="w-16 h-6 rounded-md" />
-          <Skeleton className="w-14 h-6 rounded-md" />
+        {/* Specs Row Skeletons */}
+        <div className="grid grid-cols-3 gap-1.5 mb-5 mt-auto">
+          <Skeleton className="h-10 bg-white/[0.02] border border-white/5 rounded-sm" />
+          <Skeleton className="h-10 bg-white/[0.02] border border-white/5 rounded-sm" />
+          <Skeleton className="h-10 bg-white/[0.02] border border-white/5 rounded-sm" />
         </div>
 
-        <div className="pt-3 border-t border-slate-100 flex items-center justify-between mt-auto">
-          <div className="space-y-1">
-            <Skeleton className="w-16 h-3 rounded-md" />
-            <Skeleton className="w-24 h-6 rounded-md" />
+        {/* Footer Skeleton */}
+        <div className="pt-4 border-t border-white/5 flex items-center justify-between mt-auto">
+          <div className="space-y-1.5">
+            {/* Rate label skeleton */}
+            <Skeleton className="w-10 h-2 bg-white/5 rounded-none" />
+            {/* Price skeleton */}
+            <Skeleton className="w-20 h-5 bg-white/10 rounded-none" />
           </div>
-          <Skeleton className="w-20 h-9 rounded-xl" />
+          {/* Button skeleton */}
+          <Skeleton className="w-20 h-9 bg-white/20 rounded-none" />
         </div>
       </div>
     </div>

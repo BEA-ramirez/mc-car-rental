@@ -14,6 +14,7 @@ import {
   CalendarDays,
   ShieldCheck,
   AlertCircle,
+  ArrowRight,
 } from "lucide-react";
 
 import {
@@ -33,8 +34,8 @@ import { useBookingSettings } from "../../../hooks/use-settings";
 
 function SpecPill({ icon: Icon, label }: { icon: any; label: string }) {
   return (
-    <div className="flex items-center gap-2 bg-slate-600 border border-slate-100 px-3 py-2 rounded-xl text-xs font-medium text-slate-50">
-      <Icon className="w-4 h-4 text-slate-400 shrink-0" /> {label}
+    <div className="flex items-center gap-2 bg-white/5 border border-white/10 px-3 py-2 rounded-sm text-[10px] font-medium tracking-wide text-slate-300">
+      <Icon className="w-3 h-3 text-slate-500 shrink-0" /> {label}
     </div>
   );
 }
@@ -81,12 +82,8 @@ export default function CarDetailsSheet({
   // Live Calculator Logic
   let totalDays = 0;
   if (date?.from && date?.to) {
-    // If they pick the SAME day for from/to, differenceInDays is 0.
-    // +1 makes it 1 day.
-    // If they pick 1st to 3rd, differenceInDays is 2. +1 makes it 3 days.
     totalDays = Math.abs(differenceInDays(date.to, date.from)) + 1;
   } else if (date?.from) {
-    // If they only selected a start date and haven't clicked an end date yet
     totalDays = 1;
   }
 
@@ -109,7 +106,7 @@ export default function CarDetailsSheet({
   return (
     <Sheet open={isOpen} onOpenChange={onClose}>
       <SheetContent
-        className="w-full sm:max-w-[70vw] md:max-w-[65vw] lg:max-w-[1000px] p-0 overflow-y-auto custom-scrollbar border-none rounded-l-3xl shadow-2xl [&>button]:hidden"
+        className="w-full sm:max-w-[70vw] md:max-w-[65vw] lg:max-w-[1000px] p-0 overflow-y-auto custom-scrollbar border-l border-white/10 bg-[#0A0C10] shadow-2xl [&>button]:hidden"
         side="right"
       >
         <SheetTitle className="sr-only">
@@ -118,33 +115,34 @@ export default function CarDetailsSheet({
 
         <div className="grid grid-cols-1 lg:grid-cols-12 min-h-full gap-0 relative">
           {/* --- LEFT SIDE: THE VEHICLE SHOWCASE --- */}
-          <div className="lg:col-span-7 p-6 md:p-8 bg-white flex flex-col h-full">
-            <div className="flex items-center justify-between mb-8">
+          <div className="lg:col-span-7 p-6 md:p-10 flex flex-col h-full border-r border-white/5">
+            <div className="flex items-center justify-between mb-10">
               <SheetClose asChild>
-                <button className="flex items-center gap-2 text-sm font-bold text-slate-500 hover:text-slate-900 transition-colors">
-                  <X className="w-4 h-4" /> Close
+                <button className="flex items-center gap-2 text-[9px] font-medium uppercase tracking-[0.2em] text-slate-500 hover:text-white transition-colors">
+                  <X className="w-4 h-4" /> Close Inspection
                 </button>
               </SheetClose>
-              <span className="text-xs font-mono text-slate-400">
-                ID: {car.id}
+              <span className="text-[9px] font-medium uppercase tracking-[0.2em] text-slate-600">
+                Asset ID: {car.id}
               </span>
             </div>
 
             {/* THE IMAGE GALLERY */}
-            <div className="space-y-3 mb-8">
-              {/* Main Image */}
-              <div className="relative aspect-[16/10] w-full rounded-3xl overflow-hidden border border-slate-100 shadow-sm transition-all bg-slate-50 flex items-center justify-center">
+            <div className="space-y-4 mb-10">
+              {/* Main Image - Cinematic Styling */}
+              <div className="relative aspect-[16/10] w-full rounded-sm overflow-hidden border border-white/5 bg-[#050608] flex items-center justify-center group">
                 <Image
                   src={
                     car.images?.[activeImageIndex] ||
-                    "https://placehold.co/600x400?text=No+Image"
+                    "https://placehold.co/1200x800?text=No+Image"
                   }
                   alt={`${car.brand} ${car.model}`}
                   fill
                   sizes="(max-width: 1000px) 100vw, 60vw"
-                  className="object-contain transition-opacity duration-300 p-2"
+                  className="object-cover opacity-80 mix-blend-luminosity group-hover:mix-blend-normal group-hover:scale-105 transition-all duration-1000 ease-out"
                 />
-                <div className="absolute top-5 left-5 bg-white/90 backdrop-blur-sm px-4 py-1.5 rounded-full text-sm font-bold text-slate-800 shadow-md z-10">
+                <div className="absolute inset-0 bg-gradient-to-t from-[#0A0C10]/80 via-transparent to-transparent opacity-60" />
+                <div className="absolute top-4 left-4 bg-white/10 backdrop-blur-md border border-white/10 px-3 py-1 rounded-sm text-[9px] font-medium tracking-[0.2em] uppercase text-white shadow-md z-10">
                   {car.year} Model
                 </div>
               </div>
@@ -157,16 +155,16 @@ export default function CarDetailsSheet({
                       key={idx}
                       onClick={() => setActiveImageIndex(idx)}
                       className={cn(
-                        "relative w-24 h-16 rounded-xl overflow-hidden shrink-0 border-2 transition-all bg-slate-50",
+                        "relative w-20 h-14 rounded-sm overflow-hidden shrink-0 border transition-all bg-[#050608]",
                         activeImageIndex === idx
-                          ? "border-blue-600 opacity-100"
-                          : "border-transparent opacity-60 hover:opacity-100",
+                          ? "border-blue-500 opacity-100 mix-blend-normal"
+                          : "border-white/10 opacity-50 mix-blend-luminosity hover:opacity-100 hover:mix-blend-normal hover:border-white/30",
                       )}
                     >
                       <Image
                         src={img}
                         fill
-                        sizes="96px"
+                        sizes="80px"
                         className="object-cover"
                         alt={`Thumbnail ${idx + 1}`}
                       />
@@ -177,14 +175,14 @@ export default function CarDetailsSheet({
             </div>
 
             {/* Vehicle Title & Description */}
-            <div className="mb-6">
-              <p className="text-sm font-medium text-slate-500 mb-1.5">
+            <div className="mb-8">
+              <p className="text-[10px] font-medium text-blue-500 uppercase tracking-[0.4em] mb-2">
                 {car.brand}
               </p>
-              <h1 className="text-3xl md:text-4xl font-black text-slate-900 tracking-tighter mb-4">
+              <h1 className="text-4xl md:text-5xl font-light text-white tracking-tighter mb-6 leading-tight">
                 {car.model}
               </h1>
-              <p className="text-sm text-slate-600 leading-relaxed max-w-2xl">
+              <p className="text-sm text-slate-400 font-light leading-relaxed max-w-2xl">
                 Experience superior comfort and rugged capability. Perfect for
                 navigating Ormoc City or exploring the scenic routes of Leyte.
                 Meticulously maintained for your safety and enjoyment.
@@ -192,24 +190,24 @@ export default function CarDetailsSheet({
             </div>
 
             {/* Spec Pills */}
-            <div className="flex flex-wrap gap-2.5 mb-8">
+            <div className="flex flex-wrap gap-2.5 mb-10">
               <SpecPill icon={Users} label={`${car.seats} Adult Seats`} />
               <SpecPill icon={Settings2} label={`${car.transmission}`} />
               <SpecPill icon={Fuel} label={`${car.fuel}`} />
-              <SpecPill icon={MapPin} label=" Ormoc Hub pickup" />
+              <SpecPill icon={MapPin} label="Ormoc Hub pickup" />
             </div>
 
             {/* Self-Drive / Driver Toggle */}
-            <div className="flex items-center justify-between bg-white border border-slate-100 p-4 rounded-xl shadow-sm mb-6">
+            <div className="flex items-center justify-between bg-white/[0.02] border border-white/5 p-5 rounded-sm mb-6 transition-colors hover:bg-white/5">
               <Label
                 htmlFor="with-driver"
-                className="flex flex-col gap-0.5 cursor-pointer"
+                className="flex flex-col gap-1 cursor-pointer"
               >
-                <span className="text-sm font-bold text-slate-900">
-                  Request a Driver
+                <span className="text-[11px] font-medium uppercase tracking-[0.2em] text-white">
+                  Chauffeur Service
                 </span>
-                <span className="text-xs text-slate-500">
-                  + ₱{driverDailyRate.toLocaleString()} / day fee
+                <span className="text-[10px] text-slate-500 tracking-wider">
+                  + ₱{driverDailyRate.toLocaleString()} / day
                 </span>
               </Label>
               <Switch
@@ -219,51 +217,51 @@ export default function CarDetailsSheet({
               />
             </div>
 
-            {/* MOVED HERE TO BALANCE HEIGHT: Important Info Box */}
+            {/* Important Info Box */}
             <div className="mt-auto pt-6">
-              <div className="bg-amber-50 border border-amber-100 rounded-2xl p-5">
-                <div className="flex items-center gap-2 mb-3 text-amber-800">
+              <div className="bg-blue-900/10 border border-blue-500/20 rounded-sm p-5">
+                <div className="flex items-center gap-2 mb-3 text-blue-400">
                   <AlertCircle className="w-4 h-4" />
-                  <span className="text-xs font-bold uppercase tracking-widest">
-                    Important Info
+                  <span className="text-[9px] font-medium uppercase tracking-[0.3em]">
+                    Policy Notice
                   </span>
                 </div>
-                <ul className="text-xs text-amber-700 space-y-2 list-disc list-inside">
+                <ul className="text-xs font-light text-slate-400 space-y-2 list-disc list-inside tracking-wide">
                   <li>
                     A standard security deposit of{" "}
-                    <strong>₱{securityDeposit.toLocaleString()}</strong>{" "}
+                    <span className="text-white font-medium">
+                      ₱{securityDeposit.toLocaleString()}
+                    </span>{" "}
                     applies.
                   </li>
-                  <li>
-                    Delivery & Pickup fees apply for locations outside the main
-                    hub.
-                  </li>
+                  <li>Logistics fees apply for out-of-hub deliveries.</li>
                 </ul>
               </div>
             </div>
           </div>
 
           {/* --- RIGHT SIDE: THE BOOKING ENGINE --- */}
-          <div className="lg:col-span-5 p-6 md:p-8 bg-slate-50 border-l border-slate-100 flex flex-col justify-around h-full sticky top-0 lg:h-auto lg:min-h-full">
-            <div className="flex items-end justify-between mb-8 pb-4 border-b border-slate-200">
-              <h3 className="text-sm font-bold text-slate-500 uppercase tracking-widest">
-                Rate
+          <div className="lg:col-span-5 p-6 md:p-10 bg-[#111623]/40 backdrop-blur-2xl flex flex-col justify-around h-full sticky top-0 lg:h-auto lg:min-h-full">
+            <div className="flex items-end justify-between mb-10 pb-6 border-b border-white/5">
+              <h3 className="text-[9px] font-medium text-slate-500 uppercase tracking-[0.3em]">
+                Standard Rate
               </h3>
-              <p className="text-4xl font-black font-mono text-slate-800 tracking-tight">
+              <p className="text-3xl font-light text-white tracking-tight">
                 ₱{car.price.toLocaleString()}
-                <span className="text-sm font-bold text-slate-400 uppercase tracking-widest ml-1.5">
+                <span className="text-[10px] font-medium text-slate-500 uppercase tracking-[0.2em] ml-2">
                   / day
                 </span>
               </p>
             </div>
 
-            <div className="mb-6 space-y-3">
-              <Label className="text-[11px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-1.5 mb-2">
-                <CalendarDays className="w-3.5 h-3.5" /> Select Rental Dates
+            <div className="mb-8 space-y-4">
+              <Label className="text-[9px] font-medium text-slate-400 uppercase tracking-[0.3em] flex items-center gap-2 mb-4">
+                <CalendarDays className="w-3.5 h-3.5 text-blue-500" /> Select
+                Itinerary
               </Label>
 
               {/* CALENDAR */}
-              <div className="bg-white border border-slate-200 rounded-2xl p-2 shadow-sm flex justify-center">
+              <div className="bg-[#050608] border border-white/10 rounded-sm p-3 flex justify-center shadow-inner">
                 <Calendar
                   mode="range"
                   defaultMonth={date?.from}
@@ -273,55 +271,69 @@ export default function CarDetailsSheet({
                   disabled={(date) =>
                     date < new Date(new Date().setHours(0, 0, 0, 0))
                   }
-                  className="w-full max-w-70 md:max-w-none"
+                  className="w-full max-w-70 md:max-w-none text-slate-300 font-light"
                   classNames={{
+                    // OVERRIDE: Stealth Wealth custom styling applied ONLY here
                     day_selected:
-                      "bg-blue-600 text-white hover:bg-blue-600 hover:text-white focus:bg-blue-600 focus:text-white",
-
-                    day_today: "bg-slate-100 text-slate-900",
-
-                    day_range_middle: "bg-blue-50 text-blue-900 rounded-none",
+                      "bg-white text-[#050608] hover:bg-slate-200 hover:text-[#050608] focus:bg-white focus:text-[#050608] rounded-sm font-medium transition-colors",
+                    day_today:
+                      "bg-white/5 text-white border border-white/20 rounded-sm",
+                    day_range_middle:
+                      "bg-white/10 text-white rounded-none hover:bg-white/20 hover:text-white",
+                    range_middle: "bg-white/10 text-white rounded-none",
+                    head_cell:
+                      "text-[10px] font-medium text-slate-500 uppercase tracking-widest",
+                    nav_button_previous:
+                      "hover:bg-white/10 rounded-sm text-slate-400 transition-colors",
+                    nav_button_next:
+                      "hover:bg-white/10 rounded-sm text-slate-400 transition-colors",
+                    day: "h-9 w-9 text-center text-sm p-0 hover:bg-white/10 hover:text-white rounded-sm transition-colors cursor-pointer",
+                    caption_label:
+                      "text-sm font-medium text-white tracking-wide",
                   }}
                 />
               </div>
 
               {date?.from && date?.to && (
-                <p className="text-xs font-medium text-slate-500 text-center mt-2">
+                <p className="text-[10px] font-medium text-blue-400 text-center mt-4 tracking-widest uppercase">
                   {totalDays} {totalDays === 1 ? "day" : "days"} selected:{" "}
-                  {format(date.from, "MMM dd")} to {format(date.to, "MMM dd")}
+                  <span className="text-white ml-1">
+                    {format(date.from, "MMM dd")} - {format(date.to, "MMM dd")}
+                  </span>
                 </p>
               )}
             </div>
 
-            <div className="space-y-5 pt-6 border-t border-slate-200 mt-2">
-              <div className="space-y-2 mb-4">
-                <div className="flex justify-between text-sm text-slate-600">
+            {/* Calculations */}
+            <div className="space-y-4 pt-8 border-t border-white/5 mt-auto">
+              <div className="space-y-3 mb-6">
+                <div className="flex justify-between text-xs font-light text-slate-400 tracking-wide">
                   <span>
-                    ₱{car.price.toLocaleString()} x {totalDays}{" "}
+                    ₱{car.price.toLocaleString()} × {totalDays}{" "}
                     {totalDays === 1 ? "day" : "days"}
                   </span>
-                  <span className="font-medium">
+                  <span className="text-white font-medium">
                     ₱{baseRentalCost.toLocaleString()}
                   </span>
                 </div>
                 {withDriver && (
-                  <div className="flex justify-between text-sm text-slate-600">
+                  <div className="flex justify-between text-xs font-light text-slate-400 tracking-wide">
                     <span>
-                      Driver Fee (₱{driverDailyRate.toLocaleString()} x{" "}
+                      Chauffeur (₱{driverDailyRate.toLocaleString()} ×{" "}
                       {totalDays})
                     </span>
-                    <span className="font-medium">
+                    <span className="text-white font-medium">
                       ₱{driverCost.toLocaleString()}
                     </span>
                   </div>
                 )}
               </div>
 
-              <div className="flex items-end justify-between border-t border-slate-100 pt-4">
-                <p className="text-sm font-bold text-slate-700">
-                  Estimated Total
+              <div className="flex items-end justify-between border-t border-white/5 pt-6 mb-8">
+                <p className="text-[10px] font-medium text-slate-500 uppercase tracking-[0.2em]">
+                  Total Estimate
                 </p>
-                <p className="text-3xl font-black font-mono text-slate-900">
+                <p className="text-3xl font-light text-white tracking-tight">
                   ₱{estimatedTotal.toLocaleString()}
                 </p>
               </div>
@@ -329,17 +341,19 @@ export default function CarDetailsSheet({
               <Button
                 onClick={handleProceedToBooking}
                 disabled={!date?.from || !date?.to}
-                size="lg"
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold h-12 shadow-md group disabled:opacity-50"
+                className="w-full bg-white text-[#0A0C10] hover:bg-blue-600 hover:text-white rounded-none font-bold text-[10px] uppercase tracking-[0.3em] h-14 transition-all duration-500 group disabled:opacity-30 disabled:hover:bg-white disabled:hover:text-[#0A0C10]"
               >
-                Setup Booking Details
-                <span className="ml-2 group-hover:translate-x-1 transition-transform">
-                  →
-                </span>
+                {!date?.from || !date?.to
+                  ? "Select Dates"
+                  : "Proceed to Checkout"}
+                {date?.from && date?.to && (
+                  <ArrowRight className="w-4 h-4 ml-3 opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-300" />
+                )}
               </Button>
 
-              <div className="flex items-center gap-2 justify-center text-xs text-emerald-700 font-medium">
-                <ShieldCheck className="w-4 h-4" /> 100% Secure Transaction
+              <div className="flex items-center gap-2 justify-center text-[9px] text-slate-500 font-medium uppercase tracking-widest mt-6">
+                <ShieldCheck className="w-3 h-3 text-slate-400" /> Secure
+                Protocol
               </div>
             </div>
           </div>
