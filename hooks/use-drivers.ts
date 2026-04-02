@@ -6,6 +6,12 @@ import {
   deleteDriver,
   getDriverById,
   saveDriverApplication,
+  getDriverSchedulesAction,
+  getDriverPerformanceAction,
+  getDriverDocumentsAction,
+  getPendingDriversAction,
+  verifyDriverAction,
+  rejectDriverAction,
 } from "@/actions/manage-driver";
 import {
   fetchDispatchAvailability,
@@ -130,5 +136,99 @@ export const useDriverApplication = () => {
   return {
     applyForDriver: saveApplicationMutation.mutateAsync,
     isApplying: saveApplicationMutation.isPending,
+  };
+};
+
+export const useDriverSchedules = () => {
+  return useQuery({
+    queryKey: ["driver-schedules"],
+    queryFn: async () => {
+      const result = await getDriverSchedulesAction();
+      if (!result.success || !result.data) {
+        throw new Error(result.message);
+      }
+      return result.data;
+    },
+  });
+};
+
+export const useDriverPerformance = (driverId: string) => {
+  return useQuery({
+    queryKey: ["driver-performance", driverId],
+    queryFn: async () => {
+      const result = await getDriverPerformanceAction(driverId);
+      if (!result.success || !result.data) {
+        throw new Error(result.message);
+      }
+      return result.data;
+    },
+    enabled: !!driverId, // Only run if a driverId is provided
+    staleTime: 5 * 60 * 1000,
+  });
+};
+
+export const useDriverDocuments = (driverId: string) => {
+  return useQuery({
+    queryKey: ["driver-documents", driverId],
+    queryFn: async () => {
+      const result = await getDriverDocumentsAction(driverId);
+      if (!result.success || !result.data) {
+        throw new Error(result.message);
+      }
+      return result.data;
+    },
+    enabled: !!driverId, // Only fetch if a valid driverId is provided
+    staleTime: 5 * 60 * 1000,
+  });
+};
+
+export const useDriverApplications = () => {
+  const queryClient = useQueryClient();
+
+  const { data, isLoading, isFetching } = useQuery({
+    queryKey: ["pending-drivers"],
+    queryFn: async () => {
+      const result = await getPendingDriversAction();
+      if (!result.success) throw new Error(result.message);
+      return result.data;
+    },
+  });
+
+  const verifyMutation = useMutation({
+    mutationFn: async ({ driverId }: { driverId: string }) => {
+      const result = await verifyDriverAction(driverId);
+      if (!result.success) throw new Error(result.message);
+      return result;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["pending-drivers"] });
+      // You should also invalidate the active fleet schedule here if needed
+      queryClient.invalidateQueries({ queryKey: ["driver-schedules"] });
+    },
+  });
+
+  const rejectMutation = useMutation({
+    mutationFn: async ({
+      driverId,
+      reason,
+    }: {
+      driverId: string;
+      reason: string;
+    }) => {
+      const result = await rejectDriverAction(driverId, reason);
+      if (!result.success) throw new Error(result.message);
+      return result;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["pending-drivers"] });
+    },
+  });
+
+  return {
+    pendingDrivers: data || [],
+    isLoading,
+    isFetching,
+    verifyDriver: verifyMutation.mutateAsync,
+    rejectDriver: rejectMutation.mutateAsync,
   };
 };

@@ -123,3 +123,72 @@ export async function sendCustomEmail(
   };
   await transporter.sendMail(mailOptions);
 }
+
+export async function sendDriverRejectionEmail(
+  email: string,
+  name: string,
+  reason: string,
+) {
+  const mailOptions = {
+    from: `"MC Ormoc Fleet Management" <${process.env.SMTP_FROM_EMAIL}>`,
+    to: email,
+    subject: "Action Required: Update on Your Driver Application",
+    html: `
+    <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; background-color: #ffffff; padding: 30px; border: 1px solid #e2e8f0; border-radius: 8px; color: #334155;">
+      <h2 style="color: #0f172a; border-bottom: 2px solid #f1f5f9; padding-bottom: 15px; margin-top: 0;">MC Ormoc Fleet Management</h2>
+      
+      <p style="font-size: 16px;">Dear ${name},</p>
+      
+      <p style="font-size: 16px; line-height: 1.5;">Thank you for applying to join the MC Ormoc Car Rental fleet as a driver. We are currently processing your application, but our review team requires additional action from you regarding your submitted documents.</p>
+      
+      <div style="background-color: #fef2f2; border-left: 4px solid #ef4444; padding: 16px; margin: 24px 0; border-radius: 0 4px 4px 0;">
+        <p style="margin: 0 0 8px 0; font-weight: bold; color: #991b1b;">Message from our Review Team:</p>
+        <p style="color: #991b1b; margin: 0;">${reason}</p>
+      </div>
+
+      <p style="font-size: 16px; line-height: 1.5;">To proceed with your application, please log in to your driver portal and update the requested information.</p>
+      
+      <div style="text-align: center; margin: 32px 0;">
+        <a href="${process.env.NEXT_PUBLIC_APP_URL}/dashboard/documents" style="background-color: #0f172a; color: #ffffff; text-decoration: none; padding: 12px 28px; border-radius: 6px; font-weight: 600; font-size: 16px; display: inline-block;">Update Application Documents</a>
+      </div>
+      
+      <p style="font-size: 14px; color: #64748b; line-height: 1.5; border-top: 1px solid #f1f5f9; padding-top: 20px;">
+        Best regards,<br/>
+        <strong>The MC Ormoc Fleet Team</strong>
+      </p>
+    </div>
+  `,
+  };
+
+  await transporter.sendMail(mailOptions);
+}
+
+export async function sendDriverVerificationEmail(email: string, name: string) {
+  const mailOptions = {
+    from: `"MC Ormoc Fleet Management" <${process.env.SMTP_FROM_EMAIL}>`,
+    to: email,
+    subject: "Welcome to the Fleet! Your Driver Account is Verified",
+    html: `
+    <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; background-color: #ffffff; padding: 30px; border: 1px solid #e2e8f0; border-radius: 8px; color: #334155;">
+      <h2 style="color: #0f172a; border-bottom: 2px solid #f1f5f9; padding-bottom: 15px; margin-top: 0;">MC Ormoc Fleet Management</h2>
+      
+      <p style="font-size: 16px;">Dear ${name},</p>
+      
+      <p style="font-size: 16px; line-height: 1.5;">Congratulations! We have successfully reviewed your application and verified your documents.</p>
+      
+      <p style="font-size: 16px; line-height: 1.5;">Your driver account is now fully active. You are officially part of the MC Ormoc Car Rental fleet. You can now log in to the driver portal to view your schedule and dispatch assignments.</p>
+      
+      <div style="text-align: center; margin: 32px 0;">
+        <a href="${process.env.NEXT_PUBLIC_APP_URL}/driver-portal" style="background-color: #10b981; color: #ffffff; text-decoration: none; padding: 12px 28px; border-radius: 6px; font-weight: 600; font-size: 16px; display: inline-block;">Access Driver Portal</a>
+      </div>
+      
+      <p style="font-size: 14px; color: #64748b; line-height: 1.5; border-top: 1px solid #f1f5f9; padding-top: 20px;">
+        We look forward to working with you.<br/><br/>
+        Best regards,<br/>
+        <strong>The MC Ormoc Fleet Team</strong>
+      </p>
+    </div>
+  `,
+  };
+  await transporter.sendMail(mailOptions);
+}
