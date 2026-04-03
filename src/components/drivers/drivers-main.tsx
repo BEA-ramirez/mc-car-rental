@@ -1,7 +1,14 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Search, Plus, Loader2, Briefcase, MoreVertical } from "lucide-react";
+import {
+  Search,
+  Plus,
+  Loader2,
+  Briefcase,
+  MoreVertical,
+  Trash2,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,6 +17,15 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toTitleCase, getInitials } from "@/actions/helper/format-text";
 import { useDrivers } from "../../../hooks/use-drivers";
 import { CompleteDriverType } from "@/lib/schemas/driver";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+  DropdownMenuLabel,
+  DropdownMenuCheckboxItem,
+} from "@/components/ui/dropdown-menu";
 
 // Import components
 import DriverProfileHeader from "./driver-profile-header";
@@ -19,6 +35,7 @@ import DispatchCalendar, {
 import DriverPerformanceTab from "./driver-performance-tab";
 import DriverDocsTab from "./driver-docs-tab";
 import DriverForm from "./driver-form";
+import { DeleteDialog } from "../delete-dialog";
 
 interface DriversMainProps {
   schedules?: ScheduleBooking[];
@@ -39,8 +56,20 @@ export default function DriversMain({
     useState<CompleteDriverType | null>(currentDriverData);
   const [searchQuery, setSearchQuery] = useState("");
   const [openDialog, setOpenDialog] = useState(false);
+  const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
 
-  const { data: drivers, isLoading: isDriversLoading } = useDrivers();
+  const [driverToEdit, setDriverToEdit] = useState<CompleteDriverType | null>(
+    null,
+  );
+  const [driverToDelete, setDriverToDelete] =
+    useState<CompleteDriverType | null>(null);
+
+  const {
+    data: drivers,
+    isLoading: isDriversLoading,
+    deleteDriver,
+    isDeleting,
+  } = useDrivers();
 
   // Keep state synced if currentDriverData loads asynchronously
   useEffect(() => {
@@ -62,6 +91,25 @@ export default function DriversMain({
     (s) => s.driver_id === selectedDriver?.driver_id,
   );
 
+  const handleDeleteDriver = async () => {
+    if (!driverToDelete?.driver_id) return;
+
+    try {
+      await deleteDriver(driverToDelete.driver_id);
+      setOpenDeleteDialog(false);
+
+      // Only clear the right panel if we deleted the person we were looking at!
+      if (selectedDriver?.driver_id === driverToDelete.driver_id) {
+        setSelectedDriver(null);
+      }
+
+      // Clean up
+      setDriverToDelete(null);
+    } catch (error) {
+      // Handle error
+    }
+  };
+
   // ==========================================
   // VIEW 1: DRIVER MOBILE DASHBOARD
   // ==========================================
@@ -81,7 +129,14 @@ export default function DriversMain({
       // Mobile-native layout: No fixed heights, natural body scrolling, no borders
       <div className="flex flex-col w-full min-h-screen bg-slate-50 pb-20">
         <div className="bg-white shadow-sm border-b border-slate-200">
-          <DriverProfileHeader driver={selectedDriver} isSelfView={true} />
+          <DriverProfileHeader
+            driver={selectedDriver}
+            isSelfView={true}
+            onOpenEdit={() => {
+              setDriverToEdit(selectedDriver); // Pass the current driver to the form
+              setOpenDialog(true);
+            }}
+          />
         </div>
 
         <div className="px-4 pt-6">
@@ -134,9 +189,9 @@ export default function DriversMain({
   return (
     <div className="flex flex-col md:flex-row w-full min-h-[600px] md:h-[800px] bg-white border border-slate-200 rounded-sm shadow-sm overflow-hidden">
       {/* LEFT SIDEBAR: ROSTER */}
-      <div className="w-full md:w-[280px] flex flex-col border-b md:border-b-0 md:border-r border-slate-200 bg-slate-50/50 shrink-0 z-10 h-[350px] md:h-full">
+      <div className="w-full md:w-[280px] flex flex-col border-b md:border-b-0 md:border-r border-slate-200 bg-slate-50/50 shrink-0 z-10 h-[350px] md:h-[600px]">
         {/* Sidebar Header & Search */}
-        <div className="p-4 border-b border-slate-200 bg-white flex flex-col gap-3 shrink-0">
+        <div className="p-4 pb-5 border-b border-slate-200 bg-white flex flex-col gap-3 shrink-0">
           <div className="flex items-center justify-between">
             <h2 className="text-[11px] font-bold text-slate-800 uppercase tracking-widest">
               Driver Roster
@@ -144,8 +199,12 @@ export default function DriversMain({
             <Button
               size="icon"
               variant="ghost"
-              className="h-7 w-7 rounded-sm hover:bg-slate-100 text-slate-600"
-              onClick={() => setOpenDialog(true)}
+              className="h-7 w-7 rounded-sm hover:bg-slate-100 text-slate-600 shadow-none"
+              onClick={() => {
+                setDriverToEdit(null); // Null means "Create Mode"
+                setOpenDialog(true);
+                // Notice we REMOVED setSelectedDriver(null) here!
+              }}
             >
               <Plus className="w-4 h-4" />
             </Button>
@@ -162,15 +221,15 @@ export default function DriversMain({
         </div>
 
         {/* Scrollable Driver List */}
-        <div className="flex-1 overflow-y-auto custom-scrollbar">
+        <div className="flex-1 overflow-y-auto custom-scrollbar bg-[#F8FAFC]">
           <div className="p-2.5 space-y-1">
             {isDriversLoading ? (
               <div className="flex flex-col items-center justify-center py-10 text-slate-400 gap-2">
-                <Loader2 className="w-4 h-4 animate-spin" />
+                <Loader2 className="w-4 h-4 animate-spin text-slate-500" />
               </div>
             ) : filteredDrivers.length === 0 ? (
-              <div className="py-12 text-center text-xs text-slate-500 font-bold">
-                No drivers found.
+              <div className="py-12 text-center text-[10px] uppercase tracking-widest text-slate-500 font-bold">
+                No drivers found
               </div>
             ) : (
               filteredDrivers.map((driver) => {
@@ -180,17 +239,17 @@ export default function DriversMain({
                     key={driver.driver_id}
                     onClick={() => setSelectedDriver(driver)}
                     className={cn(
-                      "group flex items-center justify-between gap-3 p-3 rounded-sm cursor-pointer transition-all border shrink-0",
+                      "group flex items-center justify-between gap-3 p-3 rounded-sm cursor-pointer transition-colors border shrink-0",
                       isActive
-                        ? "bg-slate-900 border-slate-900 shadow-sm"
-                        : "bg-transparent border-transparent hover:bg-white hover:border-slate-200 hover:shadow-sm",
+                        ? "bg-[#0F172A] border-[#0F172A] shadow-sm"
+                        : "bg-white border-slate-200 hover:border-slate-300 hover:shadow-sm",
                     )}
                   >
                     <div className="flex items-center gap-3 min-w-0 flex-1">
                       <div className="relative shrink-0">
                         <Avatar
                           className={cn(
-                            "h-10 w-10 border",
+                            "h-10 w-10 border rounded-sm",
                             isActive ? "border-slate-700" : "border-slate-200",
                           )}
                         >
@@ -198,10 +257,11 @@ export default function DriversMain({
                             src={
                               driver.profiles?.profile_picture_url || undefined
                             }
+                            className="object-cover"
                           />
                           <AvatarFallback
                             className={cn(
-                              "text-[10px] font-bold",
+                              "text-[10px] font-bold rounded-sm",
                               isActive
                                 ? "bg-slate-800 text-slate-200"
                                 : "bg-slate-100 text-slate-600",
@@ -210,15 +270,17 @@ export default function DriversMain({
                             {getInitials(driver.profiles?.full_name || "D")}
                           </AvatarFallback>
                         </Avatar>
+
+                        {/* Status Indicator Dot */}
                         <div
                           className={cn(
-                            "absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-white",
+                            "absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full border-2",
                             driver.driver_status === "Available"
                               ? "bg-emerald-500"
                               : driver.driver_status === "On Trip"
                                 ? "bg-blue-500"
                                 : "bg-amber-500",
-                            isActive && "border-slate-900",
+                            isActive ? "border-[#0F172A]" : "border-white",
                           )}
                         />
                       </div>
@@ -226,7 +288,7 @@ export default function DriversMain({
                         <span
                           className={cn(
                             "text-xs font-bold truncate mb-0.5",
-                            isActive ? "text-white" : "text-slate-900",
+                            isActive ? "text-white" : "text-[#0F172A]",
                           )}
                         >
                           {toTitleCase(driver.profiles?.full_name || "Unknown")}
@@ -234,7 +296,7 @@ export default function DriversMain({
                         <div className="flex items-center gap-2">
                           <span
                             className={cn(
-                              "text-[10px] font-mono truncate",
+                              "text-[10px] font-mono truncate uppercase tracking-widest",
                               isActive ? "text-slate-400" : "text-slate-500",
                             )}
                           >
@@ -243,18 +305,44 @@ export default function DriversMain({
                         </div>
                       </div>
                     </div>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className={cn(
-                        "h-7 w-7 rounded-sm shrink-0 md:opacity-0 group-hover:opacity-100 transition-opacity",
-                        isActive
-                          ? "text-slate-400 hover:text-white hover:bg-slate-800"
-                          : "text-slate-400 hover:text-slate-900 hover:bg-slate-100",
-                      )}
-                    >
-                      <MoreVertical className="w-4 h-4" />
-                    </Button>
+
+                    {/* ACTION MENU */}
+                    {/* Added onClick={(e) => e.stopPropagation()} to the parent wrapper of the dropdown menu to catch bubbled events before they hit the row */}
+                    <div onClick={(e) => e.stopPropagation()}>
+                      <DropdownMenu modal={false}>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className={cn(
+                              "h-7 w-7 rounded-sm shrink-0 md:opacity-0 group-hover:opacity-100 transition-opacity shadow-none",
+                              isActive
+                                ? "text-slate-400 hover:text-white hover:bg-slate-800"
+                                : "text-slate-400 hover:text-[#0F172A] hover:bg-slate-100",
+                            )}
+                          >
+                            <MoreVertical className="w-4 h-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent
+                          align="start"
+                          className="w-24 rounded-sm border-slate-200 shadow-xl"
+                        >
+                          <DropdownMenuItem
+                            className="text-[10px] font-bold uppercase tracking-widest text-red-600 focus:bg-red-50 focus:text-red-700 cursor-pointer"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              e.preventDefault();
+                              setDriverToDelete(driver); // Lock in the EXACT driver clicked from the list
+                              setOpenDeleteDialog(true);
+                            }}
+                          >
+                            <Trash2 className="w-3.5 h-3.5 mr-2" />
+                            Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
                   </div>
                 );
               })
@@ -277,7 +365,14 @@ export default function DriversMain({
           </div>
         ) : (
           <div className="flex flex-col h-full w-full">
-            <DriverProfileHeader driver={selectedDriver} isSelfView={false} />
+            <DriverProfileHeader
+              driver={selectedDriver}
+              isSelfView={false}
+              onOpenEdit={() => {
+                setDriverToEdit(selectedDriver); // Pass the current driver to the form
+                setOpenDialog(true);
+              }}
+            />
 
             <Tabs
               defaultValue="sched"
@@ -338,7 +433,18 @@ export default function DriversMain({
       <DriverForm
         open={openDialog}
         onOpenChange={setOpenDialog}
-        initialData={selectedDriver || null}
+        initialData={driverToEdit} // UPDATED
+      />
+      <DeleteDialog
+        isOpen={openDeleteDialog}
+        onClose={() => {
+          setOpenDeleteDialog(false);
+          setDriverToDelete(null); // Clean up on cancel
+        }}
+        onConfirm={() => handleDeleteDriver()}
+        title="Delete Driver"
+        description={`Are you sure you want to delete ${driverToDelete?.profiles?.full_name || "this driver"}?`} // Added dynamic name for better UX
+        isDeleting={isDeleting}
       />
     </div>
   );

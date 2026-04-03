@@ -3,7 +3,6 @@
 import React, { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import z from "zod";
 import {
   Dialog,
   DialogContent,
@@ -20,10 +19,9 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-  FormDescription,
 } from "@/components/ui/form";
 import { useDrivers } from "../../../hooks/use-drivers";
-import { useUnassignedCarOwners } from "../../../hooks/use-fleetPartners"; // Keep if you use this to find available users
+import { useUnassignedCarOwners } from "../../../hooks/use-fleetPartners";
 import { Check, ChevronsUpDown, Loader2, ShieldAlert } from "lucide-react";
 import {
   Select,
@@ -48,6 +46,8 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import { CompleteDriverType } from "@/lib/schemas/driver";
+import { DriverFormValues, driverFormSchema } from "@/lib/schemas/driver";
+import { toast } from "sonner";
 
 interface DriverFormProp {
   open: boolean;
@@ -55,24 +55,14 @@ interface DriverFormProp {
   initialData?: CompleteDriverType | null;
 }
 
-// STRICTLY OPERATIONAL SCHEMA
-const formSchema = z.object({
-  driver_id: z.string().optional(),
-  user_id: z.string().min(1, "You must select a user account"),
-  driver_status: z.string().min(5, "Status is required"),
-  is_verified: z.boolean().default(false),
-});
-
-type DriverFormValues = z.infer<typeof formSchema>;
-
 function DriverForm({ open, onOpenChange, initialData }: DriverFormProp) {
   const { saveDriver, isSaving } = useDrivers();
   const { data: availableUsers, isLoading: isLoadingUsers } =
     useUnassignedCarOwners();
   const [comboboxOpen, setComboboxOpen] = useState(false);
 
-  const form = useForm({
-    resolver: zodResolver(formSchema),
+  const form = useForm<DriverFormValues>({
+    resolver: zodResolver(driverFormSchema),
     defaultValues: {
       user_id: "",
       driver_status: "Pending",
@@ -83,15 +73,13 @@ function DriverForm({ open, onOpenChange, initialData }: DriverFormProp) {
   useEffect(() => {
     if (open) {
       if (initialData) {
-        // EDIT MODE
         form.reset({
           driver_id: initialData.driver_id,
           user_id: initialData.user_id,
-          driver_status: (initialData.driver_status as any) || "Pending",
+          driver_status: initialData.driver_status || "Pending",
           is_verified: initialData.is_verified || false,
         });
       } else {
-        // CREATE MODE
         form.reset({
           user_id: "",
           driver_status: "Pending",
@@ -102,25 +90,48 @@ function DriverForm({ open, onOpenChange, initialData }: DriverFormProp) {
   }, [initialData, open, form]);
 
   const onSelectUser = (userId: string) => {
-    form.setValue("user_id", userId);
+    form.setValue("user_id", userId, { shouldValidate: true });
     setComboboxOpen(false);
   };
 
   const onSubmit = async (values: DriverFormValues) => {
-    const payload: any = {
-      driver_id: values.driver_id,
-      user_id: values.user_id,
-      driver_status: values.driver_status,
-      is_verified: values.is_verified,
-    };
+    const result = await saveDriver(values);
 
-    saveDriver(payload, {
-      onSuccess: () => onOpenChange(false),
-    });
+    if (!result.success) {
+      if (result.errors) {
+        Object.entries(result.errors).forEach(([field, messages]) => {
+          form.setError(field as keyof DriverFormValues, {
+            type: "server",
+            message: messages[0],
+          });
+        });
+        toast.error("Please fix the errors in the form.");
+      } else {
+        toast.error(result.message || "Failed to save driver.");
+      }
+      return; // Stop execution
+    }
+
+    toast.success(result.message);
+    form.reset();
+    onOpenChange(false);
   };
 
+  const handleOpenChange = (isOpen: boolean) => {
+    if (!isOpen) form.reset();
+    onOpenChange(isOpen);
+  };
+
+  // DEBUG TOOL: If save ever does "nothing" again, check your browser console!
+  if (Object.keys(form.formState.errors).length > 0) {
+    console.log(
+      "Silent Form Errors Blocked Submission:",
+      form.formState.errors,
+    );
+  }
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-[450px] p-0 overflow-hidden border-slate-200 shadow-xl rounded-sm bg-white">
         <DialogHeader className="px-5 py-4 border-b border-slate-200 bg-[#F8FAFC]">
           <DialogTitle className="text-sm font-bold text-[#0F172A] tracking-tight">
@@ -139,7 +150,6 @@ function DriverForm({ open, onOpenChange, initialData }: DriverFormProp) {
             className="flex flex-col"
           >
             <div className="p-5 space-y-5">
-              {/* Only show User Selector if creating a NEW driver */}
               {!initialData ? (
                 <FormField
                   control={form.control}
@@ -220,8 +230,9 @@ function DriverForm({ open, onOpenChange, initialData }: DriverFormProp) {
                   )}
                 />
               ) : (
-                // If editing, just display who this is without letting them change the user linkage
                 <div className="bg-slate-50 p-3 border border-slate-100 rounded-sm">
+                  <input type="hidden" {...form.register("user_id")} />
+
                   <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">
                     Driver Identity
                   </p>
@@ -234,7 +245,6 @@ function DriverForm({ open, onOpenChange, initialData }: DriverFormProp) {
                 </div>
               )}
 
-              {/* Operational Controls */}
               <div className="grid grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
@@ -249,7 +259,7 @@ function DriverForm({ open, onOpenChange, initialData }: DriverFormProp) {
                         value={field.value}
                       >
                         <FormControl>
-                          <SelectTrigger className="h-9 text-xs rounded-sm border-slate-200 shadow-none">
+                          <SelectTrigger className="h-9 w-full text-xs rounded-sm border-slate-200 shadow-none focus:ring-1 focus:ring-[#0F172A]">
                             <SelectValue placeholder="Status" />
                           </SelectTrigger>
                         </FormControl>
@@ -301,7 +311,6 @@ function DriverForm({ open, onOpenChange, initialData }: DriverFormProp) {
                 />
               </div>
 
-              {/* Warning for manual verification */}
               {form.watch("is_verified") && !initialData?.is_verified && (
                 <div className="flex items-start gap-2 p-3 bg-amber-50 border border-amber-200 rounded-sm mt-4">
                   <ShieldAlert className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
@@ -314,13 +323,12 @@ function DriverForm({ open, onOpenChange, initialData }: DriverFormProp) {
               )}
             </div>
 
-            {/* FOOTER */}
             <DialogFooter className="px-5 py-3 bg-[#F8FAFC] border-t border-slate-200 flex sm:justify-end gap-2 shrink-0">
               <Button
                 type="button"
                 variant="outline"
                 className="h-8 text-xs font-bold rounded-sm border-slate-200 text-slate-600 hover:bg-slate-100 shadow-none"
-                onClick={() => onOpenChange(false)}
+                onClick={() => handleOpenChange(false)}
               >
                 Cancel
               </Button>

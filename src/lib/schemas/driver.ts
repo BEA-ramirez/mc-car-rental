@@ -1,6 +1,15 @@
 import z from "zod";
 // Driver Status: Available, On trip, Off duty, Pending, Suspended
 
+export const driverFormSchema = z.object({
+  driver_id: z.string().optional(),
+  user_id: z.string().min(1, "You must select a user account"),
+  driver_status: z.string().min(5, "Status is required"),
+  is_verified: z.boolean(),
+});
+
+export type DriverFormValues = z.infer<typeof driverFormSchema>;
+
 export const driverSchema = z.object({
   driver_id: z.string().uuid().optional(),
   display_id: z.string().optional(),

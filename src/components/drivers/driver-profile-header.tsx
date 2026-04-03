@@ -10,9 +10,11 @@ import { cn } from "@/lib/utils";
 export default function DriverProfileHeader({
   driver,
   isSelfView = false, // Hides Call/Message features if true
+  onOpenEdit,
 }: {
   driver: CompleteDriverType;
   isSelfView?: boolean;
+  onOpenEdit?: () => void;
 }) {
   return (
     <div
@@ -93,6 +95,7 @@ export default function DriverProfileHeader({
             variant="ghost"
             size="icon"
             className="h-8 w-8 rounded-sm hover:bg-slate-100 text-slate-400 hover:text-slate-900 shrink-0 hidden sm:flex"
+            onClick={onOpenEdit}
           >
             <Edit2 className="w-4 h-4" />
           </Button>

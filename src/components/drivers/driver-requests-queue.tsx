@@ -45,7 +45,7 @@ export default function DriverRequestsQueue() {
 
   // Client-side search filtering
   const filteredDrivers = pendingDrivers.filter(
-    (driver) =>
+    (driver: any) =>
       driver.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       driver.email.toLowerCase().includes(searchQuery.toLowerCase()),
   );

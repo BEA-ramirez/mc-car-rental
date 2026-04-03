@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/utils/supabase/server";
+import { ActionState } from "./manage-driver";
 
 export async function fetchDispatchAvailability(start: Date, end: Date) {
   const supabase = await createClient();
@@ -16,7 +17,7 @@ export async function fetchDispatchAvailability(start: Date, end: Date) {
 export async function saveDispatchPlan(
   bookingId: string,
   segments: { driverId: string; start: Date; end: Date }[],
-) {
+): Promise<ActionState> {
   const supabase = await createClient();
 
   // 1. Wipe existing SCHEDULED assignments for this booking to allow clean replacements
@@ -38,7 +39,13 @@ export async function saveDispatchPlan(
   const { error } = await supabase
     .from("booking_driver_assignments")
     .insert(assignments);
-  if (error) throw new Error(error.message);
+  if (error) {
+    console.error("Error saving dispatch plan:", error);
+    return {
+      success: false,
+      message: "Failed to save dispatch plan.",
+    };
+  }
 
   // 3. Update the main booking table to reflect the primary driver (for legacy UI support)
   // We just take the driver from the first segment
@@ -49,5 +56,5 @@ export async function saveDispatchPlan(
       .eq("booking_id", bookingId);
   }
 
-  return { success: true };
+  return { success: true, message: "Dispatch plan saved successfully!" };
 }

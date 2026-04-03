@@ -3,8 +3,6 @@ import { toast } from "sonner";
 import { CompleteDriverType } from "@/lib/schemas/driver";
 import {
   saveDriver,
-  deleteDriver,
-  getDriverById,
   saveDriverApplication,
   getDriverSchedulesAction,
   getDriverPerformanceAction,
@@ -12,11 +10,13 @@ import {
   getPendingDriversAction,
   verifyDriverAction,
   rejectDriverAction,
+  deleteDriverAction,
 } from "@/actions/manage-driver";
 import {
   fetchDispatchAvailability,
   saveDispatchPlan,
 } from "@/actions/dispatch";
+import { DriverFormValues } from "@/lib/schemas/driver";
 
 const fetchDrivers = async () => {
   const response = await fetch("/api/drivers");
@@ -34,21 +34,32 @@ export const useDrivers = () => {
     staleTime: 60 * 1000,
   });
 
+  // FORM ACTION: Passes validation errors back to the component. No throwing!
   const saveMutation = useMutation({
-    mutationFn: saveDriver,
-    onSuccess: () => {
-      toast.success("Driver saved successfully");
-      queryClient.invalidateQueries({ queryKey: ["drivers"] });
+    mutationFn: async (data: DriverFormValues) => {
+      return await saveDriver(data);
+    },
+    onSuccess: (result) => {
+      if (result.success) {
+        queryClient.invalidateQueries({ queryKey: ["drivers"] });
+      }
     },
     onError: (error: Error) => {
-      toast.error(error.message);
+      toast.error("Network error. Please try again.");
     },
   });
 
+  // NORMAL ACTION: Throws error and handles its own toasts
   const deleteMutation = useMutation({
-    mutationFn: deleteDriver,
-    onSuccess: () => {
-      toast.success("Driver deleted successfully");
+    mutationFn: async (driverId: string) => {
+      const result = await deleteDriverAction(driverId);
+      if (!result.success)
+        throw new Error(result.message || "Failed to delete driver.");
+      return result;
+    },
+    onSuccess: (result) => {
+      toast.success(result.message || "Driver deleted successfully.");
+      queryClient.invalidateQueries({ queryKey: ["driver-schedules"] });
       queryClient.invalidateQueries({ queryKey: ["drivers"] });
     },
     onError: (error: Error) => {
@@ -58,8 +69,8 @@ export const useDrivers = () => {
 
   return {
     ...query,
-    saveDriver: saveMutation.mutate,
-    deleteDriver: deleteMutation.mutate,
+    saveDriver: saveMutation.mutateAsync,
+    deleteDriver: deleteMutation.mutateAsync,
     isSaving: saveMutation.isPending,
     isDeleting: deleteMutation.isPending,
   };
@@ -68,7 +79,6 @@ export const useDrivers = () => {
 export const useDriverDispatch = (startDate?: Date, endDate?: Date) => {
   const queryClient = useQueryClient();
 
-  // 1. Fetch available drivers for the specific date range
   const availabilityQuery = useQuery({
     queryKey: [
       "dispatch-availability",
@@ -79,28 +89,29 @@ export const useDriverDispatch = (startDate?: Date, endDate?: Date) => {
       if (!startDate || !endDate) return [];
       return await fetchDispatchAvailability(startDate, endDate);
     },
-    // Only run this query if we actually have dates (i.e., the modal is open)
     enabled: !!startDate && !!endDate,
-    staleTime: 0, // Always fetch fresh data for dispatching to prevent double-booking
+    staleTime: 0,
   });
 
-  // 2. Save the dispatch segments
+  // NORMAL ACTION: Added the success check and throw translation
   const savePlanMutation = useMutation({
     mutationFn: async (params: {
       bookingId: string;
       segments: { driverId: string; start: Date; end: Date }[];
     }) => {
-      return await saveDispatchPlan(params.bookingId, params.segments);
+      const result = await saveDispatchPlan(params.bookingId, params.segments);
+      // Ensure we translate the ActionState to a thrown error if it fails
+      if (!result.success)
+        throw new Error(result.message || "Failed to save dispatch plan.");
+      return result;
     },
-    onSuccess: () => {
-      toast.success("Dispatch plan saved successfully!");
-      // Invalidate the scheduler so the timeline immediately updates with the new driver names
+    onSuccess: (result) => {
+      toast.success(result.message || "Dispatch plan saved successfully!");
       queryClient.invalidateQueries({ queryKey: ["scheduler_data"] });
-      // Invalidate availability so the next time we open it, it's accurate
       queryClient.invalidateQueries({ queryKey: ["dispatch-availability"] });
     },
     onError: (error: Error) => {
-      toast.error(error.message || "Failed to save dispatch plan.");
+      toast.error(error.message);
     },
   });
 
@@ -114,18 +125,21 @@ export const useDriverDispatch = (startDate?: Date, endDate?: Date) => {
 
 export const useDriverApplication = () => {
   const queryClient = useQueryClient();
+
+  // NORMAL ACTION
   const saveApplicationMutation = useMutation({
     mutationFn: async () => {
       const result = await saveDriverApplication();
-      if (!result.success) {
+      if (!result.success)
         throw new Error(
           result.message || "Failed to submit driver application",
         );
-      }
       return result;
     },
-    onSuccess: () => {
-      toast.success("Driver application submitted successfully!");
+    onSuccess: (result) => {
+      toast.success(
+        result.message || "Driver application submitted successfully!",
+      );
       queryClient.invalidateQueries({ queryKey: ["drivers"] });
     },
     onError: (error: Error) => {
@@ -144,9 +158,7 @@ export const useDriverSchedules = () => {
     queryKey: ["driver-schedules"],
     queryFn: async () => {
       const result = await getDriverSchedulesAction();
-      if (!result.success || !result.data) {
-        throw new Error(result.message);
-      }
+      if (!result.success || !result.data) throw new Error(result.message);
       return result.data;
     },
   });
@@ -157,12 +169,10 @@ export const useDriverPerformance = (driverId: string) => {
     queryKey: ["driver-performance", driverId],
     queryFn: async () => {
       const result = await getDriverPerformanceAction(driverId);
-      if (!result.success || !result.data) {
-        throw new Error(result.message);
-      }
+      if (!result.success || !result.data) throw new Error(result.message);
       return result.data;
     },
-    enabled: !!driverId, // Only run if a driverId is provided
+    enabled: !!driverId,
     staleTime: 5 * 60 * 1000,
   });
 };
@@ -172,12 +182,10 @@ export const useDriverDocuments = (driverId: string) => {
     queryKey: ["driver-documents", driverId],
     queryFn: async () => {
       const result = await getDriverDocumentsAction(driverId);
-      if (!result.success || !result.data) {
-        throw new Error(result.message);
-      }
+      if (!result.success || !result.data) throw new Error(result.message);
       return result.data;
     },
-    enabled: !!driverId, // Only fetch if a valid driverId is provided
+    enabled: !!driverId,
     staleTime: 5 * 60 * 1000,
   });
 };
@@ -194,19 +202,26 @@ export const useDriverApplications = () => {
     },
   });
 
+  // NORMAL ACTION: Added toasts
   const verifyMutation = useMutation({
     mutationFn: async ({ driverId }: { driverId: string }) => {
       const result = await verifyDriverAction(driverId);
-      if (!result.success) throw new Error(result.message);
+      if (!result.success)
+        throw new Error(result.message || "Failed to verify driver.");
       return result;
     },
-    onSuccess: () => {
+    onSuccess: (result) => {
+      toast.success(result.message || "Driver verified successfully.");
       queryClient.invalidateQueries({ queryKey: ["pending-drivers"] });
-      // You should also invalidate the active fleet schedule here if needed
       queryClient.invalidateQueries({ queryKey: ["driver-schedules"] });
+      queryClient.invalidateQueries({ queryKey: ["drivers"] });
+    },
+    onError: (error: Error) => {
+      toast.error(error.message);
     },
   });
 
+  // NORMAL ACTION: Added toasts
   const rejectMutation = useMutation({
     mutationFn: async ({
       driverId,
@@ -216,11 +231,16 @@ export const useDriverApplications = () => {
       reason: string;
     }) => {
       const result = await rejectDriverAction(driverId, reason);
-      if (!result.success) throw new Error(result.message);
+      if (!result.success)
+        throw new Error(result.message || "Failed to reject driver.");
       return result;
     },
-    onSuccess: () => {
+    onSuccess: (result) => {
+      toast.success(result.message || "Driver rejected successfully.");
       queryClient.invalidateQueries({ queryKey: ["pending-drivers"] });
+    },
+    onError: (error: Error) => {
+      toast.error(error.message);
     },
   });
 
