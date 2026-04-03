@@ -4,19 +4,28 @@ import { useState, forwardRef, useImperativeHandle } from "react";
 import Image from "next/image";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search, Plus, Filter, Star, Loader2, Car } from "lucide-react";
+import {
+  Search,
+  Plus,
+  Filter,
+  Star,
+  Loader2,
+  Car,
+  MoreVertical,
+  Edit2,
+} from "lucide-react";
 import { FleetPartnerType } from "@/lib/schemas/car-owner";
 import { useFleetPartners } from "../../../hooks/use-fleetPartners";
 import { PartnerForm } from "./partner-form";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { ScrollArea } from "@/components/ui/scroll-area";
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
-import { toTitleCase } from "@/actions/helper/format-text";
+import { toTitleCase, getInitials } from "@/actions/helper/format-text";
 
 // We expose a startEdit method so the parent can trigger the modal
 export interface FleetPartnersGridRef {
@@ -63,144 +72,209 @@ const FleetPartnersDataGrid = forwardRef<
 
   const filteredPartners =
     partners?.filter((p) => {
-      const name = p.business_name || p.users?.full_name || "";
+      const name =
+        p.business_name || p.users?.first_name + " " + p.users?.last_name || "";
       return name.toLowerCase().includes(searchQuery.toLowerCase());
     }) || [];
 
   return (
     <>
-      <div className="flex flex-col h-full bg-white shrink-0">
+      <div className="w-full h-full flex flex-col bg-white shrink-0 border-r border-slate-200">
         {/* --- SEARCH & ACTIONS HEADER --- */}
-        <div className="p-4 border-b border-slate-100 shrink-0 bg-slate-50/50">
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+        <div className="p-4  bg-white flex flex-col gap-3 shrink-0">
+          <div className="flex items-center justify-between">
+            <h2 className="text-[11px] font-bold text-slate-800 uppercase tracking-widest">
               Partner Directory
-            </span>
+            </h2>
             <Button
-              size="sm"
-              className="h-7 text-[10px] bg-blue-600 hover:bg-blue-700 text-white shadow-sm px-2.5 rounded-md"
+              size="icon"
+              variant="ghost"
+              className="h-7 w-7 rounded-sm hover:bg-slate-100 text-slate-600 shadow-none"
               onClick={handleAdd}
             >
-              <Plus className="w-3.5 h-3.5 mr-1" /> Add Partner
+              <Plus className="w-4 h-4" />
             </Button>
           </div>
-
-          <div className="flex items-center gap-2">
-            <div className="relative flex-1">
-              <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-slate-400" />
-              <Input
-                placeholder="Search business or name..."
-                className="pl-8 h-8 text-xs bg-white border-slate-200 focus-visible:ring-1"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-            </div>
-            <Button
-              variant="outline"
-              size="icon"
-              className="h-8 w-8 bg-white border-slate-200 text-slate-700 shrink-0"
-            >
-              <Filter className="h-3.5 w-3.5" />
-            </Button>
+          <div className="relative">
+            <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-slate-400" />
+            <Input
+              placeholder="Search business or name..."
+              className="pl-8 h-9 text-xs bg-slate-50 border-slate-200 focus-visible:ring-1 rounded-sm shadow-none"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
           </div>
         </div>
 
         {/* --- SCROLLABLE LIST --- */}
-        <ScrollArea className="flex-1 min-h-0 p-3">
-          {isLoading ? (
-            <div className="flex flex-col items-center justify-center py-10 text-slate-400 gap-2">
-              <Loader2 className="w-5 h-5 animate-spin text-blue-600" />
-              <span className="text-xs font-medium">Loading partners...</span>
-            </div>
-          ) : filteredPartners.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12 text-center border border-dashed border-slate-200 rounded-md mt-2">
-              <p className="text-xs text-slate-500 font-semibold">
-                No partners found.
-              </p>
-              {searchQuery && (
-                <p className="text-[10px] text-slate-400 mt-1">
-                  Adjust your search query.
-                </p>
-              )}
-            </div>
-          ) : (
-            <div className="flex flex-col gap-2">
-              {filteredPartners.map((partner) => {
+        <div className="flex-1 overflow-y-auto custom-scrollbar">
+          <div className="p-2.5 space-y-1">
+            {isLoading ? (
+              <div className="flex flex-col items-center justify-center py-10 text-slate-400 gap-2">
+                <Loader2 className="w-4 h-4 animate-spin text-slate-500" />
+              </div>
+            ) : filteredPartners.length === 0 ? (
+              <div className="py-12 text-center text-[10px] uppercase tracking-widest text-slate-500 font-bold">
+                No partners found
+              </div>
+            ) : (
+              filteredPartners.map((partner) => {
                 const isActive = activePartnerId === partner.car_owner_id;
                 const user = partner.users;
                 const displayName =
-                  partner.business_name || user?.full_name || "Unknown Partner";
-                const profilePicture =
-                  user?.profile_picture_url ||
-                  `https://ui-avatars.com/api/?name=${displayName.replace(" ", "+")}&background=random&color=fff`;
+                  partner.business_name ||
+                  user?.first_name + " " + user?.last_name ||
+                  "Unknown Partner";
 
                 return (
                   <div
                     key={partner.car_owner_id}
                     onClick={() => handleSelect(partner)}
                     className={cn(
-                      "group flex items-start gap-3 p-2.5 rounded-md border cursor-pointer transition-all",
+                      "group flex items-center justify-between gap-3 p-3 rounded-sm cursor-pointer transition-colors border shrink-0",
                       isActive
-                        ? "border-blue-500 bg-blue-50/50 ring-1 ring-blue-500 shadow-sm"
-                        : "border-slate-200 bg-white hover:border-slate-300 hover:shadow-sm",
+                        ? "bg-[#0F172A] border-[#0F172A] shadow-sm"
+                        : "bg-white border-slate-200 hover:border-slate-300 hover:shadow-sm",
                     )}
                   >
-                    {/* Avatar */}
-                    <div className="relative w-10 h-10 shrink-0 rounded-full border border-slate-200 overflow-hidden bg-slate-50">
-                      <Image
-                        src={profilePicture}
-                        alt="Profile"
-                        fill
-                        className="object-cover"
-                        sizes="40px"
-                      />
-                    </div>
+                    <div className="flex items-center gap-3 min-w-0 flex-1">
+                      {/* Avatar with Status Dot */}
+                      <div className="relative shrink-0">
+                        <Avatar
+                          className={cn(
+                            "h-10 w-10 border rounded-sm",
+                            isActive ? "border-slate-700" : "border-slate-200",
+                          )}
+                        >
+                          <AvatarImage
+                            src={user?.profile_picture_url || undefined}
+                            className="object-cover"
+                          />
+                          <AvatarFallback
+                            className={cn(
+                              "text-[10px] font-bold rounded-sm",
+                              isActive
+                                ? "bg-slate-800 text-slate-200"
+                                : "bg-slate-100 text-slate-600",
+                            )}
+                          >
+                            {getInitials(displayName || "P")}
+                          </AvatarFallback>
+                        </Avatar>
 
-                    {/* Info */}
-                    <div className="flex flex-col overflow-hidden flex-1 justify-center py-0.5">
-                      <h4 className="text-xs font-bold text-slate-800 truncate leading-tight">
-                        {toTitleCase(displayName)}
-                      </h4>
-                      <div className="flex items-center gap-2 mt-1">
-                        <div className="flex items-center text-[10px] font-medium text-slate-500">
-                          <Star className="w-3 h-3 text-amber-400 fill-amber-400 mr-1" />
-                          {user?.trust_score || "5.0"}
-                        </div>
-                        <div className="w-[1px] h-2.5 bg-slate-300" />
-                        <div className="flex items-center text-[10px] font-medium text-slate-500">
-                          <Car className="w-3 h-3 text-slate-400 mr-1" />
-                          {partner.total_units} cars
+                        {/* Status Indicator Dot */}
+                        <div
+                          className={cn(
+                            "absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full border-2",
+                            partner.verification_status === "verified"
+                              ? "bg-emerald-500"
+                              : partner.verification_status === "rejected"
+                                ? "bg-red-500"
+                                : "bg-amber-500",
+                            isActive ? "border-[#0F172A]" : "border-white",
+                          )}
+                        />
+                      </div>
+
+                      {/* Info Text */}
+                      <div className="flex-1 min-w-0 flex flex-col justify-center">
+                        <span
+                          className={cn(
+                            "text-xs font-bold truncate mb-0.5",
+                            isActive ? "text-white" : "text-[#0F172A]",
+                          )}
+                        >
+                          {toTitleCase(displayName)}
+                        </span>
+
+                        <div className="flex items-center gap-2">
+                          <span
+                            className={cn(
+                              "text-[10px] font-mono truncate uppercase tracking-widest",
+                              isActive ? "text-slate-400" : "text-slate-500",
+                            )}
+                          >
+                            {partner.car_owner_id.slice(0, 6)}
+                          </span>
+                          <div
+                            className={cn(
+                              "flex items-center gap-0.5 text-[10px] font-bold",
+                              isActive ? "text-slate-300" : "text-slate-500",
+                            )}
+                          >
+                            <Star
+                              className={cn(
+                                "w-2.5 h-2.5",
+                                isActive
+                                  ? "text-amber-400 fill-amber-400"
+                                  : "text-slate-400",
+                              )}
+                            />
+                            {user?.trust_score || "5.0"}
+                          </div>
+                          <div
+                            className={cn(
+                              "flex items-center gap-0.5 text-[10px] font-bold",
+                              isActive ? "text-slate-300" : "text-slate-500",
+                            )}
+                          >
+                            <Car className="w-2.5 h-2.5 text-slate-400" />
+                            {partner.total_units || 0}
+                          </div>
                         </div>
                       </div>
                     </div>
+
+                    {/* ACTION MENU (Visible on Hover/Active) */}
+                    <div onClick={(e) => e.stopPropagation()}>
+                      <DropdownMenu modal={false}>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className={cn(
+                              "h-7 w-7 rounded-sm shrink-0 md:opacity-0 group-hover:opacity-100 transition-opacity shadow-none",
+                              isActive
+                                ? "text-slate-400 hover:text-white hover:bg-slate-800"
+                                : "text-slate-400 hover:text-[#0F172A] hover:bg-slate-100",
+                            )}
+                          >
+                            <MoreVertical className="w-4 h-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent
+                          align="start"
+                          className="w-28 rounded-sm border-slate-200 shadow-xl"
+                        >
+                          <DropdownMenuItem
+                            className="text-[10px] font-bold uppercase tracking-widest text-slate-700 cursor-pointer"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setEditingPartner(partner);
+                              setIsFormOpen(true);
+                            }}
+                          >
+                            <Edit2 className="w-3.5 h-3.5 mr-2 text-slate-400" />{" "}
+                            Edit Profile
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
                   </div>
                 );
-              })}
-            </div>
-          )}
-        </ScrollArea>
+              })
+            )}
+          </div>
+        </div>
       </div>
 
       {/* --- FORM MODAL --- */}
-      <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
-        <DialogContent className="sm:max-w-[600px] h-[85vh] flex flex-col p-0 border-slate-200 shadow-xl rounded-lg overflow-hidden gap-0 bg-slate-50">
-          <DialogHeader className="p-4 border-b border-slate-200 bg-white shrink-0">
-            <DialogTitle className="text-base font-bold text-slate-800">
-              {editingPartner
-                ? "Edit Partner Details"
-                : "Add New Fleet Partner"}
-            </DialogTitle>
-          </DialogHeader>
-          <PartnerForm
-            data={
-              editingPartner
-                ? { ...editingPartner, isAdd: false }
-                : { isAdd: true }
-            }
-            closeDialog={() => setIsFormOpen(false)}
-          />
-        </DialogContent>
-      </Dialog>
+      {/* Updated the props to use the safe open/initialData interface */}
+      <PartnerForm
+        open={isFormOpen}
+        onOpenChange={setIsFormOpen}
+        initialData={editingPartner}
+      />
     </>
   );
 });

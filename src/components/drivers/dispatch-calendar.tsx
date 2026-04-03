@@ -104,7 +104,7 @@ export default function DispatchCalendar({
 
   if (isLoading) {
     return (
-      <div className="flex flex-col items-center justify-center h-[400px] lg:h-full bg-[#F8FAFC] border border-slate-200 rounded-sm">
+      <div className="flex flex-col items-center justify-center h-[400px] lg:h-[600px] bg-[#F8FAFC] border border-slate-200 rounded-sm">
         <Loader2 className="w-6 h-6 animate-spin text-blue-600 mb-4" />
         <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500">
           Loading Calendar...

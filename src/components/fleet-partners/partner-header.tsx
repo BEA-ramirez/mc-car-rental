@@ -49,7 +49,7 @@ export default function PartnerHeader({
     ) {
       deletePartner({
         carOwnerId: selectedPartner.car_owner_id,
-        userId: selectedPartner.users.user_id,
+        userId: selectedPartner.users.user_id || "",
       });
     }
   };
@@ -133,13 +133,14 @@ export default function PartnerHeader({
       </div>
 
       {/* --- INFO STRIP: CONTACT & KEY DATA --- */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl shrink-0">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 px-4 py-3 bg-slate-50 border border-slate-200 rounded-sm shrink-0">
         <div className="space-y-0.5">
           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
             <User className="w-3 h-3" /> Representative
           </p>
           <p className="text-xs font-semibold text-slate-700 truncate">
-            {selectedPartner.users?.full_name}
+            {selectedPartner.users?.first_name}{" "}
+            {selectedPartner.users?.last_name}
           </p>
         </div>
         <div className="space-y-0.5">
@@ -176,54 +177,6 @@ export default function PartnerHeader({
               <BadgePercent className="w-3 h-3 text-blue-500" />
               {selectedPartner.revenue_share_percentage}%
             </span>
-          </div>
-        </div>
-      </div>
-
-      {/* --- KPI CARDS --- */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-        {/* Earnings */}
-        <div className="border border-slate-200 rounded-lg p-3.5 flex items-center justify-between bg-white shadow-sm hover:border-slate-300 transition-colors">
-          <div>
-            <h6 className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">
-              Earnings (YTD)
-            </h6>
-            <p className="text-xl font-bold text-slate-900 leading-none">
-              ₱45,000.00
-            </p>
-          </div>
-          <div className="h-10 w-10 bg-emerald-50 rounded-full flex items-center justify-center border border-emerald-100">
-            <Banknote className="w-5 h-5 text-emerald-600" />
-          </div>
-        </div>
-
-        {/* Compliance */}
-        <div className="border border-slate-200 rounded-lg p-3.5 flex items-center justify-between bg-white shadow-sm hover:border-slate-300 transition-colors">
-          <div>
-            <h6 className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">
-              Compliance Status
-            </h6>
-            <p className="text-sm font-bold text-emerald-600 leading-none mt-1">
-              Verified / All Docs Valid
-            </p>
-          </div>
-          <div className="h-10 w-10 bg-blue-50 rounded-full flex items-center justify-center border border-blue-100">
-            <BookAlert className="w-5 h-5 text-blue-600" />
-          </div>
-        </div>
-
-        {/* Fleet Health */}
-        <div className="border border-slate-200 rounded-lg p-3.5 flex items-center justify-between bg-white shadow-sm hover:border-slate-300 transition-colors">
-          <div>
-            <h6 className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">
-              Fleet Availability
-            </h6>
-            <p className="text-sm font-bold text-amber-600 leading-none mt-1">
-              1 Unit in Maintenance
-            </p>
-          </div>
-          <div className="h-10 w-10 bg-amber-50 rounded-full flex items-center justify-center border border-amber-100">
-            <Activity className="w-5 h-5 text-amber-600" />
           </div>
         </div>
       </div>

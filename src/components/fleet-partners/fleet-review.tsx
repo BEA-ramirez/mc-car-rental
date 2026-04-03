@@ -29,7 +29,8 @@ function FleetPartnerReview({
         </div>
         <div>
           <h3 className="font-bold text-lg">
-            {selectedPartner?.users.full_name}
+            {selectedPartner?.users.first_name}{" "}
+            {selectedPartner?.users.last_name}
           </h3>
           <p className="text-sm text-muted-foreground">
             {selectedPartner?.users.email}

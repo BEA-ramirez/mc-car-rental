@@ -16,10 +16,8 @@ import {
   DollarSign,
   FileText,
   History,
-  Info,
   LayoutDashboard,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
 
 export default function ActivePartners() {
   const gridRef = useRef<FleetPartnersGridRef>(null);
@@ -37,9 +35,9 @@ export default function ActivePartners() {
   };
 
   return (
-    <div className="flex flex-1 h-full w-full min-h-0 relative border-t border-slate-200 overflow-hidden bg-white">
+    <div className="flex flex-1 h-full w-full min-h-0 relative border border-slate-200 overflow-hidden bg-white">
       {/* --- LEFT SIDEBAR --- */}
-      <div className="flex flex-col h-full min-h-0 shrink-0 border-r border-slate-200 bg-white z-10 w-[320px] lg:w-[350px]">
+      <div className="flex flex-col h-full min-h-0 shrink-0 border-r border-slate-200 bg-white z-10 w-[280px] ">
         <FleetPartnersDataGrid
           ref={gridRef}
           onSelectPartner={handleSelectPartner}
@@ -69,11 +67,11 @@ export default function ActivePartners() {
               </div>
 
               {/* Grid Row - Visual separation through a single vertical border-r */}
-              <div className="grid grid-cols-1 xl:grid-cols-5 h-80 border-b border-slate-100 bg-white">
-                <div className="xl:col-span-3 p-8 border-r border-slate-100">
+              <div className="grid grid-cols-1 xl:grid-cols-5  border-b border-slate-100 bg-white">
+                <div className="xl:col-span-3 px-6 py-4 border-r border-slate-100">
                   <PartnerRevenueChart />
                 </div>
-                <div className="xl:col-span-2 p-8">
+                <div className="xl:col-span-2 px-6 py-4">
                   <PartnerCarUtil />
                 </div>
               </div>
@@ -81,37 +79,36 @@ export default function ActivePartners() {
               {/* 3. Integrated Management Tabs */}
               <div className="flex flex-col min-h-[600px] bg-white">
                 <Tabs defaultValue="units" className="flex flex-col h-full">
-                  {/* Internal Tabs Navigation - Floating look over white background */}
-                  <div className="px-8 pt-6 pb-2">
-                    <TabsList className="h-9 bg-slate-100 p-1 rounded-lg border border-slate-200 inline-flex w-fit">
+                  <div className="bg-slate-100 px-3 py-1 border-y border-slate-200">
+                    <TabsList className="h-9 bg-slate-100 p-1  inline-flex w-full">
                       <TabsTrigger
                         value="units"
-                        className="h-7 text-[11px] font-semibold px-5 rounded-md data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm text-slate-500 transition-all gap-2"
+                        className="uppercase h-7 text-[11px] font-semibold px-5 rounded-sm data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm text-slate-500 transition-all gap-2"
                       >
                         <Car className="w-3.5 h-3.5" /> Fleet Units
                       </TabsTrigger>
                       <TabsTrigger
                         value="financials"
-                        className="h-7 text-[11px] font-semibold px-5 rounded-md data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm text-slate-500 transition-all gap-2"
+                        className="uppercase h-7 text-[11px] font-semibold px-5 rounded-sm data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm text-slate-500 transition-all gap-2"
                       >
                         <DollarSign className="w-3.5 h-3.5" /> Financials
                       </TabsTrigger>
                       <TabsTrigger
                         value="documents"
-                        className="h-7 text-[11px] font-semibold px-5 rounded-md data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm text-slate-500 transition-all gap-2"
+                        className="uppercase h-7 text-[11px] font-semibold px-5 rounded-sm data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm text-slate-500 transition-all gap-2"
                       >
                         <FileText className="w-3.5 h-3.5" /> Documents
                       </TabsTrigger>
                       <TabsTrigger
                         value="logs"
-                        className="h-7 text-[11px] font-semibold px-5 rounded-md data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm text-slate-500 transition-all gap-2"
+                        className="uppercase h-7 text-[11px] font-semibold px-5 rounded-sm data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm text-slate-500 transition-all gap-2"
                       >
                         <History className="w-3.5 h-3.5" /> Activity Logs
                       </TabsTrigger>
                     </TabsList>
                   </div>
 
-                  <div className="flex-1 p-8 pt-4">
+                  <div className="flex-1 px-6 py-4 pt-4">
                     <TabsContent
                       value="units"
                       className="m-0 outline-none h-full data-[state=active]:flex flex-col"

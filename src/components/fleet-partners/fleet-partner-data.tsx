@@ -1,32 +1,32 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import ActivePartners from "./active-partners";
-import { UserType } from "@/lib/schemas/client";
+import { ClientRow } from "../../../hooks/use-clients";
 import { Users, UserPlus } from "lucide-react";
 
 export default function FleetPartnerData({
   carOwnerApplicants,
 }: {
-  carOwnerApplicants: UserType[];
+  carOwnerApplicants: ClientRow[];
 }) {
   return (
-    <div className="flex flex-col h-[80rem] bg-slate-50/50">
+    <div className="flex flex-col h-320 bg-slate-50/50">
       <Tabs
         defaultValue="active-partners"
         className="flex flex-col h-full min-h-0"
       >
         {/* TAB NAVIGATION */}
-        <div className="px-6 pt-4 pb-2 shrink-0">
-          <TabsList className="h-8 bg-slate-200/60 p-0.5 rounded-md border border-slate-200 inline-flex">
+        <div className=" shrink-0">
+          <TabsList className="w-full bg-slate-200/60 p-0.5 rounded-md border border-slate-200 inline-flex">
             <TabsTrigger
               value="active-partners"
-              className="h-6 text-xs font-medium px-4 rounded-[4px] data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-slate-900 text-slate-500 transition-all gap-1.5"
+              className="uppercase py-2 text-xs font-medium px-4 rounded-[4px] data-[state=active]:bg-[#0F172A] data-[state=active]:shadow-sm data-[state=active]:text-white text-slate-500 transition-all gap-1.5"
             >
               <Users className="w-3.5 h-3.5" />
               Active Partners
             </TabsTrigger>
             <TabsTrigger
               value="app-requests"
-              className="h-6 text-xs font-medium px-4 rounded-[4px] data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-slate-900 text-slate-500 transition-all gap-1.5"
+              className="uppercase py-2 text-xs font-medium px-4 rounded-[4px] data-[state=active]:bg-[#0F172A] data-[state=active]:shadow-sm data-[state=active]:text-white text-slate-500 transition-all gap-1.5"
             >
               <UserPlus className="w-3.5 h-3.5" />
               Application Requests
