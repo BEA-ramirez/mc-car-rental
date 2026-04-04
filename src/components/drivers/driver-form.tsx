@@ -132,7 +132,7 @@ function DriverForm({ open, onOpenChange, initialData }: DriverFormProp) {
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-[450px] p-0 overflow-hidden border-slate-200 shadow-xl rounded-sm bg-white">
+      <DialogContent className="sm:max-w-112.5 p-0 overflow-hidden border-slate-200 shadow-xl rounded-sm bg-white">
         <DialogHeader className="px-5 py-4 border-b border-slate-200 bg-[#F8FAFC]">
           <DialogTitle className="text-sm font-bold text-[#0F172A] tracking-tight">
             {initialData ? "Manage Driver Profile" : "Add New Driver"}
@@ -182,7 +182,7 @@ function DriverForm({ open, onOpenChange, initialData }: DriverFormProp) {
                             </Button>
                           </FormControl>
                         </PopoverTrigger>
-                        <PopoverContent className="w-[410px] p-0 border-slate-200 rounded-sm shadow-md">
+                        <PopoverContent className="w-102.5 p-0 border-slate-200 rounded-sm shadow-md">
                           <Command>
                             <CommandInput
                               placeholder="Search name or email..."

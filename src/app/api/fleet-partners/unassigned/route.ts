@@ -4,13 +4,13 @@ import { NextResponse } from "next/server";
 export async function GET() {
   const supabase = await createClient();
 
-  // 1. Fetch users who are already Car Owners
+  // Fetch users who are already Car Owners
   const { data: existingPartners, error: partnersError } = await supabase
     .from("car_owner")
     .select("user_id")
     .eq("is_archived", false);
 
-  // 2. Fetch users who are already Drivers
+  // Fetch users who are already Drivers
   const { data: existingDrivers, error: driversError } = await supabase
     .from("drivers")
     .select("user_id")

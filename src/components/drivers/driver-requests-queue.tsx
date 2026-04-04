@@ -86,7 +86,7 @@ export default function DriverRequestsQueue() {
   };
 
   return (
-    <div className="flex flex-col h-[500px] w-full bg-white border border-slate-200 shadow-sm rounded-sm overflow-hidden">
+    <div className="flex flex-col h-125 w-full bg-white border border-slate-200 shadow-sm rounded-sm overflow-hidden">
       {/* TOOLBAR - Compact */}
       <div className="flex items-center justify-between px-4 py-3 bg-[#F8FAFC] border-b border-slate-200 shrink-0">
         <div className="relative flex items-center">
@@ -175,7 +175,7 @@ export default function DriverRequestsQueue() {
                   }}
                 >
                   {/* LEFT: Applicant Info */}
-                  <div className="flex items-center gap-3 w-[30%] min-w-[200px]">
+                  <div className="flex items-center gap-3 w-[30%] min-w-50">
                     <Avatar className="h-9 w-9 rounded-sm border border-slate-200">
                       <AvatarImage
                         src={driver.profile_picture_url || undefined}
@@ -200,7 +200,7 @@ export default function DriverRequestsQueue() {
                   {/* MIDDLE: Document Status */}
                   <div className="hidden md:flex flex-col gap-1.5 w-[30%]">
                     <div className="flex items-center gap-2">
-                      <div className="w-[100px] text-[9px] font-bold uppercase tracking-widest text-slate-400">
+                      <div className="w-25 text-[9px] font-bold uppercase tracking-widest text-slate-400">
                         License
                       </div>
                       <div className="flex items-center gap-1 text-[10px] uppercase tracking-widest font-bold">
@@ -218,7 +218,7 @@ export default function DriverRequestsQueue() {
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      <div className="w-[100px] text-[9px] font-bold uppercase tracking-widest text-slate-400">
+                      <div className="w-25 text-[9px] font-bold uppercase tracking-widest text-slate-400">
                         Secondary ID
                       </div>
                       <div className="flex items-center gap-1 text-[10px] uppercase tracking-widest font-bold">

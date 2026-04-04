@@ -187,9 +187,9 @@ export default function DriversMain({
   // VIEW 2: ADMIN MASTER MANAGEMENT
   // ==========================================
   return (
-    <div className="flex flex-col md:flex-row w-full min-h-[600px] md:h-[800px] bg-white border border-slate-200 rounded-sm shadow-sm overflow-hidden">
+    <div className="flex flex-col md:flex-row w-full min-h-150 md:h-200 bg-white border border-slate-200 rounded-sm shadow-sm overflow-hidden">
       {/* LEFT SIDEBAR: ROSTER */}
-      <div className="w-full md:w-[280px] flex flex-col border-b md:border-b-0 md:border-r border-slate-200 bg-slate-50/50 shrink-0 z-10 h-[350px] md:h-[600px]">
+      <div className="w-full md:w-70 flex flex-col border-b md:border-b-0 md:border-r border-slate-200 bg-slate-50/50 shrink-0 z-10 h-87.5 md:h-150">
         {/* Sidebar Header & Search */}
         <div className="p-4 pb-5 border-b border-slate-200 bg-white flex flex-col gap-3 shrink-0">
           <div className="flex items-center justify-between">
@@ -352,7 +352,7 @@ export default function DriversMain({
       </div>
 
       {/* RIGHT PANEL: DETAILS */}
-      <div className="flex-1 min-w-0 flex flex-col bg-white overflow-hidden min-h-[500px]">
+      <div className="flex-1 min-w-0 flex flex-col bg-white overflow-hidden min-h-125">
         {!selectedDriver ? (
           <div className="flex-1 flex flex-col items-center justify-center text-slate-400 bg-slate-50/50 p-6 text-center">
             <Briefcase className="w-16 h-16 mb-4 opacity-20" />

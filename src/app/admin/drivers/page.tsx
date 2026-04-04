@@ -70,8 +70,6 @@ export default function DriversPage() {
                 Review submitted documents for new driver applicants.
               </p>
             </div>
-
-            {/* The Dedicated Fixed-Height Queue Component */}
             <DriverRequestsQueue />
           </div>
         </TabsContent>
