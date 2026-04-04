@@ -79,7 +79,7 @@ const FleetPartnersDataGrid = forwardRef<
 
   return (
     <>
-      <div className="w-full h-full flex flex-col bg-white shrink-0 border-r border-slate-200">
+      <div className="w-full h-full flex flex-col bg-[#F8FAFC] shrink-0 border-r border-slate-200">
         {/* --- SEARCH & ACTIONS HEADER --- */}
         <div className="p-4  bg-white flex flex-col gap-3 shrink-0">
           <div className="flex items-center justify-between">
@@ -223,42 +223,6 @@ const FleetPartnersDataGrid = forwardRef<
                           </div>
                         </div>
                       </div>
-                    </div>
-
-                    {/* ACTION MENU (Visible on Hover/Active) */}
-                    <div onClick={(e) => e.stopPropagation()}>
-                      <DropdownMenu modal={false}>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className={cn(
-                              "h-7 w-7 rounded-sm shrink-0 md:opacity-0 group-hover:opacity-100 transition-opacity shadow-none",
-                              isActive
-                                ? "text-slate-400 hover:text-white hover:bg-slate-800"
-                                : "text-slate-400 hover:text-[#0F172A] hover:bg-slate-100",
-                            )}
-                          >
-                            <MoreVertical className="w-4 h-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent
-                          align="start"
-                          className="w-28 rounded-sm border-slate-200 shadow-xl"
-                        >
-                          <DropdownMenuItem
-                            className="text-[10px] font-bold uppercase tracking-widest text-slate-700 cursor-pointer"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setEditingPartner(partner);
-                              setIsFormOpen(true);
-                            }}
-                          >
-                            <Edit2 className="w-3.5 h-3.5 mr-2 text-slate-400" />{" "}
-                            Edit Profile
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
                     </div>
                   </div>
                 );

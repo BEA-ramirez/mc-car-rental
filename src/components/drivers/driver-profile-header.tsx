@@ -81,13 +81,6 @@ export default function DriverProfileHeader({
             size="sm"
             className="flex-1 lg:flex-none h-8 text-[10px] sm:text-[11px] uppercase tracking-wider font-bold shadow-none rounded-sm border-slate-200 text-slate-600 hover:bg-slate-50"
           >
-            <Phone className="w-3 h-3 sm:w-3.5 sm:h-3.5 mr-1.5" /> Call
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            className="flex-1 lg:flex-none h-8 text-[10px] sm:text-[11px] uppercase tracking-wider font-bold shadow-none rounded-sm border-slate-200 text-slate-600 hover:bg-slate-50"
-          >
             <Send className="w-3 h-3 sm:w-3.5 sm:h-3.5 mr-1.5" /> Message
           </Button>
           <div className="h-5 w-px bg-slate-200 mx-1 hidden sm:block" />

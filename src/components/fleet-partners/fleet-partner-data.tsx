@@ -2,6 +2,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import ActivePartners from "./active-partners";
 import { ClientRow } from "../../../hooks/use-clients";
 import { Users, UserPlus } from "lucide-react";
+import PartnerRequestsQueue from "./partner-requests-queue";
 
 export default function FleetPartnerData({
   carOwnerApplicants,
@@ -16,7 +17,7 @@ export default function FleetPartnerData({
       >
         {/* TAB NAVIGATION */}
         <div className=" shrink-0">
-          <TabsList className="w-full bg-slate-200/60 p-0.5 rounded-md border border-slate-200 inline-flex">
+          <TabsList className="w-full bg-white p-0.5 rounded-md mb-3 shadow-sm inline-flex">
             <TabsTrigger
               value="active-partners"
               className="uppercase py-2 text-xs font-medium px-4 rounded-[4px] data-[state=active]:bg-[#0F172A] data-[state=active]:shadow-sm data-[state=active]:text-white text-slate-500 transition-all gap-1.5"
@@ -30,11 +31,6 @@ export default function FleetPartnerData({
             >
               <UserPlus className="w-3.5 h-3.5" />
               Application Requests
-              {carOwnerApplicants.length > 0 && (
-                <span className="ml-1 bg-blue-100 text-blue-700 text-[9px] px-1.5 py-0 rounded-full font-bold">
-                  {carOwnerApplicants.length}
-                </span>
-              )}
             </TabsTrigger>
           </TabsList>
         </div>
@@ -51,17 +47,9 @@ export default function FleetPartnerData({
 
           <TabsContent
             value="app-requests"
-            className="m-0 flex-1 data-[state=active]:flex flex-col outline-none p-6 min-h-0"
+            className="m-0 flex-1 data-[state=active]:flex flex-col outline-none min-h-0"
           >
-            <div className="bg-white border border-slate-200 rounded-lg p-6 flex flex-col items-center justify-center text-center shadow-sm h-full">
-              <UserPlus className="w-8 h-8 text-slate-300 mb-3" />
-              <p className="text-sm font-bold text-slate-700">
-                No pending applications
-              </p>
-              <p className="text-xs text-slate-500 mt-1">
-                New fleet partner requests will appear here.
-              </p>
-            </div>
+            <PartnerRequestsQueue />
           </TabsContent>
         </div>
       </Tabs>

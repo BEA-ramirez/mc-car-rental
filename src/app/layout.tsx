@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { Inter, Geist_Mono } from "next/font/google";
-import SyncfusionProvider from "@/components/syncfusion-provider";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
 import QueryProvider from "@/components/providers/query-provider";
@@ -10,19 +9,6 @@ import { createClient } from "@/utils/supabase/server";
 // 1. Unified Style Imports
 import "./globals.css";
 import localFont from "next/font/local";
-
-// Syncfusion Base & Component Styles
-import "@syncfusion/ej2-base/styles/material.css";
-import "@syncfusion/ej2-buttons/styles/material.css";
-import "@syncfusion/ej2-calendars/styles/material.css";
-import "@syncfusion/ej2-dropdowns/styles/material.css";
-import "@syncfusion/ej2-inputs/styles/material.css";
-import "@syncfusion/ej2-lists/styles/material.css";
-import "@syncfusion/ej2-navigations/styles/material.css";
-import "@syncfusion/ej2-popups/styles/material.css";
-import "@syncfusion/ej2-splitbuttons/styles/material.css";
-import "@syncfusion/ej2-react-schedule/styles/material.css";
-import "@syncfusion/ej2-react-grids/styles/material.css";
 
 // 2. Optimized Font Configuration
 const inter = Inter({
@@ -80,9 +66,8 @@ export default async function RootLayout({
           disableTransitionOnChange
         >
           <QueryProvider>
-            <SyncfusionProvider>
-              <AuthProvider initialUser={user}>{children}</AuthProvider>
-            </SyncfusionProvider>
+            <AuthProvider initialUser={user}>{children}</AuthProvider>
+
             <Toaster richColors position="top-right" />
           </QueryProvider>
         </ThemeProvider>

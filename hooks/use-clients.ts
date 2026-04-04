@@ -89,48 +89,52 @@ export const useClients = (params: FetchClientsParams | null) => {
   const queryClient = useQueryClient();
 
   const query = useQuery({
-    // Adding params to the queryKey forces a refetch when a parameter changes!
     queryKey: ["clients", params],
     queryFn: () => fetchClients(params!),
-    enabled: !!params, // Don't run the query until we have params
-    placeholderData: keepPreviousData, // Keeps old data on screen while fetching the next page
+    enabled: !!params,
+    placeholderData: keepPreviousData,
     staleTime: 60 * 1000,
   });
 
+  // FORM ACTION: Returns the raw ActionState for the component to handle Zod errors
   const saveMutation = useMutation({
     mutationFn: async (formData: FormData) => {
-      const isUpdate = formData.has("user_id");
-      let result;
+      const isUpdate =
+        formData.has("user_id") && formData.get("user_id") !== "";
+
       if (isUpdate) {
-        result = await updateClientAction({ message: null }, formData);
+        return await updateClientAction({ message: null }, formData);
       } else {
-        result = await createClientAction({ message: null }, formData);
+        return await createClientAction({ message: null }, formData);
       }
-      if (!result.success)
-        throw new Error(result.message || "Failed to save client.");
-      return result;
+      // DO NOT THROW HERE. Let the component receive the Zod errors!
     },
-    onSuccess: (data) => {
-      toast.success(data.message || "Client saved successfully.");
-      // Invalidate the base key so ALL paginated views refresh
-      queryClient.invalidateQueries({ queryKey: ["clients"] });
+    onSuccess: (result) => {
+      // Only toast and invalidate if it actually passed validation and saved
+      if (result.success) {
+        toast.success(result.message || "Client saved successfully.");
+        queryClient.invalidateQueries({ queryKey: ["clients"] });
+        queryClient.invalidateQueries({ queryKey: ["clients-kpi"] }); // Refresh KPIs!
+      }
     },
     onError: (error: Error) => {
-      toast.error(error.message);
+      // This only catches critical network/server crashes now
+      toast.error("A critical error occurred while saving.");
     },
   });
 
+  // NORMAL ACTION: Throws error to trigger generic toast
   const deleteMutation = useMutation({
     mutationFn: async (userId: string) => {
       const result = await deleteUser(userId);
-      if (!result.success) {
-        throw new Error(result.message);
-      }
+      if (!result.success)
+        throw new Error(result.message || "Failed to delete.");
       return result;
     },
     onSuccess: () => {
       toast.success("Client deleted successfully");
       queryClient.invalidateQueries({ queryKey: ["clients"] });
+      queryClient.invalidateQueries({ queryKey: ["clients-kpi"] }); // Refresh KPIs!
     },
     onError: (error: Error) => {
       toast.error(error.message);
@@ -140,9 +144,8 @@ export const useClients = (params: FetchClientsParams | null) => {
   const bulkDeleteMutation = useMutation({
     mutationFn: async (userIds: string[]) => {
       const result = await bulkDeleteUsers(userIds);
-      if (!result.success) {
-        throw new Error(result.message);
-      }
+      if (!result.success)
+        throw new Error(result.message || "Failed to delete clients.");
       return result;
     },
     onMutate: () => {
@@ -152,6 +155,7 @@ export const useClients = (params: FetchClientsParams | null) => {
     onSuccess: (data, variables, context) => {
       toast.success(data.message, { id: context?.toastId });
       queryClient.invalidateQueries({ queryKey: ["clients"] });
+      queryClient.invalidateQueries({ queryKey: ["clients-kpi"] }); // Refresh KPIs!
     },
     onError: (error: Error, variables, context) => {
       toast.error(error.message, { id: context?.toastId });
@@ -169,14 +173,14 @@ export const useClients = (params: FetchClientsParams | null) => {
         licenseExpiry,
         validIdExpiry,
       );
-      if (!result.success) {
+      if (!result.success)
         throw new Error(result.message || "Failed to verify applicant.");
-      }
       return result;
     },
     onSuccess: (data) => {
       toast.success(data.message || "Applicant verified successfully.");
       queryClient.invalidateQueries({ queryKey: ["clients"] });
+      queryClient.invalidateQueries({ queryKey: ["clients-kpi"] });
     },
     onError: (error: Error) => {
       toast.error(error.message);
@@ -196,14 +200,14 @@ export const useClients = (params: FetchClientsParams | null) => {
         rejectLicense,
         rejectValidId,
       );
-      if (!result.success) {
+      if (!result.success)
         throw new Error(result.message || "Failed to reject applicant.");
-      }
       return result;
     },
     onSuccess: (data) => {
       toast.success(data.message || "Applicant rejected successfully.");
       queryClient.invalidateQueries({ queryKey: ["clients"] });
+      queryClient.invalidateQueries({ queryKey: ["clients-kpi"] });
     },
     onError: (error: Error) => {
       toast.error(error.message);
@@ -213,9 +217,8 @@ export const useClients = (params: FetchClientsParams | null) => {
   const sendCustomEmailMutation = useMutation({
     mutationFn: async ({ userId, subject, body }: SendCustomEmailPayload) => {
       const result = await sendCustomEmailAction(userId, subject, body);
-      if (!result.success) {
+      if (!result.success)
         throw new Error(result.message || "Failed to send custom email.");
-      }
       return result;
     },
     onSuccess: (data) => {

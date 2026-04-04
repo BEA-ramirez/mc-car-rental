@@ -116,16 +116,13 @@ export default function PartnerHeader({
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-40">
               <DropdownMenuItem className="text-xs text-slate-600">
-                <ShieldCheck className="w-3.5 h-3.5 mr-2" /> Verify Documents
-              </DropdownMenuItem>
-              <DropdownMenuItem className="text-xs text-slate-600">
                 <Calendar className="w-3.5 h-3.5 mr-2" /> Schedule Payout
               </DropdownMenuItem>
               <DropdownMenuItem
                 className="text-xs text-red-600 focus:text-red-700 focus:bg-red-50"
                 onClick={handleDelete}
               >
-                <Trash2 className="w-3.5 h-3.5 mr-2" /> Archive Partner
+                <Trash2 className="w-3.5 h-3.5 mr-2" /> Delete Partner
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

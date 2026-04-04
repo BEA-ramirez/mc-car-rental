@@ -4,6 +4,10 @@ import z from "zod";
 import { carOwnerSchema } from "@/lib/schemas/car-owner";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/utils/supabase/server";
+import {
+  sendPartnerVerificationEmail,
+  sendPartnerRejectionEmail,
+} from "./helper/mail";
 
 // define the state shape for useactionstate
 export type ActionState = {
@@ -168,6 +172,111 @@ export async function saveFleetPartnerApplication(
     return {
       success: false,
       message: "An unexpected error occurred. Please try again later.",
+    };
+  }
+}
+
+export async function getPendingFleetPartnersAction() {
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase.rpc("get_pending_fleet_partners");
+
+    if (error) {
+      console.error("Error fetching pending partners:", error);
+      return { success: false, data: [] };
+    }
+
+    return { success: true, data: data || [] };
+  } catch (error: any) {
+    console.error("Unexpected error fetching pending partners:", error);
+    return { success: false, data: [] };
+  }
+}
+
+export async function verifyFleetPartnerAction(
+  carOwnerId: string,
+  userId: string,
+) {
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase.rpc("verify_fleet_partner", {
+      p_car_owner_id: carOwnerId,
+      p_user_id: userId,
+    });
+
+    if (error) {
+      console.error("Partner Verification Error:", error);
+      return { success: false, message: "Failed to verify partner." };
+    }
+
+    // Try to send the email notification
+    if (data?.email) {
+      try {
+        await sendPartnerVerificationEmail(
+          data.email,
+          data.full_name || data.business_name,
+        );
+      } catch (mailError) {
+        console.error(
+          "Failed to send approval email, but partner was verified:",
+          mailError,
+        );
+      }
+    }
+
+    revalidatePath("/admin/fleet-partners");
+    return { success: true, message: "Partner verified successfully." };
+  } catch (error: any) {
+    console.error("Verification exception:", error);
+    return {
+      success: false,
+      message: error.message || "Failed to verify partner.",
+    };
+  }
+}
+
+export async function rejectFleetPartnerAction(
+  carOwnerId: string,
+  userId: string,
+  reason: string,
+) {
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase.rpc("reject_fleet_partner", {
+      p_car_owner_id: carOwnerId,
+      p_user_id: userId,
+      p_reason: reason,
+    });
+
+    if (error) {
+      console.error("Partner Rejection Error:", error);
+      return { success: false, message: "Failed to reject partner." };
+    }
+
+    // Try to send the email notification
+    if (data?.email) {
+      try {
+        // Note: You might need to adjust your sendRejectionEmail signature if it currently expects booleans for document rejection
+        await sendPartnerRejectionEmail(
+          data.email,
+          data.full_name || data.business_name,
+          reason,
+        );
+      } catch (mailError) {
+        console.error(
+          "Failed to send rejection email, but partner was rejected:",
+          mailError,
+        );
+      }
+    }
+
+    revalidatePath("/admin/fleet-partners");
+    return { success: true, message: "Partner rejected successfully." };
+  } catch (error: any) {
+    console.error("Rejection exception:", error);
+    return {
+      success: false,
+      message: error.message || "Failed to reject partner.",
     };
   }
 }

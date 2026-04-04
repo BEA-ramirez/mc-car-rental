@@ -71,6 +71,21 @@ export default function DriversMain({
     isDeleting,
   } = useDrivers();
 
+  // Auto-sync the selected driver when React Query fetches fresh data
+  useEffect(() => {
+    if (selectedDriver && drivers) {
+      // Find the fresh version of the currently selected driver
+      const freshDriverData = drivers.find(
+        (d: any) => d.driver_id === selectedDriver.driver_id,
+      );
+
+      // If we found them, and the data is actually a new reference, update the state!
+      if (freshDriverData && freshDriverData !== selectedDriver) {
+        setSelectedDriver(freshDriverData);
+      }
+    }
+  }, [drivers]);
+
   // Keep state synced if currentDriverData loads asynchronously
   useEffect(() => {
     if (isDriverMode && currentDriverData) {
@@ -189,7 +204,7 @@ export default function DriversMain({
   return (
     <div className="flex flex-col md:flex-row w-full min-h-150 md:h-200 bg-white border border-slate-200 rounded-sm shadow-sm overflow-hidden">
       {/* LEFT SIDEBAR: ROSTER */}
-      <div className="w-full md:w-70 flex flex-col border-b md:border-b-0 md:border-r border-slate-200 bg-slate-50/50 shrink-0 z-10 h-87.5 md:h-150">
+      <div className="w-full md:w-70 flex flex-col border-b md:border-b-0 md:border-r border-slate-200 bg-slate-50/50 shrink-0 z-10 h-full md:h-full">
         {/* Sidebar Header & Search */}
         <div className="p-4 pb-5 border-b border-slate-200 bg-white flex flex-col gap-3 shrink-0">
           <div className="flex items-center justify-between">

@@ -56,31 +56,32 @@ export default function FleetFilters({
   };
 
   return (
-    <div className="bg-[#111623]/50 backdrop-blur-xl rounded-2xl border border-white/5 p-6 shadow-2xl sticky top-28">
-      <div className="flex items-center gap-3 mb-8 border-b border-white/5 pb-4">
-        <SlidersHorizontal className="w-4 h-4 text-blue-500" />
-        <h2 className="text-[10px] font-medium uppercase tracking-[0.2em] text-white">
+    // Updated background to have that light white opaque contrast + a stronger border
+    <div className="bg-[#161d24] backdrop-blur-2xl rounded-3xl border border-white/20 p-6 shadow-[0_8px_32px_rgba(0,0,0,0.5)] sticky top-28">
+      <div className="flex items-center gap-3 mb-8 border-b border-white/10 pb-4">
+        <SlidersHorizontal className="w-5 h-5 text-[#64c5c3]" />
+        <h2 className="text-xs font-bold uppercase tracking-widest text-white">
           Refine Search
         </h2>
       </div>
 
       {/* Search Bar */}
       <div className="relative mb-8">
-        <Search className="absolute left-4 top-3.5 h-4 w-4 text-white/30" />
+        <Search className="absolute left-4 top-3.5 h-4 w-4 text-gray-400" />
         <Input
           placeholder="Search brand or model..."
           value={filters.search}
           onChange={(e) => updateFilter("search", e.target.value)}
-          className="pl-12 h-11 rounded-none bg-white/5 border-white/10 text-white placeholder:text-white/30 focus-visible:ring-1 focus-visible:ring-blue-500 font-light text-sm transition-colors"
+          className="pl-12 h-12 rounded-xl bg-black/50 border-white/10 text-white placeholder:text-gray-500 focus-visible:ring-[#64c5c3] focus-visible:border-transparent font-medium text-sm transition-all"
         />
       </div>
 
       {/* Vehicle Type */}
       <div className="mb-8">
-        <h3 className="text-[9px] font-medium uppercase tracking-[0.2em] text-white/60 mb-4 flex items-center justify-between">
+        <h3 className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-4 flex items-center justify-between">
           Vehicle Type
           {isLoading && (
-            <span className="text-[8px] text-blue-400 animate-pulse">
+            <span className="text-[8px] text-[#64c5c3] animate-pulse">
               Loading...
             </span>
           )}
@@ -93,10 +94,10 @@ export default function FleetFilters({
                 key={cat.id}
                 onClick={() => updateFilter("type", cat.label)}
                 className={cn(
-                  "px-4 py-2 rounded-sm text-[10px] font-medium tracking-wide transition-all border",
+                  "px-4 py-2 rounded-full text-xs font-bold tracking-wider transition-all border",
                   isActive
-                    ? "bg-white text-black border-white shadow-sm"
-                    : "bg-transparent text-white/50 border-white/10 hover:bg-white/5 hover:text-white hover:border-white/20",
+                    ? "bg-[#64c5c3] text-black border-[#64c5c3]"
+                    : "bg-black/30 text-gray-300 border-white/10 hover:border-[#64c5c3]/50 hover:bg-white/5",
                 )}
               >
                 {cat.label}
@@ -108,8 +109,8 @@ export default function FleetFilters({
 
       {/* Seating Capacity */}
       <div className="mb-8">
-        <h3 className="text-[9px] font-medium uppercase tracking-[0.2em] text-white/60 mb-4 flex items-center gap-2">
-          <Users className="w-3 h-3 text-white/30" /> Capacity
+        <h3 className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-4 flex items-center gap-2">
+          <Users className="w-3 h-3 text-gray-400" /> Capacity
         </h3>
         <div className="flex flex-wrap gap-2">
           {SEATING_CAPACITIES.map((seat) => {
@@ -119,10 +120,10 @@ export default function FleetFilters({
                 key={seat.label}
                 onClick={() => updateFilter("minSeating", seat.value)}
                 className={cn(
-                  "px-4 py-2 rounded-sm text-[10px] font-medium tracking-wide transition-all border",
+                  "px-4 py-2 rounded-full text-xs font-bold tracking-wider transition-all border",
                   isActive
-                    ? "bg-white text-black border-white shadow-sm"
-                    : "bg-transparent text-white/50 border-white/10 hover:bg-white/5 hover:text-white hover:border-white/20",
+                    ? "bg-[#64c5c3] text-black border-[#64c5c3]"
+                    : "bg-black/30 text-gray-300 border-white/10 hover:border-[#64c5c3]/50 hover:bg-white/5",
                 )}
               >
                 {seat.label}
@@ -134,7 +135,7 @@ export default function FleetFilters({
 
       {/* Transmission */}
       <div className="mb-8">
-        <h3 className="text-[9px] font-medium uppercase tracking-[0.2em] text-white/60 mb-4">
+        <h3 className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-4">
           Transmission
         </h3>
         <div className="flex flex-wrap gap-2">
@@ -145,10 +146,10 @@ export default function FleetFilters({
                 key={trans}
                 onClick={() => updateFilter("transmission", trans)}
                 className={cn(
-                  "px-4 py-2 rounded-sm text-[10px] font-medium tracking-wide transition-all border",
+                  "px-4 py-2 rounded-full text-xs font-bold tracking-wider transition-all border",
                   isActive
-                    ? "bg-white text-black border-white shadow-sm"
-                    : "bg-transparent text-white/50 border-white/10 hover:bg-white/5 hover:text-white hover:border-white/20",
+                    ? "bg-[#64c5c3] text-black border-[#64c5c3]"
+                    : "bg-black/30 text-gray-300 border-white/10 hover:border-[#64c5c3]/50 hover:bg-white/5",
                 )}
               >
                 {trans}
@@ -161,10 +162,10 @@ export default function FleetFilters({
       {/* Max Price Slider */}
       <div className="mb-10">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-[9px] font-medium uppercase tracking-[0.2em] text-white/60 flex items-center gap-2">
-            <Banknote className="w-3 h-3 text-white/30" /> Max Daily Rate
+          <h3 className="text-[10px] font-bold uppercase tracking-widest text-gray-400 flex items-center gap-2">
+            <Banknote className="w-3 h-3 text-gray-400" /> Max Daily Rate
           </h3>
-          <span className="text-[10px] font-medium tracking-widest text-blue-400">
+          <span className="text-[10px] font-bold tracking-widest text-[#64c5c3]">
             {filters.maxPrice ? `₱${filters.maxPrice.toLocaleString()}` : "Any"}
           </span>
         </div>
@@ -175,9 +176,9 @@ export default function FleetFilters({
           step="500"
           value={filters.maxPrice || 15000}
           onChange={(e) => updateFilter("maxPrice", Number(e.target.value))}
-          className="w-full h-1 bg-white/10 rounded-none appearance-none cursor-pointer accent-white"
+          className="w-full h-1.5 bg-white/20 rounded-full appearance-none cursor-pointer accent-[#64c5c3]"
         />
-        <div className="flex justify-between text-[9px] text-white/30 tracking-widest font-medium mt-3">
+        <div className="flex justify-between text-[9px] text-gray-400 tracking-widest font-bold mt-3">
           <span>₱1k</span>
           <span>₱15k+</span>
         </div>
@@ -187,7 +188,7 @@ export default function FleetFilters({
       <Button
         variant="ghost"
         onClick={clearAll}
-        className="w-full rounded-none border border-white/10 text-[9px] uppercase tracking-[0.2em] text-white/50 hover:text-white hover:bg-white/5 font-medium h-12 transition-all duration-300"
+        className="w-full rounded-xl border border-white/20 bg-white/5 text-xs font-bold uppercase tracking-widest text-white hover:bg-[#64c5c3] hover:text-black hover:border-transparent h-12 transition-all duration-300"
       >
         Clear Parameters
       </Button>

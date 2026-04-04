@@ -11,6 +11,12 @@ import {
   sendCustomEmail,
 } from "./helper/mail";
 
+type ActionState = {
+  message: string | null;
+  errors?: Record<string, string[]>;
+  success?: boolean;
+};
+
 export async function sendCustomEmailAction(
   userId: string,
   subject: string,
@@ -27,7 +33,11 @@ export async function sendCustomEmailAction(
       .single();
 
     if (fetchError || !user?.email) {
-      throw new Error("Could not find user email address.");
+      console.error("Error fetching user for custom email:", fetchError);
+      return {
+        success: false,
+        message: "Failed to fetch user details for email.",
+      };
     }
 
     // Send the custom email
@@ -55,12 +65,6 @@ const serverManageUserSchema = baseClientSchema.extend({
   license_expiry_date: z.string().optional().nullable(),
   valid_id_expiry_date: z.string().optional().nullable(),
 });
-
-export type ActionState = {
-  message: string | null;
-  errors?: Record<string, string[]>;
-  success?: boolean;
-};
 
 function extractFormData(formData: FormData) {
   const fields: Record<string, any> = {};
@@ -159,8 +163,10 @@ export async function createClientAction(
     };
   }
 
+  const supabaseAdmin = createAdminClient();
+  let newUserId: string | null = null;
+
   try {
-    const supabaseAdmin = createAdminClient();
     const full_name =
       `${profileData.first_name || ""} ${profileData.last_name || ""}`.trim();
 
@@ -172,55 +178,69 @@ export async function createClientAction(
         email_confirm: true,
         user_metadata: { full_name, role: profileData.role },
       });
+
     if (authError) throw authError;
+    newUserId = authUser.user.id;
 
-    const newUserId = authUser.user.id;
+    // Post-Creation Operations (Wrapped for Rollback)
+    try {
+      // Avatar Upload
+      let profile_picture_url = undefined;
+      if (rawData.files.profile_picture_url) {
+        const avatarResult = await uploadFile(
+          rawData.files.profile_picture_url,
+          "avatars",
+          "profiles",
+          newUserId,
+        );
+        profile_picture_url = avatarResult?.url;
+      }
 
-    // Avatar Upload
-    let profile_picture_url = undefined;
-    if (rawData.files.profile_picture_url) {
-      const avatarResult = await uploadFile(
-        rawData.files.profile_picture_url,
-        "avatars",
-        "profiles",
+      // Document Uploads
+      await processDocumentUpload(
+        supabaseAdmin,
         newUserId,
+        rawData.files.valid_id_url,
+        "valid_ids",
+        "valid_id",
+        valid_id_expiry_date,
       );
-      profile_picture_url = avatarResult?.url;
+      await processDocumentUpload(
+        supabaseAdmin,
+        newUserId,
+        rawData.files.license_id_url,
+        "license_ids",
+        "license_id",
+        license_expiry_date,
+      );
+
+      // Master User Record Update
+      const updateData: any = {
+        ...profileData,
+        full_name,
+        last_updated_at: new Date().toISOString(),
+      };
+      if (profile_picture_url)
+        updateData.profile_picture_url = profile_picture_url;
+      if (email) updateData.email = email;
+
+      const { error: dbError } = await supabaseAdmin
+        .from("users")
+        .update(updateData)
+        .eq("user_id", newUserId);
+
+      if (dbError) throw dbError;
+    } catch (innerError: any) {
+      // ORPHAN CLEANUP ROLLBACK
+      console.error(
+        "Profile setup failed, rolling back auth creation...",
+        innerError,
+      );
+      await supabaseAdmin.auth.admin.deleteUser(newUserId);
+      throw new Error(
+        "Failed to upload files or save profile. User creation was rolled back.",
+      );
     }
-
-    // Document Uploads
-    await processDocumentUpload(
-      supabaseAdmin,
-      newUserId,
-      rawData.files.valid_id_url,
-      "valid_ids",
-      "valid_id",
-      valid_id_expiry_date,
-    );
-    await processDocumentUpload(
-      supabaseAdmin,
-      newUserId,
-      rawData.files.license_id_url,
-      "license_ids",
-      "license_id",
-      license_expiry_date,
-    );
-
-    // Master User Record Update
-    const updateData: any = {
-      ...profileData,
-      full_name,
-      last_updated_at: new Date().toISOString(),
-    };
-    if (profile_picture_url)
-      updateData.profile_picture_url = profile_picture_url;
-    if (email) updateData.email = email;
-
-    const { error: dbError } = await supabaseAdmin
-      .from("users")
-      .update(updateData)
-      .eq("user_id", newUserId);
-    if (dbError) throw dbError;
 
     revalidatePath("/admin/clients");
     return { success: true, message: "New user created successfully" };
@@ -324,7 +344,13 @@ export async function updateClientAction(
       p_valid_id_expiry: valid_id_expiry_date || null,
     });
 
-    if (rpcError) throw rpcError;
+    if (rpcError) {
+      console.error("Error syncing client profile:", rpcError);
+      return {
+        success: false,
+        message: "Failed to update user profile.",
+      };
+    }
 
     revalidatePath("/admin/clients");
     return { success: true, message: "User updated successfully" };
@@ -346,7 +372,13 @@ export async function verifyApplicantAction(
       p_license_expiry: licenseExpiry || null,
       p_valid_id_expiry: validIdExpiry || null,
     });
-    if (error) throw error;
+    if (error) {
+      console.error("Customer Verification error:", error);
+      return {
+        success: false,
+        message: "Failed to verify applicant.",
+      };
+    }
 
     const user = data?.[0];
     if (user?.email && user.email.trim() !== "") {
@@ -385,7 +417,13 @@ export async function rejectApplicantAction(
       p_reject_valid_id: rejectValidId,
     });
 
-    if (error) throw error;
+    if (error) {
+      console.error("Customer Rejection error:", error);
+      return {
+        success: false,
+        message: "Failed to reject applicant.",
+      };
+    }
 
     const user = data?.[0];
     if (user?.email && user.email.trim() !== "") {
@@ -419,7 +457,14 @@ export async function getClientsKpiAction() {
 
     const { data, error } = await supabaseAdmin.rpc("get_clients_kpi");
 
-    if (error) throw error;
+    if (error) {
+      console.error("Failed to fetch KPIs:", error);
+      return {
+        success: false,
+        data: null,
+        message: "Failed to fetch KPIs.",
+      };
+    }
 
     return { success: true, data: data?.[0] };
   } catch (error: any) {

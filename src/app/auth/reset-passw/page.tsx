@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { motion, Variants } from "framer-motion";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, Lock } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -14,72 +14,58 @@ import {
 import { Input } from "@/components/ui/input";
 
 // --- ANIMATION VARIANTS ---
-const fluidMask: Variants = {
+const spotlightAnim: Variants = {
   animate: {
-    borderRadius: [
-      "60% 40% 30% 70% / 60% 30% 70% 40%",
-      "30% 70% 70% 30% / 30% 30% 70% 70%",
-      "60% 40% 30% 70% / 60% 30% 70% 40%",
-    ],
+    rotate: [0, 360],
+    scale: [1, 1.1, 1],
     transition: {
-      duration: 15,
+      duration: 25,
       repeat: Infinity,
-      ease: "easeInOut",
+      ease: "linear",
     },
   },
 };
 
-// --- CUSTOM HIGH-END LOGO ---
-const PremiumLogo = () => (
-  <div className="relative w-8 h-8 flex items-center justify-center group cursor-pointer mx-auto mb-6">
-    <div className="absolute w-full h-full border-[1.5px] border-white/80 rounded-sm transform rotate-45 transition-transform duration-700 group-hover:rotate-90" />
-    <div className="absolute w-full h-full border-[1.5px] border-blue-500/80 rounded-sm transform -rotate-45 transition-transform duration-700 group-hover:-rotate-90" />
-    <span className="relative z-10 text-[10px] font-black text-white tracking-tighter">
-      M
-    </span>
-  </div>
-);
-
-// Notice: Removed `{ className, ...props }` to fix the searchParams error
 export default function ResetPassPage() {
   return (
-    <div className="relative min-h-screen flex flex-col justify-center items-center bg-[#0A0C10] text-slate-300 selection:bg-blue-900 selection:text-white font-sans overflow-hidden px-6">
-      {/* Background Fluid Accent */}
+    <div className="relative min-h-[100dvh] flex flex-col justify-center items-center bg-[#050B10] text-white selection:bg-[#64c5c3] selection:text-black font-sans overflow-hidden px-4 sm:px-6">
+      {/* Background Ambient Spotlight */}
       <motion.div
-        variants={fluidMask}
+        variants={spotlightAnim}
         animate="animate"
-        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-blue-600/10 blur-[120px] -z-10 pointer-events-none mix-blend-screen"
+        className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] h-[600px] md:w-[600px] md:h-[900px] bg-gradient-to-br from-[#64c5c3]/10 via-blue-900/10 to-transparent blur-[120px] -z-10 pointer-events-none rounded-full mix-blend-screen"
       />
 
       <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
-        className="w-full max-w-md relative z-10"
+        initial={{ opacity: 0, y: 20, scale: 0.95 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+        className="w-full max-w-md relative z-10 py-8 sm:py-12"
       >
         <form className="flex flex-col w-full">
-          <FieldGroup className="border border-white/5 bg-white/[0.02] backdrop-blur-2xl shadow-2xl p-8 md:p-10 rounded-2xl w-full relative overflow-hidden">
-            {/* Subtle inner top glow for the glass effect */}
-            <div className="absolute top-0 left-0 w-full h-1/3 bg-gradient-to-b from-white/5 to-transparent pointer-events-none" />
-
-            <div className="relative z-10 flex flex-col gap-1 text-center mb-8">
-              <PremiumLogo />
-              <h1 className="text-3xl font-light text-white tracking-tight">
-                Reset{" "}
-                <span className="italic font-normal text-white/50">
+          <FieldGroup className="border border-white/5 bg-[#0a1118]/80 backdrop-blur-2xl shadow-2xl p-6 sm:p-10 rounded-2xl sm:rounded-3xl w-full relative overflow-hidden">
+            {/* Header Area */}
+            <div className="relative z-10 flex flex-col items-center gap-2 text-center mb-6 sm:mb-8">
+              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-[#64c5c3]/10 rounded-xl sm:rounded-2xl flex items-center justify-center mb-2 sm:mb-4">
+                <Lock className="w-5 h-5 sm:w-6 sm:h-6 text-[#64c5c3]" />
+              </div>
+              <h1 className="text-3xl sm:text-4xl font-black text-white tracking-tighter uppercase leading-none">
+                Reset <br />
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-600">
                   Password.
                 </span>
               </h1>
-              <p className="text-white/40 text-[10px] font-medium uppercase tracking-[0.2em] mt-1">
+              <p className="text-gray-400 text-[9px] sm:text-[10px] font-bold uppercase tracking-widest mt-2">
                 Enter your new secure password
               </p>
             </div>
 
-            <div className="relative z-10 space-y-4">
-              <Field className="space-y-1.5">
+            {/* Inputs Area */}
+            <div className="relative z-10 space-y-4 sm:space-y-5">
+              <Field className="space-y-2">
                 <FieldLabel
                   htmlFor="password"
-                  className="text-[9px] font-medium uppercase tracking-[0.2em] text-slate-500"
+                  className="text-[9px] sm:text-[10px] font-bold uppercase tracking-widest text-gray-500"
                 >
                   New Password
                 </FieldLabel>
@@ -89,17 +75,17 @@ export default function ResetPassPage() {
                   type="password"
                   placeholder="••••••••"
                   required
-                  className="h-10 bg-white/5 border-white/10 text-white placeholder:text-white/20 rounded-lg focus-visible:ring-1 focus-visible:ring-blue-500 focus-visible:border-blue-500 transition-all duration-300"
+                  className="h-12 sm:h-14 rounded-xl bg-black/50 border-white/10 text-white placeholder:text-gray-600 focus-visible:ring-[#64c5c3] focus-visible:border-transparent transition-all"
                 />
-                <FieldDescription className="text-[9px] text-white/30 font-light mt-1">
+                <FieldDescription className="text-[8px] sm:text-[9px] text-gray-500 font-bold uppercase tracking-widest mt-1">
                   Must be at least 8 characters long.
                 </FieldDescription>
               </Field>
 
-              <Field className="space-y-1.5">
+              <Field className="space-y-2">
                 <FieldLabel
                   htmlFor="confirm-password"
-                  className="text-[9px] font-medium uppercase tracking-[0.2em] text-slate-500 mt-2"
+                  className="text-[9px] sm:text-[10px] font-bold uppercase tracking-widest text-gray-500 mt-2"
                 >
                   Confirm Password
                 </FieldLabel>
@@ -109,22 +95,20 @@ export default function ResetPassPage() {
                   type="password"
                   placeholder="••••••••"
                   required
-                  className="h-10 bg-white/5 border-white/10 text-white placeholder:text-white/20 rounded-lg focus-visible:ring-1 focus-visible:ring-blue-500 focus-visible:border-blue-500 transition-all duration-300"
+                  className="h-12 sm:h-14 rounded-xl bg-black/50 border-white/10 text-white placeholder:text-gray-600 focus-visible:ring-[#64c5c3] focus-visible:border-transparent transition-all"
                 />
-                <FieldDescription className="text-[9px] text-white/30 font-light mt-1">
-                  Please confirm your new password.
-                </FieldDescription>
               </Field>
             </div>
 
-            <Field className="relative z-10 mt-8">
+            {/* Submit Button */}
+            <Field className="relative z-10 mt-6 sm:mt-8">
               <Button
                 type="submit"
-                className="w-full h-10 bg-white text-[#0A0C10] hover:bg-blue-600 hover:text-white rounded-lg font-bold text-[9px] uppercase tracking-[0.3em] transition-all duration-500 group"
+                className="w-full h-12 sm:h-14 bg-[#64c5c3] text-black hover:bg-[#52a3a1] rounded-xl font-black text-[10px] sm:text-xs uppercase tracking-widest transition-all duration-300 shadow-[0_0_15px_rgba(100,197,195,0.2)] group"
               >
-                <span className="flex items-center gap-3">
+                <span className="flex items-center gap-2 sm:gap-3">
                   Confirm Reset{" "}
-                  <ArrowRight className="w-3 h-3 group-hover:translate-x-1 transition-transform" />
+                  <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                 </span>
               </Button>
             </Field>
@@ -132,16 +116,15 @@ export default function ResetPassPage() {
         </form>
 
         {/* Footer Text */}
-        <div className="mt-8 text-center">
-          <p className="text-[9px] text-white/30 uppercase tracking-[0.15em] font-light leading-relaxed">
+        <div className="mt-6 sm:mt-8 text-center">
+          <p className="text-[8px] sm:text-[9px] text-gray-500 uppercase tracking-widest font-bold leading-relaxed">
             Remembered your password?{" "}
             <Link
               href="/auth/login"
-              className="text-blue-400 hover:text-white transition-colors font-medium"
+              className="text-[#64c5c3] hover:text-white transition-colors font-black ml-1"
             >
               Return to Login
             </Link>
-            .
           </p>
         </div>
       </motion.div>

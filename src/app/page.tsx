@@ -1,709 +1,471 @@
 "use client";
 
-import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
-import { motion, Variants, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import {
-  MapPin,
-  CalendarDays,
-  ArrowRight,
+  Wrench,
   ShieldCheck,
-  Key,
-  Menu,
-  Target,
-  Compass,
-  Settings2,
-  Users,
-  Fuel,
+  Headset,
+  ArrowRight,
   ChevronRight,
-  ChevronLeft,
-  Car,
+  Settings,
+  Phone,
+  MapPin,
 } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { CarCardSkeleton } from "@/components/skeletons";
-
-// Fetch the real units hook
-import { useUnits } from "../../hooks/use-units";
-
-// --- ANIMATION VARIANTS ---
-const fadeUp: Variants = {
-  hidden: { opacity: 0, y: 40 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: { duration: 1.2, ease: [0.16, 1, 0.3, 1] },
-  },
-};
-
-const staggerContainer: Variants = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: { staggerChildren: 0.15 },
-  },
-};
-
-const lineReveal: Variants = {
-  hidden: { scaleX: 0 },
-  visible: { scaleX: 1, transition: { duration: 1.5, ease: "easeInOut" } },
-};
-
-// --- CUSTOM HIGH-END LOGO ---
-const PremiumLogo = () => (
-  <div className="relative w-7 h-7 flex items-center justify-center group cursor-pointer">
-    <div className="absolute w-full h-full border-[1.5px] border-white/80 rounded-sm transform rotate-45 transition-transform duration-700 group-hover:rotate-90" />
-    <div className="absolute w-full h-full border-[1.5px] border-blue-500/80 rounded-sm transform -rotate-45 transition-transform duration-700 group-hover:-rotate-90" />
-    <span className="relative z-10 text-[9px] font-black text-white tracking-tighter">
-      M
-    </span>
-  </div>
-);
-
 export default function LandingPage() {
-  const router = useRouter();
-  const { units, isUnitsLoading } = useUnits();
-
-  // Carousel State
-  const [currentCarIndex, setCurrentCarIndex] = useState(0);
-
-  // Format data and grab only the first 3
-  const featuredCars = units
-    .map((unit: any) => {
-      const sortedImages = [...(unit.images || [])].sort((a: any, b: any) => {
-        if (a.is_primary && !b.is_primary) return -1;
-        if (!a.is_primary && b.is_primary) return 1;
-        return 0;
-      });
-
-      const imageUrls =
-        sortedImages.length > 0
-          ? sortedImages.map((img: any) => img.image_url)
-          : ["https://placehold.co/1200x800?text=No+Image"];
-
-      return {
-        id: unit.car_id,
-        brand: unit.brand,
-        model: unit.model,
-        year: unit.year,
-        type: unit.specifications?.body_type || "Vehicle",
-        transmission: unit.specifications?.transmission || "Auto/Manual",
-        seats: unit.specifications?.passenger_capacity || 5,
-        fuel: unit.specifications?.fuel_type || "Fuel",
-        price: Number(unit.rental_rate_per_day) || 0,
-        images: imageUrls,
-      };
-    })
-    .slice(0, 3);
-
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    router.push("/customer/fleet");
+  const staggerContainer = {
+    hidden: { opacity: 0 },
+    show: {
+      opacity: 1,
+      transition: { staggerChildren: 0.15 },
+    },
   };
 
-  const nextCar = () => {
-    setCurrentCarIndex((prev) => (prev + 1) % featuredCars.length);
-  };
-
-  const prevCar = () => {
-    setCurrentCarIndex((prev) =>
-      prev === 0 ? featuredCars.length - 1 : prev - 1,
-    );
+  const fadeIn = {
+    hidden: { opacity: 0, y: 20 },
+    show: { opacity: 1, y: 0, transition: { duration: 0.6 } },
   };
 
   return (
-    <div className="font-sans bg-[#0A0C10] text-slate-300 min-h-screen selection:bg-blue-900 selection:text-white overflow-x-hidden">
-      {/* --- HORIZONTAL TOP NAV (Shorter & Refined) --- */}
-      <nav className="fixed top-0 w-full z-50 bg-[#0A0C10]/80 backdrop-blur-xl border-b border-white/5 transition-all duration-500">
-        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-          {/* Left: Logo */}
-          <div
-            className="flex items-center gap-4 cursor-pointer"
-            onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-          >
-            <PremiumLogo />
-            <span className="text-xs font-light text-white tracking-[0.3em] uppercase hidden sm:block ml-2 mt-0.5">
-              MC ORMOC
-            </span>
-          </div>
-
-          {/* Center: Main Links (Desktop) */}
-          <div className="hidden lg:flex items-center gap-10 font-medium text-[9px] uppercase tracking-[0.2em] text-white/60 mt-0.5">
-            <Link
-              href="#about"
-              className="hover:text-blue-400 transition-colors"
-            >
-              Heritage
-            </Link>
-            <Link
-              href="#process"
-              className="hover:text-blue-400 transition-colors"
-            >
-              Process
-            </Link>
-            <Link
-              href="#fleet"
-              className="hover:text-blue-400 transition-colors"
-            >
-              Portfolio
-            </Link>
-            <Link
-              href="#partner"
-              className="hover:text-blue-400 transition-colors"
-            >
-              Partnership
-            </Link>
-            <Link
-              href="#contact"
-              className="hover:text-blue-400 transition-colors"
-            >
-              Contact
-            </Link>
-          </div>
-
-          {/* Right: Actions (Desktop) */}
-          <div className="hidden lg:flex items-center gap-6 text-[9px] font-medium tracking-[0.2em] text-white/60 uppercase mt-0.5">
-            <Link
-              href="/auth/login"
-              className="hover:text-white transition-colors"
-            >
-              Login
-            </Link>
-            <Button
-              onClick={() => router.push("/auth/signup")}
-              className="bg-blue-600 text-white hover:bg-white hover:text-black rounded-none px-5 py-2.5 h-auto uppercase tracking-widest font-bold transition-colors duration-300"
-            >
-              Register
-            </Button>
-          </div>
-
-          {/* Mobile Menu Icon */}
-          <div className="lg:hidden cursor-pointer">
-            <Menu className="w-5 h-5 text-white/70 hover:text-white transition-colors" />
-          </div>
+    <div className="min-h-screen bg-[#050B10] text-white font-sans selection:bg-[#64c5c3] selection:text-black overflow-x-hidden">
+      {/* NAVIGATION (Glassmorphic) */}
+      <nav className="fixed top-0 w-full z-50 bg-[#050B10]/50 backdrop-blur-lg border-b border-white/5 py-4 px-6 md:px-12 flex justify-between items-center">
+        <div className="text-xl md:text-2xl font-black tracking-tighter uppercase">
+          MC Ormoc
         </div>
+        <div className="hidden md:flex gap-8 text-sm font-medium text-gray-300">
+          <a href="#" className="hover:text-[#64c5c3] transition-colors">
+            Home
+          </a>
+          <a href="#" className="hover:text-[#64c5c3] transition-colors">
+            Fleet
+          </a>
+          <a href="#" className="hover:text-[#64c5c3] transition-colors">
+            Services
+          </a>
+          <a href="#" className="hover:text-[#64c5c3] transition-colors">
+            About Us
+          </a>
+        </div>
+        <Button className="bg-[#64c5c3]/10 hover:bg-[#64c5c3]/20 border border-[#64c5c3]/50 text-[#64c5c3] rounded-full px-6">
+          Sign In
+        </Button>
       </nav>
 
-      {/* HERO SECTION (Floating Wheel Concept)  */}
-      <section className="relative min-h-screen flex flex-col justify-center bg-[#0A0C10] overflow-hidden pt-16 lg:pt-0">
-        {/* Subtle Ambient Background */}
-        <div className="absolute inset-0 z-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-blue-900/10 via-[#0A0C10] to-[#0A0C10]" />
+      {/* HERO SECTION */}
+      <section className="relative min-h-screen flex items-center pt-20 overflow-hidden">
+        {/* Background Image */}
+        <div className="absolute inset-0 z-0">
+          <img
+            src="https://images.unsplash.com/photo-1549399542-7e3f8b79c341?q=80&w=2000"
+            alt="Cool dark car background"
+            className="w-full h-full object-cover opacity-40 mix-blend-luminosity"
+          />
+          <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[#050B10]/80 to-[#050B10]" />
+        </div>
 
-        <div className="relative z-10 w-full max-w-[90rem] mx-auto px-6 lg:px-16 flex flex-col lg:flex-row items-center justify-between gap-12 lg:gap-20">
-          {/* Left: Typography & Form */}
+        <div className="relative z-10 w-full max-w-7xl mx-auto px-6 md:px-12 flex flex-col md:flex-row justify-between items-center">
           <motion.div
             initial="hidden"
-            animate="visible"
+            animate="show"
             variants={staggerContainer}
-            className="flex-1 max-w-2xl w-full z-20 mt-12 lg:mt-0"
+            className="max-w-2xl"
           >
-            <motion.div
-              variants={fadeUp}
-              className="flex items-center gap-6 mb-8"
-            >
-              <div className="h-[1px] w-16 bg-blue-500/50" />
-              <span className="text-blue-400 text-[9px] font-medium uppercase tracking-[0.4em]">
-                Premium Mobility • Leyte
-              </span>
-            </motion.div>
-
             <motion.h1
-              variants={fadeUp}
-              className="text-6xl md:text-[6.5rem] lg:text-[7.5rem] font-light text-white tracking-tighter mb-8 leading-[0.9]"
+              variants={fadeIn}
+              className="text-6xl md:text-8xl font-black tracking-tighter uppercase leading-[0.9]"
             >
-              Refine <br />
-              <span className="font-normal italic text-transparent bg-clip-text bg-gradient-to-r from-slate-100 to-slate-500 pr-4">
-                the drive.
+              Explore <br />{" "}
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-500">
+                Leyte
               </span>
             </motion.h1>
-
             <motion.p
-              variants={fadeUp}
-              className="text-base md:text-lg text-slate-400 mb-16 max-w-lg font-light leading-relaxed"
+              variants={fadeIn}
+              className="mt-6 text-gray-400 text-lg max-w-md uppercase tracking-widest text-sm"
             >
-              Elevating the standard of everyday travel. Impeccably maintained
-              vehicles, zero friction, absolute discretion.
+              Hassle-Free Bookings • Self-Drive & Chauffeur • Premium Fleet
             </motion.p>
 
-            {/* Search Bar */}
-            <motion.form
-              variants={fadeUp}
-              onSubmit={handleSearch}
-              className="flex flex-col md:flex-row gap-0 max-w-3xl border border-white/10 rounded-xl bg-[#111623]/80 backdrop-blur-md overflow-hidden"
-            >
-              <div className="flex-1 flex flex-col justify-center px-6 py-4 border-b md:border-b-0 md:border-r border-white/10 hover:bg-white/5 transition-colors duration-300">
-                <p className="text-[9px] font-medium text-slate-500 uppercase tracking-[0.3em] mb-2 flex items-center gap-2">
-                  <MapPin className="w-3 h-3 text-blue-500" /> Location
-                </p>
-                <Input
-                  placeholder="Ormoc Hub"
-                  className="border-none shadow-none p-0 h-auto text-sm font-medium text-slate-200 placeholder:text-slate-600 focus-visible:ring-0 bg-transparent rounded-none"
-                />
-              </div>
-
-              <div className="flex-1 flex flex-col justify-center px-6 py-4 hover:bg-white/5 transition-colors duration-300">
-                <p className="text-[9px] font-medium text-slate-500 uppercase tracking-[0.3em] mb-2 flex items-center gap-2">
-                  <CalendarDays className="w-3 h-3 text-blue-500" /> Schedule
-                </p>
-                <Input
-                  placeholder="Select Dates"
-                  className="border-none shadow-none p-0 h-auto text-sm font-medium text-slate-200 placeholder:text-slate-600 focus-visible:ring-0 bg-transparent rounded-none"
-                />
-              </div>
-
-              <Button
-                type="submit"
-                className="bg-white text-[#0A0C10] hover:bg-blue-600 hover:text-white rounded-none h-auto py-5 px-8 font-bold text-[10px] uppercase tracking-[0.2em] shrink-0 w-full md:w-auto transition-all duration-300"
-              >
-                Reserve
+            <motion.div variants={fadeIn} className="mt-8 flex gap-4">
+              <Button className="bg-[#64c5c3] hover:bg-[#52a3a1] text-[#050B10] font-bold rounded-full px-8 py-6 text-lg shadow-[0_0_20px_rgba(100,197,195,0.3)]">
+                Book a Vehicle <ArrowRight className="ml-2 h-5 w-5" />
               </Button>
-            </motion.form>
+            </motion.div>
           </motion.div>
 
-          {/* Right: Floating Wheel Concept */}
+          {/* Floating Hero Cards */}
           <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 1.5, ease: "easeOut", delay: 0.2 }}
-            className="flex-1 w-full relative hidden lg:flex items-center justify-center min-h-[70vh]"
+            initial={{ opacity: 0, x: 50 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 1, delay: 0.5 }}
+            className="hidden lg:flex gap-4 mt-12 md:mt-0"
           >
-            {/* The mesmerizing floating animation */}
-            <motion.div
-              animate={{
-                y: [0, -15, 0],
-                rotate: [0, 3, -2, 0],
-              }}
-              transition={{
-                duration: 8,
-                repeat: Infinity,
-                ease: "easeInOut",
-              }}
-              className="relative z-10 w-full max-w-[450px] aspect-square rounded-full overflow-hidden border border-white/5 shadow-[0_0_80px_rgba(37,99,235,0.15)]"
-            >
-              {/* https://i.pinimg.com/1200x/20/9d/09/209d0926785d62f34b7207752ac40a16.jpg
-              https://i.pinimg.com/1200x/a8/fe/97/a8fe97c9631968e0bed36a865fec3b64.jpg
-              https://i.pinimg.com/1200x/41/0b/2f/410b2f79457f13c04e661ec74430caf1.jpg
-              https://i.pinimg.com/1200x/7d/3f/ea/7d3feabcf804ef2fe8890b28876a519a.jpg
-              */}
-              {/* Image of a high-end alloy wheel */}
+            <div className="w-48 h-64 rounded-2xl overflow-hidden border border-white/10 bg-white/5 backdrop-blur-md p-2 shadow-2xl translate-y-8 flex flex-col">
               <img
-                src="https://i.pinimg.com/1200x/41/0b/2f/410b2f79457f13c04e661ec74430caf1.jpg"
-                alt="Precision Engineering"
-                className="w-full h-full object-cover mix-blend-luminosity hover:mix-blend-normal transition-all duration-1000 scale-105 hover:scale-100 opacity-60"
+                src="https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?q=80&w=400"
+                className="w-full h-32 object-cover rounded-xl mb-3"
+                alt="Toyota Fortuner"
               />
-              {/* Vignette mask so it fades into the background naturally */}
-              <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_30%,#0A0C10_100%)] pointer-events-none" />
-            </motion.div>
-          </motion.div>
-        </div>
-      </section>
-
-      {/* --- 2. HERITAGE & ETHOS (About) --- */}
-      <section
-        id="about"
-        className="min-h-screen flex flex-col justify-center py-32 bg-[#050608] relative border-t border-white/5"
-      >
-        <div className="max-w-7xl mx-auto px-6 lg:px-16 w-full pt-16">
-          <motion.div
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true, amount: 0.3 }}
-            variants={staggerContainer}
-            className="mb-24"
-          >
-            <motion.h2
-              variants={fadeUp}
-              className="text-4xl md:text-6xl font-light tracking-tighter text-white mb-8"
-            >
-              A legacy of{" "}
-              <span className="italic font-normal text-white/50">
-                excellence.
-              </span>
-            </motion.h2>
-            <div className="w-full h-[1px] bg-gradient-to-r from-white/10 to-transparent" />
-          </motion.div>
-
-          <motion.div
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true, amount: 0.3 }}
-            variants={staggerContainer}
-            className="grid grid-cols-1 md:grid-cols-2 gap-20"
-          >
-            <motion.div variants={fadeUp} className="relative group">
-              <Compass className="w-6 h-6 text-slate-600 mb-8 group-hover:text-blue-500 transition-colors duration-500" />
-              <h3 className="text-[10px] font-medium uppercase tracking-[0.4em] text-slate-400 mb-6">
-                Our Vision
-              </h3>
-              <p className="text-slate-300 font-light leading-relaxed text-lg md:text-xl">
-                To establish the benchmark for premium mobility in Eastern
-                Visayas, providing an understated, seamless digital experience
-                that respects the time and comfort of our clientele.
-              </p>
-            </motion.div>
-
-            <motion.div variants={fadeUp} className="relative group">
-              <Target className="w-6 h-6 text-slate-600 mb-8 group-hover:text-blue-500 transition-colors duration-500" />
-              <h3 className="text-[10px] font-medium uppercase tracking-[0.4em] text-slate-400 mb-6">
-                Our Mission
-              </h3>
-              <p className="text-slate-300 font-light leading-relaxed text-lg md:text-xl">
-                To bridge the gap between vehicle owners and discerning renters
-                through a meticulously curated fleet, rigorous standards, and
-                innovative, frictionless technology.
-              </p>
-            </motion.div>
-          </motion.div>
-        </div>
-      </section>
-
-      {/* --- 3. THE PROCESS (Shiny Metallic Cards) --- */}
-      <section
-        id="process"
-        className="min-h-screen flex flex-col justify-center relative py-32 bg-[#0A0C10] text-slate-300 overflow-hidden"
-      >
-        <div className="max-w-7xl mx-auto px-6 lg:px-16 relative z-10 w-full pt-16">
-          <motion.div
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true }}
-            variants={fadeUp}
-            className="mb-24 flex flex-col md:flex-row md:items-end justify-between gap-8"
-          >
-            <div>
-              <h2 className="text-4xl md:text-6xl font-light tracking-tighter text-white mb-8">
-                The acquisition{" "}
-                <span className="italic font-normal text-white/50">
-                  process.
-                </span>
-              </h2>
-              <div className="w-24 h-[1px] bg-blue-500/50" />
+              <div className="px-2">
+                <p className="text-xs text-[#64c5c3] font-bold tracking-wider mb-1">
+                  TOYOTA FORTUNER
+                </p>
+                <p className="text-sm font-semibold">Premium SUV</p>
+              </div>
             </div>
-            <p className="text-slate-500 font-light text-base max-w-sm">
-              We have eliminated friction. Our digital concierges ensure you are
-              on the road with absolute minimal delay.
-            </p>
+            <div className="w-48 h-64 rounded-2xl overflow-hidden border border-white/10 bg-white/5 backdrop-blur-md p-2 shadow-2xl -translate-y-8 flex flex-col">
+              <img
+                src="https://images.unsplash.com/photo-1609521263047-f8f205293f24?q=80&w=400"
+                className="w-full h-32 object-cover rounded-xl mb-3"
+                alt="Hatchback"
+              />
+              <div className="px-2">
+                <p className="text-xs text-[#64c5c3] font-bold tracking-wider mb-1">
+                  COMPACT HATCH
+                </p>
+                <p className="text-sm font-semibold">Urban Explorer</p>
+              </div>
+            </div>
           </motion.div>
+        </div>
+      </section>
 
+      {/* FEATURES / HIGHLIGHTS */}
+      <section className="py-12 px-6 md:px-12 max-w-7xl mx-auto -mt-20 relative z-20">
+        <div className="grid md:grid-cols-3 gap-6">
+          {[
+            {
+              icon: ShieldCheck,
+              title: "Verified Fleet",
+              desc: "Every vehicle undergoes strict quality and safety checks between client uses.",
+            },
+            {
+              icon: Settings,
+              title: "Instant Booking",
+              desc: "Fast and hassle-free reservation process to guarantee your preferred vehicle.",
+            },
+            {
+              icon: Headset,
+              title: "Customer Focused",
+              desc: "Excellent customer accommodation and support for a worry-free experience.",
+            },
+          ].map((item, i) => (
+            <motion.div
+              key={i}
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: i * 0.2 }}
+            >
+              <Card className="bg-[#0a1118]/80 backdrop-blur-xl border-white/5 rounded-2xl hover:border-[#64c5c3]/30 transition-colors group cursor-pointer h-full">
+                <CardContent className="p-8">
+                  <div className="w-12 h-12 rounded-full bg-[#64c5c3]/10 flex items-center justify-center mb-6 group-hover:bg-[#64c5c3]/20 transition-colors">
+                    <item.icon className="text-[#64c5c3]" size={24} />
+                  </div>
+                  <h3 className="text-xl font-bold mb-3 text-[#64c5c3]">
+                    {item.title}
+                  </h3>
+                  <p className="text-sm text-gray-400 leading-relaxed">
+                    {item.desc}
+                  </p>
+                </CardContent>
+              </Card>
+            </motion.div>
+          ))}
+        </div>
+      </section>
+
+      {/* ABOUT US / IMAGE BREAK */}
+      <section className="py-24 relative mt-12">
+        <div className="absolute inset-0 z-0">
+          <img
+            src="https://images.unsplash.com/photo-1494976388531-d1058494cdd8?q=80&w=2000"
+            className="w-full h-full object-cover opacity-30"
+            alt="Sleek car on road"
+          />
+          <div className="absolute inset-0 bg-gradient-to-r from-[#050B10] via-[#050B10]/80 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-t from-[#050B10] via-transparent to-[#050B10]" />
+        </div>
+
+        <div className="relative z-10 max-w-7xl mx-auto px-6 md:px-12">
           <motion.div
-            initial="hidden"
-            whileInView="visible"
+            initial={{ opacity: 0, x: -30 }}
+            whileInView={{ opacity: 1, x: 0 }}
             viewport={{ once: true }}
-            variants={staggerContainer}
-            className="grid grid-cols-1 md:grid-cols-3 gap-8"
+            className="max-w-2xl"
           >
+            <p className="text-[#64c5c3] font-bold tracking-widest text-sm mb-4">
+              — ABOUT MC ORMOC CAR RENTAL
+            </p>
+            <h2 className="text-4xl md:text-5xl font-black uppercase leading-tight mb-6">
+              The No. 1 choice for hassle-free exploration.
+            </h2>
+            <p className="text-gray-400 text-lg leading-relaxed mb-8">
+              Based in Ormoc City, we are the leading car rental and travel
+              agency in the region. Whether you're on a business trip or a
+              family vacation, we offer a diverse, well-maintained fleet to
+              guarantee a safe, dependable, and secure journey—always at a
+              reasonable price.
+            </p>
+            <Button
+              variant="outline"
+              className="border-white/20 text-white hover:bg-white hover:text-black rounded-full px-8 py-6"
+            >
+              Learn Our Story
+            </Button>
+          </motion.div>
+        </div>
+      </section>
+
+      {/* SERVICES LIST */}
+      <section className="py-24 px-6 md:px-12 max-w-7xl mx-auto">
+        <div className="grid md:grid-cols-2 gap-16 items-center">
+          <div>
+            <p className="text-[#64c5c3] font-bold tracking-widest text-sm mb-4">
+              — OUR SERVICES
+            </p>
+            <h2 className="text-4xl font-black uppercase mb-6">
+              Flexible, Affordable, <br /> And Reliable.
+            </h2>
+            <p className="text-gray-400 mb-8">
+              Choose from a variety of rental options tailored to your specific
+              travel and corporate needs across Region VIII.
+            </p>
+          </div>
+
+          <div className="space-y-2 border-t border-white/10 pt-2">
             {[
               {
-                step: "01",
-                title: "Curate",
-                desc: "Peruse our selection of vehicles, filtering by your specific requirements and preferences.",
+                num: "01",
+                title: "Self-Drive Rentals",
+                desc: "Enjoy independence on a daily, weekly, or monthly basis.",
               },
               {
-                step: "02",
-                title: "Authenticate",
-                desc: "Submit your credentials through our secure portal for immediate, encrypted verification.",
+                num: "02",
+                title: "Chauffeur Drive",
+                desc: "Hassle-free travel with professional drivers for a relaxing journey.",
               },
               {
-                step: "03",
-                title: "Depart",
-                desc: "Collect your keys at our lounge, or request discreet delivery directly to your location.",
+                num: "03",
+                title: "Airport Transfers",
+                desc: "Trustworthy and on-time one-way pickup and drop-off service.",
               },
-            ].map((item) => (
+              {
+                num: "04",
+                title: "Special Events",
+                desc: "The perfect choice for weddings, conventions, and city tours.",
+              },
+            ].map((service, i) => (
               <motion.div
-                key={item.step}
-                variants={fadeUp}
-                className="relative p-[1px] rounded-2xl bg-gradient-to-br from-slate-600 via-slate-800 to-black overflow-hidden group"
+                key={i}
+                initial={{ opacity: 0, y: 10 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                className="group flex justify-between items-center py-6 border-b border-white/10 hover:bg-white/5 transition-all cursor-pointer px-4 rounded-lg"
               >
-                <div className="bg-gradient-to-br from-slate-800 via-[#0B0F19] to-black h-full p-10 rounded-2xl relative overflow-hidden transition-all duration-500">
-                  <div className="absolute top-0 left-0 w-full h-1/2 bg-gradient-to-b from-white/5 to-transparent opacity-50 pointer-events-none" />
-
-                  <div className="relative z-10 flex flex-col h-full justify-between">
-                    <div>
-                      <div className="flex items-center justify-between mb-8 pb-6 border-b border-white/5">
-                        <span className="text-[10px] font-medium tracking-[0.4em] text-blue-400 uppercase">
-                          Phase {item.step}
-                        </span>
-                        <span className="text-4xl font-light text-white/20 group-hover:text-blue-500/50 transition-colors duration-500">
-                          {item.step}
-                        </span>
-                      </div>
-                      <h3 className="text-2xl font-light text-white mb-4">
-                        {item.title}
-                      </h3>
-                      <p className="text-slate-400 font-light leading-relaxed text-sm">
-                        {item.desc}
-                      </p>
-                    </div>
-
-                    <div className="flex justify-end mt-12 pt-6 border-t border-white/5">
-                      <ArrowRight className="w-5 h-5 text-white/20 group-hover:text-blue-400 group-hover:translate-x-2 transition-all duration-500" />
-                    </div>
+                <div className="flex items-center gap-6">
+                  <span className="text-[#64c5c3] font-mono text-sm">
+                    {service.num}
+                  </span>
+                  <div>
+                    <h3 className="text-xl font-bold uppercase group-hover:text-[#64c5c3] transition-colors">
+                      {service.title}
+                    </h3>
+                    <p className="text-sm text-gray-500 mt-1 hidden sm:block">
+                      {service.desc}
+                    </p>
                   </div>
+                </div>
+                <div className="bg-white/5 p-3 rounded-full group-hover:bg-[#64c5c3] group-hover:text-black transition-colors">
+                  <ChevronRight size={20} />
                 </div>
               </motion.div>
             ))}
-          </motion.div>
+          </div>
         </div>
       </section>
 
-      {/* --- 4. THE PORTFOLIO (Interactive Carousel) --- */}
-      <section
-        id="fleet"
-        className="relative min-h-screen flex flex-col justify-center py-32 bg-[#050608] border-t border-white/5 overflow-hidden"
-      >
-        <div className="max-w-[90rem] mx-auto px-6 lg:px-16 relative z-10 w-full pt-16">
-          <motion.div
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true }}
-            variants={fadeUp}
-            className="flex flex-col md:flex-row justify-between md:items-end mb-20 gap-8"
-          >
-            <div>
-              <h2 className="text-4xl md:text-6xl font-light tracking-tighter text-white mb-8">
-                The{" "}
-                <span className="italic font-normal text-white/50">
-                  portfolio.
-                </span>
-              </h2>
-              <div className="w-24 h-[1px] bg-blue-500/50" />
-            </div>
+      {/* CARS GRID */}
+      <section className="py-24 px-6 md:px-12 max-w-7xl mx-auto border-t border-white/5">
+        <div className="text-center mb-16">
+          <p className="text-[#64c5c3] font-bold tracking-widest text-sm mb-4">
+            — THE FLEET
+          </p>
+          <h2 className="text-4xl font-black uppercase">
+            Find Your Perfect Drive
+          </h2>
 
-            {/* Carousel Controls */}
-            <div className="flex items-center gap-4">
+          <div className="flex justify-center gap-4 mt-8 flex-wrap">
+            {[
+              "All Vehicles",
+              "Sedans",
+              "Hatchbacks",
+              "MPVs / SUVs",
+              "Vans",
+            ].map((filter, i) => (
               <button
-                onClick={prevCar}
-                disabled={isUnitsLoading || featuredCars.length === 0}
-                className="w-12 h-12 border border-white/20 rounded-full flex items-center justify-center hover:bg-white hover:text-[#050608] hover:border-white text-white transition-all duration-300 disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-white"
+                key={i}
+                className={`px-6 py-2 rounded-full text-sm font-semibold transition-colors ${i === 0 ? "bg-[#64c5c3] text-black" : "bg-white/5 text-gray-400 hover:bg-white/10"}`}
               >
-                <ChevronLeft className="w-5 h-5" />
+                {filter}
               </button>
-              <button
-                onClick={nextCar}
-                disabled={isUnitsLoading || featuredCars.length === 0}
-                className="w-12 h-12 border border-white/20 rounded-full flex items-center justify-center hover:bg-white hover:text-[#050608] hover:border-white text-white transition-all duration-300 disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-white"
-              >
-                <ChevronRight className="w-5 h-5" />
-              </button>
-            </div>
-          </motion.div>
+            ))}
+          </div>
+        </div>
 
-          <div className="relative min-h-[500px]">
-            {isUnitsLoading ? (
-              <div className="text-center py-32 text-slate-600 font-light border border-white/5 rounded-2xl">
-                Curating fleet data...
-              </div>
-            ) : featuredCars.length > 0 ? (
-              <AnimatePresence mode="wait">
-                <motion.div
-                  key={currentCarIndex}
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -20 }}
-                  transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-                  className="flex flex-col lg:flex-row items-center gap-12 lg:gap-24"
-                >
-                  {/* Image Side */}
-                  <div className="w-full lg:w-3/5 relative aspect-video lg:aspect-[16/9] overflow-hidden rounded-sm bg-[#0A0C10] border border-white/5">
-                    <img
-                      src={featuredCars[currentCarIndex].images[0]}
-                      alt={`${featuredCars[currentCarIndex].brand} ${featuredCars[currentCarIndex].model}`}
-                      className="w-full h-full object-cover opacity-80 mix-blend-luminosity hover:mix-blend-normal transition-all duration-1000 ease-out scale-105 hover:scale-100"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-[#050608] via-transparent to-transparent opacity-50 pointer-events-none" />
-
-                    {/* Carousel Counter */}
-                    <div className="absolute top-6 right-6 text-white/50 font-mono text-xs tracking-widest bg-black/50 px-3 py-1 rounded-full backdrop-blur-md">
-                      0{currentCarIndex + 1} / 0{featuredCars.length}
-                    </div>
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {[
+            {
+              name: "Toyota Fortuner",
+              type: "SUV",
+              img: "https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?q=80&w=800",
+            },
+            {
+              name: "Toyota Innova",
+              type: "MPV",
+              img: "https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?q=80&w=800",
+            },
+            {
+              name: "Toyota Vios",
+              type: "Sedan",
+              img: "https://images.unsplash.com/photo-1493238792000-8113da705763?q=80&w=800",
+            },
+            {
+              name: "Toyota Avanza",
+              type: "MPV",
+              img: "https://images.unsplash.com/photo-1550355291-bbee04a92027?q=80&w=800",
+            },
+            {
+              name: "Mitsubishi Mirage",
+              type: "Hatchback",
+              img: "https://images.unsplash.com/photo-1609521263047-f8f205293f24?q=80&w=800",
+            },
+            {
+              name: "Nissan Urvan",
+              type: "Van",
+              img: "https://images.unsplash.com/photo-1520031441872-265e4ff70366?q=80&w=800",
+            },
+          ].map((car, i) => (
+            <motion.div key={i} whileHover={{ y: -10 }} className="group">
+              <div className="rounded-2xl overflow-hidden bg-[#0a1118] border border-white/5 h-full flex flex-col">
+                <div className="relative h-60 overflow-hidden">
+                  <div className="absolute inset-0 bg-black/20 group-hover:bg-transparent transition-colors z-10" />
+                  <img
+                    src={car.img}
+                    alt={car.name}
+                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+                  />
+                  <div className="absolute top-4 right-4 z-20 bg-black/60 backdrop-blur-md px-3 py-1 rounded-full text-xs font-bold border border-white/10 uppercase tracking-widest">
+                    {car.type}
                   </div>
-
-                  {/* Metadata Side */}
-                  <div className="w-full lg:w-2/5 flex flex-col">
-                    <p className="text-[10px] font-medium text-blue-500 uppercase tracking-[0.4em] mb-4">
-                      {featuredCars[currentCarIndex].year} •{" "}
-                      {featuredCars[currentCarIndex].brand}
-                    </p>
-                    <h3 className="text-4xl md:text-5xl font-light text-white mb-10 tracking-tight">
-                      {featuredCars[currentCarIndex].model}
+                </div>
+                <div className="p-6 flex-grow flex flex-col justify-between">
+                  <div>
+                    <h3 className="text-xl font-bold uppercase mb-1">
+                      {car.name}
                     </h3>
-
-                    {/* Specs Blueprint */}
-                    <div className="flex flex-col gap-4 mb-10 border-y border-white/5 py-8">
-                      <div className="flex justify-between items-center text-sm">
-                        <span className="text-slate-500 font-light flex items-center gap-3">
-                          <Settings2 className="w-4 h-4" /> Transmission
-                        </span>
-                        <span className="text-slate-300">
-                          {featuredCars[currentCarIndex].transmission}
-                        </span>
-                      </div>
-                      <div className="flex justify-between items-center text-sm">
-                        <span className="text-slate-500 font-light flex items-center gap-3">
-                          <Users className="w-4 h-4" /> Capacity
-                        </span>
-                        <span className="text-slate-300">
-                          {featuredCars[currentCarIndex].seats} Passengers
-                        </span>
-                      </div>
-                      <div className="flex justify-between items-center text-sm">
-                        <span className="text-slate-500 font-light flex items-center gap-3">
-                          <Fuel className="w-4 h-4" /> Powertrain
-                        </span>
-                        <span className="text-slate-300">
-                          {featuredCars[currentCarIndex].fuel}
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="flex items-end justify-between">
-                      <div>
-                        <p className="text-[9px] text-slate-500 uppercase tracking-[0.3em] mb-2">
-                          Daily Rate
-                        </p>
-                        <p className="text-3xl font-light text-white">
-                          ₱
-                          {featuredCars[currentCarIndex].price.toLocaleString()}
-                        </p>
-                      </div>
-                      <Button
-                        onClick={() => router.push("/customer/fleet")}
-                        variant="outline"
-                        className="bg-transparent border border-white/20 text-white hover:bg-white hover:text-[#0A0C10] rounded-none h-14 px-8 font-medium text-[10px] uppercase tracking-[0.2em] transition-all duration-300"
-                      >
-                        Reserve Now
-                      </Button>
-                    </div>
+                    <p className="text-sm text-gray-400 mb-4">
+                      Available for self-drive or with chauffeur
+                    </p>
                   </div>
-                </motion.div>
-              </AnimatePresence>
-            ) : (
-              <div className="col-span-full text-center py-20 text-slate-600 font-light border border-white/5 rounded-2xl">
-                The portfolio is currently unavailable.
+                  <Button className="w-full bg-white/5 hover:bg-[#64c5c3] hover:text-black border border-white/10 transition-all rounded-lg">
+                    Check Availability
+                  </Button>
+                </div>
               </div>
-            )}
+            </motion.div>
+          ))}
+        </div>
+
+        <div className="mt-12 flex justify-center">
+          <Button
+            variant="outline"
+            className="border-[#64c5c3]/50 text-[#050b10] hover:bg-[#64c5c3] hover:text-black rounded-full px-8 py-6"
+          >
+            View Full Inventory
+          </Button>
+        </div>
+      </section>
+
+      {/* CONTACT SECTION */}
+      <section className="py-24 px-6 md:px-12 max-w-7xl mx-auto">
+        <div className="grid md:grid-cols-2 gap-12 bg-[#0a1118]/50 p-8 md:p-12 rounded-3xl border border-white/5 relative overflow-hidden">
+          {/* Subtle gradient blob behind form */}
+          <div className="absolute top-0 right-0 w-96 h-96 bg-[#64c5c3]/10 rounded-full blur-[100px] pointer-events-none" />
+
+          <div>
+            <h2 className="text-4xl font-black uppercase mb-4">
+              Got Questions? <br /> We're Here To Help!
+            </h2>
+            <p className="text-gray-400 mb-10 max-w-md">
+              Whether you need help with a booking, want to inquire about
+              long-term rentals, or just have a general question, our local team
+              in Ormoc is ready to assist.
+            </p>
+
+            <div className="space-y-6">
+              <div className="flex items-center gap-4 text-gray-300">
+                <div className="bg-white/5 p-3 rounded-full text-[#64c5c3]">
+                  <Phone size={20} />
+                </div>
+                <span className="font-mono">+63 967 701 5349</span>
+              </div>
+              <div className="flex items-center gap-4 text-gray-300">
+                <div className="bg-white/5 p-3 rounded-full text-[#64c5c3]">
+                  <Headset size={20} />
+                </div>
+                <span>mcormoccarrental@gmail.com</span>
+              </div>
+              <div className="flex items-center gap-4 text-gray-300">
+                <div className="bg-white/5 p-3 rounded-full text-[#64c5c3]">
+                  <MapPin size={20} />
+                </div>
+                <span className="max-w-[250px]">
+                  Brgy. Cogon, Ormoc City, Philippines, 6541
+                </span>
+              </div>
+            </div>
           </div>
 
-          {/* View All Button */}
-          <div className="mt-20 flex justify-center">
-            <Button
-              onClick={() => router.push("/customer/fleet")}
-              variant="link"
-              className="text-[10px] font-medium uppercase tracking-[0.3em] text-slate-500 hover:text-white transition-colors duration-300"
-            >
-              Explore Complete Catalog
+          <div className="space-y-4 relative z-10">
+            <div className="grid grid-cols-2 gap-4">
+              <Input
+                placeholder="First Name"
+                className="bg-black/40 border-white/10 h-14 rounded-xl focus-visible:ring-[#64c5c3]"
+              />
+              <Input
+                placeholder="Last Name"
+                className="bg-black/40 border-white/10 h-14 rounded-xl focus-visible:ring-[#64c5c3]"
+              />
+            </div>
+            <Input
+              placeholder="Email Address"
+              className="bg-black/40 border-white/10 h-14 rounded-xl focus-visible:ring-[#64c5c3]"
+            />
+            <Textarea
+              placeholder="How can we help you?"
+              className="bg-black/40 border-white/10 min-h-[120px] rounded-xl focus-visible:ring-[#64c5c3]"
+            />
+            <Button className="w-full bg-[#64c5c3] hover:bg-[#52a3a1] text-black font-bold h-14 rounded-xl mt-2">
+              Send Message
             </Button>
           </div>
         </div>
       </section>
 
-      {/* --- 5. PARTNER CTA --- */}
-      <section
-        id="partner"
-        className="min-h-screen flex flex-col justify-center relative py-32 bg-[#0A0C10] text-white border-t border-white/5 overflow-hidden"
-      >
-        <div className="max-w-7xl mx-auto px-6 lg:px-16 relative z-10 w-full text-center pt-16">
-          <motion.div
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true }}
-            variants={staggerContainer}
-            className="max-w-3xl mx-auto"
-          >
-            <motion.div variants={fadeUp} className="flex justify-center mb-10">
-              <div className="w-16 h-[1px] bg-blue-500/50" />
-            </motion.div>
-
-            <motion.h2
-              variants={fadeUp}
-              className="text-4xl md:text-6xl font-light tracking-tighter mb-10 leading-tight"
-            >
-              Convert assets <br /> into{" "}
-              <span className="italic font-normal text-white/50">revenue.</span>
-            </motion.h2>
-            <motion.p
-              variants={fadeUp}
-              className="text-slate-400 mb-16 font-light leading-relaxed text-lg max-w-xl mx-auto"
-            >
-              The Partnership Program allows private owners to list premium
-              vehicles on our platform. We manage client curation, logistics,
-              and security. You collect the yield.
-            </motion.p>
-            <motion.div
-              variants={fadeUp}
-              className="flex flex-col sm:flex-row justify-center gap-6"
-            >
-              <Button
-                onClick={() => router.push("/customer/list-vehicle")}
-                className="bg-white text-[#0A0C10] hover:bg-blue-600 hover:text-white rounded-none h-14 px-10 font-bold text-[10px] uppercase tracking-[0.3em] transition-colors duration-300"
-              >
-                Inquire About Partnership
-              </Button>
-            </motion.div>
-          </motion.div>
-        </div>
-      </section>
-
-      {/* --- 6. FOOTER & CONTACT --- */}
-      <footer
-        id="contact"
-        className="bg-[#050608] pt-32 pb-12 relative overflow-hidden"
-      >
-        <div className="max-w-7xl mx-auto px-6 lg:px-16 relative z-10 flex flex-col md:flex-row justify-between gap-16 mb-24">
-          <div className="max-w-xs">
-            <div className="flex items-center gap-4 mb-8">
-              <PremiumLogo />
-              <span className="text-xl font-light text-white tracking-[0.3em] uppercase">
-                MC ORMOC
-              </span>
-            </div>
-            <p className="text-slate-500 text-sm font-light leading-relaxed">
-              Elevating the standard of mobility in the Eastern Visayas.
-            </p>
-          </div>
-
-          <div className="flex flex-col sm:flex-row gap-16">
-            <div className="flex flex-col gap-6">
-              <h4 className="text-slate-200 font-medium uppercase tracking-[0.3em] text-[10px] mb-2 border-b border-white/10 pb-4">
-                Direct Line
-              </h4>
-              <span className="font-light text-slate-400 text-sm hover:text-white transition-colors cursor-pointer tracking-widest">
-                +63 912 345 6789
-              </span>
-              <span className="font-light text-slate-400 text-sm hover:text-white transition-colors cursor-pointer tracking-widest">
-                concierge@mcormoc.com
-              </span>
-            </div>
-
-            <div className="flex flex-col gap-6">
-              <h4 className="text-slate-200 font-medium uppercase tracking-[0.3em] text-[10px] mb-2 border-b border-white/10 pb-4">
-                Headquarters
-              </h4>
-              <span className="font-light text-slate-400 text-sm tracking-widest">
-                Ormoc City Proper
-              </span>
-              <span className="font-light text-slate-400 text-sm tracking-widest">
-                Leyte, Philippines 6541
-              </span>
-            </div>
-          </div>
-        </div>
-
-        <div className="max-w-7xl mx-auto px-6 lg:px-16 flex flex-col md:flex-row justify-between items-center gap-6 pt-10 border-t border-white/5">
-          <p className="text-[10px] text-slate-600 font-medium uppercase tracking-widest">
-            © {new Date().getFullYear()} MC Ormoc. All rights reserved.
-          </p>
-          <div className="flex gap-8 text-[10px] font-medium text-slate-500 uppercase tracking-widest">
-            <Link href="#" className="hover:text-slate-300 transition-colors">
-              Privacy Policy
-            </Link>
-            <Link href="#" className="hover:text-slate-300 transition-colors">
-              Terms of Service
-            </Link>
-          </div>
-        </div>
+      {/* FOOTER */}
+      <footer className="border-t border-white/5 bg-black py-12 px-6 text-center text-gray-500 text-sm">
+        <h2 className="text-5xl md:text-8xl font-black text-white/5 uppercase tracking-tighter mb-8">
+          MC ORMOC
+        </h2>
+        <p>
+          © {new Date().getFullYear()} MC Ormoc Car Rental. All rights reserved.
+        </p>
       </footer>
     </div>
   );

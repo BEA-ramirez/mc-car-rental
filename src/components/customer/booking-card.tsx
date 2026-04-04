@@ -15,6 +15,7 @@ import {
   QrCode,
   ArrowRight,
   ShieldCheck,
+  FileText,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -56,14 +57,14 @@ export default function BookingCard({ booking }: BookingCardProps) {
   );
   const isFullyPaid = balance <= 0;
 
-  let statusStyles = "bg-white/5 text-slate-400 border-white/10";
+  let statusStyles = "bg-white/5 text-gray-400 border-white/10";
   let StatusIcon = Clock;
 
   if (booking.status === "Pending Approval") {
     statusStyles = "bg-amber-500/10 text-amber-400 border-amber-500/20";
     StatusIcon = Clock;
   } else if (booking.status === "Awaiting Payment") {
-    statusStyles = "bg-blue-500/10 text-blue-400 border-blue-500/20";
+    statusStyles = "bg-[#64c5c3]/10 text-[#64c5c3] border-[#64c5c3]/20";
     StatusIcon = AlertCircle;
   } else if (booking.status === "Completed" || booking.status === "Confirmed") {
     statusStyles = "bg-emerald-500/10 text-emerald-400 border-emerald-500/20";
@@ -116,11 +117,15 @@ export default function BookingCard({ booking }: BookingCardProps) {
     }
   };
 
+  const handleViewContract = () => {
+    toast.info("Generating Contract Document...");
+  };
+
   return (
     <>
-      <div className="bg-white/[0.02] backdrop-blur-xl rounded-sm border border-white/5 overflow-hidden transition-all duration-500 hover:border-white/10 flex flex-col md:flex-row group">
-        {/* --- Left Side: Image --- */}
-        <div className="md:w-72 h-56 md:h-auto shrink-0 bg-[#050608] relative overflow-hidden">
+      <div className="bg-[#0a1118] rounded-2xl md:rounded-3xl border border-white/5 overflow-hidden transition-all duration-300 hover:border-white/10 hover:shadow-xl flex flex-col md:flex-row group">
+        {/* --- Left Side: Image (Extremely compact on mobile) --- */}
+        <div className="md:w-72 h-32 md:h-auto shrink-0 bg-black relative overflow-hidden">
           <Image
             src={
               booking.car.image || "https://placehold.co/1200x800?text=No+Image"
@@ -128,119 +133,136 @@ export default function BookingCard({ booking }: BookingCardProps) {
             alt={booking.car.model}
             fill
             sizes="(max-width: 768px) 100vw, 288px"
-            className="object-cover opacity-60 mix-blend-luminosity group-hover:opacity-100 group-hover:scale-105 transition-all duration-1000"
+            className="object-cover opacity-70 group-hover:opacity-90 group-hover:scale-105 transition-all duration-700 ease-out"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-[#0A0C10] via-transparent to-transparent opacity-80" />
+          <div className="absolute inset-0 bg-gradient-to-t from-[#050B10] via-transparent to-transparent opacity-80" />
 
-          <div className="absolute top-4 left-4">
+          {/* Status Badge */}
+          <div className="absolute top-2 left-2 md:top-4 md:left-4">
             <div
               className={cn(
-                "flex items-center gap-2 px-3 py-1.5 rounded-sm text-[9px] font-bold uppercase tracking-widest border backdrop-blur-md",
+                "flex items-center gap-1.5 md:gap-2 px-2 py-1 md:px-3 md:py-1.5 rounded-full text-[8px] md:text-[10px] font-bold uppercase tracking-widest border backdrop-blur-md shadow-lg",
                 statusStyles,
               )}
             >
-              <StatusIcon className="w-3 h-3" />
+              <StatusIcon className="w-3 h-3 md:w-3.5 md:h-3.5" />
               {booking.status}
             </div>
           </div>
         </div>
 
-        {/* --- Right Side: Details --- */}
-        <div className="p-8 flex-1 flex flex-col justify-between">
-          <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-6 mb-8">
+        {/* --- Right Side: Details (Tightened for mobile) --- */}
+        <div className="p-4 md:p-8 flex-1 flex flex-col justify-between">
+          {/* Header Row - Title & Price Side-by-Side on Mobile */}
+          <div className="flex flex-row justify-between items-start gap-2 md:gap-6 mb-4 md:mb-6">
             <div>
-              <p className="text-[9px] font-medium text-white/30 uppercase tracking-[0.3em] mb-2">
+              <p className="text-[8px] md:text-[10px] font-bold text-[#64c5c3] uppercase tracking-widest mb-1 md:mb-2">
                 ID: {booking.id}
               </p>
-              <h3 className="text-3xl font-light text-white tracking-tight leading-none mb-4">
+              <h3 className="text-lg sm:text-2xl md:text-3xl font-black text-white uppercase tracking-tighter leading-none mb-1.5 md:mb-3">
                 {booking.car.brand}{" "}
-                <span className="italic text-white/60">
-                  {booking.car.model}
-                </span>
+                <span className="text-gray-400">{booking.car.model}</span>
               </h3>
-              <div className="flex items-center gap-3 text-[10px] font-medium uppercase tracking-widest text-slate-400">
-                <CalendarDays className="w-3.5 h-3.5 text-blue-500" />
-                {format(booking.startDate, "MMM dd, yyyy")} —{" "}
-                {format(booking.endDate, "MMM dd, yyyy")}
+              <div className="flex items-center gap-1.5 md:gap-2 text-[8px] md:text-[10px] font-bold uppercase tracking-widest text-gray-500">
+                <CalendarDays className="w-3 h-3 md:w-4 md:h-4 text-[#64c5c3]" />
+                {format(booking.startDate, "MMM dd")} —{" "}
+                {format(booking.endDate, "MMM dd")}
               </div>
             </div>
-            <div className="text-left md:text-right">
-              <p className="text-[9px] font-medium text-white/30 uppercase tracking-[0.3em] mb-1">
-                Amount Due
+
+            <div className="text-right">
+              <p className="text-[8px] md:text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-0.5 md:mb-1">
+                Total Due
               </p>
-              <p className="text-3xl font-light text-white tracking-tighter">
+              <p className="text-xl md:text-3xl font-black text-white tracking-tighter">
                 ₱{booking.totalAmount.toLocaleString()}
               </p>
             </div>
           </div>
 
-          <div className="bg-white/[0.02] border border-white/5 p-6 rounded-sm">
-            <div className="flex justify-between items-end mb-3">
-              <p className="text-[9px] font-medium text-white/40 uppercase tracking-[0.2em]">
+          {/* Progress & Actions Box */}
+          <div className="bg-white/5 border border-white/10 p-3 md:p-5 rounded-xl md:rounded-2xl">
+            <div className="flex justify-between items-end mb-2 md:mb-3">
+              <p className="text-[8px] md:text-[10px] font-bold text-gray-400 uppercase tracking-widest">
                 Payment Progress
               </p>
-              <p className="text-[10px] font-medium text-white tracking-widest uppercase">
-                <span className="text-blue-400">
+              <p className="text-[8px] md:text-[10px] font-bold text-white tracking-widest uppercase">
+                <span className="text-[#64c5c3]">
                   ₱{booking.amountPaid.toLocaleString()}
                 </span>{" "}
                 / ₱{booking.totalAmount.toLocaleString()}
               </p>
             </div>
 
-            <div className="w-full h-1 bg-white/5 rounded-full overflow-hidden mb-4">
+            <div className="w-full h-1 md:h-1.5 bg-black/50 rounded-full overflow-hidden mb-3 md:mb-4">
               <div
                 className={cn(
-                  "h-full transition-all duration-[2000ms] ease-out",
-                  isFullyPaid ? "bg-emerald-500" : "bg-blue-600",
+                  "h-full transition-all duration-[2000ms] ease-out rounded-full",
+                  isFullyPaid ? "bg-emerald-500" : "bg-[#64c5c3]",
                 )}
                 style={{ width: `${progressPercent}%` }}
               />
             </div>
 
             {booking.pendingAmount > 0 && (
-              <div className="flex items-center gap-3 mb-4 text-[9px] font-medium uppercase tracking-widest text-amber-400 bg-amber-400/5 p-3 border border-amber-400/10 rounded-sm">
-                <Clock className="w-3.5 h-3.5 shrink-0" />₱
-                {booking.pendingAmount.toLocaleString()} awaiting verification
+              <div className="flex items-center gap-2 md:gap-3 mb-3 md:mb-4 text-[8px] md:text-[10px] font-bold uppercase tracking-widest text-amber-400 bg-amber-400/5 p-2 md:p-3 rounded-lg md:rounded-xl border border-amber-400/10">
+                <Clock className="w-3 h-3 md:w-4 md:h-4 shrink-0" />₱
+                {booking.pendingAmount.toLocaleString()} pending
               </div>
             )}
 
-            <div className="flex items-center justify-between mt-2">
-              <p className="text-[9px] font-medium text-white/20 uppercase tracking-[0.2em]">
+            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3 mt-1 md:mt-2">
+              <p className="text-[9px] md:text-[11px] font-bold text-gray-500 uppercase tracking-widest">
                 {isFullyPaid
                   ? "Verified & Settled"
                   : `Balance: ₱${balance.toLocaleString()}`}
               </p>
 
-              {!isFullyPaid && booking.status !== "Pending Approval" && (
+              {/* Action Buttons - Side-by-Side on Mobile for space saving */}
+              <div className="flex flex-row w-full md:w-auto gap-2 md:gap-3">
                 <Button
-                  onClick={() => setIsPaymentModalOpen(true)}
-                  className="bg-white text-[#0A0C10] hover:bg-blue-600 hover:text-white rounded-none h-10 px-6 font-bold text-[9px] uppercase tracking-[0.3em] transition-all duration-300"
+                  onClick={handleViewContract}
+                  variant="outline"
+                  className="flex-1 md:w-auto border-white/20 bg-transparent hover:bg-white/10 text-white rounded-lg md:rounded-xl h-9 md:h-12 px-3 md:px-6 font-bold text-[8px] md:text-[10px] uppercase tracking-widest transition-all duration-300"
                 >
-                  <CreditCard className="w-3.5 h-3.5 mr-2" /> Make Payment
+                  <FileText className="w-3 h-3 md:w-4 md:h-4 md:mr-2" />
+                  <span className="hidden md:inline">View Contract</span>
+                  <span className="md:hidden ml-1">Contract</span>
                 </Button>
-              )}
+
+                {!isFullyPaid && booking.status !== "Pending Approval" && (
+                  <Button
+                    onClick={() => setIsPaymentModalOpen(true)}
+                    className="flex-1 md:w-auto bg-[#64c5c3] hover:bg-[#52a3a1] text-black rounded-lg md:rounded-xl h-9 md:h-12 px-3 md:px-6 font-bold text-[8px] md:text-[10px] uppercase tracking-widest transition-all duration-300 shadow-[0_0_10px_rgba(100,197,195,0.2)]"
+                  >
+                    <CreditCard className="w-3 h-3 md:w-4 md:h-4 md:mr-2" />
+                    <span className="hidden md:inline">Make Payment</span>
+                    <span className="md:hidden ml-1">Pay</span>
+                  </Button>
+                )}
+              </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* --- Payment Modal --- */}
+      {/* --- Payment Modal (Kept the same UI) --- */}
       <Dialog open={isPaymentModalOpen} onOpenChange={setIsPaymentModalOpen}>
-        <DialogContent className="sm:max-w-xl bg-[#0A0C10] border-white/10 p-0 overflow-hidden text-slate-300">
-          <DialogHeader className="p-8 bg-white/[0.02] border-b border-white/5">
-            <DialogTitle className="text-2xl font-light text-white tracking-tight">
-              Settle <span className="italic text-white/50">Payment.</span>
+        <DialogContent className="sm:max-w-xl bg-[#0a1118] border-white/10 p-0 overflow-hidden text-white rounded-2xl md:rounded-3xl w-[95vw] md:w-full">
+          <DialogHeader className="p-6 md:p-8 bg-black/40 border-b border-white/5">
+            <DialogTitle className="text-2xl md:text-3xl font-black text-white tracking-tighter uppercase">
+              Settle Payment
             </DialogTitle>
-            <p className="text-[10px] text-white/40 uppercase tracking-[0.2em] mt-2">
-              Remaining:{" "}
-              <span className="text-white font-bold ml-1">
+            <p className="text-[9px] md:text-[10px] font-bold text-gray-500 uppercase tracking-widest mt-1 md:mt-2">
+              Remaining Balance:{" "}
+              <span className="text-[#64c5c3] ml-1 text-xs md:text-sm">
                 ₱{balance.toLocaleString()}
               </span>
             </p>
           </DialogHeader>
 
-          <div className="p-8 overflow-y-auto max-h-[70vh] custom-scrollbar">
-            <div className="grid grid-cols-3 gap-4 mb-10">
+          <div className="p-4 md:p-8 overflow-y-auto max-h-[75vh] md:max-h-[70vh] custom-scrollbar">
+            <div className="grid grid-cols-3 gap-2 md:gap-3 mb-6 md:mb-10">
               {(["gcash", "bank", "cash"] as const).map((method) => {
                 const Icon =
                   method === "gcash"
@@ -253,14 +275,14 @@ export default function BookingCard({ booking }: BookingCardProps) {
                     key={method}
                     onClick={() => setSelectedMethod(method)}
                     className={cn(
-                      "flex flex-col items-center gap-3 p-5 rounded-sm border transition-all duration-300",
+                      "flex flex-col items-center gap-2 md:gap-3 p-3 md:p-4 rounded-xl md:rounded-2xl border transition-all duration-300",
                       selectedMethod === method
-                        ? "border-blue-500 bg-blue-500/5 text-white"
-                        : "border-white/5 bg-white/[0.02] text-white/40 hover:border-white/10",
+                        ? "border-[#64c5c3] bg-[#64c5c3]/10 text-[#64c5c3]"
+                        : "border-white/5 bg-white/5 text-gray-500 hover:border-white/20 hover:text-white",
                     )}
                   >
-                    <Icon className="w-5 h-5" />
-                    <span className="text-[9px] font-bold uppercase tracking-widest">
+                    <Icon className="w-5 h-5 md:w-6 md:h-6" />
+                    <span className="text-[8px] md:text-[9px] font-bold uppercase tracking-widest">
                       {method}
                     </span>
                   </button>
@@ -269,12 +291,11 @@ export default function BookingCard({ booking }: BookingCardProps) {
             </div>
 
             {selectedMethod !== "cash" ? (
-              <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-500">
-                <div className="relative group p-[1px] bg-gradient-to-br from-white/10 to-transparent rounded-sm overflow-hidden">
-                  <div className="bg-gradient-to-br from-slate-800 to-black p-8 flex flex-col items-center justify-center relative rounded-sm">
-                    <div className="absolute top-0 left-0 w-full h-1/2 bg-gradient-to-b from-white/5 to-transparent pointer-events-none" />
-                    <QrCode className="w-20 h-20 text-white/80 mb-4 group-hover:scale-110 transition-transform duration-500" />
-                    <p className="text-[9px] font-bold text-white/60 uppercase tracking-[0.3em]">
+              <div className="space-y-6 md:space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-500">
+                <div className="relative group p-[1px] bg-gradient-to-br from-white/10 to-transparent rounded-xl md:rounded-2xl overflow-hidden">
+                  <div className="bg-black p-6 md:p-8 flex flex-col items-center justify-center relative rounded-xl md:rounded-2xl border border-white/5">
+                    <QrCode className="w-20 h-20 md:w-24 md:h-24 text-white mb-3 md:mb-4 group-hover:scale-110 group-hover:text-[#64c5c3] transition-all duration-500" />
+                    <p className="text-[9px] md:text-[10px] font-bold text-gray-500 uppercase tracking-widest">
                       Scan Official QR
                     </p>
                   </div>
@@ -286,12 +307,12 @@ export default function BookingCard({ booking }: BookingCardProps) {
                 />
               </div>
             ) : (
-              <div className="bg-blue-500/5 border border-blue-500/20 p-8 rounded-sm text-center animate-in zoom-in-95 duration-500">
-                <Banknote className="w-12 h-12 text-blue-400 mx-auto mb-4" />
-                <h4 className="text-sm font-medium text-white mb-2 uppercase tracking-widest">
+              <div className="bg-white/5 border border-white/10 p-6 md:p-8 rounded-xl md:rounded-2xl text-center animate-in zoom-in-95 duration-500">
+                <Banknote className="w-10 h-10 md:w-12 md:h-12 text-[#64c5c3] mx-auto mb-3 md:mb-4" />
+                <h4 className="text-xs md:text-sm font-bold text-white mb-1 md:mb-2 uppercase tracking-widest">
                   In-Person Settlement
                 </h4>
-                <p className="text-[10px] text-slate-400 leading-relaxed uppercase tracking-widest">
+                <p className="text-[9px] md:text-[10px] font-bold text-gray-400 leading-relaxed uppercase tracking-widest">
                   Present the balance upon pickup of your vehicle.
                 </p>
               </div>
@@ -303,22 +324,23 @@ export default function BookingCard({ booking }: BookingCardProps) {
                 (selectedMethod !== "cash" && !scannedFile) ||
                 isSubmittingPayment
               }
-              className="w-full mt-10 bg-white text-[#0A0C10] hover:bg-blue-600 hover:text-white rounded-none h-14 font-bold text-[10px] uppercase tracking-[0.3em] transition-all duration-500 group"
+              className="w-full mt-6 md:mt-10 bg-[#64c5c3] text-black hover:bg-[#52a3a1] rounded-lg md:rounded-xl h-12 md:h-14 font-black text-[10px] md:text-[11px] uppercase tracking-widest transition-all duration-300 group disabled:opacity-40 disabled:bg-[#64c5c3] disabled:cursor-not-allowed"
             >
               {isSubmittingPayment ? (
                 "Authenticating..."
               ) : (
-                <span className="flex items-center gap-3">
+                <span className="flex items-center gap-2 md:gap-3">
                   {selectedMethod === "cash"
                     ? "Confirm Arrangement"
                     : "Submit Receipt"}
-                  <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+                  <ArrowRight className="w-3.5 h-3.5 md:w-4 md:h-4 group-hover:translate-x-1 transition-transform" />
                 </span>
               )}
             </Button>
 
-            <div className="mt-8 flex items-center gap-2 justify-center text-[9px] text-white/20 uppercase tracking-widest">
-              <ShieldCheck className="w-3 h-3" /> Secure Payment Protocol
+            <div className="mt-6 md:mt-8 flex items-center gap-2 justify-center text-[8px] md:text-[9px] font-bold text-gray-500 uppercase tracking-widest">
+              <ShieldCheck className="w-3 h-3 md:w-4 md:h-4 text-[#64c5c3]" />{" "}
+              Secure Payment Protocol
             </div>
           </div>
         </DialogContent>

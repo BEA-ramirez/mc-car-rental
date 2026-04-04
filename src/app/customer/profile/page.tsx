@@ -40,17 +40,6 @@ const ProfileSchema = z.object({
 
 type ProfileFormValues = z.infer<typeof ProfileSchema>;
 
-// --- CUSTOM HIGH-END LOGO ---
-const PremiumLogo = () => (
-  <div className="relative w-6 h-6 flex items-center justify-center group cursor-pointer">
-    <div className="absolute w-full h-full border-[1.5px] border-white/80 rounded-sm transform rotate-45 transition-transform duration-700 group-hover:rotate-90" />
-    <div className="absolute w-full h-full border-[1.5px] border-blue-500/80 rounded-sm transform -rotate-45 transition-transform duration-700 group-hover:-rotate-90" />
-    <span className="relative z-10 text-[8px] font-black text-white tracking-tighter">
-      M
-    </span>
-  </div>
-);
-
 export default function CustomerProfilePage() {
   const router = useRouter();
   const [isEditing, setIsEditing] = useState(false);
@@ -124,26 +113,26 @@ export default function CustomerProfilePage() {
   const getStatusBadge = (status: string) => {
     if (status === "verified")
       return (
-        <span className="flex items-center gap-1 text-[9px] uppercase tracking-widest font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-sm border border-emerald-500/20">
-          <CheckCircle2 className="w-3 h-3" /> Verified
+        <span className="flex items-center gap-1.5 text-[10px] uppercase tracking-widest font-bold text-emerald-400 bg-emerald-500/10 px-3 py-1 rounded-full border border-emerald-500/20">
+          <CheckCircle2 className="w-3.5 h-3.5" /> Verified
         </span>
       );
     if (status === "pending")
       return (
-        <span className="flex items-center gap-1 text-[9px] uppercase tracking-widest font-bold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-sm border border-amber-500/20">
-          <Clock className="w-3 h-3" /> In Review
+        <span className="flex items-center gap-1.5 text-[10px] uppercase tracking-widest font-bold text-amber-400 bg-amber-500/10 px-3 py-1 rounded-full border border-amber-500/20">
+          <Clock className="w-3.5 h-3.5" /> In Review
         </span>
       );
     if (status === "expired" || status === "rejected") {
       return (
-        <span className="flex items-center gap-1 text-[9px] uppercase tracking-widest font-bold text-red-400 bg-red-500/10 px-2 py-0.5 rounded-sm border border-red-500/20">
-          <AlertCircle className="w-3 h-3" /> Re-upload Document
+        <span className="flex items-center gap-1.5 text-[10px] uppercase tracking-widest font-bold text-red-400 bg-red-500/10 px-3 py-1 rounded-full border border-red-500/20">
+          <AlertCircle className="w-3.5 h-3.5" /> Action Needed
         </span>
       );
     }
     return (
-      <span className="flex items-center gap-1 text-[9px] uppercase tracking-widest font-bold text-slate-400 bg-white/5 px-2 py-0.5 rounded-sm border border-white/10">
-        <AlertCircle className="w-3 h-3" /> Action Needed
+      <span className="flex items-center gap-1.5 text-[10px] uppercase tracking-widest font-bold text-gray-400 bg-white/5 px-3 py-1 rounded-full border border-white/10">
+        <AlertCircle className="w-3.5 h-3.5" /> Unverified
       </span>
     );
   };
@@ -152,40 +141,41 @@ export default function CustomerProfilePage() {
   const getDocStatusBadge = (status: string) => {
     if (status === "verified")
       return (
-        <span className="text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-1.5 py-0.5 rounded-sm text-[8px] uppercase tracking-widest font-bold">
+        <span className="text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full text-[9px] uppercase tracking-widest font-bold">
           Verified
         </span>
       );
     if (status === "pending")
       return (
-        <span className="text-amber-400 bg-amber-500/10 border border-amber-500/20 px-1.5 py-0.5 rounded-sm text-[8px] uppercase tracking-widest font-bold">
-          Pending Review
+        <span className="text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-full text-[9px] uppercase tracking-widest font-bold">
+          Reviewing
         </span>
       );
     if (status === "expired" || status === "rejected")
       return (
-        <span className="text-red-400 bg-red-500/10 border border-red-500/20 px-1.5 py-0.5 rounded-sm text-[8px] uppercase tracking-widest font-bold">
-          Rejected / Expired
+        <span className="text-red-400 bg-red-500/10 border border-red-500/20 px-2 py-0.5 rounded-full text-[9px] uppercase tracking-widest font-bold">
+          Rejected/Expired
         </span>
       );
     return (
-      <span className="text-slate-400 bg-white/5 border border-white/10 px-1.5 py-0.5 rounded-sm text-[8px] uppercase tracking-widest font-bold">
-        Unverified
+      <span className="text-gray-400 bg-white/5 border border-white/10 px-2 py-0.5 rounded-full text-[9px] uppercase tracking-widest font-bold">
+        Missing
       </span>
     );
   };
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-[#0A0C10] flex items-center justify-center text-[10px] uppercase tracking-widest text-slate-500 font-medium">
-        Loading...
+      <div className="min-h-screen bg-[#050B10] flex items-center justify-center text-xs uppercase tracking-widest text-gray-500 font-bold">
+        <div className="w-8 h-8 border-4 border-white/10 border-t-[#64c5c3] rounded-full animate-spin mr-4" />{" "}
+        Loading Profile...
       </div>
     );
   }
 
   if (!profile) {
     return (
-      <div className="min-h-screen bg-[#0A0C10] flex items-center justify-center text-[10px] uppercase tracking-widest text-red-400 font-medium">
+      <div className="min-h-screen bg-[#050B10] flex items-center justify-center text-xs uppercase tracking-widest text-red-400 font-bold">
         Error loading profile.
       </div>
     );
@@ -201,31 +191,30 @@ export default function CustomerProfilePage() {
   const accountStatus = profile.account_status || "unverified";
 
   return (
-    <div className="min-h-screen bg-[#0A0C10] font-sans selection:bg-blue-900 selection:text-white pb-24">
-      {/* Top Nav (Premium Frosted Glass) */}
-      <nav className="fixed top-0 w-full z-50 bg-[#0A0C10]/80 backdrop-blur-xl border-b border-white/5 transition-all duration-500">
-        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
+    <div className="min-h-screen bg-[#050B10] text-white font-sans selection:bg-[#64c5c3] selection:text-black pb-24">
+      {/* Top Nav (Glassmorphic) */}
+      <nav className="fixed top-0 w-full z-50 bg-[#050B10]/50 backdrop-blur-lg border-b border-white/5 transition-all duration-500">
+        <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
           <Link
             href="/"
-            className="flex items-center gap-4 cursor-pointer group"
+            className="flex items-center gap-2 cursor-pointer group"
           >
-            <PremiumLogo />
-            <span className="text-[10px] font-medium text-white tracking-[0.3em] uppercase mt-0.5 group-hover:text-blue-400 transition-colors duration-500">
-              MC Ormoc
+            <span className="text-2xl font-black tracking-tighter text-white group-hover:text-[#64c5c3] transition-colors duration-300">
+              MC ORMOC
             </span>
           </Link>
           <div className="flex items-center gap-6">
             <Link
               href="/customer/fleet"
-              className="text-[9px] font-medium uppercase tracking-[0.2em] text-white/50 hover:text-white transition-colors"
+              className="text-[10px] sm:text-xs font-bold uppercase tracking-widest text-gray-400 hover:text-[#64c5c3] transition-colors"
             >
               Fleet
             </Link>
             <Link
               href="/customer/my-bookings"
-              className="text-[9px] font-medium uppercase tracking-[0.2em] text-white/50 hover:text-white transition-colors"
+              className="text-[10px] sm:text-xs font-bold uppercase tracking-widest text-gray-400 hover:text-[#64c5c3] transition-colors"
             >
-              Itinerary
+              Bookings
             </Link>
           </div>
         </div>
@@ -233,25 +222,30 @@ export default function CustomerProfilePage() {
 
       {/* Profile Header */}
       <div className="relative pt-32 pb-16 px-6 overflow-hidden border-b border-white/5">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,_var(--tw-gradient-stops))] from-blue-900/10 via-[#0A0C10] to-[#0A0C10] -z-10" />
-        <div className="max-w-5xl mx-auto flex flex-col md:flex-row items-center gap-8">
-          <div className="w-24 h-24 rounded-full bg-[#111623] flex items-center justify-center text-3xl font-light text-white border border-white/10 shrink-0 uppercase shadow-2xl">
+        <div className="absolute top-0 right-1/4 w-[400px] h-[400px] bg-[#64c5c3]/10 rounded-full blur-[120px] pointer-events-none -z-10" />
+
+        <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center md:items-start gap-8 relative z-10">
+          <div className="w-28 h-28 rounded-full bg-[#0a1118] flex items-center justify-center text-4xl font-black text-[#64c5c3] border-2 border-white/10 shrink-0 uppercase shadow-2xl relative overflow-hidden">
             {profile.full_name ? profile.full_name.charAt(0) : "?"}
+            <div className="absolute inset-0 bg-gradient-to-tr from-[#64c5c3]/10 to-transparent pointer-events-none" />
           </div>
-          <div className="text-center md:text-left">
-            <h1 className="text-4xl font-light text-white tracking-tighter mb-2">
+
+          <div className="text-center md:text-left mt-2">
+            <h1 className="text-4xl sm:text-5xl font-black text-white tracking-tighter uppercase mb-2 leading-none">
               {profile.full_name || "New User"}
             </h1>
-            <p className="text-slate-400 text-[10px] font-medium uppercase tracking-widest mb-4">
+            <p className="text-gray-400 text-xs sm:text-sm font-bold tracking-widest mb-4">
               {profile.email}
             </p>
             <div className="flex items-center justify-center md:justify-start gap-3">
               {getStatusBadge(accountStatus)}
-              <span className="text-[9px] font-medium text-slate-400 uppercase tracking-widest bg-white/5 border border-white/10 px-2 py-0.5 rounded-sm">
+              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest bg-black/40 border border-white/10 px-3 py-1 rounded-full flex items-center gap-2">
                 Trust Score:{" "}
-                {profile.trust_score
-                  ? Number(profile.trust_score).toFixed(1)
-                  : "5.0"}
+                <span className="text-[#64c5c3]">
+                  {profile.trust_score
+                    ? Number(profile.trust_score).toFixed(1)
+                    : "5.0"}
+                </span>
               </span>
             </div>
           </div>
@@ -259,174 +253,173 @@ export default function CustomerProfilePage() {
       </div>
 
       {/* Main Content Area */}
-      <div className="max-w-5xl mx-auto px-6 mt-12">
+      <div className="max-w-6xl mx-auto px-6 mt-12 relative z-10">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12">
           {/* LEFT COLUMN: Personal Info & Documents */}
-          <div className="lg:col-span-8 space-y-12">
+          <div className="lg:col-span-8 space-y-8">
             {/* Form */}
             <form
               onSubmit={form.handleSubmit(onSubmit)}
-              className="bg-white/[0.02] backdrop-blur-xl rounded-sm p-8 shadow-2xl border border-white/5 relative overflow-hidden"
+              className="bg-[#0a1118]/80 backdrop-blur-xl rounded-3xl p-6 md:p-10 shadow-2xl border border-white/5"
             >
-              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-white/10 to-transparent" />
-
-              <div className="flex items-center justify-between mb-10 pb-4 border-b border-white/5">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-8 pb-6 border-b border-white/10 gap-4">
                 <div className="flex items-center gap-3">
-                  <User className="w-5 h-5 text-blue-500" />
-                  <h2 className="text-lg font-light text-white tracking-wide">
+                  <div className="p-2.5 bg-[#64c5c3]/10 rounded-xl">
+                    <User className="w-5 h-5 text-[#64c5c3]" />
+                  </div>
+                  <h2 className="text-xl font-black text-white uppercase tracking-wider">
                     Personal Details
                   </h2>
                 </div>
 
                 {isEditing ? (
                   <Button
-                    key="save-btn" // FIX: Forces React to treat this as a distinct element
+                    key="save-btn"
                     type="submit"
-                    size="sm"
                     disabled={isUpdating}
-                    className="rounded-none h-8 px-4 font-bold text-[9px] uppercase tracking-widest bg-white text-[#0A0C10] hover:bg-blue-600 hover:text-white transition-all duration-300"
+                    className="rounded-xl h-10 px-6 font-bold text-[10px] uppercase tracking-widest bg-[#64c5c3] text-black hover:bg-[#52a3a1] transition-all duration-300 w-full sm:w-auto"
                   >
                     {isUpdating ? "Saving..." : "Save Changes"}
                   </Button>
                 ) : (
                   <Button
-                    key="edit-btn" // FIX: Forces React to treat this as a distinct element
-                    type="button" // FIX: Explicitly prevents form submission
-                    variant="outline"
-                    size="sm"
+                    key="edit-btn"
+                    type="button"
                     onClick={(e) => {
-                      e.preventDefault(); // FIX: Completely blocks any native browser submit action
+                      e.preventDefault();
                       setIsEditing(true);
                     }}
-                    className="rounded-none h-8 px-4 font-bold text-[9px] uppercase tracking-widest bg-transparent border-white/20 text-white hover:bg-white hover:text-[#0A0C10] transition-all duration-300"
+                    variant="outline"
+                    className="rounded-xl h-10 px-6 font-bold text-[10px] uppercase tracking-widest bg-transparent border-white/20 text-white hover:bg-white hover:text-black transition-all duration-300 w-full sm:w-auto"
                   >
                     Edit Profile
                   </Button>
                 )}
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
-                  <Label className="text-[9px] font-medium text-slate-500 uppercase tracking-[0.2em]">
+                  <Label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">
                     First Name
                   </Label>
                   <Input
                     {...form.register("first_name")}
                     disabled={!isEditing}
                     className={cn(
-                      "h-11 rounded-none border-white/10 bg-white/5 text-white placeholder:text-white/20 focus-visible:ring-1 focus-visible:ring-blue-500 transition-all duration-300 disabled:opacity-50",
-                      form.formState.errors.first_name && "border-red-500/50",
+                      "h-12 rounded-xl bg-black/50 border-white/10 text-white placeholder:text-gray-600 focus-visible:ring-[#64c5c3] transition-all disabled:opacity-50 disabled:bg-black/20",
+                      form.formState.errors.first_name &&
+                        "border-red-500/50 focus-visible:ring-red-500",
                     )}
                   />
                   {form.formState.errors.first_name && (
-                    <p className="text-[9px] text-red-400 mt-1 uppercase tracking-wider">
+                    <p className="text-[9px] font-bold text-red-400 mt-1 uppercase tracking-widest">
                       {form.formState.errors.first_name.message}
                     </p>
                   )}
                 </div>
 
                 <div className="space-y-2">
-                  <Label className="text-[9px] font-medium text-slate-500 uppercase tracking-[0.2em]">
+                  <Label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">
                     Last Name
                   </Label>
                   <Input
                     {...form.register("last_name")}
                     disabled={!isEditing}
                     className={cn(
-                      "h-11 rounded-none border-white/10 bg-white/5 text-white placeholder:text-white/20 focus-visible:ring-1 focus-visible:ring-blue-500 transition-all duration-300 disabled:opacity-50",
-                      form.formState.errors.last_name && "border-red-500/50",
+                      "h-12 rounded-xl bg-black/50 border-white/10 text-white placeholder:text-gray-600 focus-visible:ring-[#64c5c3] transition-all disabled:opacity-50 disabled:bg-black/20",
+                      form.formState.errors.last_name &&
+                        "border-red-500/50 focus-visible:ring-red-500",
                     )}
                   />
                   {form.formState.errors.last_name && (
-                    <p className="text-[9px] text-red-400 mt-1 uppercase tracking-wider">
+                    <p className="text-[9px] font-bold text-red-400 mt-1 uppercase tracking-widest">
                       {form.formState.errors.last_name.message}
                     </p>
                   )}
                 </div>
 
                 <div className="space-y-2">
-                  <Label className="text-[9px] font-medium text-slate-500 uppercase tracking-[0.2em]">
+                  <Label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">
                     Email Address
                   </Label>
                   <Input
                     value={profile.email || ""}
                     disabled={true}
-                    className="h-11 rounded-none border-transparent bg-transparent text-slate-400 opacity-60 font-light cursor-not-allowed px-0"
+                    className="h-12 rounded-xl border-transparent bg-white/5 text-gray-400 font-medium cursor-not-allowed"
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label className="text-[9px] font-medium text-slate-500 uppercase tracking-[0.2em]">
+                  <Label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">
                     Phone Number
                   </Label>
                   <Input
                     {...form.register("phone_number")}
                     disabled={!isEditing}
                     className={cn(
-                      "h-11 rounded-none border-white/10 bg-white/5 text-white placeholder:text-white/20 focus-visible:ring-1 focus-visible:ring-blue-500 transition-all duration-300 disabled:opacity-50",
-                      form.formState.errors.phone_number && "border-red-500/50",
+                      "h-12 rounded-xl bg-black/50 border-white/10 text-white placeholder:text-gray-600 focus-visible:ring-[#64c5c3] transition-all disabled:opacity-50 disabled:bg-black/20",
+                      form.formState.errors.phone_number &&
+                        "border-red-500/50 focus-visible:ring-red-500",
                     )}
                   />
                   {form.formState.errors.phone_number && (
-                    <p className="text-[9px] text-red-400 mt-1 uppercase tracking-wider">
+                    <p className="text-[9px] font-bold text-red-400 mt-1 uppercase tracking-widest">
                       {form.formState.errors.phone_number.message}
                     </p>
                   )}
                 </div>
 
                 <div className="space-y-2 md:col-span-2">
-                  <Label className="text-[9px] font-medium text-slate-500 uppercase tracking-[0.2em]">
+                  <Label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">
                     Complete Address
                   </Label>
                   <Input
                     {...form.register("address")}
                     disabled={!isEditing}
-                    className="h-11 rounded-none border-white/10 bg-white/5 text-white placeholder:text-white/20 focus-visible:ring-1 focus-visible:ring-blue-500 transition-all duration-300 disabled:opacity-50"
+                    className="h-12 rounded-xl bg-black/50 border-white/10 text-white placeholder:text-gray-600 focus-visible:ring-[#64c5c3] transition-all disabled:opacity-50 disabled:bg-black/20"
                   />
                 </div>
               </div>
             </form>
 
             {/* Identity Verification (KYC) */}
-            <div className="bg-white/[0.02] backdrop-blur-xl rounded-sm p-8 shadow-2xl border border-white/5 relative overflow-hidden">
-              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-white/10 to-transparent" />
-
-              <div className="flex items-center justify-between mb-4 pb-4 border-b border-white/5">
-                <div className="flex items-center gap-3">
+            <div className="bg-[#0a1118]/80 backdrop-blur-xl rounded-3xl p-6 md:p-10 shadow-2xl border border-white/5">
+              <div className="flex items-center gap-3 mb-4 pb-6 border-b border-white/10">
+                <div className="p-2.5 bg-emerald-500/10 rounded-xl">
                   <ShieldCheck className="w-5 h-5 text-emerald-500" />
-                  <h2 className="text-lg font-light text-white tracking-wide">
-                    Identity Verification
-                  </h2>
                 </div>
+                <h2 className="text-xl font-black text-white uppercase tracking-wider">
+                  Identity Verification
+                </h2>
               </div>
-              <p className="text-[10px] text-slate-500 uppercase tracking-widest font-light mb-8 max-w-lg leading-relaxed">
+              <p className="text-[10px] sm:text-xs text-gray-400 font-bold mb-8 max-w-lg leading-relaxed">
                 To keep our fleet and community safe, we require a valid
                 Driver's License and one additional Government ID.
               </p>
 
               <div className="space-y-4">
                 {/* Driver's License */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between p-5 bg-[#050608] border border-white/5 rounded-sm gap-4 transition-all hover:border-white/10">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 md:p-6 bg-black/40 border border-white/5 rounded-2xl gap-4 transition-all hover:border-white/10">
                   <div className="flex items-start gap-4">
-                    <div className="p-3 bg-white/5 rounded-sm border border-white/10 shrink-0">
-                      <Car className="w-5 h-5 text-slate-400" />
+                    <div className="p-3 bg-white/5 rounded-xl border border-white/10 shrink-0">
+                      <Car className="w-5 h-5 text-gray-400" />
                     </div>
                     <div>
-                      <h4 className="text-[11px] font-medium text-slate-200 uppercase tracking-widest mb-1 flex items-center gap-3">
+                      <h4 className="text-[11px] font-bold text-white uppercase tracking-widest mb-1 flex items-center gap-3">
                         Professional Driver's License
                       </h4>
                       {latestLicense ? (
-                        <div className="mt-3 flex items-center gap-3">
+                        <div className="mt-2 flex items-center gap-3">
                           {getDocStatusBadge(licenseStatus)}
-                          <p className="text-[9px] text-slate-500 font-mono tracking-widest">
+                          <p className="text-[9px] text-gray-500 font-mono tracking-widest truncate max-w-[120px] sm:max-w-[200px]">
                             {latestLicense.file_name}
                           </p>
                         </div>
                       ) : (
-                        <div className="mt-3 flex items-center gap-3">
+                        <div className="mt-2 flex items-center gap-3">
                           {getDocStatusBadge(licenseStatus)}
-                          <p className="text-[9px] text-slate-500 uppercase tracking-widest">
-                            Required for self-drive rentals.
+                          <p className="text-[9px] text-gray-500 font-bold uppercase tracking-widest">
+                            Required for self-drive.
                           </p>
                         </div>
                       )}
@@ -436,7 +429,7 @@ export default function CustomerProfilePage() {
                     licenseStatus === "rejected" ||
                     licenseStatus === "pending" ||
                     licenseStatus === "unverified") && (
-                    <div className="relative">
+                    <div className="relative w-full sm:w-auto">
                       <Input
                         type="file"
                         accept="image/*,.pdf"
@@ -446,37 +439,36 @@ export default function CustomerProfilePage() {
                       />
                       <Button
                         variant="outline"
-                        size="sm"
-                        className="rounded-none h-9 px-4 font-bold text-[9px] uppercase tracking-widest bg-transparent border-white/20 text-white hover:bg-white hover:text-[#0A0C10] transition-all shrink-0 w-full sm:w-auto"
+                        className="w-full sm:w-auto rounded-xl h-10 px-6 font-bold text-[10px] uppercase tracking-widest bg-white/5 border-white/20 text-white hover:bg-[#64c5c3] hover:text-black hover:border-transparent transition-all shrink-0"
                       >
-                        <UploadCloud className="w-3 h-3 mr-2" /> Upload
+                        <UploadCloud className="w-4 h-4 mr-2" /> Upload
                       </Button>
                     </div>
                   )}
                 </div>
 
                 {/* Valid ID */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between p-5 bg-[#050608] border border-white/5 rounded-sm gap-4 transition-all hover:border-white/10">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 md:p-6 bg-black/40 border border-white/5 rounded-2xl gap-4 transition-all hover:border-white/10">
                   <div className="flex items-start gap-4">
-                    <div className="p-3 bg-white/5 rounded-sm border border-white/10 shrink-0">
-                      <FileText className="w-5 h-5 text-slate-400" />
+                    <div className="p-3 bg-white/5 rounded-xl border border-white/10 shrink-0">
+                      <FileText className="w-5 h-5 text-gray-400" />
                     </div>
                     <div>
-                      <h4 className="text-[11px] font-medium text-slate-200 uppercase tracking-widest mb-1 flex items-center gap-3">
+                      <h4 className="text-[11px] font-bold text-white uppercase tracking-widest mb-1 flex items-center gap-3">
                         Secondary Valid ID
                       </h4>
                       {latestValidId ? (
-                        <div className="mt-3 flex items-center gap-3">
+                        <div className="mt-2 flex items-center gap-3">
                           {getDocStatusBadge(validIdStatus)}
-                          <p className="text-[9px] text-slate-500 font-mono tracking-widest">
+                          <p className="text-[9px] text-gray-500 font-mono tracking-widest truncate max-w-[120px] sm:max-w-[200px]">
                             {latestValidId.file_name}
                           </p>
                         </div>
                       ) : (
-                        <div className="mt-3 flex items-center gap-3">
+                        <div className="mt-2 flex items-center gap-3">
                           {getDocStatusBadge(validIdStatus)}
-                          <p className="text-[9px] text-slate-500 uppercase tracking-widest">
-                            Passport, UMID, Postal, or National ID.
+                          <p className="text-[9px] text-gray-500 font-bold uppercase tracking-widest">
+                            Passport, UMID, or Postal.
                           </p>
                         </div>
                       )}
@@ -486,7 +478,7 @@ export default function CustomerProfilePage() {
                     validIdStatus === "rejected" ||
                     validIdStatus === "pending" ||
                     validIdStatus === "unverified") && (
-                    <div className="relative">
+                    <div className="relative w-full sm:w-auto">
                       <Input
                         type="file"
                         accept="image/*,.pdf"
@@ -496,10 +488,9 @@ export default function CustomerProfilePage() {
                       />
                       <Button
                         variant="outline"
-                        size="sm"
-                        className="rounded-none h-9 px-4 font-bold text-[9px] uppercase tracking-widest bg-transparent border-white/20 text-white hover:bg-white hover:text-[#0A0C10] transition-all shrink-0 w-full sm:w-auto"
+                        className="w-full sm:w-auto rounded-xl h-10 px-6 font-bold text-[10px] uppercase tracking-widest bg-white/5 border-white/20 text-white hover:bg-[#64c5c3] hover:text-black hover:border-transparent transition-all shrink-0"
                       >
-                        <UploadCloud className="w-3 h-3 mr-2" /> Upload
+                        <UploadCloud className="w-4 h-4 mr-2" /> Upload
                       </Button>
                     </div>
                   )}
@@ -510,13 +501,13 @@ export default function CustomerProfilePage() {
 
           {/* RIGHT COLUMN: The Partner Hub */}
           <div className="lg:col-span-4 space-y-6">
-            <div className="bg-[#111623]/80 backdrop-blur-xl rounded-sm p-8 shadow-2xl text-white border border-white/5 relative overflow-hidden h-full flex flex-col">
-              <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/10 rounded-full blur-[80px] pointer-events-none" />
+            <div className="bg-[#0a1118]/80 backdrop-blur-xl rounded-3xl p-8 shadow-2xl text-white border border-white/5 relative overflow-hidden h-full flex flex-col">
+              <div className="absolute top-0 right-0 w-64 h-64 bg-[#64c5c3]/10 rounded-full blur-[80px] pointer-events-none" />
 
-              <h2 className="text-2xl font-light tracking-tight mb-2 relative z-10">
+              <h2 className="text-3xl font-black uppercase tracking-tighter mb-2 relative z-10">
                 Partner with Us
               </h2>
-              <p className="text-[10px] text-slate-400 uppercase tracking-widest font-light mb-10 relative z-10 leading-relaxed border-b border-white/5 pb-6">
+              <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-8 relative z-10 leading-relaxed border-b border-white/10 pb-6">
                 Turn your driving skills or your idle vehicle into a consistent
                 source of income.
               </p>
@@ -525,17 +516,17 @@ export default function CustomerProfilePage() {
                 {profile.role !== "driver" && (
                   <div
                     onClick={() => router.push("/customer/apply-driver")}
-                    className="bg-[#050608]/50 hover:bg-[#050608] border border-white/5 p-5 rounded-sm transition-all cursor-pointer group"
+                    className="bg-black/40 hover:bg-white/5 border border-white/5 p-6 rounded-2xl transition-all cursor-pointer group hover:border-[#64c5c3]/30"
                   >
-                    <div className="flex items-center gap-3 mb-2">
-                      <div className="p-2 bg-blue-500/10 text-blue-400 rounded-sm">
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="p-2.5 bg-[#64c5c3]/10 text-[#64c5c3] rounded-xl group-hover:bg-[#64c5c3] group-hover:text-black transition-colors">
                         <Key className="w-4 h-4" />
                       </div>
-                      <h3 className="text-[11px] font-medium uppercase tracking-widest text-slate-200 group-hover:text-white transition-colors">
+                      <h3 className="text-xs font-black uppercase tracking-widest text-white group-hover:text-[#64c5c3] transition-colors">
                         Become a Driver
                       </h3>
                     </div>
-                    <p className="text-[9px] text-slate-500 uppercase tracking-widest font-light leading-relaxed pl-10">
+                    <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest leading-relaxed pl-12">
                       Apply to be an official company driver. Drive our fleet,
                       set your schedule, and earn daily fees.
                     </p>
@@ -545,17 +536,17 @@ export default function CustomerProfilePage() {
                 {profile.role !== "fleet_partner" && (
                   <div
                     onClick={() => router.push("/customer/list-vehicle")}
-                    className="bg-[#050608]/50 hover:bg-[#050608] border border-white/5 p-5 rounded-sm transition-all cursor-pointer group"
+                    className="bg-black/40 hover:bg-white/5 border border-white/5 p-6 rounded-2xl transition-all cursor-pointer group hover:border-[#64c5c3]/30"
                   >
-                    <div className="flex items-center gap-3 mb-2">
-                      <div className="p-2 bg-emerald-500/10 text-emerald-400 rounded-sm">
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="p-2.5 bg-[#64c5c3]/10 text-[#64c5c3] rounded-xl group-hover:bg-[#64c5c3] group-hover:text-black transition-colors">
                         <Car className="w-4 h-4" />
                       </div>
-                      <h3 className="text-[11px] font-medium uppercase tracking-widest text-slate-200 group-hover:text-white transition-colors">
+                      <h3 className="text-xs font-black uppercase tracking-widest text-white group-hover:text-[#64c5c3] transition-colors">
                         List Your Vehicle
                       </h3>
                     </div>
-                    <p className="text-[9px] text-slate-500 uppercase tracking-widest font-light leading-relaxed pl-10">
+                    <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest leading-relaxed pl-12">
                       Become a Fleet Partner. Enroll your SUV or Sedan and earn
                       up to 70% revenue share per booking.
                     </p>
