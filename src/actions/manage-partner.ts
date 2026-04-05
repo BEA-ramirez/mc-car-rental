@@ -280,3 +280,117 @@ export async function rejectFleetPartnerAction(
     };
   }
 }
+
+export async function getPartnerRevenueChartData(
+  ownerId: string,
+  monthsBack: number = 6,
+) {
+  try {
+    const supabase = await createClient();
+
+    const { data, error } = await supabase.rpc("get_partner_monthly_revenue", {
+      p_owner_id: ownerId,
+      p_months_back: monthsBack,
+    });
+
+    if (error) {
+      console.error("Error fetching partner revenue data:", error);
+      return [];
+    }
+
+    return data;
+  } catch (error) {
+    console.error("Unexpected error fetching partner revenue data:", error);
+    return [];
+  }
+}
+
+export async function getPartnerCarUtilization(
+  ownerId: string,
+  daysBack: number = 30,
+) {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase.rpc("get_partner_car_utilization", {
+    p_owner_id: ownerId,
+    p_days_back: daysBack,
+  });
+
+  if (error) {
+    console.error("Error fetching car utilization:", error);
+    return [];
+  }
+
+  return data;
+}
+
+export async function getPartnerFleetUnits(ownerId: string) {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase.rpc("get_partner_fleet_units", {
+    p_owner_id: ownerId,
+  });
+
+  if (error) {
+    console.error("Error fetching partner fleet units:", error);
+    return [];
+  }
+
+  return data;
+}
+
+export async function getPartnerPayoutHistory(ownerId: string) {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase.rpc("get_partner_payout_history", {
+    p_owner_id: ownerId,
+  });
+
+  if (error) {
+    console.error("Error fetching partner payout history:", error);
+    return [];
+  }
+
+  return data;
+}
+
+export async function getPartnerDocumentsAction(ownerId: string) {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase.rpc("get_partner_documents", {
+    p_owner_id: ownerId,
+  });
+
+  if (error) {
+    console.error("Error fetching partner documents:", error);
+    return [];
+  }
+
+  // Generate public URLs for the UI to link to
+  const docsWithUrls = data.map((doc: any) => {
+    return {
+      ...doc,
+      file_url: doc.file_path
+        ? supabase.storage.from("documents").getPublicUrl(doc.file_path).data
+            .publicUrl
+        : null,
+    };
+  });
+
+  return docsWithUrls;
+}
+
+export async function getPartnerAuditLogsAction(ownerId: string) {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase.rpc("get_partner_audit_logs", {
+    p_owner_id: ownerId,
+  });
+
+  if (error) {
+    console.error("Error fetching partner audit logs:", error);
+    return [];
+  }
+
+  return data;
+}

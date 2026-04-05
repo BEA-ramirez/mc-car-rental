@@ -4,16 +4,7 @@ import { useState, forwardRef, useImperativeHandle } from "react";
 import Image from "next/image";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import {
-  Search,
-  Plus,
-  Filter,
-  Star,
-  Loader2,
-  Car,
-  MoreVertical,
-  Edit2,
-} from "lucide-react";
+import { Search, Plus, Star, Loader2, Car } from "lucide-react";
 import { FleetPartnerType } from "@/lib/schemas/car-owner";
 import { useFleetPartners } from "../../../hooks/use-fleetPartners";
 import { PartnerForm } from "./partner-form";

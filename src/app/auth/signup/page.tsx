@@ -5,7 +5,6 @@ import { motion, Variants } from "framer-motion";
 import { SignupForm } from "@/components/auth/signup-form";
 
 // --- ANIMATION VARIANTS ---
-// Slow-rotating, elegant gradient spotlight for the form side
 const spotlightAnim: Variants = {
   animate: {
     rotate: [0, 360],
@@ -20,9 +19,10 @@ const spotlightAnim: Variants = {
 
 export default function SignupPage() {
   return (
+    // Grid handles side-by-side layout on desktop, standard flow on mobile
     <div className="grid min-h-[100dvh] lg:h-screen lg:grid-cols-2 bg-[#050B10] text-white selection:bg-[#64c5c3] selection:text-black font-sans overflow-hidden">
       {/* --- LEFT SIDE: FORM CONTAINER --- */}
-      <div className="relative flex flex-col w-full min-h-[100dvh] lg:h-full overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] z-20 ">
+      <div className="relative flex flex-col w-full min-h-[100dvh] lg:h-full z-20 overflow-y-auto lg:overflow-hidden [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
         {/* Elegant Ambient Glow behind the form */}
         <motion.div
           variants={spotlightAnim}
@@ -30,12 +30,12 @@ export default function SignupPage() {
           className="fixed top-1/2 left-1/2 md:left-1/4 -translate-x-1/2 -translate-y-1/2 w-[300px] h-[600px] md:w-[600px] md:h-[900px] bg-gradient-to-br from-[#64c5c3]/10 via-blue-900/10 to-transparent blur-[120px] -z-10 pointer-events-none rounded-full mix-blend-screen"
         />
 
-        {/* Top Header */}
+        {/* Top Header - Tightened padding to prevent vertical scroll */}
         <motion.header
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-          className="flex justify-between items-center w-full px-6 py-6 md:px-12 md:py-8 shrink-0"
+          className="flex justify-between items-center w-full px-6 py-4 md:px-12 md:py-6 shrink-0 z-20"
         >
           <Link
             href="/"
@@ -49,24 +49,24 @@ export default function SignupPage() {
             href="/auth/login"
             className="text-[10px] md:text-xs font-bold uppercase tracking-widest text-gray-500 hover:text-[#64c5c3] transition-colors"
           >
-            Return to Login
+            Log In
           </Link>
         </motion.header>
 
-        {/* Center: The Form */}
-        <main className="flex-1 flex items-center justify-center w-full px-4 sm:px-6 py-8">
+        {/* Center: The Form - Flex-1 ensures perfect vertical centering */}
+        <main className="flex-1 flex flex-col items-center justify-center w-full px-4 sm:px-6 z-10 py-6 lg:py-0">
           <motion.div
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1], delay: 0.1 }}
-            className="w-full max-w-[22rem] sm:max-w-md lg:max-w-lg"
+            className="w-full max-w-[24rem] sm:max-w-md lg:max-w-lg"
           >
             <SignupForm />
           </motion.div>
         </main>
 
-        {/* Bottom Footer */}
-        <footer className="flex flex-col sm:flex-row justify-between items-center gap-3 w-full px-6 py-6 md:px-12 shrink-0">
+        {/* Bottom Footer - Tightened padding */}
+        <footer className="flex flex-col sm:flex-row justify-between items-center gap-3 w-full px-6 py-4 md:px-12 shrink-0 z-20">
           <div className="text-[9px] md:text-[10px] font-bold text-gray-600 uppercase tracking-widest text-center sm:text-left">
             Secure Encrypted Registration
           </div>

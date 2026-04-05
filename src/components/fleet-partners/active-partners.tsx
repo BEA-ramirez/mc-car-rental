@@ -18,6 +18,9 @@ import {
   History,
   LayoutDashboard,
 } from "lucide-react";
+import PartnerFinancials from "./partner-financials";
+import PartnerDocs from "./partner-docs";
+import PartnerLogs from "./partner-logs";
 
 export default function ActivePartners() {
   const gridRef = useRef<FleetPartnersGridRef>(null);
@@ -66,13 +69,14 @@ export default function ActivePartners() {
                 </span>
               </div>
 
-              {/* Grid Row - Visual separation through a single vertical border-r */}
-              <div className="grid grid-cols-1 xl:grid-cols-5  border-b border-slate-100 bg-white">
-                <div className="xl:col-span-3 px-6 py-4 border-r border-slate-100">
-                  <PartnerRevenueChart />
+              {/* Grid Row */}
+              <div className="grid grid-cols-1 xl:grid-cols-5 border-b border-slate-200 bg-white min-h-[320px]">
+                <div className="xl:col-span-3 p-5 sm:p-6 border-b xl:border-b-0 xl:border-r border-slate-200 flex flex-col">
+                  {/* PASS THE PROP HERE */}
+                  <PartnerRevenueChart ownerId={selectedPartner.car_owner_id} />
                 </div>
-                <div className="xl:col-span-2 px-6 py-4">
-                  <PartnerCarUtil />
+                <div className="xl:col-span-2 p-5 sm:p-6 flex flex-col">
+                  <PartnerCarUtil ownerId={selectedPartner.car_owner_id} />
                 </div>
               </div>
 
@@ -120,54 +124,21 @@ export default function ActivePartners() {
                       value="financials"
                       className="m-0 outline-none h-full data-[state=active]:flex flex-col"
                     >
-                      <div className="flex flex-col items-center justify-center text-center py-24 bg-slate-50/40 rounded-2xl border border-dashed border-slate-200">
-                        <div className="p-4 bg-white rounded-full shadow-sm border border-slate-100 mb-4">
-                          <DollarSign className="w-6 h-6 text-slate-300" />
-                        </div>
-                        <p className="text-sm font-bold text-slate-700">
-                          Financial Records
-                        </p>
-                        <p className="text-xs text-slate-400 mt-1 max-w-[200px]">
-                          Historical payouts and detailed revenue reports will
-                          be listed here.
-                        </p>
-                      </div>
+                      <PartnerFinancials selectedPartner={selectedPartner} />
                     </TabsContent>
 
                     <TabsContent
                       value="documents"
                       className="m-0 outline-none h-full data-[state=active]:flex flex-col"
                     >
-                      <div className="flex flex-col items-center justify-center text-center py-24 bg-slate-50/40 rounded-2xl border border-dashed border-slate-200">
-                        <div className="p-4 bg-white rounded-full shadow-sm border border-slate-100 mb-4">
-                          <FileText className="w-6 h-6 text-slate-300" />
-                        </div>
-                        <p className="text-sm font-bold text-slate-700">
-                          Legal Documents
-                        </p>
-                        <p className="text-xs text-slate-400 mt-1 max-w-[200px]">
-                          Access partner contracts, ID scans, and compliance
-                          certificates.
-                        </p>
-                      </div>
+                      <PartnerDocs selectedPartner={selectedPartner} />
                     </TabsContent>
 
                     <TabsContent
                       value="logs"
                       className="m-0 outline-none h-full data-[state=active]:flex flex-col"
                     >
-                      <div className="flex flex-col items-center justify-center text-center py-24 bg-slate-50/40 rounded-2xl border border-dashed border-slate-200">
-                        <div className="p-4 bg-white rounded-full shadow-sm border border-slate-100 mb-4">
-                          <History className="w-6 h-6 text-slate-300" />
-                        </div>
-                        <p className="text-sm font-bold text-slate-700">
-                          Audit Logs
-                        </p>
-                        <p className="text-xs text-slate-400 mt-1 max-w-[200px]">
-                          A full timeline of changes made to this partner
-                          profile.
-                        </p>
-                      </div>
+                      <PartnerLogs selectedPartner={selectedPartner} />
                     </TabsContent>
                   </div>
                 </Tabs>

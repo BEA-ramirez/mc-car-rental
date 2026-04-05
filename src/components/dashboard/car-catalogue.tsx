@@ -199,7 +199,7 @@ export default function CarCatalogueModal() {
           className="h-8 text-[10px] font-bold uppercase tracking-widest rounded-sm shadow-none border-slate-200 bg-white hover:bg-slate-50 text-slate-700 hidden sm:flex cursor-pointer"
         >
           <Search className="w-3.5 h-3.5 mr-1.5 text-slate-400" />
-          Car Catalogue
+          Car Catalog
         </Button>
       </DialogTrigger>
 

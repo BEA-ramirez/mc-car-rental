@@ -7,6 +7,12 @@ import {
   getPendingFleetPartnersAction,
   verifyFleetPartnerAction,
   rejectFleetPartnerAction,
+  getPartnerRevenueChartData,
+  getPartnerCarUtilization,
+  getPartnerFleetUnits,
+  getPartnerPayoutHistory,
+  getPartnerDocumentsAction,
+  getPartnerAuditLogsAction,
 } from "@/actions/manage-partner";
 
 const fetchFleetPartners = async (): Promise<FleetPartnerType[]> => {
@@ -168,4 +174,76 @@ export const useFleetPartnerApplications = () => {
     rejectPartner: rejectMutation.mutateAsync,
     isRejecting: rejectMutation.isPending,
   };
+};
+
+export const usePartnerRevenueChart = (
+  ownerId: string | undefined,
+  monthsBack: number = 6,
+) => {
+  return useQuery({
+    queryKey: ["partner-revenue-chart", ownerId, monthsBack],
+    queryFn: async () => {
+      if (!ownerId) return [];
+      return await getPartnerRevenueChartData(ownerId, monthsBack);
+    },
+    enabled: !!ownerId, // Only run the query if we have an ownerId
+  });
+};
+
+export const usePartnerCarUtilization = (
+  ownerId: string | undefined,
+  daysBack: number = 30,
+) => {
+  return useQuery({
+    queryKey: ["partner-car-utilization", ownerId, daysBack],
+    queryFn: async () => {
+      if (!ownerId) return [];
+      return await getPartnerCarUtilization(ownerId, daysBack);
+    },
+    enabled: !!ownerId,
+  });
+};
+
+export const usePartnerFleetUnits = (ownerId: string | undefined) => {
+  return useQuery({
+    queryKey: ["partner-fleet-units", ownerId],
+    queryFn: async () => {
+      if (!ownerId) return [];
+      return await getPartnerFleetUnits(ownerId);
+    },
+    enabled: !!ownerId,
+  });
+};
+
+export const usePartnerPayoutHistory = (ownerId: string | undefined) => {
+  return useQuery({
+    queryKey: ["partner-payout-history", ownerId],
+    queryFn: async () => {
+      if (!ownerId) return [];
+      return await getPartnerPayoutHistory(ownerId);
+    },
+    enabled: !!ownerId,
+  });
+};
+
+export const usePartnerDocuments = (ownerId: string | undefined) => {
+  return useQuery({
+    queryKey: ["partner-documents", ownerId],
+    queryFn: async () => {
+      if (!ownerId) return [];
+      return await getPartnerDocumentsAction(ownerId);
+    },
+    enabled: !!ownerId,
+  });
+};
+
+export const usePartnerAuditLogs = (ownerId: string | undefined) => {
+  return useQuery({
+    queryKey: ["partner-audit-logs", ownerId],
+    queryFn: async () => {
+      if (!ownerId) return [];
+      return await getPartnerAuditLogsAction(ownerId);
+    },
+    enabled: !!ownerId,
+  });
 };
