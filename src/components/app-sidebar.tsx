@@ -74,7 +74,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       className="border-r border-sidebar-border bg-sidebar text-sidebar-foreground"
       {...props}
     >
-      <SidebarHeader className="p-3 group-data-[collapsible=icon]:p-2 border-b border-sidebar-border bg-sidebar transition-all duration-200">
+      <SidebarHeader className="p-1 group-data-[collapsible=icon]:p-2 border-b border-sidebar-border bg-sidebar transition-all duration-200">
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton

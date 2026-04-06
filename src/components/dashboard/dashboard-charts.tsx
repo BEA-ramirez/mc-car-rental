@@ -44,21 +44,27 @@ export default function DashboardCharts() {
     const chart = echarts.init(chartRef.current);
     let option: echarts.EChartsOption = {};
 
-    // ECharts Global Theme Variables
+    // Base Theme Colors
     const axisColor = isDark ? "rgba(255, 255, 255, 0.4)" : "#64748b";
-    const splitLineColor = isDark ? "rgba(255, 255, 255, 0.05)" : "#f1f5f9";
+    const splitLineColor = isDark ? "rgba(255, 255, 255, 0.05)" : "#e2e8f0";
     const tooltipBg = isDark
-      ? "rgba(10, 17, 24, 0.8)"
-      : "rgba(255, 255, 255, 0.9)";
-    const tooltipBorder = isDark ? "rgba(255, 255, 255, 0.1)" : "#e2e8f0";
+      ? "rgba(10, 17, 24, 0.85)"
+      : "rgba(255, 255, 255, 0.95)";
+    const tooltipBorder = isDark ? "rgba(255, 255, 255, 0.15)" : "#cbd5e1";
     const tooltipText = isDark ? "#ffffff" : "#0f172a";
-    const primaryColor = "#64c5c3";
 
-    // Adjusted grid for the new compact 200px height
+    // Core Branding
+    const primaryTeal = "#64c5c3";
+    const emeraldGreen = "#10b981";
+    const boldBlue = "#3b82f6";
+    const expenseRed = "#f43f5e";
+    const warningAmber = "#f59e0b";
+
+    // Optimized grid for the compact 200px height
     const gridSettings = {
-      left: "0%",
-      right: "0%",
-      bottom: "0%",
+      left: "1%",
+      right: "1%",
+      bottom: "2%",
       top: "15%",
       containLabel: true,
     };
@@ -68,6 +74,7 @@ export default function DashboardCharts() {
       fontWeight: 500,
       fontSize: 10,
       fontFamily: "var(--font-sans)",
+      margin: 12,
     };
 
     const tooltipSettings = {
@@ -79,9 +86,9 @@ export default function DashboardCharts() {
         fontSize: 12,
         fontFamily: "var(--font-sans)",
       },
-      padding: [12, 16],
+      padding: [10, 14],
       extraCssText:
-        "backdrop-filter: blur(12px); border-radius: 8px; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);",
+        "backdrop-filter: blur(12px); border-radius: 8px; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.2);",
     };
 
     if (activeTab === "earnings") {
@@ -91,7 +98,10 @@ export default function DashboardCharts() {
           ...tooltipSettings,
           formatter: (params: any) =>
             `<div style="font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: ${axisColor}; margin-bottom: 4px;">${params[0].name}</div>
-             <span style="font-weight: 800; color: ${tooltipText}; font-size: 14px;">₱ ${params[0].value.toLocaleString()}</span>`,
+             <div style="display: flex; align-items: center; gap: 8px;">
+               <div style="width: 8px; height: 8px; border-radius: 50%; background-color: ${primaryTeal};"></div>
+               <span style="font-weight: 800; color: ${tooltipText}; font-size: 14px;">₱ ${params[0].value.toLocaleString()}</span>
+             </div>`,
         },
         grid: gridSettings,
         xAxis: {
@@ -100,11 +110,11 @@ export default function DashboardCharts() {
           data: chartData.labels,
           axisLine: { show: false },
           axisTick: { show: false },
-          axisLabel: { ...axisLabelSettings, margin: 12 },
+          axisLabel: axisLabelSettings,
         },
         yAxis: {
           type: "value",
-          splitLine: { lineStyle: { color: splitLineColor } },
+          splitLine: { lineStyle: { color: splitLineColor, type: "solid" } },
           axisLabel: {
             ...axisLabelSettings,
             formatter: (value: number) =>
@@ -115,18 +125,23 @@ export default function DashboardCharts() {
           {
             name: "Revenue",
             type: "line",
-            smooth: 0.4,
+            smooth: 0.5,
             data: chartData.earnings,
-            itemStyle: { color: primaryColor },
+            itemStyle: { color: primaryTeal },
             lineStyle: {
-              width: 3,
-              shadowColor: "rgba(100, 197, 195, 0.3)",
-              shadowBlur: 10,
+              width: 4, // THICKER line
+              shadowColor: "rgba(100, 197, 195, 0.4)",
+              shadowBlur: 15,
+              shadowOffsetY: 5,
             },
-            symbol: "none",
+            showSymbol: false,
+            symbol: "circle",
+            symbolSize: 8,
             areaStyle: {
+              // Smooth Teal Gradient
               color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-                { offset: 0, color: "rgba(100, 197, 195, 0.25)" },
+                { offset: 0, color: "rgba(100, 197, 195, 0.4)" },
+                { offset: 0.8, color: "rgba(100, 197, 195, 0.02)" },
                 { offset: 1, color: "rgba(100, 197, 195, 0)" },
               ]),
             },
@@ -140,7 +155,7 @@ export default function DashboardCharts() {
           axisPointer: {
             type: "shadow",
             shadowStyle: {
-              color: isDark ? "rgba(255,255,255,0.02)" : "rgba(0,0,0,0.02)",
+              color: isDark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.03)",
             },
           },
           ...tooltipSettings,
@@ -152,12 +167,12 @@ export default function DashboardCharts() {
               <div style="font-family: var(--font-sans); min-width: 160px;">
                 <div style="font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: ${axisColor}; margin-bottom: 8px;">${params[0].name}</div>
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-                  <span style="font-size: 11px; color: ${axisColor};">Income:</span> 
-                  <span style="color: #10b981; font-weight: 700; font-size: 12px;">₱ ${income.toLocaleString()}</span>
+                  <span style="font-size: 11px; color: ${axisColor}; display: flex; align-items: center; gap: 6px;"><div style="width: 6px; height: 6px; border-radius: 50%; background: ${emeraldGreen};"></div> Income:</span> 
+                  <span style="color: ${emeraldGreen}; font-weight: 700; font-size: 12px;">₱ ${income.toLocaleString()}</span>
                 </div>
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                  <span style="font-size: 11px; color: ${axisColor};">Expenses:</span> 
-                  <span style="color: #f43f5e; font-weight: 700; font-size: 12px;">₱ ${expense.toLocaleString()}</span>
+                  <span style="font-size: 11px; color: ${axisColor}; display: flex; align-items: center; gap: 6px;"><div style="width: 6px; height: 6px; border-radius: 50%; background: ${expenseRed};"></div> Expenses:</span> 
+                  <span style="color: ${expenseRed}; font-weight: 700; font-size: 12px;">₱ ${expense.toLocaleString()}</span>
                 </div>
                 <div style="border-top: 1px solid ${tooltipBorder}; margin: 8px 0;"></div>
                 <div style="display: flex; justify-content: space-between; align-items: center;">
@@ -187,11 +202,11 @@ export default function DashboardCharts() {
           data: chartData.labels,
           axisLine: { show: false },
           axisTick: { show: false },
-          axisLabel: { ...axisLabelSettings, margin: 12 },
+          axisLabel: axisLabelSettings,
         },
         yAxis: {
           type: "value",
-          splitLine: { lineStyle: { color: splitLineColor } },
+          splitLine: { lineStyle: { color: splitLineColor, type: "solid" } },
           axisLabel: {
             ...axisLabelSettings,
             formatter: (value: number) =>
@@ -202,17 +217,17 @@ export default function DashboardCharts() {
           {
             name: "Income",
             type: "bar",
-            barWidth: "15%",
-            barGap: "15%",
+            barWidth: "22%", // THICKER bars
+            barGap: "20%",
             data: chartData.earnings,
-            itemStyle: { color: "#10b981", borderRadius: [4, 4, 0, 0] },
+            itemStyle: { color: emeraldGreen, borderRadius: [4, 4, 0, 0] },
           },
           {
             name: "Expenses",
             type: "bar",
-            barWidth: "15%",
+            barWidth: "22%", // THICKER bars
             data: chartData.expenses,
-            itemStyle: { color: "#f43f5e", borderRadius: [4, 4, 0, 0] },
+            itemStyle: { color: expenseRed, borderRadius: [4, 4, 0, 0] },
           },
         ],
       };
@@ -223,7 +238,7 @@ export default function DashboardCharts() {
           axisPointer: {
             type: "shadow",
             shadowStyle: {
-              color: isDark ? "rgba(255,255,255,0.02)" : "rgba(0,0,0,0.02)",
+              color: isDark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.03)",
             },
           },
           ...tooltipSettings,
@@ -234,20 +249,27 @@ export default function DashboardCharts() {
           data: chartData.labels,
           axisLine: { show: false },
           axisTick: { show: false },
-          axisLabel: { ...axisLabelSettings, margin: 12 },
+          axisLabel: axisLabelSettings,
         },
         yAxis: {
           type: "value",
-          splitLine: { lineStyle: { color: splitLineColor } },
+          splitLine: { lineStyle: { color: splitLineColor, type: "solid" } },
           axisLabel: axisLabelSettings,
         },
         series: [
           {
             name: "Bookings",
             type: "bar",
-            barWidth: "20%",
+            barWidth: "35%", // THICKER dominant bars
             data: chartData.volume,
-            itemStyle: { color: "#3b82f6", borderRadius: [4, 4, 0, 0] },
+            itemStyle: {
+              // Blue Gradient for the bar
+              color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                { offset: 0, color: "#60a5fa" }, // lighter blue
+                { offset: 1, color: "#2563eb" }, // bolder blue
+              ]),
+              borderRadius: [4, 4, 0, 0],
+            },
           },
         ],
       };
@@ -258,7 +280,10 @@ export default function DashboardCharts() {
           ...tooltipSettings,
           formatter: (params: any) =>
             `<div style="font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: ${axisColor}; margin-bottom: 4px;">${params[0].name}</div>
-             <span style="font-weight: 800; color: #10b981; font-size: 14px;">${params[0].value}% Deployed</span>`,
+             <div style="display: flex; align-items: center; gap: 8px;">
+               <div style="width: 8px; height: 8px; border-radius: 50%; background-color: ${emeraldGreen};"></div>
+               <span style="font-weight: 800; color: ${tooltipText}; font-size: 14px;">${params[0].value}% Deployed</span>
+             </div>`,
         },
         grid: gridSettings,
         xAxis: {
@@ -267,13 +292,13 @@ export default function DashboardCharts() {
           data: chartData.labels,
           axisLine: { show: false },
           axisTick: { show: false },
-          axisLabel: { ...axisLabelSettings, margin: 12 },
+          axisLabel: axisLabelSettings,
         },
         yAxis: {
           type: "value",
           min: 0,
           max: 100,
-          splitLine: { lineStyle: { color: splitLineColor } },
+          splitLine: { lineStyle: { color: splitLineColor, type: "solid" } },
           axisLabel: { ...axisLabelSettings, formatter: "{value}%" },
         },
         series: [
@@ -282,14 +307,15 @@ export default function DashboardCharts() {
             type: "line",
             step: "middle",
             data: chartData.utilization,
-            itemStyle: { color: "#10b981" },
+            itemStyle: { color: emeraldGreen },
             lineStyle: { width: 3 },
+            showSymbol: false,
             symbol: "circle",
-            symbolSize: 6,
+            symbolSize: 8,
             areaStyle: {
               color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-                { offset: 0, color: "rgba(16,185,129,0.2)" },
-                { offset: 1, color: "rgba(16,185,129,0)" },
+                { offset: 0, color: "rgba(16, 185, 129, 0.25)" },
+                { offset: 1, color: "rgba(16, 185, 129, 0)" },
               ]),
             },
           },
@@ -302,7 +328,7 @@ export default function DashboardCharts() {
           axisPointer: {
             type: "shadow",
             shadowStyle: {
-              color: isDark ? "rgba(255,255,255,0.02)" : "rgba(0,0,0,0.02)",
+              color: isDark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.03)",
             },
           },
           ...tooltipSettings,
@@ -350,11 +376,11 @@ export default function DashboardCharts() {
           data: chartData.labels,
           axisLine: { show: false },
           axisTick: { show: false },
-          axisLabel: { ...axisLabelSettings, margin: 12 },
+          axisLabel: axisLabelSettings,
         },
         yAxis: {
           type: "value",
-          splitLine: { lineStyle: { color: splitLineColor } },
+          splitLine: { lineStyle: { color: splitLineColor, type: "solid" } },
           axisLabel: {
             ...axisLabelSettings,
             formatter: (value: number) =>
@@ -366,25 +392,25 @@ export default function DashboardCharts() {
             name: "SUVs",
             type: "bar",
             stack: "total",
-            barWidth: "25%",
+            barWidth: "30%", // THICKER
             data: chartData.fleetmix.suv,
-            itemStyle: { color: "#f59e0b" },
+            itemStyle: { color: warningAmber },
           },
           {
             name: "Sedans",
             type: "bar",
             stack: "total",
-            barWidth: "25%",
+            barWidth: "30%", // THICKER
             data: chartData.fleetmix.sedan,
-            itemStyle: { color: "#10b981" },
+            itemStyle: { color: primaryTeal },
           },
           {
             name: "Vans / MPVs",
             type: "bar",
             stack: "total",
-            barWidth: "25%",
+            barWidth: "30%", // THICKER
             data: chartData.fleetmix.van,
-            itemStyle: { color: "#ef4444", borderRadius: [4, 4, 0, 0] },
+            itemStyle: { color: expenseRed, borderRadius: [4, 4, 0, 0] },
           },
         ],
       };
@@ -417,10 +443,10 @@ export default function DashboardCharts() {
           value={timeframe}
           onValueChange={(val: TimeframeType) => setTimeframe(val)}
         >
-          <SelectTrigger className="w-[120px] h-7 text-[10px] font-semibold bg-card text-foreground shadow-none border-border focus:ring-primary shrink-0 transition-colors">
+          <SelectTrigger className="w-[120px] h-7 text-[12px] font-semibold bg-card text-foreground shadow-none border-border focus:ring-primary shrink-0 transition-colors">
             <SelectValue placeholder="Select timeframe" />
           </SelectTrigger>
-          <SelectContent className="text-[10px] font-medium bg-popover border-border">
+          <SelectContent className="text-[11px]! font-medium bg-popover border-border">
             <SelectItem value="daily">Today (Hourly)</SelectItem>
             <SelectItem value="weekly">This Week</SelectItem>
             <SelectItem value="monthly">This Month</SelectItem>
@@ -438,31 +464,31 @@ export default function DashboardCharts() {
           <TabsList className="h-7 bg-secondary p-0.5 rounded-lg border border-border flex w-max">
             <TabsTrigger
               value="earnings"
-              className="h-5 text-[9px] font-semibold px-3 rounded-md data-[state=active]:bg-card data-[state=active]:shadow-sm data-[state=active]:text-foreground text-muted-foreground transition-all"
+              className="h-5 text-[11px] font-semibold px-3 rounded-md data-[state=active]:bg-card data-[state=active]:shadow-sm data-[state=active]:text-foreground text-muted-foreground transition-all"
             >
               Earnings
             </TabsTrigger>
             <TabsTrigger
               value="cashflow"
-              className="h-5 text-[9px] font-semibold px-3 rounded-md data-[state=active]:bg-card data-[state=active]:shadow-sm data-[state=active]:text-foreground text-muted-foreground transition-all"
+              className="h-5 text-[11px] font-semibold px-3 rounded-md data-[state=active]:bg-card data-[state=active]:shadow-sm data-[state=active]:text-foreground text-muted-foreground transition-all"
             >
               Cash flow
             </TabsTrigger>
             <TabsTrigger
               value="fleetmix"
-              className="h-5 text-[9px] font-semibold px-3 rounded-md data-[state=active]:bg-card data-[state=active]:shadow-sm data-[state=active]:text-foreground text-muted-foreground transition-all"
+              className="h-5 text-[11px] font-semibold px-3 rounded-md data-[state=active]:bg-card data-[state=active]:shadow-sm data-[state=active]:text-foreground text-muted-foreground transition-all"
             >
               Fleet mix
             </TabsTrigger>
             <TabsTrigger
               value="volume"
-              className="h-5 text-[9px] font-semibold px-3 rounded-md data-[state=active]:bg-card data-[state=active]:shadow-sm data-[state=active]:text-foreground text-muted-foreground transition-all"
+              className="h-5 text-[11px] font-semibold px-3 rounded-md data-[state=active]:bg-card data-[state=active]:shadow-sm data-[state=active]:text-foreground text-muted-foreground transition-all"
             >
               Volume
             </TabsTrigger>
             <TabsTrigger
               value="utilization"
-              className="h-5 text-[9px] font-semibold px-3 rounded-md data-[state=active]:bg-card data-[state=active]:shadow-sm data-[state=active]:text-foreground text-muted-foreground transition-all"
+              className="h-5 text-[11px] font-semibold px-3 rounded-md data-[state=active]:bg-card data-[state=active]:shadow-sm data-[state=active]:text-foreground text-muted-foreground transition-all"
             >
               Utilization
             </TabsTrigger>
