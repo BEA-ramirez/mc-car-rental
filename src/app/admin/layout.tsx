@@ -42,14 +42,14 @@ export default function AdminLayout({
   return (
     <SidebarProvider>
       <AppSidebar />
-      {/* 1. LAYORT FRAME: 
-        Set the background of the entire inset to slate-50 to match the dashboard.
+      {/* 1. LAYOUT FRAME: 
+        Uses bg-background and text-foreground to instantly sync with light/dark themes
       */}
-      <SidebarInset className="flex flex-col h-screen overflow-hidden bg-slate-50 font-sans">
+      <SidebarInset className="flex flex-col h-screen overflow-hidden bg-background text-foreground font-sans transition-colors duration-300">
         {/* 2. HEADER: 
-          Transparent background, tight padding, and a crisp bottom border.
+          Transparent background, tight padding, semantic border
         */}
-        <header className="flex justify-between items-center py-3 px-6 border-b border-slate-200 shrink-0 bg-transparent">
+        <header className="flex justify-between items-center py-3 px-6 border-b border-border shrink-0 bg-transparent transition-colors duration-300">
           <Breadcrumb>
             <BreadcrumbList>
               {breadcrumbs.map((crumb, index) => {
@@ -58,20 +58,20 @@ export default function AdminLayout({
                   <React.Fragment key={crumb.href}>
                     <BreadcrumbItem className="hidden md:block">
                       {crumb.isLast ? (
-                        <BreadcrumbPage className="text-[11px] font-bold uppercase tracking-widest text-slate-900">
+                        <BreadcrumbPage className="text-[11px] font-bold uppercase tracking-widest text-foreground">
                           {crumb.label}
                         </BreadcrumbPage>
                       ) : (
                         <BreadcrumbLink
                           href={crumb.href}
-                          className="text-[11px] font-bold uppercase tracking-widest text-slate-400 hover:text-slate-600 transition-colors"
+                          className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground transition-colors"
                         >
                           {crumb.label}
                         </BreadcrumbLink>
                       )}
                     </BreadcrumbItem>
                     {!crumb.isLast && (
-                      <BreadcrumbSeparator className="hidden md:block text-slate-300" />
+                      <BreadcrumbSeparator className="hidden md:block text-muted-foreground/50" />
                     )}
                   </React.Fragment>
                 );
@@ -83,7 +83,8 @@ export default function AdminLayout({
           <div className="flex items-center gap-2">
             <CarCatalogueModal />
 
-            <div className="h-4 w-px bg-slate-200 mx-1 hidden sm:block" />
+            {/* Semantic separator line */}
+            <div className="h-4 w-px bg-border mx-1 hidden sm:block" />
 
             {/* Notifications */}
             <NotificationsPopover />
@@ -93,7 +94,7 @@ export default function AdminLayout({
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-8 w-8 rounded-sm text-slate-500 hover:text-slate-900 hover:bg-slate-200/50"
+                className="h-8 w-8 rounded-sm text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
               >
                 <Settings className="w-4 h-4" />
               </Button>
@@ -103,7 +104,7 @@ export default function AdminLayout({
             <Button
               variant="ghost"
               size="icon"
-              className="h-8 w-8 rounded-sm text-slate-500 hover:text-slate-900 hover:bg-slate-200/50 ml-1"
+              className="h-8 w-8 rounded-sm text-muted-foreground hover:text-foreground hover:bg-secondary ml-1 transition-colors"
             >
               <UserCircle className="w-[18px] h-[18px]" />
             </Button>
@@ -111,7 +112,7 @@ export default function AdminLayout({
         </header>
 
         {/* 4. MAIN CONTENT AREA */}
-        <main className="flex-1 overflow-y-auto bg-transparent">
+        <main className="flex-1 overflow-y-auto bg-transparent custom-scrollbar">
           {children}
         </main>
       </SidebarInset>

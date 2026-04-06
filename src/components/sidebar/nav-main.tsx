@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/sidebar";
 import { cn } from "@/lib/utils";
 
-function NavMain({
+export default function NavMain({
   label,
   items,
 }: {
@@ -41,7 +41,7 @@ function NavMain({
   return (
     <SidebarGroup className="px-3 py-2 transition-all duration-200 group-data-[collapsible=icon]:px-2">
       {label && (
-        <SidebarGroupLabel className="text-[9px] font-bold uppercase tracking-widest text-slate-400 mb-1 px-2 h-auto whitespace-nowrap transition-all duration-200 overflow-hidden group-data-[collapsible=icon]:h-0 group-data-[collapsible=icon]:opacity-0 group-data-[collapsible=icon]:m-0 group-data-[collapsible=icon]:p-0">
+        <SidebarGroupLabel className="text-[9px] font-bold uppercase tracking-widest text-sidebar-foreground/50 mb-1 px-2 h-auto whitespace-nowrap transition-all duration-200 overflow-hidden group-data-[collapsible=icon]:h-0 group-data-[collapsible=icon]:opacity-0 group-data-[collapsible=icon]:m-0 group-data-[collapsible=icon]:p-0">
           {label}
         </SidebarGroupLabel>
       )}
@@ -67,32 +67,33 @@ function NavMain({
                     <SidebarMenuButton
                       tooltip={item.title}
                       className={cn(
-                        "h-8 px-2.5 rounded-sm transition-all duration-200 gap-2.5",
+                        "h-8 px-2.5 rounded-lg transition-all duration-200 gap-2.5",
                         isActive
-                          ? "bg-slate-100 text-slate-900 font-bold"
-                          : "text-slate-500 font-semibold hover:bg-slate-50 hover:text-slate-900",
+                          ? "bg-primary/10 text-primary font-bold"
+                          : "text-sidebar-foreground/70 font-medium hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
                       )}
                     >
                       {item.icon && (
                         <item.icon
                           className={cn(
                             "w-3.5 h-3.5 shrink-0 transition-colors",
-                            isActive ? "text-slate-900" : "text-slate-400",
+                            // FIX: Scoped to menu-item so it only hovers individually
+                            isActive
+                              ? "text-primary"
+                              : "text-sidebar-foreground/50 group-hover/menu-item:text-sidebar-accent-foreground",
                           )}
                         />
                       )}
 
-                      {/* Smooth text fade-out */}
                       <span className="text-[11px] tracking-wide flex-1 whitespace-nowrap overflow-hidden transition-all duration-200 group-data-[collapsible=icon]:w-0 group-data-[collapsible=icon]:opacity-0">
                         {item.title}
                       </span>
 
-                      {/* Smooth chevron fade-out */}
-                      <ChevronRight className="w-3.5 h-3.5 ml-auto transition-all duration-200 group-data-[state=open]/collapsible:rotate-90 opacity-50 group-data-[collapsible=icon]:w-0 group-data-[collapsible=icon]:opacity-0 group-data-[collapsible=icon]:m-0" />
+                      <ChevronRight className="w-3.5 h-3.5 ml-auto transition-all duration-200 group-data-[state=open]/collapsible:rotate-90 text-sidebar-foreground/40 group-data-[collapsible=icon]:w-0 group-data-[collapsible=icon]:opacity-0 group-data-[collapsible=icon]:m-0" />
                     </SidebarMenuButton>
                   </CollapsibleTrigger>
                   <CollapsibleContent>
-                    <SidebarMenuSub className="border-slate-200 ml-3.5 pl-0 pr-0 mt-0.5 transition-all duration-200">
+                    <SidebarMenuSub className="border-sidebar-border ml-3.5 pl-0 pr-0 mt-0.5 transition-all duration-200">
                       {item.items.map((subItem) => {
                         const isSubActive = pathname === subItem.url;
                         return (
@@ -100,10 +101,10 @@ function NavMain({
                             <SidebarMenuSubButton
                               asChild
                               className={cn(
-                                "h-7 px-3 rounded-sm transition-all duration-200 relative before:absolute before:left-[-1px] before:top-1/2 before:-translate-y-1/2 before:w-[2px] before:h-0 before:bg-slate-900 hover:before:h-3",
+                                "h-7 px-3 rounded-lg transition-all duration-200 relative before:absolute before:left-[-1px] before:top-1/2 before:-translate-y-1/2 before:w-[2px] before:h-0 before:bg-sidebar-foreground/20 hover:before:h-3 hover:before:bg-primary",
                                 isSubActive
-                                  ? "bg-slate-50 text-slate-900 font-bold before:h-4"
-                                  : "text-slate-500 font-medium hover:text-slate-900 hover:bg-transparent",
+                                  ? "bg-sidebar-accent text-primary font-bold before:h-4 before:bg-primary"
+                                  : "text-sidebar-foreground/70 font-medium hover:text-sidebar-accent-foreground hover:bg-transparent",
                               )}
                             >
                               <Link href={subItem.url}>
@@ -124,10 +125,10 @@ function NavMain({
                     asChild
                     tooltip={item.title}
                     className={cn(
-                      "h-8 px-2.5 rounded-sm transition-all duration-200 gap-2.5",
+                      "h-8 px-2.5 rounded-lg transition-all duration-200 gap-2.5",
                       isParentActive
-                        ? "bg-slate-100 text-slate-900 font-bold"
-                        : "text-slate-500 font-semibold hover:bg-slate-50 hover:text-slate-900",
+                        ? "bg-primary/10 text-primary font-bold"
+                        : "text-sidebar-foreground/70 font-medium hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
                     )}
                   >
                     <Link href={item.url} className="flex items-center w-full">
@@ -135,14 +136,14 @@ function NavMain({
                         <item.icon
                           className={cn(
                             "w-3.5 h-3.5 shrink-0 transition-colors",
+                            // FIX: Scoped to menu-item so it only hovers individually
                             isParentActive
-                              ? "text-slate-900"
-                              : "text-slate-400",
+                              ? "text-primary"
+                              : "text-sidebar-foreground/50 group-hover/menu-item:text-sidebar-accent-foreground",
                           )}
                         />
                       )}
 
-                      {/* Smooth text fade-out */}
                       <span className="text-[11px] tracking-wide flex-1 whitespace-nowrap overflow-hidden transition-all duration-200 group-data-[collapsible=icon]:w-0 group-data-[collapsible=icon]:opacity-0">
                         {item.title}
                       </span>
@@ -157,5 +158,3 @@ function NavMain({
     </SidebarGroup>
   );
 }
-
-export default NavMain;

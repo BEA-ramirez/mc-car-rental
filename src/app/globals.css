@@ -50,76 +50,109 @@
 }
 
 :root {
-  --radius: 0.5rem;
+  --radius: 0.75rem; /* Slightly rounder default for the modern glass look */
 
-  /* --- LIGHT MODE: Cool Silver --- */
-  --background: oklch(97% 0.005 260);
-  --foreground: oklch(20% 0.01 260);
-  --card: oklch(100% 0 0);
-  --card-foreground: oklch(20% 0.01 260);
+  /* --- LIGHT MODE: Crisp Admin Slate --- */
+  --background: oklch(98% 0.005 250); /* bg-slate-50 */
+  --foreground: oklch(16% 0.015 250); /* Deep slate text */
+
+  --card: oklch(100% 0 0); /* Pure white cards */
+  --card-foreground: oklch(16% 0.015 250);
+
   --popover: oklch(100% 0 0);
-  --popover-foreground: oklch(20% 0.01 260);
-  --primary: oklch(20% 0.02 260);
-  --primary-foreground: oklch(98% 0 0);
-  --secondary: oklch(94% 0.01 260);
-  --secondary-foreground: oklch(20% 0.01 260);
-  --muted: oklch(94% 0.01 260);
-  --muted-foreground: oklch(45% 0.01 260);
-  --accent: oklch(94% 0.01 260);
-  --accent-foreground: oklch(20% 0.01 260);
+  --popover-foreground: oklch(16% 0.015 250);
+
+  /* MC Ormoc Signature Teal (#64c5c3) */
+  --primary: oklch(75% 0.11 195);
+  --primary-foreground: oklch(16% 0.015 250); /* Dark text on teal buttons */
+
+  --secondary: oklch(95% 0.01 250); /* bg-slate-100 */
+  --secondary-foreground: oklch(20% 0.015 250);
+
+  --muted: oklch(95% 0.01 250);
+  --muted-foreground: oklch(55% 0.01 250); /* Slate-500 */
+
+  --accent: oklch(95% 0.01 250);
+  --accent-foreground: oklch(16% 0.015 250);
+
   --destructive: oklch(60% 0.18 25);
-  --border: oklch(90% 0.005 260);
-  --input: oklch(90% 0.005 260);
-  --ring: oklch(20% 0.02 260);
-  --sidebar: oklch(97% 0.005 260);
-  --sidebar-foreground: oklch(20% 0.01 260);
-  --sidebar-primary: oklch(20% 0.02 260);
-  --sidebar-primary-foreground: oklch(98% 0 0);
-  --sidebar-accent: oklch(94% 0.01 260);
-  --sidebar-accent-foreground: oklch(20% 0.01 260);
-  --sidebar-border: oklch(90% 0.005 260);
-  --sidebar-ring: oklch(20% 0.02 260);
-  --chart-1: oklch(25% 0.02 260);
+
+  --border: oklch(92% 0.01 250); /* Slate-200 */
+  --input: oklch(92% 0.01 250);
+
+  /* Teal Rings for active inputs */
+  --ring: oklch(75% 0.11 195);
+
+  --sidebar: oklch(98% 0.005 250);
+  --sidebar-foreground: oklch(16% 0.015 250);
+  --sidebar-primary: oklch(75% 0.11 195);
+  --sidebar-primary-foreground: oklch(16% 0.015 250);
+  --sidebar-accent: oklch(95% 0.01 250);
+  --sidebar-accent-foreground: oklch(16% 0.015 250);
+  --sidebar-border: oklch(92% 0.01 250);
+  --sidebar-ring: oklch(75% 0.11 195);
+
+  --chart-1: oklch(75% 0.11 195); /* Teal */
   --chart-2: oklch(40% 0.02 260);
   --chart-3: oklch(55% 0.02 260);
   --chart-4: oklch(70% 0.02 260);
   --chart-5: oklch(85% 0.02 260);
+
   --sidebar-width: 16rem;
   --sidebar-width-icon: 3rem;
 
-  /* Restored Inter */
   font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
 }
 
 .dark {
-  /* --- DARK MODE: Matted Carbon --- */
-  --background: oklch(14% 0.01 260);
-  --foreground: oklch(94% 0.01 260);
-  --card: oklch(17% 0.01 260);
-  --card-foreground: oklch(94% 0.01 260);
-  --popover: oklch(17% 0.01 260);
-  --popover-foreground: oklch(94% 0.01 260);
-  --primary: oklch(98% 0 0);
-  --primary-foreground: oklch(14% 0.01 260);
-  --secondary: oklch(20% 0.01 260);
-  --secondary-foreground: oklch(98% 0 0);
-  --muted: oklch(20% 0.01 260);
-  --muted-foreground: oklch(65% 0.01 260);
-  --accent: oklch(20% 0.01 260);
-  --accent-foreground: oklch(98% 0 0);
+  /* --- DARK MODE: MC Ormoc Cinematic Navy --- */
+
+  /* Deep Background (#050B10) */
+  --background: oklch(16% 0.015 250);
+  --foreground: oklch(98% 0.005 250); /* Slate-50 Text */
+
+  /* Elevated Cards (#0a1118) */
+  --card: oklch(19% 0.015 250);
+  --card-foreground: oklch(98% 0.005 250);
+
+  --popover: oklch(19% 0.015 250);
+  --popover-foreground: oklch(98% 0.005 250);
+
+  /* MC Ormoc Signature Teal (#64c5c3) */
+  --primary: oklch(75% 0.11 195);
+  --primary-foreground: oklch(
+    16% 0.015 250
+  ); /* Keep text dark on teal buttons for contrast */
+
+  /* Surface Highlights (White/5 approx) */
+  --secondary: oklch(23% 0.015 250);
+  --secondary-foreground: oklch(98% 0.005 250);
+
+  --muted: oklch(23% 0.015 250);
+  --muted-foreground: oklch(65% 0.01 250); /* Slate-400 */
+
+  --accent: oklch(23% 0.015 250);
+  --accent-foreground: oklch(98% 0.005 250);
+
   --destructive: oklch(60% 0.18 25);
-  --border: oklch(22% 0.01 260);
-  --input: oklch(22% 0.01 260);
-  --ring: oklch(98% 0 0);
-  --sidebar: oklch(14% 0.01 260);
-  --sidebar-foreground: oklch(94% 0.01 260);
-  --sidebar-primary: oklch(98% 0 0);
-  --sidebar-primary-foreground: oklch(14% 0.01 260);
-  --sidebar-accent: oklch(20% 0.01 260);
-  --sidebar-accent-foreground: oklch(98% 0 0);
-  --sidebar-border: oklch(22% 0.01 260);
-  --sidebar-ring: oklch(98% 0 0);
-  --chart-1: oklch(95% 0.01 260);
+
+  /* Subtle borders (White/10 approx) */
+  --border: oklch(26% 0.015 250);
+  --input: oklch(26% 0.015 250);
+
+  /* Teal Rings */
+  --ring: oklch(75% 0.11 195);
+
+  --sidebar: oklch(16% 0.015 250);
+  --sidebar-foreground: oklch(98% 0.005 250);
+  --sidebar-primary: oklch(75% 0.11 195);
+  --sidebar-primary-foreground: oklch(16% 0.015 250);
+  --sidebar-accent: oklch(23% 0.015 250);
+  --sidebar-accent-foreground: oklch(98% 0.005 250);
+  --sidebar-border: oklch(26% 0.015 250);
+  --sidebar-ring: oklch(75% 0.11 195);
+
+  --chart-1: oklch(75% 0.11 195); /* Teal */
   --chart-2: oklch(80% 0.01 260);
   --chart-3: oklch(65% 0.01 260);
   --chart-4: oklch(50% 0.01 260);
