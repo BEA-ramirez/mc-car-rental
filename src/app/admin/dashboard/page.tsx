@@ -23,9 +23,6 @@ export default async function Dashboard() {
     .eq("user_id", user.id)
     .single();
 
-  // 3. Render the Client UI shell
-  // Note: Background color is now handled by the parent AdminLayout,
-  // so we just pass the w-full h-full shell.
   return (
     <main className="w-full h-full">
       {/* You can pass the profile data if you want to say "Welcome back, [Name]" */}

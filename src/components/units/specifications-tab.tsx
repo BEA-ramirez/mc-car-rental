@@ -1,3 +1,5 @@
+"use client";
+
 import { useState } from "react";
 import { useFleetSettings } from "../../../hooks/use-fleetSettings";
 import { Button } from "@/components/ui/button";
@@ -68,21 +70,21 @@ export default function SpecificationsTab() {
   }
 
   return (
-    <div className="flex flex-col h-[calc(100vh-200px)] min-h-0 gap-4">
+    <div className="flex flex-col h-full min-h-0 gap-3 pb-2 transition-colors duration-300">
       {/* --- TOP ACTION BAR --- */}
-      <div className="bg-slate-50 border border-slate-200 p-3 rounded-md shrink-0 flex justify-between items-center">
+      <div className="bg-card border border-border p-3 rounded-xl shrink-0 flex justify-between items-center shadow-sm transition-colors">
         <div>
-          <h4 className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-            Vehicle Configurations
+          <h4 className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-1.5">
+            <Settings2 className="w-3.5 h-3.5" /> Vehicle Configurations
           </h4>
-          <p className="text-[10px] text-slate-400 mt-0.5">
+          <p className="text-[9px] text-muted-foreground/70 mt-1 font-medium">
             Manage reusable specs templates for your fleet.
           </p>
         </div>
         <Button
           size="sm"
           onClick={handleCreate}
-          className="h-8 text-xs bg-slate-900 hover:bg-slate-800 text-white shadow-sm"
+          className="h-8 text-[11px] font-bold uppercase tracking-widest bg-primary hover:opacity-90 text-primary-foreground rounded-lg shadow-none transition-opacity"
         >
           <Plus className="w-3.5 h-3.5 mr-1.5" />
           New Spec
@@ -90,40 +92,42 @@ export default function SpecificationsTab() {
       </div>
 
       {/* --- LIST AREA --- */}
-      <div className="flex flex-col flex-1 min-h-0 overflow-hidden border border-slate-200 rounded-md bg-white">
+      <div className="flex flex-col flex-1 min-h-0 overflow-hidden border border-border rounded-xl bg-card shadow-sm transition-colors">
         {/* Header (Stays pinned at top) */}
-        <div className="px-4 py-2 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center shrink-0">
-          <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+        <div className="px-4 py-2.5 border-b border-border bg-secondary/30 flex justify-between items-center shrink-0">
+          <span className="text-[10px] font-bold text-foreground uppercase tracking-widest">
             Active Configurations
           </span>
-          <span className="text-[10px] font-medium text-slate-400 bg-slate-200/50 px-2 py-0.5 rounded-full">
+          <span className="text-[9px] font-semibold text-muted-foreground bg-secondary border border-border px-2 py-0.5 rounded-md">
             {specifications.length} Total
           </span>
         </div>
 
         {/* Scrollable Content Container */}
-        <div className="flex-1 overflow-y-auto p-3">
+        <div className="flex-1 overflow-y-auto p-3 custom-scrollbar bg-background/50">
           {isSpecificationsLoading ? (
-            <div className="flex flex-col h-full items-center justify-center text-slate-400 gap-2 min-h-[150px]">
-              <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
-              <p className="text-xs font-medium">Loading configurations...</p>
+            <div className="flex flex-col h-full items-center justify-center text-muted-foreground gap-2 min-h-[150px]">
+              <Loader2 className="h-6 w-6 animate-spin text-primary" />
+              <p className="text-[11px] font-semibold">
+                Loading configurations...
+              </p>
             </div>
           ) : specifications.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-40 border border-dashed border-slate-200 rounded-md">
-              <Settings2 className="h-6 w-6 text-slate-300 mb-2" />
-              <p className="text-xs font-semibold text-slate-600">
+            <div className="flex flex-col items-center justify-center h-40 border border-dashed border-border rounded-xl bg-card">
+              <Settings2 className="h-6 w-6 text-muted-foreground/50 mb-2" />
+              <p className="text-[11px] font-semibold text-muted-foreground">
                 No specifications found.
               </p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 xl:grid-cols-2 gap-2 pb-4">
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-2 pb-2">
               {specifications.map((spec: CarSpecificationType) => (
                 <div
                   key={spec.spec_id}
-                  className="group flex flex-col justify-between p-3 rounded-md border border-slate-100 bg-white hover:border-slate-300 hover:shadow-sm transition-all gap-2"
+                  className="group flex flex-col justify-between p-3 rounded-xl border border-border bg-card hover:border-primary/50 hover:bg-primary/5 transition-all gap-2 cursor-default"
                 >
                   <div className="flex items-start justify-between">
-                    <h3 className="font-bold text-[13px] text-slate-800 leading-tight pr-4">
+                    <h3 className="font-bold text-[12px] text-foreground leading-tight pr-4 group-hover:text-primary transition-colors">
                       {spec.name}
                     </h3>
 
@@ -132,7 +136,7 @@ export default function SpecificationsTab() {
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-6 w-6 rounded hover:bg-slate-100 text-slate-400 hover:text-slate-700"
+                        className="h-6 w-6 rounded-md text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors"
                         onClick={() => handleEdit(spec)}
                         title="Edit Spec"
                       >
@@ -141,7 +145,7 @@ export default function SpecificationsTab() {
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-6 w-6 rounded hover:bg-red-50 text-slate-400 hover:text-red-600"
+                        className="h-6 w-6 rounded-md text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
                         onClick={() => setSpecToDelete(spec)}
                         title="Delete Spec"
                       >
@@ -151,32 +155,32 @@ export default function SpecificationsTab() {
                   </div>
 
                   {/* Dense Info Row */}
-                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 mt-1">
-                    <div className="flex items-center gap-1 text-[10px] font-medium text-slate-600">
-                      <Users className="w-3 h-3 text-slate-400" />
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 mt-0.5">
+                    <div className="flex items-center gap-1 text-[10px] font-medium text-muted-foreground">
+                      <Users className="w-3 h-3 text-muted-foreground/70" />
                       {spec.passenger_capacity} Seats
                     </div>
-                    <div className="flex items-center gap-1 text-[10px] font-medium text-slate-600">
-                      <Cog className="w-3 h-3 text-slate-400" />
+                    <div className="flex items-center gap-1 text-[10px] font-medium text-muted-foreground">
+                      <Cog className="w-3 h-3 text-muted-foreground/70" />
                       {spec.engine_type}
                     </div>
-                    <div className="flex items-center gap-1 text-[10px] font-medium text-slate-600">
-                      <Car className="w-3 h-3 text-slate-400" />
+                    <div className="flex items-center gap-1 text-[10px] font-medium text-muted-foreground">
+                      <Car className="w-3 h-3 text-muted-foreground/70" />
                       {spec.body_type}
                     </div>
                   </div>
 
                   {/* Micro Badges */}
-                  <div className="flex gap-1.5 mt-1 pt-2 border-t border-slate-50">
+                  <div className="flex gap-1.5 mt-1 pt-2 border-t border-border">
                     <Badge
                       variant="secondary"
-                      className="h-4 text-[9px] uppercase tracking-wider px-1.5 py-0 bg-slate-100 text-slate-500 hover:bg-slate-100 border border-slate-200 rounded"
+                      className="h-4 text-[9px] uppercase tracking-wider px-1.5 py-0 bg-secondary text-muted-foreground border border-border rounded"
                     >
                       {spec.transmission}
                     </Badge>
                     <Badge
                       variant="secondary"
-                      className="h-4 text-[9px] uppercase tracking-wider px-1.5 py-0 bg-slate-100 text-slate-500 hover:bg-slate-100 border border-slate-200 rounded"
+                      className="h-4 text-[9px] uppercase tracking-wider px-1.5 py-0 bg-secondary text-muted-foreground border border-border rounded"
                     >
                       {spec.fuel_type}
                     </Badge>
@@ -193,28 +197,28 @@ export default function SpecificationsTab() {
         open={!!specToDelete}
         onOpenChange={(open) => !open && setSpecToDelete(null)}
       >
-        <AlertDialogContent className="sm:max-w-[400px] rounded-lg">
+        <AlertDialogContent className="sm:max-w-[400px] rounded-xl bg-background border-border shadow-2xl transition-colors duration-300">
           <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2 text-red-600 text-base">
-              <AlertTriangle className="h-5 w-5" />
+            <AlertDialogTitle className="flex items-center gap-2 text-destructive text-[13px] font-bold uppercase tracking-wider">
+              <AlertTriangle className="h-4 w-4" />
               Delete Configuration?
             </AlertDialogTitle>
-            <AlertDialogDescription className="text-xs text-slate-600 mt-2">
+            <AlertDialogDescription className="text-[11px] font-medium text-muted-foreground mt-2 leading-relaxed">
               Are you sure you want to delete{" "}
-              <strong className="text-slate-900">{specToDelete?.name}</strong>?
+              <strong className="text-foreground">{specToDelete?.name}</strong>?
               <br />
               <br />
               This action cannot be undone and will prevent you from creating
               new units with this configuration template.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter className="mt-4">
-            <AlertDialogCancel className="h-8 text-xs bg-slate-50 hover:bg-slate-100 border-slate-200">
+          <AlertDialogFooter className="mt-4 border-t border-border pt-4">
+            <AlertDialogCancel className="h-8 text-[10px] font-semibold uppercase tracking-widest bg-card border-border hover:bg-secondary text-foreground rounded-lg shadow-none transition-colors">
               Cancel
             </AlertDialogCancel>
             <AlertDialogAction
               onClick={confirmDelete}
-              className="h-8 text-xs bg-red-600 text-white hover:bg-red-700 shadow-sm"
+              className="h-8 text-[10px] font-bold uppercase tracking-widest bg-destructive hover:opacity-90 text-destructive-foreground rounded-lg shadow-sm transition-opacity"
             >
               Delete Spec
             </AlertDialogAction>

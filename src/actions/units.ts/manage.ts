@@ -149,3 +149,19 @@ export async function deleteUnit(carId: string): Promise<ActionReponse> {
     return { success: false, message: "Failed to delete unit" };
   }
 }
+
+export async function getCarDetailsAction(carId: string) {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase.rpc("get_full_car_details", {
+    p_car_id: carId,
+  });
+
+  if (error) {
+    console.error("Error fetching car details:", error);
+    return null;
+  }
+
+  // Parse the JSON string returned by the RPC function
+  return data ? (typeof data === "string" ? JSON.parse(data) : data) : null;
+}

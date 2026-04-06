@@ -3,7 +3,13 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { addDays, differenceInDays, format } from "date-fns";
+import {
+  addDays,
+  differenceInDays,
+  format,
+  isWithinInterval,
+  startOfDay,
+} from "date-fns";
 import { DateRange } from "react-day-picker";
 import {
   X,
@@ -15,6 +21,7 @@ import {
   ShieldCheck,
   AlertCircle,
   ArrowRight,
+  Loader2,
 } from "lucide-react";
 
 import {
@@ -31,6 +38,7 @@ import { cn } from "@/lib/utils";
 
 // Import your settings hook to get real fees
 import { useBookingSettings } from "../../../hooks/use-settings";
+import { useCarUnavailableDates } from "../../../hooks/use-bookings"; // Adjust path
 
 function SpecPill({ icon: Icon, label }: { icon: any; label: string }) {
   return (
@@ -59,23 +67,53 @@ export default function CarDetailsSheet({
   const driverDailyRate = settings?.fees?.driver_rate_per_day || 1500;
   const securityDeposit = settings?.fees?.security_deposit_default || 5000;
 
+  // Fetch Unavailable Dates
+  const { data: unavailableRanges, isLoading: isDatesLoading } =
+    useCarUnavailableDates(car?.id);
+
   // Booking Engine State
-  const [date, setDate] = useState<DateRange | undefined>({
-    from: new Date(),
-    to: addDays(new Date(), 3),
-  });
+  const [date, setDate] = useState<DateRange | undefined>(undefined);
   const [withDriver, setWithDriver] = useState(false);
+  const [dateError, setDateError] = useState<string | null>(null);
 
   useEffect(() => {
     if (isOpen) {
       setActiveImageIndex(0);
-      setDate({
-        from: new Date(),
-        to: addDays(new Date(), 3),
-      });
       setWithDriver(false);
+      setDateError(null);
+      // We don't auto-set dates anymore to force the user to pick available ones
+      setDate(undefined);
     }
   }, [isOpen, car]);
+
+  // Validate the selected range against booked dates
+  useEffect(() => {
+    if (
+      date?.from &&
+      date?.to &&
+      unavailableRanges &&
+      unavailableRanges.length > 0
+    ) {
+      // Check if any unavailable date falls between the selected from and to dates
+      const hasOverlap = unavailableRanges.some((range: any) => {
+        const bookedStart = startOfDay(new Date(range.unavailable_from));
+        const bookedEnd = startOfDay(new Date(range.unavailable_to));
+
+        // If the selected start is before the booked end AND the selected end is after the booked start, they overlap
+        return date.from! <= bookedEnd && date.to! >= bookedStart;
+      });
+
+      if (hasOverlap) {
+        setDateError(
+          "Your selected range overlaps with an existing booking. Please select different dates.",
+        );
+      } else {
+        setDateError(null);
+      }
+    } else {
+      setDateError(null);
+    }
+  }, [date, unavailableRanges]);
 
   if (!car) return null;
 
@@ -92,7 +130,7 @@ export default function CarDetailsSheet({
   const estimatedTotal = baseRentalCost + driverCost;
 
   const handleProceedToBooking = () => {
-    if (!date?.from || !date?.to) return;
+    if (!date?.from || !date?.to || dateError) return;
 
     const fromStr = date.from.toISOString();
     const toStr = date.to.toISOString();
@@ -101,6 +139,24 @@ export default function CarDetailsSheet({
       `/customer/book/${car.id}?from=${fromStr}&to=${toStr}&driver=${withDriver}`,
     );
     onClose();
+  };
+
+  // Helper to check if a specific day should be disabled
+  const isDateDisabled = (targetDate: Date) => {
+    // 1. Block past dates
+    if (startOfDay(targetDate) < startOfDay(new Date())) return true;
+
+    // 2. Block dates that are already booked (including the buffer)
+    if (unavailableRanges && unavailableRanges.length > 0) {
+      return unavailableRanges.some((range: any) => {
+        const bookedStart = startOfDay(new Date(range.unavailable_from));
+        const bookedEnd = startOfDay(new Date(range.unavailable_to));
+        const current = startOfDay(targetDate);
+        return current >= bookedStart && current <= bookedEnd;
+      });
+    }
+
+    return false;
   };
 
   return (
@@ -239,6 +295,10 @@ export default function CarDetailsSheet({
                     applies.
                   </li>
                   <li>Logistics fees apply for out-of-hub deliveries.</li>
+                  <li>
+                    A Reservation Fee is required to instantly secure this
+                    vehicle.
+                  </li>
                 </ul>
               </div>
             </div>
@@ -259,22 +319,42 @@ export default function CarDetailsSheet({
             </div>
 
             <div className="mb-8 space-y-4">
-              <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-2 mb-4">
-                <CalendarDays className="w-4 h-4 text-[#64c5c3]" /> Select Dates
+              <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <CalendarDays className="w-4 h-4 text-[#64c5c3]" /> Select
+                  Dates
+                </div>
+                {isDatesLoading && (
+                  <span className="flex items-center gap-1.5 text-gray-500 normal-case">
+                    <Loader2 className="w-3 h-3 animate-spin" /> Checking
+                    availability
+                  </span>
+                )}
               </Label>
 
-              {/* CALENDAR - Overhauled for dark/teal theme */}
-              <div className="bg-black/40 border border-white/10 rounded-2xl p-4 flex justify-center shadow-inner">
+              {/* CALENDAR */}
+              <div className="bg-black/40 border border-white/10 rounded-2xl p-4 flex justify-center shadow-inner relative">
+                {/* Visual feedback if they select an overlapping range */}
+                {dateError && (
+                  <div className="absolute -top-12 left-0 right-0 bg-red-500/10 border border-red-500/20 text-red-400 text-[10px] font-bold uppercase tracking-widest p-2 rounded-lg flex items-center justify-center gap-2 text-center">
+                    <AlertCircle className="w-3.5 h-3.5" />
+                    Overlapping dates selected
+                  </div>
+                )}
+
                 <Calendar
                   mode="range"
-                  defaultMonth={date?.from}
+                  defaultMonth={new Date()}
                   selected={date}
                   onSelect={setDate}
                   numberOfMonths={1}
-                  disabled={(date) =>
-                    date < new Date(new Date().setHours(0, 0, 0, 0))
-                  }
-                  className="w-full max-w-70 md:max-w-none text-white font-medium"
+                  disabled={isDateDisabled} // Use our new disabled logic
+                  className={cn(
+                    "w-full max-w-70 md:max-w-none text-white font-medium transition-opacity",
+                    isDatesLoading
+                      ? "opacity-50 pointer-events-none"
+                      : "opacity-100",
+                  )}
                   classNames={{
                     day_selected:
                       "bg-[#64c5c3] text-black hover:bg-[#52a3a1] hover:text-black focus:bg-[#64c5c3] focus:text-black rounded-lg font-bold transition-colors",
@@ -292,11 +372,14 @@ export default function CarDetailsSheet({
                     day: "h-10 w-10 text-center text-sm p-0 hover:bg-white/10 hover:text-white rounded-lg transition-colors cursor-pointer",
                     caption_label:
                       "text-sm font-bold text-white tracking-wider uppercase",
+                    // Style disabled dates explicitly to look "booked"
+                    day_disabled:
+                      "text-gray-700 opacity-50 cursor-not-allowed bg-black/50 line-through decoration-gray-600/50",
                   }}
                 />
               </div>
 
-              {date?.from && date?.to && (
+              {date?.from && date?.to && !dateError && (
                 <div className="bg-white/5 border border-white/10 rounded-xl p-3 flex justify-between items-center mt-4">
                   <p className="text-[10px] font-bold text-gray-400 tracking-widest uppercase">
                     Duration
@@ -314,7 +397,7 @@ export default function CarDetailsSheet({
               <div className="space-y-3 mb-6">
                 <div className="flex justify-between text-xs font-bold text-gray-400 tracking-widest uppercase">
                   <span>
-                    ₱{car.price.toLocaleString()} × {totalDays}{" "}
+                    ₱{car.price.toLocaleString()} × {totalDays || 0}{" "}
                     {totalDays === 1 ? "day" : "days"}
                   </span>
                   <span className="text-white">
@@ -325,7 +408,7 @@ export default function CarDetailsSheet({
                   <div className="flex justify-between text-xs font-bold text-gray-400 tracking-widest uppercase">
                     <span>
                       Chauffeur (₱{driverDailyRate.toLocaleString()} ×{" "}
-                      {totalDays})
+                      {totalDays || 0})
                     </span>
                     <span className="text-[#64c5c3]">
                       ₱{driverCost.toLocaleString()}
@@ -345,13 +428,17 @@ export default function CarDetailsSheet({
 
               <Button
                 onClick={handleProceedToBooking}
-                disabled={!date?.from || !date?.to}
+                disabled={
+                  !date?.from || !date?.to || isDatesLoading || !!dateError
+                }
                 className="w-full bg-[#64c5c3] text-black hover:bg-[#52a3a1] rounded-xl font-black text-[11px] uppercase tracking-widest h-14 transition-all duration-300 group disabled:opacity-40 disabled:hover:bg-[#64c5c3] disabled:cursor-not-allowed shadow-[0_0_20px_rgba(100,197,195,0.2)]"
               >
                 {!date?.from || !date?.to
                   ? "Select Dates"
-                  : "Proceed to Checkout"}
-                {date?.from && date?.to && (
+                  : dateError
+                    ? "Invalid Dates"
+                    : "Proceed to Checkout"}
+                {date?.from && date?.to && !dateError && (
                   <ArrowRight className="w-4 h-4 ml-3 group-hover:translate-x-1 transition-transform duration-300" />
                 )}
               </Button>

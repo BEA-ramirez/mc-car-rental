@@ -17,7 +17,7 @@ export default function DashboardMain() {
   return (
     <div className="flex flex-col h-full bg-background text-foreground font-sans overflow-hidden transition-colors duration-300">
       {/* COMPACT GLOBAL PAGE HEADER */}
-      <div className="flex items-center justify-between px-4 py-2.5  shrink-0 z-20 transition-colors duration-300">
+      <div className="flex items-center justify-between px-4 py-2.5  shrink-0 transition-colors duration-300">
         <div className="flex items-center gap-3">
           <div>
             <h1 className="text-sm font-bold tracking-tight leading-none mb-0.5 text-foreground">

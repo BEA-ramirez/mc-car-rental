@@ -17,6 +17,7 @@ import {
   createCustomerBooking,
   getCustomerBookings,
   submitPaymentReceipt,
+  getCarUnavailableDatesAction,
 } from "@/actions/bookings"; // Ensure this matches filename!
 
 const fetchBookingsList = async (
@@ -166,5 +167,18 @@ export const useCustomerBookings = () => {
       if (!res.success) throw new Error(res.message);
       return res.data;
     },
+  });
+};
+
+export const useCarUnavailableDates = (carId: string | undefined) => {
+  return useQuery({
+    queryKey: ["car-unavailable-dates", carId],
+    queryFn: async () => {
+      if (!carId) return [];
+      return await getCarUnavailableDatesAction(carId);
+    },
+    enabled: !!carId,
+    // Keep it relatively fresh since this is a real-time booking engine
+    staleTime: 30 * 1000,
   });
 };

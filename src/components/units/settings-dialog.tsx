@@ -21,16 +21,16 @@ export function FleetSettingsDialog({
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-4xl h-[85vh] flex flex-col p-0 gap-0 overflow-hidden rounded-lg border-slate-200 shadow-xl bg-white">
+      <DialogContent className="sm:max-w-4xl h-[85vh] flex flex-col p-0 gap-0 overflow-hidden rounded-xl border-border shadow-2xl bg-background transition-colors duration-300">
         {/* --- MODAL HEADER --- */}
-        <DialogHeader className="px-5 py-4 border-b border-slate-200 bg-white shrink-0">
-          <DialogTitle className="flex items-center gap-2 text-base font-bold text-slate-800 tracking-tight">
-            <div className="bg-slate-100 p-1.5 rounded-md border border-slate-200">
-              <Settings className="w-4 h-4 text-slate-600" />
+        <DialogHeader className="px-4 py-3 md:px-5 md:py-4 border-b border-border bg-card shrink-0 transition-colors">
+          <DialogTitle className="flex items-center gap-2 text-sm font-bold text-foreground uppercase tracking-wider">
+            <div className="bg-primary/10 p-1.5 rounded-md border border-primary/20">
+              <Settings className="w-4 h-4 text-primary" />
             </div>
             Fleet Configuration
           </DialogTitle>
-          <DialogDescription className="text-xs text-slate-500 mt-1.5">
+          <DialogDescription className="text-[11px] font-medium text-muted-foreground mt-1">
             Manage global settings, reusable car specifications, and features
             for your entire fleet.
           </DialogDescription>
@@ -39,18 +39,18 @@ export function FleetSettingsDialog({
         {/* --- TABS --- */}
         <Tabs defaultValue="specs" className="flex-1 flex flex-col min-h-0">
           {/* Tabs Navigation Bar */}
-          <div className="px-5 pt-3 pb-3 bg-white shrink-0 border-b border-slate-100">
-            <TabsList className="h-8 bg-slate-100 p-0.5 rounded-md border border-slate-200 inline-flex">
+          <div className="px-4 py-2.5 md:px-5 bg-card shrink-0 border-b border-border transition-colors">
+            <TabsList className="h-8 bg-secondary p-0.5 rounded-lg border border-border inline-flex">
               <TabsTrigger
                 value="specs"
-                className="h-6 text-xs font-medium px-4 rounded-[4px] data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-slate-900 text-slate-500 transition-all gap-1.5"
+                className="h-6 text-[10px] font-semibold px-4 rounded-md data-[state=active]:bg-card data-[state=active]:shadow-sm data-[state=active]:text-foreground text-muted-foreground transition-all gap-1.5"
               >
                 <Car className="w-3.5 h-3.5" />
                 Configurations
               </TabsTrigger>
               <TabsTrigger
                 value="features"
-                className="h-6 text-xs font-medium px-4 rounded-[4px] data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-slate-900 text-slate-500 transition-all gap-1.5"
+                className="h-6 text-[10px] font-semibold px-4 rounded-md data-[state=active]:bg-card data-[state=active]:shadow-sm data-[state=active]:text-foreground text-muted-foreground transition-all gap-1.5"
               >
                 <Tag className="w-3.5 h-3.5" />
                 Global Features
@@ -59,7 +59,7 @@ export function FleetSettingsDialog({
           </div>
 
           {/* Tabs Content Area */}
-          <div className="flex-1 min-h-0 overflow-hidden p-5">
+          <div className="flex-1 min-h-0 overflow-hidden p-4 md:p-5 bg-background custom-scrollbar">
             <TabsContent
               value="specs"
               // Using data-[state=active]:flex ensures it behaves as a flex column ONLY when visible, fixing scroll issues

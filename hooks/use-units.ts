@@ -5,6 +5,7 @@ import {
   saveUnit,
   getUnitById,
   deleteUnit,
+  getCarDetailsAction,
 } from "@/actions/units.ts/manage";
 import { toast } from "sonner";
 import { CompleteCarType } from "@/lib/schemas/car";
@@ -71,14 +72,20 @@ export const useUnits = (unitId?: string) => {
     onSuccess: (data) => {
       if (data.success) {
         toast.success(data.message);
+        // Invalidate the main list
         queryClient.invalidateQueries({ queryKey: ["units"] });
-        queryClient.invalidateQueries({ queryKey: ["unit", unitId] });
+        // Invalidate specific edit queries
+        if (unitId) {
+          queryClient.invalidateQueries({ queryKey: ["unit", unitId] });
+        }
+        // Also invalidate the detailed view if it was updated
+        queryClient.invalidateQueries({ queryKey: ["car-details"] });
       } else {
         toast.error(data.message);
       }
     },
     onError: (err) => {
-      toast.error("Failed to save unit " + err.message);
+      toast.error("Failed to save unit: " + err.message);
     },
   });
 
@@ -112,4 +119,15 @@ export const useUnits = (unitId?: string) => {
     useSpecifications,
     useFeatures,
   };
+};
+
+export const useCarDetails = (carId: string) => {
+  return useQuery({
+    queryKey: ["car-details", carId],
+    queryFn: async () => {
+      if (!carId) return null;
+      return await getCarDetailsAction(carId);
+    },
+    enabled: !!carId,
+  });
 };

@@ -737,3 +737,18 @@ export async function submitPaymentReceipt(
   revalidatePath("/admin/bookings");
   return { success: true, message: "Receipt uploaded successfully!" };
 }
+
+export async function getCarUnavailableDatesAction(carId: string) {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase.rpc("get_car_unavailable_dates", {
+    p_car_id: carId,
+  });
+
+  if (error) {
+    console.error("Error fetching unavailable dates:", error);
+    return [];
+  }
+
+  return data;
+}
