@@ -18,6 +18,7 @@ import {
   getCustomerBookings,
   submitPaymentReceipt,
   getCarUnavailableDatesAction,
+  checkDriverAvailabilityAction,
 } from "@/actions/bookings"; // Ensure this matches filename!
 
 const fetchBookingsList = async (
@@ -179,6 +180,33 @@ export const useCarUnavailableDates = (carId: string | undefined) => {
     },
     enabled: !!carId,
     // Keep it relatively fresh since this is a real-time booking engine
+    staleTime: 30 * 1000,
+  });
+};
+
+export const useAvailableDrivers = (
+  startDate: Date | null,
+  endDate: Date | null,
+) => {
+  return useQuery({
+    // Include dates in the queryKey so it automatically refetches when dates change
+    queryKey: [
+      "driver-availability",
+      startDate?.toISOString(),
+      endDate?.toISOString(),
+    ],
+    queryFn: async () => {
+      // If dates aren't selected yet, we don't need to check
+      if (!startDate || !endDate) return false;
+
+      return await checkDriverAvailabilityAction(
+        startDate.toISOString(),
+        endDate.toISOString(),
+      );
+    },
+    // Only run the query if BOTH dates are selected
+    enabled: !!startDate && !!endDate,
+    // Keep it fresh, but don't spam the database every second
     staleTime: 30 * 1000,
   });
 };

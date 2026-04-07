@@ -51,6 +51,8 @@ export default function CustomerFleetPage() {
   const [selectedCar, setSelectedCar] = useState<any | null>(null);
   const [isSheetOpen, setIsSheetOpen] = useState(false);
 
+  console.log("Selected car", selectedCar);
+
   const [filters, setFilters] = useState<FilterState>({
     search: "",
     type: "All",
@@ -61,7 +63,7 @@ export default function CustomerFleetPage() {
 
   const { units, isUnitsLoading } = useUnits();
 
-  // Logic untouched
+  // MAPPING UPDATED: Added 'features' to the returned object
   const formattedCars = units.map((unit: any) => {
     const sortedImages = [...(unit.images || [])].sort((a: any, b: any) => {
       if (a.is_primary && !b.is_primary) return -1;
@@ -85,6 +87,7 @@ export default function CustomerFleetPage() {
       fuel: unit.specifications?.fuel_type || "Fuel",
       price: Number(unit.rental_rate_per_day) || 0,
       images: imageUrls,
+      features: unit.features || [], // <-- Added this line to pass features down
     };
   });
 

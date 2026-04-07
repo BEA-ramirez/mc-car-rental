@@ -22,6 +22,9 @@ import {
   AlertCircle,
   ArrowRight,
   Loader2,
+  CheckCircle2,
+  Sparkles,
+  Info,
 } from "lucide-react";
 
 import {
@@ -279,34 +282,92 @@ export default function CarDetailsSheet({
 
             {/* Important Info Box */}
             <div className="mt-auto pt-6 relative z-10">
-              <div className="bg-[#64c5c3]/10 border border-[#64c5c3]/20 rounded-2xl p-5">
-                <div className="flex items-center gap-2 mb-3 text-[#64c5c3]">
+              <div className="bg-[#64c5c3]/10 border border-[#64c5c3]/30 rounded-2xl p-5 shadow-[0_0_15px_rgba(100,197,195,0.15)]">
+                <div className="flex items-center gap-2 mb-5 text-[#64c5c3]">
                   <AlertCircle className="w-5 h-5" />
-                  <span className="text-[10px] font-bold uppercase tracking-widest">
-                    Policy Notice
+                  <span className="text-[11px] font-black uppercase tracking-widest">
+                    Important Booking Policies
                   </span>
                 </div>
-                <ul className="text-xs font-medium text-gray-300 space-y-2 list-disc list-inside tracking-wide">
-                  <li>
-                    A standard security deposit of{" "}
-                    <span className="text-white font-bold">
-                      ₱{securityDeposit.toLocaleString()}
-                    </span>{" "}
-                    applies.
-                  </li>
-                  <li>Logistics fees apply for out-of-hub deliveries.</li>
-                  <li>
-                    A Reservation Fee is required to instantly secure this
-                    vehicle.
-                  </li>
-                </ul>
+
+                <div className="space-y-4">
+                  {/* Reservation Fee Policy */}
+                  <div className="flex gap-3 items-start">
+                    <div className="bg-[#050B10] p-1.5 rounded-lg border border-white/10 shrink-0 mt-0.5">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-[#64c5c3]" />
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-bold text-white uppercase tracking-wider mb-1">
+                        10% Reservation Fee
+                      </p>
+                      <p className="text-xs text-gray-400 leading-relaxed font-medium">
+                        A{" "}
+                        <span className="text-[#64c5c3] font-bold">
+                          10% down payment
+                        </span>{" "}
+                        is required at checkout to instantly lock your dates.
+                        This is{" "}
+                        <span className="text-white font-bold">
+                          fully deducted
+                        </span>{" "}
+                        from your final balance. It is strictly{" "}
+                        <span className="text-white font-bold">
+                          non-refundable
+                        </span>{" "}
+                        if cancelled, as it covers the opportunity cost of
+                        turning away other customers for your reserved dates.
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Security Deposit Policy */}
+                  <div className="flex gap-3 items-start">
+                    <div className="bg-[#050B10] p-1.5 rounded-lg border border-white/10 shrink-0 mt-0.5">
+                      <ShieldCheck className="w-3.5 h-3.5 text-[#64c5c3]" />
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-bold text-white uppercase tracking-wider mb-1">
+                        Refundable Security Deposit
+                      </p>
+                      <p className="text-xs text-gray-400 leading-relaxed font-medium">
+                        A standard deposit of{" "}
+                        <span className="text-white font-bold">
+                          ₱{securityDeposit.toLocaleString()}
+                        </span>{" "}
+                        is collected upon vehicle turnover. It is{" "}
+                        <span className="text-[#64c5c3] font-bold">
+                          100% refundable
+                        </span>{" "}
+                        upon the safe, timely, and damage-free return of the
+                        vehicle.
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Logistics Policy */}
+                  <div className="flex gap-3 items-start">
+                    <div className="bg-[#050B10] p-1.5 rounded-lg border border-white/10 shrink-0 mt-0.5">
+                      <MapPin className="w-3.5 h-3.5 text-[#64c5c3]" />
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-bold text-white uppercase tracking-wider mb-1">
+                        Logistics & Delivery
+                      </p>
+                      <p className="text-xs text-gray-400 leading-relaxed font-medium">
+                        Pickups at our main Ormoc hub are completely free.
+                        Additional logistics fees will apply for out-of-hub
+                        deliveries or airport handovers.
+                      </p>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
 
           {/* --- RIGHT SIDE: THE BOOKING ENGINE --- */}
-          <div className="lg:col-span-5 p-6 md:p-10 bg-[#0a1118]/80 backdrop-blur-2xl flex flex-col justify-around h-full sticky top-0 lg:h-auto lg:min-h-full">
-            <div className="flex items-end justify-between mb-8 pb-6 border-b border-white/10">
+          <div className="lg:col-span-5 p-6 md:p-10 bg-[#0a1118]/80 backdrop-blur-2xl flex flex-col justify-start overflow-y-auto custom-scrollbar h-full sticky top-0 lg:h-auto lg:min-h-full">
+            <div className="flex items-end justify-between mb-6 pb-6 border-b border-white/10 shrink-0">
               <h3 className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">
                 Daily Rate
               </h3>
@@ -318,8 +379,39 @@ export default function CarDetailsSheet({
               </p>
             </div>
 
-            <div className="mb-8 space-y-4">
-              <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest flex items-center justify-between mb-4">
+            {/* --- NEW: INSTALLED FEATURES --- */}
+            {/* --- NEW: INSTALLED FEATURES (GLOWING BOX) --- */}
+            <div className="mb-8 shrink-0 ">
+              <div className="h-[250px] bg-[#64c5c3]/10 border border-[#64c5c3]/30 rounded-2xl p-5 shadow-[0_0_15px_rgba(100,197,195,0.15)]">
+                <div className="flex items-center gap-2 mb-4 text-[#64c5c3]">
+                  <Sparkles className="w-4 h-4" />
+                  <h3 className="text-[11px] font-black uppercase tracking-widest">
+                    Key Features
+                  </h3>
+                </div>
+
+                <div className="flex flex-wrap gap-2.5 overflow-hidden custom-scrollbar max-h-full">
+                  {car.features && car.features.length > 0 ? (
+                    car.features.map((feat: any, idx: number) => (
+                      <span
+                        key={idx}
+                        className="px-3 py-1.5 bg-white/10 border border-white/10 rounded-lg text-[10px] font-medium tracking-wide text-white shadow-sm"
+                      >
+                        {feat.name}
+                      </span>
+                    ))
+                  ) : (
+                    <span className="text-[10px] font-medium text-[#64c5c3]/70 italic">
+                      No special features documented.
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* --- CALENDAR SECTION --- */}
+            <div className="mb-6 mt-2 space-y-4 shrink-0">
+              <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
                   <CalendarDays className="w-4 h-4 text-[#64c5c3]" /> Select
                   Dates
@@ -333,10 +425,10 @@ export default function CarDetailsSheet({
               </Label>
 
               {/* CALENDAR */}
-              <div className="bg-black/40 border border-white/10 rounded-2xl p-4 flex justify-center shadow-inner relative">
+              <div className="bg-black/40 border border-white/10 rounded-2xl p-4  flex flex-col items-center shadow-inner relative">
                 {/* Visual feedback if they select an overlapping range */}
                 {dateError && (
-                  <div className="absolute -top-12 left-0 right-0 bg-red-500/10 border border-red-500/20 text-red-400 text-[10px] font-bold uppercase tracking-widest p-2 rounded-lg flex items-center justify-center gap-2 text-center">
+                  <div className="absolute -top-12 left-0 right-0 bg-red-500/10 border border-red-500/20 text-red-400 text-[10px] font-bold uppercase tracking-widest p-2 rounded-lg flex items-center justify-center gap-2 text-center z-20">
                     <AlertCircle className="w-3.5 h-3.5" />
                     Overlapping dates selected
                   </div>
@@ -372,15 +464,22 @@ export default function CarDetailsSheet({
                     day: "h-10 w-10 text-center text-sm p-0 hover:bg-white/10 hover:text-white rounded-lg transition-colors cursor-pointer",
                     caption_label:
                       "text-sm font-bold text-white tracking-wider uppercase",
-                    // Style disabled dates explicitly to look "booked"
                     day_disabled:
                       "text-gray-700 opacity-50 cursor-not-allowed bg-black/50 line-through decoration-gray-600/50",
                   }}
                 />
+
+                {/* --- NEW: INFO TEXT --- */}
+                <div className="flex items-center gap-1.5 mt-4 pt-3 border-t border-white/5 w-full justify-center">
+                  <Info className="w-3 h-3 text-[#64c5c3]/70" />
+                  <span className="text-[9px] font-bold text-gray-500 uppercase tracking-widest">
+                    Greyed-out dates are unavailable
+                  </span>
+                </div>
               </div>
 
               {date?.from && date?.to && !dateError && (
-                <div className="bg-white/5 border border-white/10 rounded-xl p-3 flex justify-between items-center mt-4">
+                <div className="bg-white/5 border border-white/10 rounded-xl p-3 flex justify-between items-center mt-3">
                   <p className="text-[10px] font-bold text-gray-400 tracking-widest uppercase">
                     Duration
                   </p>
@@ -392,13 +491,12 @@ export default function CarDetailsSheet({
               )}
             </div>
 
-            {/* Calculations */}
-            <div className="space-y-4 pt-8 border-t border-white/10 mt-auto">
-              <div className="space-y-3 mb-6">
+            {/* Calculations - Pushed to bottom using mt-auto */}
+            <div className="space-y-4 pt-4 border-t border-white/10 mt-auto shrink-0">
+              <div className="space-y-3 mb-4">
                 <div className="flex justify-between text-xs font-bold text-gray-400 tracking-widest uppercase">
                   <span>
-                    ₱{car.price.toLocaleString()} × {totalDays || 0}{" "}
-                    {totalDays === 1 ? "day" : "days"}
+                    Base Rate (₱{car.price.toLocaleString()} × {totalDays || 0})
                   </span>
                   <span className="text-white">
                     ₱{baseRentalCost.toLocaleString()}
@@ -417,12 +515,27 @@ export default function CarDetailsSheet({
                 )}
               </div>
 
-              <div className="flex items-end justify-between border-t border-white/10 pt-6 mb-8">
-                <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">
-                  Total Estimate
-                </p>
-                <p className="text-4xl font-black text-white tracking-tighter">
-                  ₱{estimatedTotal.toLocaleString()}
+              {/* Enhanced Financial Breakdown to highlight Reservation Fee */}
+              <div className="bg-[#050B10] border border-white/10 rounded-xl p-4 mb-6">
+                <div className="flex items-end justify-between mb-3 border-b border-white/10 pb-3">
+                  <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">
+                    Total Booking Value
+                  </p>
+                  <p className="text-lg font-black text-white tracking-tighter">
+                    ₱{estimatedTotal.toLocaleString()}
+                  </p>
+                </div>
+                <div className="flex items-center justify-between">
+                  <p className="text-[10px] font-bold text-[#64c5c3] uppercase tracking-widest">
+                    10% Required Now
+                  </p>
+                  <p className="text-lg font-black text-[#64c5c3] tracking-tighter">
+                    ₱{(estimatedTotal * 0.1).toLocaleString()}
+                  </p>
+                </div>
+                <p className="text-[9px] text-gray-500 font-medium tracking-wide mt-1.5 text-right">
+                  Balance due at pickup: ₱
+                  {(estimatedTotal * 0.9).toLocaleString()}
                 </p>
               </div>
 
@@ -431,7 +544,7 @@ export default function CarDetailsSheet({
                 disabled={
                   !date?.from || !date?.to || isDatesLoading || !!dateError
                 }
-                className="w-full bg-[#64c5c3] text-black hover:bg-[#52a3a1] rounded-xl font-black text-[11px] uppercase tracking-widest h-14 transition-all duration-300 group disabled:opacity-40 disabled:hover:bg-[#64c5c3] disabled:cursor-not-allowed shadow-[0_0_20px_rgba(100,197,195,0.2)]"
+                className="w-full bg-[#64c5c3] text-black hover:bg-[#52a3a1] rounded-xl font-black text-[11px] uppercase tracking-widest h-14 transition-all duration-300 group disabled:opacity-40 disabled:hover:bg-[#64c5c3] disabled:cursor-not-allowed shadow-[0_0_20px_rgba(100,197,195,0.2)] shrink-0"
               >
                 {!date?.from || !date?.to
                   ? "Select Dates"
@@ -443,7 +556,7 @@ export default function CarDetailsSheet({
                 )}
               </Button>
 
-              <div className="flex items-center gap-2 justify-center text-[9px] text-gray-500 font-bold uppercase tracking-widest mt-6">
+              <div className="flex items-center gap-2 justify-center text-[9px] text-gray-500 font-bold uppercase tracking-widest mt-4">
                 <ShieldCheck className="w-4 h-4 text-[#64c5c3]" /> Secure
                 Booking Protocol
               </div>

@@ -8,136 +8,105 @@ import {
   Clock,
   CheckCircle2,
   AlertCircle,
-  CreditCard,
-  Smartphone,
-  Landmark,
-  Banknote,
-  QrCode,
-  ArrowRight,
+  MapPin,
   ShieldCheck,
   FileText,
+  Navigation,
+  Maximize2,
 } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { cn } from "@/lib/utils";
-import ReceiptScanner from "@/components/bookings/receipt-scanner";
-
-import { useBookings } from "../../../hooks/use-bookings";
-import { uploadFile } from "@/actions/helper/upload-file";
-import { useUser } from "@/providers/auth-provider";
 
 interface BookingCardProps {
   booking: any;
 }
 
 export default function BookingCard({ booking }: BookingCardProps) {
-  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
-  const [selectedMethod, setSelectedMethod] = useState<
-    "gcash" | "bank" | "cash"
-  >("gcash");
+  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
 
-  const [scannedFile, setScannedFile] = useState<File | null>(null);
-  const [scannedRef, setScannedRef] = useState<string>("");
-  const [scannedAmount, setScannedAmount] = useState<string>("");
-
-  const { user } = useUser();
-  const { submitPayment, isSubmittingPayment } = useBookings();
-
-  const balance = booking.totalAmount - booking.amountPaid;
+  // Financials & Pending State (Directly from Server Action)
+  const balance = booking.balanceDueAtPickup || 0;
   const progressPercent = Math.min(
     100,
-    Math.max(0, (booking.amountPaid / booking.totalAmount) * 100),
+    Math.max(0, ((booking.amountPaid || 0) / (booking.totalAmount || 1)) * 100),
   );
+
   const isFullyPaid = balance <= 0;
 
+  // If the Server Action found a pending payment > 0, we show the review banner
+  const isPaymentPending = booking.pendingAmount > 0;
+
+  // Status Styling (Using the displayStatus we mapped in MyBookingsPage)
   let statusStyles = "bg-white/5 text-gray-400 border-white/10";
   let StatusIcon = Clock;
 
-  if (booking.status === "Pending Approval") {
-    statusStyles = "bg-amber-500/10 text-amber-400 border-amber-500/20";
-    StatusIcon = Clock;
-  } else if (booking.status === "Awaiting Payment") {
+  if (booking.displayStatus === "Upcoming Trip") {
     statusStyles = "bg-[#64c5c3]/10 text-[#64c5c3] border-[#64c5c3]/20";
+    StatusIcon = Clock;
+  } else if (booking.displayStatus === "Currently Driving") {
+    statusStyles = "bg-amber-500/10 text-amber-400 border-amber-500/20";
     StatusIcon = AlertCircle;
-  } else if (booking.status === "Completed" || booking.status === "Confirmed") {
+  } else if (booking.displayStatus === "Completed") {
     statusStyles = "bg-emerald-500/10 text-emerald-400 border-emerald-500/20";
     StatusIcon = CheckCircle2;
+  } else if (booking.displayStatus === "Cancelled") {
+    statusStyles = "bg-red-500/10 text-red-400 border-red-500/20";
+    StatusIcon = AlertCircle;
   }
 
-  const handleScanUpdate = (file: File, refNum: string, amount: string) => {
-    setScannedFile(file);
-    setScannedRef(refNum);
-    setScannedAmount(amount);
-  };
+  // Date Formatting
+  const startDateStr = format(booking.startDate, "MMM dd, yyyy");
+  const startTimeStr = format(booking.startDate, "h:mm a");
+  const endDateStr = format(booking.endDate, "MMM dd, yyyy");
+  const endTimeStr = format(booking.endDate, "h:mm a");
 
-  const handleSubmitPayment = async () => {
-    if (selectedMethod === "cash") {
-      toast.info("Cash payment noted. Please pay upon pickup.");
-      setIsPaymentModalOpen(false);
-      return;
-    }
-    if (!scannedFile || !scannedAmount) {
-      toast.error("Please upload a receipt and verify the amount.");
-      return;
-    }
-    const numericAmount = Number(scannedAmount);
-    if (isNaN(numericAmount) || numericAmount <= 0) {
-      toast.error("Please enter a valid payment amount.");
-      return;
-    }
-    try {
-      if (!user) throw new Error("You must be logged in.");
-      const uploadResult = await uploadFile(
-        scannedFile,
-        "documents",
-        "receipts",
-        user.id,
-      );
-      if (!uploadResult) throw new Error("Failed to upload image.");
-      await submitPayment({
-        bookingId: booking.original_id,
-        amount: numericAmount,
-        ref: scannedRef,
-        url: uploadResult.url,
-      });
-      toast.success("Receipt uploaded successfully! Awaiting verification.");
-      setIsPaymentModalOpen(false);
-      setScannedFile(null);
-      setScannedRef("");
-      setScannedAmount("");
-    } catch (error: any) {
-      toast.error(error.message || "Failed to submit payment.");
-    }
-  };
+  const showLateWarning =
+    booking.displayStatus === "Upcoming Trip" ||
+    booking.displayStatus === "Currently Driving";
 
-  const handleViewContract = () => {
+  const handleViewContract = (e: React.MouseEvent) => {
+    e.stopPropagation();
     toast.info("Generating Contract Document...");
+  };
+
+  const handleGetDirections = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    toast.success(`Opening directions to ${booking.pickupLocation}...`);
   };
 
   return (
     <>
-      <div className="bg-[#0a1118] rounded-2xl md:rounded-3xl border border-white/5 overflow-hidden transition-all duration-300 hover:border-white/10 hover:shadow-xl flex flex-col md:flex-row group">
-        {/* --- Left Side: Image (Extremely compact on mobile) --- */}
-        <div className="md:w-72 h-32 md:h-auto shrink-0 bg-black relative overflow-hidden">
+      {/* --- THE CARD --- */}
+      <div
+        onClick={() => setIsDetailsOpen(true)}
+        className="bg-[#0a1118] rounded-2xl md:rounded-3xl border border-white/5 overflow-hidden transition-all duration-300 hover:border-[#64c5c3]/30 hover:shadow-[0_0_30px_rgba(100,197,195,0.1)] flex flex-col md:flex-row group cursor-pointer relative"
+      >
+        <div className="absolute top-4 right-4 z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-black/50 p-2 rounded-full backdrop-blur-md border border-white/10 hidden md:block">
+          <Maximize2 className="w-4 h-4 text-white" />
+        </div>
+
+        {/* Left Side: Image */}
+        <div className="md:w-72 h-36 md:h-auto shrink-0 bg-black relative overflow-hidden">
           <Image
             src={
-              booking.car.image || "https://placehold.co/1200x800?text=No+Image"
+              booking.car?.image ||
+              "https://placehold.co/1200x800?text=No+Image"
             }
-            alt={booking.car.model}
+            alt={booking.car?.model || "Car"}
             fill
             sizes="(max-width: 768px) 100vw, 288px"
             className="object-cover opacity-70 group-hover:opacity-90 group-hover:scale-105 transition-all duration-700 ease-out"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-[#050B10] via-transparent to-transparent opacity-80" />
 
-          {/* Status Badge */}
           <div className="absolute top-2 left-2 md:top-4 md:left-4">
             <div
               className={cn(
@@ -146,98 +115,140 @@ export default function BookingCard({ booking }: BookingCardProps) {
               )}
             >
               <StatusIcon className="w-3 h-3 md:w-3.5 md:h-3.5" />
-              {booking.status}
+              {booking.displayStatus}
             </div>
           </div>
         </div>
 
-        {/* --- Right Side: Details (Tightened for mobile) --- */}
+        {/* Right Side: Details */}
         <div className="p-4 md:p-8 flex-1 flex flex-col justify-between">
-          {/* Header Row - Title & Price Side-by-Side on Mobile */}
-          <div className="flex flex-row justify-between items-start gap-2 md:gap-6 mb-4 md:mb-6">
-            <div>
-              <p className="text-[8px] md:text-[10px] font-bold text-[#64c5c3] uppercase tracking-widest mb-1 md:mb-2">
-                ID: {booking.id}
+          <div className="flex flex-col md:flex-row justify-between items-start gap-4 mb-4 md:mb-6">
+            <div className="w-full">
+              <p className="text-[8px] md:text-[10px] font-bold text-[#64c5c3] uppercase tracking-widest mb-1">
+                Ref: {booking.id}
               </p>
-              <h3 className="text-lg sm:text-2xl md:text-3xl font-black text-white uppercase tracking-tighter leading-none mb-1.5 md:mb-3">
-                {booking.car.brand}{" "}
-                <span className="text-gray-400">{booking.car.model}</span>
+              <h3 className="text-xl md:text-3xl font-black text-white uppercase tracking-tighter leading-none mb-3">
+                {booking.car?.brand}{" "}
+                <span className="text-gray-400">{booking.car?.model}</span>
               </h3>
-              <div className="flex items-center gap-1.5 md:gap-2 text-[8px] md:text-[10px] font-bold uppercase tracking-widest text-gray-500">
-                <CalendarDays className="w-3 h-3 md:w-4 md:h-4 text-[#64c5c3]" />
-                {format(booking.startDate, "MMM dd")} —{" "}
-                {format(booking.endDate, "MMM dd")}
+
+              {/* Detailed Times */}
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 bg-white/5 border border-white/5 rounded-xl p-3 inline-flex w-full md:w-auto">
+                <div className="flex items-center gap-2 text-[10px] md:text-[11px] font-bold uppercase tracking-widest text-white">
+                  <CalendarDays className="w-4 h-4 text-[#64c5c3]" />
+                  {startDateStr} <span className="text-gray-500">at</span>{" "}
+                  {startTimeStr}
+                </div>
+                <div className="hidden sm:block text-gray-600">→</div>
+                <div className="flex items-center gap-2 text-[10px] md:text-[11px] font-bold uppercase tracking-widest text-white">
+                  <Clock className="w-4 h-4 text-amber-400" />
+                  {endDateStr} <span className="text-gray-500">at</span>{" "}
+                  {endTimeStr}
+                </div>
               </div>
+
+              {showLateWarning && (
+                <p className="text-[9px] md:text-[10px] text-amber-400/80 font-bold uppercase tracking-widest mt-3 flex items-center gap-1.5">
+                  <AlertCircle className="w-3 h-3" /> Note: Return by{" "}
+                  {endTimeStr} sharp to avoid late fees.
+                </p>
+              )}
             </div>
 
-            <div className="text-right">
-              <p className="text-[8px] md:text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-0.5 md:mb-1">
-                Total Due
+            <div className="text-left md:text-right hidden md:block shrink-0">
+              <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1">
+                Total Booking
               </p>
-              <p className="text-xl md:text-3xl font-black text-white tracking-tighter">
-                ₱{booking.totalAmount.toLocaleString()}
+              <p className="text-3xl font-black text-white tracking-tighter">
+                ₱{booking.totalAmount?.toLocaleString()}
               </p>
             </div>
           </div>
 
           {/* Progress & Actions Box */}
-          <div className="bg-white/5 border border-white/10 p-3 md:p-5 rounded-xl md:rounded-2xl">
-            <div className="flex justify-between items-end mb-2 md:mb-3">
-              <p className="text-[8px] md:text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-                Payment Progress
-              </p>
-              <p className="text-[8px] md:text-[10px] font-bold text-white tracking-widest uppercase">
-                <span className="text-[#64c5c3]">
-                  ₱{booking.amountPaid.toLocaleString()}
-                </span>{" "}
-                / ₱{booking.totalAmount.toLocaleString()}
-              </p>
-            </div>
-
-            <div className="w-full h-1 md:h-1.5 bg-black/50 rounded-full overflow-hidden mb-3 md:mb-4">
-              <div
-                className={cn(
-                  "h-full transition-all duration-[2000ms] ease-out rounded-full",
-                  isFullyPaid ? "bg-emerald-500" : "bg-[#64c5c3]",
-                )}
-                style={{ width: `${progressPercent}%` }}
-              />
-            </div>
-
-            {booking.pendingAmount > 0 && (
-              <div className="flex items-center gap-2 md:gap-3 mb-3 md:mb-4 text-[8px] md:text-[10px] font-bold uppercase tracking-widest text-amber-400 bg-amber-400/5 p-2 md:p-3 rounded-lg md:rounded-xl border border-amber-400/10">
-                <Clock className="w-3 h-3 md:w-4 md:h-4 shrink-0" />₱
-                {booking.pendingAmount.toLocaleString()} pending
+          <div className="bg-white/5 border border-white/10 p-3 md:p-5 rounded-xl md:rounded-2xl mt-auto">
+            {/* --- EXPLICIT PENDING AMOUNT RENDER --- */}
+            {isPaymentPending ? (
+              <div className="bg-amber-500/10 border border-amber-500/20 p-3 md:p-4 rounded-xl mb-3 md:mb-4 flex gap-3 items-start">
+                <Clock className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                <div className="w-full">
+                  <p className="text-[10px] font-bold text-amber-400 uppercase tracking-widest mb-1 flex items-center justify-between w-full">
+                    <span>Receipt Under Review</span>
+                    <span className="text-amber-300">
+                      ₱{booking.pendingAmount.toLocaleString()}
+                    </span>
+                  </p>
+                  <p className="text-[9px] md:text-[10px] text-amber-400/80 font-medium leading-relaxed">
+                    We've received your submitted payment. The admin is
+                    currently verifying your receipt. Your dates are fully
+                    secured!
+                  </p>
+                </div>
               </div>
+            ) : (
+              <>
+                <div className="flex justify-between items-end mb-2 md:mb-3">
+                  <p className="text-[8px] md:text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                    Reservation Paid
+                  </p>
+                  <p className="text-[8px] md:text-[10px] font-bold text-white tracking-widest uppercase">
+                    <span className="text-[#64c5c3]">
+                      ₱{booking.amountPaid?.toLocaleString()}
+                    </span>{" "}
+                    / ₱{booking.totalAmount?.toLocaleString()}
+                  </p>
+                </div>
+
+                <div className="w-full h-1 md:h-1.5 bg-black/50 rounded-full overflow-hidden mb-3 md:mb-4">
+                  <div
+                    className={cn(
+                      "h-full transition-all duration-[2000ms] ease-out rounded-full",
+                      isFullyPaid ? "bg-emerald-500" : "bg-[#64c5c3]",
+                    )}
+                    style={{ width: `${progressPercent}%` }}
+                  />
+                </div>
+
+                {!isFullyPaid && booking.displayStatus !== "Cancelled" && (
+                  <div className="flex items-center justify-between text-[8px] md:text-[10px] font-bold uppercase tracking-widest text-white bg-black/40 p-2.5 md:p-3 rounded-lg md:rounded-xl border border-white/5 mb-3 md:mb-4">
+                    <span className="flex items-center gap-2 text-gray-400">
+                      <ShieldCheck className="w-4 h-4 text-[#64c5c3]" /> Due at
+                      Handover:
+                    </span>
+                    <span className="text-[#64c5c3]">
+                      ₱{balance.toLocaleString()}
+                    </span>
+                  </div>
+                )}
+              </>
             )}
 
-            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3 mt-1 md:mt-2">
-              <p className="text-[9px] md:text-[11px] font-bold text-gray-500 uppercase tracking-widest">
-                {isFullyPaid
-                  ? "Verified & Settled"
-                  : `Balance: ₱${balance.toLocaleString()}`}
-              </p>
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <MapPin className="w-3 h-3 text-gray-500" />
+                <p className="text-[9px] md:text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                  Pick-up:{" "}
+                  <span className="text-white">{booking.pickupLocation}</span>
+                </p>
+              </div>
 
-              {/* Action Buttons - Side-by-Side on Mobile for space saving */}
-              <div className="flex flex-row w-full md:w-auto gap-2 md:gap-3">
+              {/* Action Buttons */}
+              <div className="flex flex-row w-full sm:w-auto gap-2">
                 <Button
                   onClick={handleViewContract}
                   variant="outline"
-                  className="flex-1 md:w-auto border-white/20 bg-transparent hover:bg-white/10 text-white rounded-lg md:rounded-xl h-9 md:h-12 px-3 md:px-6 font-bold text-[8px] md:text-[10px] uppercase tracking-widest transition-all duration-300"
+                  className="flex-1 sm:w-auto border-white/20 bg-transparent hover:bg-white/10 text-white rounded-lg h-9 md:h-10 px-4 font-bold text-[8px] md:text-[9px] uppercase tracking-widest z-10"
                 >
-                  <FileText className="w-3 h-3 md:w-4 md:h-4 md:mr-2" />
-                  <span className="hidden md:inline">View Contract</span>
-                  <span className="md:hidden ml-1">Contract</span>
+                  <FileText className="w-3 h-3 mr-2" /> Contract
                 </Button>
 
-                {!isFullyPaid && booking.status !== "Pending Approval" && (
+                {(booking.displayStatus === "Upcoming Trip" ||
+                  booking.displayStatus === "Currently Driving") && (
                   <Button
-                    onClick={() => setIsPaymentModalOpen(true)}
-                    className="flex-1 md:w-auto bg-[#64c5c3] hover:bg-[#52a3a1] text-black rounded-lg md:rounded-xl h-9 md:h-12 px-3 md:px-6 font-bold text-[8px] md:text-[10px] uppercase tracking-widest transition-all duration-300 shadow-[0_0_10px_rgba(100,197,195,0.2)]"
+                    onClick={handleGetDirections}
+                    className="flex-1 sm:w-auto bg-[#64c5c3] hover:bg-[#52a3a1] text-black rounded-lg h-9 md:h-10 px-4 font-bold text-[8px] md:text-[9px] uppercase tracking-widest z-10"
                   >
-                    <CreditCard className="w-3 h-3 md:w-4 md:h-4 md:mr-2" />
-                    <span className="hidden md:inline">Make Payment</span>
-                    <span className="md:hidden ml-1">Pay</span>
+                    <Navigation className="w-3 h-3 mr-2" /> Navigate
                   </Button>
                 )}
               </div>
@@ -246,102 +257,169 @@ export default function BookingCard({ booking }: BookingCardProps) {
         </div>
       </div>
 
-      {/* --- Payment Modal (Kept the same UI) --- */}
-      <Dialog open={isPaymentModalOpen} onOpenChange={setIsPaymentModalOpen}>
-        <DialogContent className="sm:max-w-xl bg-[#0a1118] border-white/10 p-0 overflow-hidden text-white rounded-2xl md:rounded-3xl w-[95vw] md:w-full">
-          <DialogHeader className="p-6 md:p-8 bg-black/40 border-b border-white/5">
-            <DialogTitle className="text-2xl md:text-3xl font-black text-white tracking-tighter uppercase">
-              Settle Payment
-            </DialogTitle>
-            <p className="text-[9px] md:text-[10px] font-bold text-gray-500 uppercase tracking-widest mt-1 md:mt-2">
-              Remaining Balance:{" "}
-              <span className="text-[#64c5c3] ml-1 text-xs md:text-sm">
-                ₱{balance.toLocaleString()}
-              </span>
-            </p>
-          </DialogHeader>
+      {/* --- DETAILED ITINERARY MODAL --- */}
+      <Dialog open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
+        <DialogContent className="max-w-6xl! w-[60vw]! bg-[#0a1118]/95 backdrop-blur-3xl border border-[#64c5c3]/20 p-0 rounded-3xl shadow-[0_0_50px_rgba(100,197,195,0.15)] text-white overflow-hidden overflow-y-auto max-h-[90vh] custom-scrollbar">
+          {/* Header Hero */}
+          <div className="relative h-48 w-full bg-black">
+            <Image
+              src={
+                booking.car?.image ||
+                "https://placehold.co/1200x800?text=No+Image"
+              }
+              alt={booking.car?.model || "Car"}
+              fill
+              className="object-cover opacity-60"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-[#0a1118] via-[#0a1118]/50 to-transparent" />
 
-          <div className="p-4 md:p-8 overflow-y-auto max-h-[75vh] md:max-h-[70vh] custom-scrollbar">
-            <div className="grid grid-cols-3 gap-2 md:gap-3 mb-6 md:mb-10">
-              {(["gcash", "bank", "cash"] as const).map((method) => {
-                const Icon =
-                  method === "gcash"
-                    ? Smartphone
-                    : method === "bank"
-                      ? Landmark
-                      : Banknote;
-                return (
-                  <button
-                    key={method}
-                    onClick={() => setSelectedMethod(method)}
-                    className={cn(
-                      "flex flex-col items-center gap-2 md:gap-3 p-3 md:p-4 rounded-xl md:rounded-2xl border transition-all duration-300",
-                      selectedMethod === method
-                        ? "border-[#64c5c3] bg-[#64c5c3]/10 text-[#64c5c3]"
-                        : "border-white/5 bg-white/5 text-gray-500 hover:border-white/20 hover:text-white",
-                    )}
-                  >
-                    <Icon className="w-5 h-5 md:w-6 md:h-6" />
-                    <span className="text-[8px] md:text-[9px] font-bold uppercase tracking-widest">
-                      {method}
-                    </span>
-                  </button>
-                );
-              })}
+            <div className="absolute bottom-6 left-6 right-6 flex items-end justify-between">
+              <div>
+                <p className="text-[10px] font-bold text-[#64c5c3] uppercase tracking-widest mb-1">
+                  Ref: {booking.id}
+                </p>
+                <DialogTitle className="text-3xl font-black text-white uppercase tracking-tighter">
+                  {booking.car?.brand} {booking.car?.model}
+                </DialogTitle>
+              </div>
+              <div
+                className={cn(
+                  "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[9px] font-bold uppercase tracking-widest border backdrop-blur-md",
+                  statusStyles,
+                )}
+              >
+                <StatusIcon className="w-3 h-3" /> {booking.displayStatus}
+              </div>
+            </div>
+          </div>
+
+          <div className="p-6 md:p-8 space-y-8">
+            {/* Schedule Block */}
+            <div className="space-y-4">
+              <h4 className="text-[10px] font-bold text-gray-500 uppercase tracking-widest border-b border-white/10 pb-2">
+                Trip Schedule
+              </h4>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-white/5 rounded-2xl p-4 border border-white/5">
+                  <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-2 flex items-center gap-1.5">
+                    <CalendarDays className="w-3 h-3" /> Pick-up
+                  </p>
+                  <p className="text-sm font-bold text-white uppercase tracking-wider">
+                    {startDateStr}
+                  </p>
+                  <p className="text-[11px] font-black text-[#64c5c3] tracking-widest">
+                    {startTimeStr}
+                  </p>
+                </div>
+                <div className="bg-white/5 rounded-2xl p-4 border border-white/5">
+                  <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-2 flex items-center gap-1.5">
+                    <Clock className="w-3 h-3" /> Drop-off
+                  </p>
+                  <p className="text-sm font-bold text-white uppercase tracking-wider">
+                    {endDateStr}
+                  </p>
+                  <p className="text-[11px] font-black text-amber-400 tracking-widest">
+                    {endTimeStr}
+                  </p>
+                </div>
+              </div>
+              {showLateWarning && (
+                <div className="bg-amber-500/10 border border-amber-500/20 p-3 rounded-xl flex items-start gap-3 text-amber-400">
+                  <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                  <p className="text-[10px] font-bold uppercase tracking-widest leading-relaxed">
+                    Vehicle must be returned by{" "}
+                    <span className="text-white">{endTimeStr}</span>. A grace
+                    period may apply, but late returns will incur penalty
+                    charges.
+                  </p>
+                </div>
+              )}
             </div>
 
-            {selectedMethod !== "cash" ? (
-              <div className="space-y-6 md:space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-500">
-                <div className="relative group p-[1px] bg-gradient-to-br from-white/10 to-transparent rounded-xl md:rounded-2xl overflow-hidden">
-                  <div className="bg-black p-6 md:p-8 flex flex-col items-center justify-center relative rounded-xl md:rounded-2xl border border-white/5">
-                    <QrCode className="w-20 h-20 md:w-24 md:h-24 text-white mb-3 md:mb-4 group-hover:scale-110 group-hover:text-[#64c5c3] transition-all duration-500" />
-                    <p className="text-[9px] md:text-[10px] font-bold text-gray-500 uppercase tracking-widest">
-                      Scan Official QR
+            {/* Logistics Block */}
+            <div className="space-y-4">
+              <h4 className="text-[10px] font-bold text-gray-500 uppercase tracking-widest border-b border-white/10 pb-2">
+                Logistics & Handover
+              </h4>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="flex items-start gap-3">
+                  <div className="bg-[#64c5c3]/10 p-2 rounded-lg shrink-0">
+                    <MapPin className="w-4 h-4 text-[#64c5c3]" />
+                  </div>
+                  <div>
+                    <p className="text-[9px] font-bold text-gray-500 uppercase tracking-widest mb-1">
+                      Pick-up Location
+                    </p>
+                    <p className="text-[11px] font-bold text-white uppercase tracking-wider">
+                      {booking.pickupLocation}
                     </p>
                   </div>
                 </div>
-
-                <ReceiptScanner
-                  expectedAmount={balance}
-                  onScanComplete={handleScanUpdate}
-                />
+                <div className="flex items-start gap-3">
+                  <div className="bg-[#64c5c3]/10 p-2 rounded-lg shrink-0">
+                    <MapPin className="w-4 h-4 text-[#64c5c3]" />
+                  </div>
+                  <div>
+                    <p className="text-[9px] font-bold text-gray-500 uppercase tracking-widest mb-1">
+                      Drop-off Location
+                    </p>
+                    <p className="text-[11px] font-bold text-white uppercase tracking-wider">
+                      {booking.dropoffLocation}
+                    </p>
+                  </div>
+                </div>
               </div>
-            ) : (
-              <div className="bg-white/5 border border-white/10 p-6 md:p-8 rounded-xl md:rounded-2xl text-center animate-in zoom-in-95 duration-500">
-                <Banknote className="w-10 h-10 md:w-12 md:h-12 text-[#64c5c3] mx-auto mb-3 md:mb-4" />
-                <h4 className="text-xs md:text-sm font-bold text-white mb-1 md:mb-2 uppercase tracking-widest">
-                  In-Person Settlement
-                </h4>
-                <p className="text-[9px] md:text-[10px] font-bold text-gray-400 leading-relaxed uppercase tracking-widest">
-                  Present the balance upon pickup of your vehicle.
-                </p>
-              </div>
-            )}
-
-            <Button
-              onClick={handleSubmitPayment}
-              disabled={
-                (selectedMethod !== "cash" && !scannedFile) ||
-                isSubmittingPayment
-              }
-              className="w-full mt-6 md:mt-10 bg-[#64c5c3] text-black hover:bg-[#52a3a1] rounded-lg md:rounded-xl h-12 md:h-14 font-black text-[10px] md:text-[11px] uppercase tracking-widest transition-all duration-300 group disabled:opacity-40 disabled:bg-[#64c5c3] disabled:cursor-not-allowed"
-            >
-              {isSubmittingPayment ? (
-                "Authenticating..."
-              ) : (
-                <span className="flex items-center gap-2 md:gap-3">
-                  {selectedMethod === "cash"
-                    ? "Confirm Arrangement"
-                    : "Submit Receipt"}
-                  <ArrowRight className="w-3.5 h-3.5 md:w-4 md:h-4 group-hover:translate-x-1 transition-transform" />
-                </span>
-              )}
-            </Button>
-
-            <div className="mt-6 md:mt-8 flex items-center gap-2 justify-center text-[8px] md:text-[9px] font-bold text-gray-500 uppercase tracking-widest">
-              <ShieldCheck className="w-3 h-3 md:w-4 md:h-4 text-[#64c5c3]" />{" "}
-              Secure Payment Protocol
             </div>
+
+            {/* Financial Block */}
+            <div className="space-y-4">
+              <h4 className="text-[10px] font-bold text-gray-500 uppercase tracking-widest border-b border-white/10 pb-2">
+                Financial Summary
+              </h4>
+              <div className="bg-black/40 rounded-2xl p-5 border border-white/5 space-y-3">
+                <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-widest text-gray-400">
+                  <span>Total Booking Cost</span>
+                  <span className="text-white">
+                    ₱{booking.totalAmount?.toLocaleString()}
+                  </span>
+                </div>
+
+                {isPaymentPending ? (
+                  <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-widest text-amber-400 bg-amber-500/10 p-2.5 rounded-lg border border-amber-500/20">
+                    <span className="flex items-center gap-1.5">
+                      <Clock className="w-3 h-3" /> Submitted (Pending Verif.)
+                    </span>
+                    <span>₱{booking.pendingAmount.toLocaleString()}</span>
+                  </div>
+                ) : (
+                  <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-widest text-gray-400">
+                    <span>Reservation Paid</span>
+                    <span className="text-emerald-400">
+                      - ₱{booking.amountPaid?.toLocaleString()}
+                    </span>
+                  </div>
+                )}
+
+                <div className="pt-3 border-t border-white/10 border-dashed flex justify-between items-center">
+                  <span className="text-[11px] font-black uppercase tracking-widest text-white">
+                    Balance Due
+                  </span>
+                  <span className="text-sm font-black tracking-tighter text-[#64c5c3]">
+                    {isPaymentPending
+                      ? "TBD Upon Verification"
+                      : `₱${balance.toLocaleString()}`}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Close Button */}
+            <Button
+              onClick={() => setIsDetailsOpen(false)}
+              className="w-full bg-white/10 hover:bg-white/20 text-white border border-white/10 rounded-xl h-12 font-bold text-[10px] uppercase tracking-widest"
+            >
+              Close Details
+            </Button>
           </div>
         </DialogContent>
       </Dialog>

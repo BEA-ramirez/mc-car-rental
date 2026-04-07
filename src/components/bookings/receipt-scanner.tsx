@@ -2,15 +2,22 @@
 
 import { useState } from "react";
 import Tesseract from "tesseract.js";
-import { UploadCloud, ScanLine, CheckCircle2, AlertCircle } from "lucide-react";
+import {
+  UploadCloud,
+  ScanLine,
+  CheckCircle2,
+  AlertCircle,
+  RefreshCw,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
+import Image from "next/image";
 
 interface ReceiptScannerProps {
-  // UPDATED: Now passes back the amount too!
   onScanComplete: (file: File, referenceNumber: string, amount: string) => void;
-  expectedAmount: number; // We pass this in to compare!
+  expectedAmount: number;
 }
 
 export default function ReceiptScanner({
@@ -25,7 +32,6 @@ export default function ReceiptScanner({
   const [referenceNumber, setReferenceNumber] = useState("");
   const [scannedAmount, setScannedAmount] = useState("");
 
-  // "partial" means it found one but not the other
   const [scanStatus, setScanStatus] = useState<
     "idle" | "success" | "partial" | "failed"
   >("idle");
@@ -54,17 +60,15 @@ export default function ReceiptScanner({
       });
 
       const rawText = result.data.text;
-      console.log("Raw OCR Text extracted:", rawText);
 
-      // 1. Hunt for Reference Number (13 digits)
+      // 1. Hunt for Reference Number
       const refRegex =
         /(?:ref|reference)[.\s]*no[.\s]*[:\-]?\s*([0-9\s]{13,20})/i;
       const refMatch = rawText.match(refRegex);
       const cleanRef =
         refMatch && refMatch[1] ? refMatch[1].replace(/\s/g, "") : "";
 
-      // 2. Hunt for Amount (e.g., PHP 12,500.00 or 12500.00)
-      // Looks for "PHP", "Amount", or "Total" followed by numbers with optional commas and decimals
+      // 2. Hunt for Amount
       const amountRegex =
         /(?:php|amount|total|p)[\s:.-]*p?h?p?[\s]*((?:\d{1,3}(?:,\d{3})+|\d+)\.\d{2})/i;
       const amountMatch = rawText.match(amountRegex);
@@ -74,17 +78,15 @@ export default function ReceiptScanner({
       setReferenceNumber(cleanRef);
       setScannedAmount(cleanAmount);
 
-      // Determine how successful the scan was
       if (cleanRef && cleanAmount) {
         setScanStatus("success");
-        onScanComplete(file, cleanRef, cleanAmount);
       } else if (cleanRef || cleanAmount) {
         setScanStatus("partial");
-        // Still pass what we found
-        onScanComplete(file, cleanRef, cleanAmount);
       } else {
         setScanStatus("failed");
       }
+
+      onScanComplete(file, cleanRef, cleanAmount);
     } catch (error) {
       console.error("OCR Scan failed:", error);
       setScanStatus("failed");
@@ -93,16 +95,20 @@ export default function ReceiptScanner({
     }
   };
 
-  // Helper to check if scanned amount matches expected amount
   const isAmountMatching = Number(scannedAmount) === expectedAmount;
 
   return (
-    <div className="bg-white border border-slate-200 rounded-sm p-6 shadow-sm max-w-md w-full">
-      <h3 className="text-sm font-bold text-slate-900 mb-4">
-        Upload Proof of Payment
-      </h3>
+    <div className="bg-black/40 border border-white/5 rounded-2xl p-5 md:p-6 w-full shadow-inner">
+      <div className="flex items-center justify-between mb-4 border-b border-white/10 pb-3">
+        <Label className="text-[10px] md:text-[11px] font-bold text-gray-400 uppercase tracking-widest block">
+          Upload Proof of Payment
+        </Label>
+        <span className="text-[8px] bg-[#64c5c3]/10 text-[#64c5c3] px-2 py-1 rounded-sm uppercase tracking-widest font-bold border border-[#64c5c3]/20">
+          OCR Enabled
+        </span>
+      </div>
 
-      <div className="relative">
+      <div className="relative group mb-4">
         <Input
           type="file"
           accept="image/*"
@@ -112,33 +118,36 @@ export default function ReceiptScanner({
         />
         <div
           className={cn(
-            "border-2 border-dashed rounded-sm flex flex-col items-center justify-center p-8 transition-colors text-center",
+            "border-2 border-dashed rounded-xl flex flex-col items-center justify-center p-6 transition-all text-center relative overflow-hidden",
             previewUrl
-              ? "border-blue-200 bg-blue-50/50"
-              : "border-slate-300 hover:bg-slate-50",
+              ? "border-[#64c5c3]/30 bg-[#64c5c3]/5"
+              : "border-white/10 hover:border-[#64c5c3]/50 hover:bg-white/5",
             isScanning && "opacity-50 pointer-events-none",
           )}
         >
           {previewUrl ? (
             <div className="flex flex-col items-center">
-              <img
-                src={previewUrl}
-                alt="Receipt Preview"
-                className="h-32 object-contain mb-3 rounded-sm shadow-sm"
-              />
-              <p className="text-[10px] font-bold uppercase tracking-widest text-blue-600">
-                Change Image
+              <div className="relative w-24 h-32 mb-3 rounded-lg overflow-hidden border border-white/10 shadow-lg">
+                <Image
+                  src={previewUrl}
+                  alt="Receipt Preview"
+                  fill
+                  className="object-cover opacity-80"
+                />
+              </div>
+              <p className="text-[9px] font-bold uppercase tracking-widest text-[#64c5c3] flex items-center gap-1">
+                <RefreshCw className="w-3 h-3" /> Tap to Change Image
               </p>
             </div>
           ) : (
             <>
-              <div className="w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center mb-3">
-                <UploadCloud className="w-6 h-6 text-slate-400" />
+              <div className="w-12 h-12 bg-white/5 border border-white/10 rounded-full flex items-center justify-center mb-3 group-hover:bg-[#64c5c3]/10 group-hover:text-[#64c5c3] transition-colors">
+                <UploadCloud className="w-5 h-5 text-gray-400 group-hover:text-[#64c5c3]" />
               </div>
-              <p className="text-sm font-bold text-slate-700">
+              <p className="text-[10px] font-bold text-white uppercase tracking-widest">
                 Tap to upload receipt
               </p>
-              <p className="text-xs text-slate-400 mt-1">
+              <p className="text-[9px] text-gray-500 mt-1 uppercase tracking-widest">
                 Supports JPG, PNG (Max 5MB)
               </p>
             </>
@@ -147,16 +156,16 @@ export default function ReceiptScanner({
       </div>
 
       {isScanning && (
-        <div className="mt-4 p-4 bg-slate-50 border border-slate-100 rounded-sm flex flex-col items-center justify-center gap-3">
-          <ScanLine className="w-6 h-6 text-blue-500 animate-pulse" />
+        <div className="mt-4 p-4 bg-black/60 border border-[#64c5c3]/20 rounded-xl flex flex-col items-center justify-center gap-3">
+          <ScanLine className="w-6 h-6 text-[#64c5c3] animate-pulse" />
           <div className="w-full">
-            <div className="flex justify-between text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-1.5">
+            <div className="flex justify-between text-[9px] font-bold uppercase tracking-widest text-[#64c5c3] mb-2">
               <span>Scanning Receipt...</span>
               <span>{scanProgress}%</span>
             </div>
-            <div className="h-1.5 w-full bg-slate-200 rounded-full overflow-hidden">
+            <div className="h-1 w-full bg-white/10 rounded-full overflow-hidden">
               <div
-                className="h-full bg-blue-500 transition-all duration-300 ease-out"
+                className="h-full bg-[#64c5c3] transition-all duration-300 ease-out"
                 style={{ width: `${scanProgress}%` }}
               />
             </div>
@@ -168,36 +177,44 @@ export default function ReceiptScanner({
         <div className="mt-5 space-y-4">
           {/* Status Messages */}
           {scanStatus === "success" && isAmountMatching && (
-            <div className="flex items-center gap-2 text-emerald-600 bg-emerald-50 p-3 rounded-sm border border-emerald-100">
+            <div className="flex items-center gap-2 text-emerald-400 bg-emerald-500/10 p-3 rounded-xl border border-emerald-500/20">
               <CheckCircle2 className="w-4 h-4 shrink-0" />
-              <p className="text-xs font-medium">
-                Receipt verified automatically!
+              <p className="text-[10px] font-bold uppercase tracking-widest">
+                Verification Successful
               </p>
             </div>
           )}
           {scanStatus === "success" && !isAmountMatching && (
-            <div className="flex items-start gap-2 text-red-600 bg-red-50 p-3 rounded-sm border border-red-100">
+            <div className="flex items-start gap-2 text-red-400 bg-red-500/10 p-3 rounded-xl border border-red-500/20">
               <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
-              <p className="text-xs font-medium">
-                Amount mismatch! We detected ₱{scannedAmount} but the total is ₱
-                {expectedAmount}. Please verify manually.
+              <p className="text-[10px] font-medium leading-relaxed">
+                <strong className="uppercase tracking-widest">
+                  Amount mismatch!
+                </strong>
+                <br />
+                Detected ₱{scannedAmount} but total is ₱{expectedAmount}. Please
+                verify manually.
               </p>
             </div>
           )}
           {(scanStatus === "failed" || scanStatus === "partial") && (
-            <div className="flex items-start gap-2 text-amber-600 bg-amber-50 p-3 rounded-sm border border-amber-100">
+            <div className="flex items-start gap-2 text-amber-400 bg-amber-500/10 p-3 rounded-xl border border-amber-500/20">
               <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
-              <p className="text-xs font-medium">
-                Could not read all details clearly. Please verify the fields
+              <p className="text-[10px] font-medium leading-relaxed">
+                <strong className="uppercase tracking-widest">
+                  Partial Scan
+                </strong>
+                <br />
+                Could not read all details perfectly. Please verify fields
                 below.
               </p>
             </div>
           )}
 
           {/* Editable Fields */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500">
+          <div className="grid grid-cols-2 gap-4 bg-black/40 p-4 rounded-xl border border-white/5">
+            <div className="space-y-2">
+              <label className="text-[9px] font-bold uppercase tracking-widest text-gray-500">
                 Ref Number
               </label>
               <Input
@@ -212,11 +229,11 @@ export default function ReceiptScanner({
                     );
                 }}
                 placeholder="13-digit code"
-                className="font-mono text-xs"
+                className="font-mono text-xs bg-transparent border-white/10 text-white focus:border-[#64c5c3] focus:ring-0 rounded-lg h-10"
               />
             </div>
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500">
+            <div className="space-y-2">
+              <label className="text-[9px] font-bold uppercase tracking-widest text-gray-500">
                 Amount Paid (₱)
               </label>
               <Input
@@ -233,10 +250,10 @@ export default function ReceiptScanner({
                 }}
                 placeholder="e.g. 12500"
                 className={cn(
-                  "font-mono text-xs",
+                  "font-mono text-xs bg-transparent border-white/10 text-white focus:border-[#64c5c3] focus:ring-0 rounded-lg h-10",
                   !isAmountMatching &&
                     scannedAmount !== "" &&
-                    "border-red-300 bg-red-50 text-red-900 focus-visible:ring-red-500",
+                    "border-red-500/50 text-red-400 focus:border-red-500",
                 )}
               />
             </div>

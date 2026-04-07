@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Car, Search, MapPin, Inbox } from "lucide-react";
+import { Search, Inbox } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { motion } from "framer-motion";
@@ -9,39 +9,43 @@ import { motion } from "framer-motion";
 import BookingCard from "@/components/customer/booking-card";
 import { useCustomerBookings } from "../../../../hooks/use-bookings";
 
-const TABS = ["All Trips", "Action Needed", "Upcoming", "Past History"];
+const TABS = ["All Trips", "Upcoming", "Ongoing", "History"];
 
 export default function MyBookingsPage() {
   const [activeTab, setActiveTab] = useState("All Trips");
   const { data: dbBookings, isLoading } = useCustomerBookings();
 
   const formattedBookings = (dbBookings || []).map((b: any) => {
+    // Balance calculation based on the server action's pre-calculated totals
     const balance = b.totalAmount - b.amountPaid;
 
-    let displayStatus = "Pending Approval";
-    if (b.status === "confirmed" && balance > 0)
-      displayStatus = "Awaiting Payment";
-    if (b.status === "confirmed" && balance <= 0) displayStatus = "Confirmed";
-    if (b.status === "ongoing") displayStatus = "Ongoing";
+    // Map raw database statuses to customer-friendly display statuses
+    let displayStatus = b.status; // This comes from b.booking_status in the Server Action
+    if (b.status === "confirmed" || b.status === "pending")
+      displayStatus = "Upcoming Trip";
+    if (b.status === "ongoing") displayStatus = "Currently Driving";
     if (b.status === "completed") displayStatus = "Completed";
+    if (b.status === "cancelled") displayStatus = "Cancelled";
 
     return {
       ...b,
-      startDate: new Date(b.startDate),
-      endDate: new Date(b.endDate),
-      status: displayStatus,
+      // Pass the mapped status for the UI Tabs
+      displayStatus: displayStatus,
+      balanceDueAtPickup: balance > 0 ? balance : 0,
     };
   });
 
   const filteredBookings = formattedBookings.filter((booking: any) => {
     if (activeTab === "All Trips") return true;
-    if (activeTab === "Action Needed")
-      return booking.status === "Awaiting Payment";
     if (activeTab === "Upcoming")
+      return booking.displayStatus === "Upcoming Trip";
+    if (activeTab === "Ongoing")
+      return booking.displayStatus === "Currently Driving";
+    if (activeTab === "History")
       return (
-        booking.status === "Confirmed" || booking.status === "Pending Approval"
+        booking.displayStatus === "Completed" ||
+        booking.displayStatus === "Cancelled"
       );
-    if (activeTab === "Past History") return booking.status === "Completed";
     return true;
   });
 
@@ -67,7 +71,7 @@ export default function MyBookingsPage() {
               </span>
             </h1>
             <p className="text-gray-400 text-xs sm:text-sm md:text-base max-w-sm font-medium leading-relaxed">
-              Track your reservations, manage your payments, and review your
+              Track your reservations, view your itinerary, and review your
               rental history all in one place.
             </p>
           </motion.div>
@@ -75,9 +79,8 @@ export default function MyBookingsPage() {
       </div>
 
       <div className="max-w-6xl mx-auto px-4 md:px-6 py-6 md:py-8 relative z-10">
-        {/* --- Filters & Search Bar (Ultra Compact for Mobile) --- */}
+        {/* --- Filters & Search Bar --- */}
         <div className="bg-[#0a1118]/80 backdrop-blur-xl rounded-2xl md:rounded-3xl p-3 md:p-4 border border-white/5 flex flex-col lg:flex-row items-center justify-between gap-3 md:gap-4 mb-6 md:mb-10 shadow-2xl">
-          {/* Scrollable Tabs for Mobile */}
           <div className="flex w-full lg:w-auto overflow-x-auto custom-scrollbar pb-1 lg:pb-0 gap-1.5 md:gap-2 snap-x">
             {TABS.map((tab) => (
               <button
@@ -98,7 +101,7 @@ export default function MyBookingsPage() {
           <div className="relative w-full lg:w-80 shrink-0">
             <Search className="absolute left-3 md:left-4 top-1/2 -translate-y-1/2 w-3.5 md:w-4 h-3.5 md:h-4 text-gray-500" />
             <Input
-              placeholder="Search ID..."
+              placeholder="Search Reference ID..."
               className="pl-10 md:pl-12 h-10 md:h-12 rounded-xl bg-black/50 border-white/10 text-[10px] md:text-xs font-bold uppercase tracking-widest text-white placeholder:text-gray-500 focus-visible:ring-[#64c5c3] focus-visible:border-transparent w-full transition-all"
             />
           </div>
@@ -110,7 +113,7 @@ export default function MyBookingsPage() {
             <div className="flex flex-col items-center justify-center py-16 md:py-24 gap-4 md:gap-6">
               <div className="w-10 h-10 md:w-12 md:h-12 border-4 border-white/10 border-t-[#64c5c3] rounded-full animate-spin" />
               <span className="text-[10px] md:text-xs font-bold uppercase tracking-widest text-gray-500">
-                Loading Fleet Data...
+                Loading Secure Itineraries...
               </span>
             </div>
           ) : filteredBookings.length > 0 ? (
