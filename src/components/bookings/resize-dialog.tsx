@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState, useMemo } from "react";
 import {
   Dialog,
   DialogContent,
@@ -14,6 +14,7 @@ import { SchedulerEvent } from "@/components/scheduler/timeline-scheduler";
 import { ArrowRight, CalendarClock, AlertCircle } from "lucide-react";
 import { format, differenceInCalendarDays } from "date-fns";
 import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 
 type ResizeDialogProps = {
   isOpen: boolean;
@@ -44,46 +45,46 @@ export default function ResizeDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[400px] p-0 overflow-hidden border-slate-200 rounded-lg shadow-xl">
-        <div className="p-5 border-b border-slate-100 bg-white">
+      <DialogContent className="sm:max-w-[400px] p-0 overflow-hidden border-border bg-background rounded-xl shadow-2xl transition-colors duration-300">
+        <div className="p-4 border-b border-border bg-card transition-colors">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-slate-800 text-base">
-              <CalendarClock className="w-4 h-4 text-blue-600" />
+            <DialogTitle className="flex items-center gap-2 text-foreground text-sm font-bold uppercase tracking-wider">
+              <CalendarClock className="w-4 h-4 text-primary" />
               Confirm Booking Change
             </DialogTitle>
-            <DialogDescription className="text-xs">
+            <DialogDescription className="text-[11px] font-medium text-muted-foreground mt-1">
               You are manually adjusting the end date for{" "}
-              <b className="text-slate-700 font-semibold">{event.title}</b>.
+              <b className="text-foreground font-bold">{event.title}</b>.
             </DialogDescription>
           </DialogHeader>
         </div>
 
-        <div className="p-5 bg-slate-50/50 flex flex-col gap-4">
-          <div className="flex items-center justify-between gap-4">
+        <div className="p-4 bg-background flex flex-col gap-4">
+          <div className="flex items-center justify-between gap-3">
             {/* FROM */}
-            <div className="flex flex-col flex-1 items-center p-3 bg-white rounded-md border border-slate-200 shadow-sm text-center">
-              <span className="text-[9px] uppercase font-bold text-slate-400 mb-1 tracking-wider">
+            <div className="flex flex-col flex-1 items-center p-2.5 bg-card rounded-lg border border-border shadow-sm text-center transition-colors">
+              <span className="text-[9px] uppercase font-bold text-muted-foreground mb-1 tracking-widest">
                 Current End
               </span>
-              <div className="font-bold text-sm text-slate-700">
+              <div className="font-bold text-xs text-foreground leading-tight">
                 {format(new Date(event.end), "MMM d, yyyy")}
               </div>
-              <div className="text-[10px] font-medium text-slate-500 mt-0.5">
+              <div className="text-[10px] font-medium text-muted-foreground mt-0.5">
                 {format(new Date(event.end), "h:mm a")}
               </div>
             </div>
 
-            <ArrowRight className="w-4 h-4 text-slate-300 shrink-0" />
+            <ArrowRight className="w-4 h-4 text-muted-foreground/50 shrink-0" />
 
             {/* TO */}
-            <div className="flex flex-col flex-1 items-center p-3 bg-blue-50/50 rounded-md border border-blue-200 shadow-sm text-center">
-              <span className="text-[9px] uppercase font-bold text-blue-500 mb-1 tracking-wider">
+            <div className="flex flex-col flex-1 items-center p-2.5 bg-primary/10 rounded-lg border border-primary/30 shadow-sm text-center transition-colors">
+              <span className="text-[9px] uppercase font-bold text-primary mb-1 tracking-widest">
                 New End
               </span>
-              <div className="font-bold text-sm text-blue-700">
+              <div className="font-bold text-xs text-primary leading-tight">
                 {format(newEnd, "MMM d, yyyy")}
               </div>
-              <div className="text-[10px] font-medium text-blue-600 mt-0.5">
+              <div className="text-[10px] font-medium text-primary/80 mt-0.5">
                 {format(newEnd, "h:mm a")}
               </div>
             </div>
@@ -92,11 +93,12 @@ export default function ResizeDialog({
           <div className="flex justify-center">
             <Badge
               variant="outline"
-              className={`text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 border ${
+              className={cn(
+                "text-[9px] uppercase font-bold tracking-widest px-2 py-0.5 border rounded-md",
                 isExtension
-                  ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                  : "bg-red-50 text-red-700 border-red-200"
-              }`}
+                  ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
+                  : "bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20",
+              )}
             >
               {isExtension
                 ? `Extending by ${diffDays} Day(s)`
@@ -105,9 +107,9 @@ export default function ResizeDialog({
           </div>
 
           {!isExtension && (
-            <div className="bg-amber-50 border border-amber-200 text-amber-800 text-[11px] p-2.5 rounded-md flex gap-2 items-start shadow-sm mt-1">
+            <div className="bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 text-[10px] font-medium p-2.5 rounded-lg flex gap-2 items-start shadow-sm mt-1 transition-colors">
               <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5 text-amber-500" />
-              <span className="font-medium text-amber-700">
+              <span className="leading-relaxed">
                 Shortening a booking does not automatically issue a refund.
                 Review financials manually.
               </span>
@@ -115,13 +117,13 @@ export default function ResizeDialog({
           )}
         </div>
 
-        <div className="p-4 bg-white border-t border-slate-100 flex justify-end gap-2">
+        <div className="p-3 bg-card border-t border-border flex justify-end gap-2 transition-colors">
           <Button
-            variant="ghost"
+            variant="outline"
             size="sm"
             onClick={onClose}
             disabled={isSaving}
-            className="text-xs font-semibold text-slate-600"
+            className="h-8 text-[10px] font-semibold bg-card text-foreground hover:bg-secondary border-border rounded-lg shadow-none transition-colors"
           >
             Cancel
           </Button>
@@ -129,7 +131,7 @@ export default function ResizeDialog({
             size="sm"
             onClick={onConfirm}
             disabled={isSaving}
-            className="text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white shadow-sm"
+            className="h-8 text-[10px] font-bold uppercase tracking-widest bg-primary hover:opacity-90 text-primary-foreground rounded-lg shadow-sm transition-opacity"
           >
             {isSaving ? "Updating..." : "Confirm Update"}
           </Button>

@@ -45,7 +45,7 @@ export default function AdminLayout({
       {/* 1. LAYOUT FRAME: 
         Uses bg-background and text-foreground to instantly sync with light/dark themes
       */}
-      <SidebarInset className="flex flex-col h-screen overflow-hidden bg-background text-foreground font-sans transition-colors duration-300">
+      <SidebarInset className="flex flex-col h-screen w-full overflow-hidden bg-background text-foreground font-sans transition-colors duration-300">
         {/* 2. HEADER: 
           Transparent background, tight padding, semantic border
         */}

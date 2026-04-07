@@ -1,8 +1,7 @@
 "use client";
 
-import React, { useState, useEffect, useMemo, useCallback } from "react";
-import { useFormContext } from "react-hook-form";
-import { useForm, useFieldArray } from "react-hook-form";
+import React, { useState, useEffect, useMemo } from "react";
+import { useFormContext, useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
   format,
@@ -29,6 +28,7 @@ import {
   Receipt,
   Car,
   CalendarDays,
+  Loader2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -104,7 +104,7 @@ type LocationFieldProps = {
 };
 
 type AdminBookingFormProps = {
-  bookingId?: string; // NEW!
+  bookingId?: string;
   initialCarId?: string;
   initialStartDate?: Date;
   initialDuration?: number;
@@ -131,19 +131,19 @@ const LocationField = ({
   const title = type === "pickup" ? "Pick-up" : "Drop-off";
 
   return (
-    <div className="border border-slate-200 rounded-md bg-white overflow-hidden shadow-sm transition-all hover:border-slate-300">
-      <div className="flex items-center justify-between px-3 py-2.5 bg-slate-50 border-b border-slate-100">
-        <span className="text-[11px] font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
-          <MapPin className="w-3.5 h-3.5 text-slate-400" />
+    <div className="border border-border rounded-xl bg-card overflow-hidden shadow-sm transition-all hover:border-primary/50 group cursor-default">
+      <div className="flex items-center justify-between px-3 py-2.5 bg-secondary/30 border-b border-border transition-colors">
+        <span className="text-[10px] font-bold uppercase tracking-widest text-foreground flex items-center gap-1.5 group-hover:text-primary transition-colors">
+          <MapPin className="w-3.5 h-3.5 text-muted-foreground group-hover:text-primary" />
           {title}
         </span>
         <div className="flex items-center space-x-2">
-          <span className="text-[9px] text-slate-500 uppercase font-bold tracking-wide">
-            {isCustom ? "Custom Address" : "Hub Location"}
+          <span className="text-[9px] text-muted-foreground uppercase font-bold tracking-widest">
+            {isCustom ? "Custom" : "Hub"}
           </span>
           <Switch
             checked={isCustom}
-            className="scale-75 origin-right data-[state=checked]:bg-blue-600"
+            className="scale-75 origin-right data-[state=checked]:bg-primary"
             onCheckedChange={(checked) => {
               setValue(modeField, checked ? "custom" : "hub");
               if (!checked) {
@@ -167,7 +167,7 @@ const LocationField = ({
         </div>
       </div>
 
-      <div className="p-3 space-y-3">
+      <div className="p-3 space-y-3 bg-card transition-colors">
         {!isCustom ? (
           <FormField
             control={control}
@@ -183,19 +183,19 @@ const LocationField = ({
                   defaultValue={field.value}
                 >
                   <FormControl>
-                    <SelectTrigger className="h-9 text-xs w-full bg-white border-slate-200 focus:ring-1 focus:ring-slate-300">
-                      <SelectValue placeholder="Select Hub" />
+                    <SelectTrigger className="h-8 text-[11px] font-medium w-full bg-secondary border-border focus:ring-1 focus:ring-primary shadow-none rounded-lg transition-colors">
+                      <SelectValue placeholder="Select hub" />
                     </SelectTrigger>
                   </FormControl>
-                  <SelectContent>
+                  <SelectContent className="bg-popover border-border rounded-lg shadow-xl">
                     {hubs.map((hub: any) => (
                       <SelectItem
                         key={hub.id}
                         value={hub.name}
-                        className="text-xs"
+                        className="text-[11px] font-semibold"
                       >
                         {hub.name}{" "}
-                        <span className="text-slate-400 font-medium ml-1">
+                        <span className="text-muted-foreground font-medium ml-1">
                           (Free)
                         </span>
                       </SelectItem>
@@ -216,28 +216,30 @@ const LocationField = ({
                     <Input
                       {...field}
                       placeholder="Enter specific address..."
-                      className="h-9 text-xs flex-1 bg-white border-slate-200 focus-visible:ring-1 focus-visible:ring-slate-300"
+                      className="h-8 text-[11px] font-medium flex-1 bg-secondary border-border focus-visible:ring-primary shadow-none rounded-lg transition-colors"
                     />
                     <Button
                       type="button"
                       size="icon"
                       variant="outline"
                       className={cn(
-                        "h-9 w-9 shrink-0 border-slate-200",
-                        watch(coordsField) && "bg-blue-50 border-blue-200",
+                        "h-8 w-8 shrink-0 border-border rounded-lg shadow-none transition-colors",
+                        watch(coordsField)
+                          ? "bg-primary/10 border-primary/30"
+                          : "bg-card hover:bg-secondary",
                       )}
                       onClick={() => {
                         setActiveMapField(type);
                         setMapOpen(true);
                       }}
-                      title="Pin on Map"
+                      title="Pin on map"
                     >
                       <MapPin
                         className={cn(
-                          "h-4 w-4",
+                          "h-3.5 w-3.5",
                           watch(coordsField)
-                            ? "text-blue-600"
-                            : "text-slate-400",
+                            ? "text-primary"
+                            : "text-muted-foreground",
                         )}
                       />
                     </Button>
@@ -245,25 +247,23 @@ const LocationField = ({
                 </FormItem>
               )}
             />
-            <div className="flex items-center gap-2">
-              <Separator className="flex-1" />
-            </div>
+            <Separator className="bg-border" />
             <FormField
               control={control}
               name={priceField}
               render={({ field }) => (
                 <FormItem className="flex items-center justify-between space-y-0">
-                  <FormLabel className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                  <FormLabel className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">
                     Delivery Fee
                   </FormLabel>
-                  <div className="flex items-center w-28">
-                    <span className="mr-1.5 text-xs font-semibold text-slate-400">
+                  <div className="flex items-center w-24">
+                    <span className="mr-1.5 text-[10px] font-bold text-muted-foreground">
                       ₱
                     </span>
                     <Input
                       type="number"
                       {...field}
-                      className="h-8 text-right text-xs bg-white border-slate-200 font-medium"
+                      className="h-7 text-right text-[11px] font-bold bg-secondary border-border shadow-none rounded-md transition-colors"
                       onChange={(e) =>
                         field.onChange(parseFloat(e.target.value) || 0)
                       }
@@ -310,7 +310,7 @@ export default function AdminBookingForm({
     "pickup" | "dropoff" | null
   >(null);
 
-  // --- NEW: FALLBACK USER STATE ---
+  // --- FALLBACK USER STATE ---
   const [fallbackUser, setFallbackUser] = useState<{
     user_id: string;
     full_name: string;
@@ -389,7 +389,6 @@ export default function AdminBookingForm({
       const supabase = createClient();
 
       try {
-        // 1. Fetch Booking AND the associated user
         const { data: booking, error: bError } = await supabase
           .from("bookings")
           .select("*, users!user_id(full_name, email)")
@@ -398,7 +397,6 @@ export default function AdminBookingForm({
 
         if (bError) throw bError;
 
-        // --- NEW: SET FALLBACK USER ---
         if (booking.users) {
           setFallbackUser({
             user_id: booking.user_id,
@@ -407,13 +405,11 @@ export default function AdminBookingForm({
           });
         }
 
-        // 2. Fetch Charges
         const { data: charges } = await supabase
           .from("booking_charges")
           .select("*")
           .eq("booking_id", bookingId);
 
-        // 3. Reconstruct the form state
         const startDate = new Date(booking.start_date);
         const endDate = new Date(booking.end_date);
         const diffDays = Math.max(
@@ -426,7 +422,6 @@ export default function AdminBookingForm({
         setStartTime(format(startDate, "HH:mm"));
         setDuration(diffDays);
 
-        // Extract special charges to map back to specific fields
         let driverFee = fees.driver_rate_per_day;
         let discount = 0;
         const extras: any[] = [];
@@ -448,14 +443,12 @@ export default function AdminBookingForm({
           }
         });
 
-        // Determine if custom rate was used (by comparing to car default)
         const car = units.find((c) => c.car_id === booking.car_id);
         const isCustomRate =
           car &&
           Number(booking.base_rate_snapshot) !==
             Number(car.rental_rate_per_day);
 
-        // 4. Reset the form with the fetched data
         reset({
           user_id: booking.user_id,
           car_id: booking.car_id,
@@ -497,7 +490,7 @@ export default function AdminBookingForm({
 
   // --- EFFECTS ---
   useEffect(() => {
-    if (!fees || bookingId) return; // Skip default overrides if editing
+    if (!fees || bookingId) return;
     const { dirtyFields } = form.formState;
     const currentDriverFee = form.getValues("driver_fee_per_day");
     const currentDeposit = form.getValues("security_deposit");
@@ -569,8 +562,8 @@ export default function AdminBookingForm({
 
   if (settingsLoading || isFetchingEditData)
     return (
-      <div className="p-6 text-center text-xs text-muted-foreground flex flex-col items-center justify-center h-full">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-slate-900 mb-4"></div>
+      <div className="p-6 text-center text-[11px] font-semibold text-muted-foreground flex flex-col items-center justify-center h-full bg-background transition-colors duration-300">
+        <Loader2 className="w-8 h-8 animate-spin text-primary mb-3" />
         {isFetchingEditData
           ? "Loading booking details..."
           : "Syncing configuration..."}
@@ -581,23 +574,23 @@ export default function AdminBookingForm({
     <Form {...form}>
       <form
         onSubmit={form.handleSubmit(onSubmit)}
-        className="flex flex-col h-full bg-slate-50 font-sans"
+        className="flex flex-col h-full bg-background font-sans transition-colors duration-300"
       >
         {/* --- FORMAL HEADER --- */}
-        <div className="flex items-center justify-between px-6 py-4 bg-white border-b border-slate-200 shrink-0 sticky top-0 z-20 shadow-sm pr-14">
+        <div className="flex items-center justify-between px-5 py-3 md:px-6 md:py-4 bg-card border-b border-border shrink-0 sticky top-0 z-20 shadow-sm pr-14 transition-colors">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-md bg-slate-100 flex items-center justify-center border border-slate-200">
+            <div className="w-8 h-8 rounded-lg bg-secondary flex items-center justify-center border border-border shadow-sm">
               {bookingId ? (
-                <Edit className="w-4 h-4 text-slate-700" />
+                <Edit className="w-4 h-4 text-muted-foreground" />
               ) : (
-                <CalendarDays className="w-4 h-4 text-slate-700" />
+                <CalendarDays className="w-4 h-4 text-muted-foreground" />
               )}
             </div>
             <div>
-              <h2 className="text-base font-bold text-slate-900 tracking-tight leading-none mb-1">
+              <h2 className="text-sm font-bold text-foreground tracking-tight leading-none mb-1 uppercase">
                 {bookingId ? "Edit Reservation" : "New Reservation"}
               </h2>
-              <p className="text-[11px] font-medium text-slate-500 leading-none">
+              <p className="text-[10px] font-medium text-muted-foreground leading-none">
                 {bookingId
                   ? "Update existing details."
                   : "Assign vehicle, customer, and logistics"}
@@ -611,7 +604,7 @@ export default function AdminBookingForm({
                 variant="ghost"
                 size="sm"
                 onClick={onCancel}
-                className="h-8 text-xs font-semibold text-slate-600 hover:text-slate-900"
+                className="h-8 text-[10px] font-semibold text-muted-foreground hover:text-foreground rounded-lg transition-colors"
               >
                 Discard
               </Button>
@@ -619,9 +612,12 @@ export default function AdminBookingForm({
             <Button
               type="submit"
               size="sm"
-              className="h-8 text-xs font-bold bg-slate-900 text-white hover:bg-slate-800 shadow-sm px-4"
+              className="h-8 text-[10px] font-bold uppercase tracking-widest bg-primary text-primary-foreground hover:opacity-90 rounded-lg shadow-sm px-4 transition-opacity"
               disabled={isSaving}
             >
+              {isSaving && (
+                <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+              )}
               {isSaving
                 ? "Saving..."
                 : bookingId
@@ -632,21 +628,21 @@ export default function AdminBookingForm({
         </div>
 
         {/* --- SCROLLABLE BODY --- */}
-        <div className="flex-1 overflow-y-auto p-6">
-          <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 max-w-6xl mx-auto">
+        <div className="flex-1 overflow-y-auto p-4 md:p-6 custom-scrollbar">
+          <div className="grid grid-cols-1 xl:grid-cols-3 gap-5 max-w-6xl mx-auto">
             {/* LEFT COLUMN: DETAILS */}
-            <div className="xl:col-span-2 space-y-6">
+            <div className="xl:col-span-2 space-y-4">
               {/* SECTION 1: ENTITIES */}
-              <div className="bg-white border border-slate-200 rounded-lg p-5 shadow-sm space-y-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <User className="w-4 h-4 text-slate-400" />
-                  <h3 className="text-sm font-bold text-slate-800 tracking-tight">
+              <div className="bg-card border border-border rounded-xl p-4 shadow-sm space-y-4 transition-colors">
+                <div className="flex items-center gap-2 mb-1">
+                  <User className="w-4 h-4 text-primary" />
+                  <h3 className="text-xs font-bold text-foreground tracking-tight uppercase">
                     Parties Involved
                   </h3>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                  <div className="space-y-1.5">
-                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <label className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">
                       Customer Profile
                     </label>
                     <FormField
@@ -661,18 +657,17 @@ export default function AdminBookingForm({
                                   variant="outline"
                                   role="combobox"
                                   className={cn(
-                                    "w-full justify-between h-9 text-xs bg-slate-50/50 border-slate-200 hover:bg-white focus:ring-1 focus:ring-slate-300",
+                                    "w-full justify-between h-8 text-[11px] bg-secondary border-border hover:bg-background focus:ring-1 focus:ring-primary rounded-lg shadow-none transition-colors",
                                     !field.value && "text-muted-foreground",
                                   )}
                                 >
                                   <div className="flex items-center truncate">
                                     <span
                                       className={cn(
-                                        "truncate font-medium",
-                                        field.value ? "text-slate-900" : "",
+                                        "truncate font-semibold",
+                                        field.value ? "text-foreground" : "",
                                       )}
                                     >
-                                      {/* --- NEW: FALLBACK DISPLAY LOGIC --- */}
                                       {field.value
                                         ? (
                                             customers.find(
@@ -690,16 +685,16 @@ export default function AdminBookingForm({
                               </FormControl>
                             </PopoverTrigger>
                             <PopoverContent
-                              className="w-[300px] p-0 border-slate-200 shadow-xl"
+                              className="w-[300px] p-0 border-border shadow-xl rounded-lg bg-popover"
                               align="start"
                             >
                               <Command>
                                 <CommandInput
                                   placeholder="Search name or email..."
-                                  className="text-xs h-9"
+                                  className="text-[11px] h-9 font-medium"
                                 />
-                                <CommandList>
-                                  <CommandEmpty className="text-xs py-4 text-center text-slate-500">
+                                <CommandList className="custom-scrollbar">
+                                  <CommandEmpty className="text-[10px] py-4 text-center text-muted-foreground font-semibold">
                                     No matching customer found.
                                   </CommandEmpty>
                                   <CommandGroup>
@@ -710,21 +705,21 @@ export default function AdminBookingForm({
                                         onSelect={() =>
                                           setValue("user_id", user.user_id)
                                         }
-                                        className="py-2 cursor-pointer"
+                                        className="py-2 cursor-pointer transition-colors focus:bg-secondary"
                                       >
                                         <Check
                                           className={cn(
-                                            "mr-2 h-4 w-4",
+                                            "mr-2 h-3.5 w-3.5",
                                             user.user_id === field.value
-                                              ? "opacity-100 text-blue-600"
+                                              ? "opacity-100 text-primary"
                                               : "opacity-0",
                                           )}
                                         />
                                         <div className="flex flex-col overflow-hidden">
-                                          <span className="text-xs font-bold text-slate-800 truncate">
+                                          <span className="text-[11px] font-bold text-foreground truncate">
                                             {user.full_name}
                                           </span>
-                                          <span className="text-[10px] font-medium text-slate-500 truncate">
+                                          <span className="text-[9px] font-medium text-muted-foreground truncate">
                                             {user.email}
                                           </span>
                                         </div>
@@ -735,14 +730,14 @@ export default function AdminBookingForm({
                               </Command>
                             </PopoverContent>
                           </Popover>
-                          <FormMessage className="text-[10px]" />
+                          <FormMessage className="text-[9px]" />
                         </FormItem>
                       )}
                     />
                   </div>
 
-                  <div className="space-y-1.5">
-                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                  <div className="space-y-1">
+                    <label className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">
                       Assigned Vehicle
                     </label>
                     <FormField
@@ -757,16 +752,16 @@ export default function AdminBookingForm({
                                   variant="outline"
                                   role="combobox"
                                   className={cn(
-                                    "w-full justify-between h-9 text-xs bg-slate-50/50 border-slate-200 hover:bg-white focus:ring-1 focus:ring-slate-300",
+                                    "w-full justify-between h-8 text-[11px] bg-secondary border-border hover:bg-background focus:ring-1 focus:ring-primary rounded-lg shadow-none transition-colors",
                                     !field.value && "text-muted-foreground",
                                   )}
                                 >
                                   <div className="flex items-center truncate">
-                                    <CarFront className="mr-2 h-3.5 w-3.5 text-slate-400 shrink-0" />
+                                    <CarFront className="mr-2 h-3.5 w-3.5 text-muted-foreground shrink-0" />
                                     <span
                                       className={cn(
-                                        "truncate font-medium",
-                                        field.value ? "text-slate-900" : "",
+                                        "truncate font-semibold",
+                                        field.value ? "text-foreground" : "",
                                       )}
                                     >
                                       {field.value
@@ -780,16 +775,16 @@ export default function AdminBookingForm({
                               </FormControl>
                             </PopoverTrigger>
                             <PopoverContent
-                              className="w-[300px] p-0 border-slate-200 shadow-xl"
+                              className="w-[300px] p-0 border-border shadow-xl rounded-lg bg-popover"
                               align="start"
                             >
                               <Command>
                                 <CommandInput
                                   placeholder="Search unit..."
-                                  className="text-xs h-9"
+                                  className="text-[11px] h-9 font-medium"
                                 />
-                                <CommandList>
-                                  <CommandEmpty className="text-xs py-4 text-center text-slate-500">
+                                <CommandList className="custom-scrollbar">
+                                  <CommandEmpty className="text-[10px] py-4 text-center text-muted-foreground font-semibold">
                                     No vehicle found.
                                   </CommandEmpty>
                                   <CommandGroup>
@@ -800,21 +795,21 @@ export default function AdminBookingForm({
                                         onSelect={() =>
                                           setValue("car_id", car.car_id || "")
                                         }
-                                        className="py-2 cursor-pointer"
+                                        className="py-2 cursor-pointer transition-colors focus:bg-secondary"
                                       >
                                         <Check
                                           className={cn(
-                                            "mr-2 h-4 w-4",
+                                            "mr-2 h-3.5 w-3.5",
                                             car.car_id === field.value
-                                              ? "opacity-100 text-blue-600"
+                                              ? "opacity-100 text-primary"
                                               : "opacity-0",
                                           )}
                                         />
                                         <div className="flex flex-col overflow-hidden">
-                                          <span className="text-xs font-bold text-slate-800 truncate">
+                                          <span className="text-[11px] font-bold text-foreground truncate">
                                             {car.brand}
                                           </span>
-                                          <span className="text-[10px] font-medium text-slate-500 truncate font-mono mt-0.5">
+                                          <span className="text-[9px] font-bold font-mono text-muted-foreground truncate uppercase tracking-widest mt-0.5">
                                             {car.plate_number}
                                           </span>
                                         </div>
@@ -825,7 +820,7 @@ export default function AdminBookingForm({
                               </Command>
                             </PopoverContent>
                           </Popover>
-                          <FormMessage className="text-[10px]" />
+                          <FormMessage className="text-[9px]" />
                         </FormItem>
                       )}
                     />
@@ -834,20 +829,18 @@ export default function AdminBookingForm({
               </div>
 
               {/* SECTION 2: SCHEDULE */}
-              <div className="bg-white border border-slate-200 rounded-lg p-5 shadow-sm space-y-4">
-                <div className="flex items-center justify-between mb-2">
+              <div className="bg-card border border-border rounded-xl p-4 shadow-sm space-y-4 transition-colors">
+                <div className="flex items-center justify-between mb-1">
                   <div className="flex items-center gap-2">
-                    <Clock className="w-4 h-4 text-slate-400" />
-                    <h3 className="text-sm font-bold text-slate-800 tracking-tight">
+                    <Clock className="w-4 h-4 text-primary" />
+                    <h3 className="text-xs font-bold text-foreground tracking-tight uppercase">
                       Rental Period
                     </h3>
                   </div>
                   {/* Auto-Return Summary Badge */}
-                  <div className="flex items-center gap-2 text-[11px] font-medium bg-slate-50 border border-slate-200 px-2.5 py-1 rounded-sm">
-                    <span className="text-slate-500">Duration:</span>
-                    <span className="font-bold text-slate-800">
-                      {duration * 24} hrs
-                    </span>
+                  <div className="flex items-center gap-1.5 text-[9px] font-bold bg-secondary border border-border px-2 py-0.5 rounded uppercase tracking-widest text-muted-foreground">
+                    <span>Duration:</span>
+                    <span className="text-foreground">{duration * 24} hrs</span>
                   </div>
                 </div>
 
@@ -856,8 +849,8 @@ export default function AdminBookingForm({
                     control={control}
                     name="start_date"
                     render={({ field }) => (
-                      <FormItem className="flex flex-col">
-                        <FormLabel className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                      <FormItem className="flex flex-col space-y-1">
+                        <FormLabel className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">
                           Start Date
                         </FormLabel>
                         <Popover>
@@ -865,7 +858,7 @@ export default function AdminBookingForm({
                             <Button
                               variant={"outline"}
                               className={cn(
-                                "w-full pl-3 text-left font-medium h-9 bg-slate-50/50 border-slate-200 hover:bg-white text-xs",
+                                "w-full pl-3 text-left font-semibold h-8 bg-secondary border-border hover:bg-background text-[11px] rounded-lg shadow-none transition-colors",
                                 !field.value && "text-muted-foreground",
                               )}
                             >
@@ -874,11 +867,11 @@ export default function AdminBookingForm({
                               ) : (
                                 <span>Pick date</span>
                               )}
-                              <CalendarIcon className="ml-auto h-3.5 w-3.5 opacity-50" />
+                              <CalendarIcon className="ml-auto h-3.5 w-3.5 text-muted-foreground" />
                             </Button>
                           </PopoverTrigger>
                           <PopoverContent
-                            className="w-auto p-0 border-slate-200 shadow-xl rounded-xl"
+                            className="w-auto p-0 border-border shadow-xl rounded-xl bg-card"
                             align="start"
                           >
                             <Calendar
@@ -892,16 +885,17 @@ export default function AdminBookingForm({
                               }}
                               disabled={(date) => date < today}
                               initialFocus
+                              className="bg-card text-foreground"
                             />
                           </PopoverContent>
                         </Popover>
-                        <FormMessage className="text-[10px]" />
+                        <FormMessage className="text-[9px]" />
                       </FormItem>
                     )}
                   />
 
-                  <FormItem>
-                    <FormLabel className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                  <FormItem className="space-y-1">
+                    <FormLabel className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">
                       Start Time
                     </FormLabel>
                     <div className="relative">
@@ -909,14 +903,14 @@ export default function AdminBookingForm({
                         type="time"
                         value={startTime}
                         onChange={(e) => setStartTime(e.target.value)}
-                        className="pl-9 h-9 text-xs font-medium bg-slate-50/50 border-slate-200 hover:bg-white focus-visible:ring-1 focus-visible:ring-slate-300 transition-colors"
+                        className="pl-8 h-8 text-[11px] font-semibold bg-secondary border-border hover:bg-background focus-visible:ring-primary rounded-lg shadow-none transition-colors"
                       />
-                      <Clock className="absolute left-3 top-2.5 h-3.5 w-3.5 text-slate-400" />
+                      <Clock className="absolute left-2.5 top-2 h-3.5 w-3.5 text-muted-foreground" />
                     </div>
                   </FormItem>
 
-                  <FormItem>
-                    <FormLabel className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                  <FormItem className="space-y-1">
+                    <FormLabel className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">
                       Duration (Days)
                     </FormLabel>
                     <Input
@@ -926,21 +920,21 @@ export default function AdminBookingForm({
                       onChange={(e) =>
                         setDuration(parseInt(e.target.value) || 1)
                       }
-                      className="h-9 text-xs font-medium bg-slate-50/50 border-slate-200 hover:bg-white focus-visible:ring-1 focus-visible:ring-slate-300 transition-colors"
+                      className="h-8 text-[11px] font-semibold bg-secondary border-border hover:bg-background focus-visible:ring-primary rounded-lg shadow-none transition-colors"
                     />
                   </FormItem>
                 </div>
               </div>
 
               {/* SECTION 3: LOGISTICS */}
-              <div className="bg-white border border-slate-200 rounded-lg p-5 shadow-sm space-y-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <Car className="w-4 h-4 text-slate-400" />
-                  <h3 className="text-sm font-bold text-slate-800 tracking-tight">
+              <div className="bg-card border border-border rounded-xl p-4 shadow-sm space-y-4 transition-colors">
+                <div className="flex items-center gap-2 mb-1">
+                  <Car className="w-4 h-4 text-primary" />
+                  <h3 className="text-xs font-bold text-foreground tracking-tight uppercase">
                     Location Logistics
                   </h3>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <LocationField
                     type="pickup"
                     hubs={hubs}
@@ -957,35 +951,142 @@ export default function AdminBookingForm({
                   />
                 </div>
               </div>
+
+              {/* SECTION 4: ADD-ONS & EXTRAS (Moved to Left Side) */}
+              <div className="bg-card border border-border rounded-xl p-4 shadow-sm space-y-3 transition-colors">
+                <div className="flex items-center justify-between mb-1">
+                  <div className="flex items-center gap-2">
+                    <Plus className="w-4 h-4 text-primary" />
+                    <h3 className="text-xs font-bold text-foreground tracking-tight uppercase">
+                      Add-ons & Extras
+                    </h3>
+                  </div>
+                  <Badge
+                    variant="secondary"
+                    className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground bg-secondary border-border"
+                  >
+                    Total: ₱ {extrasTotal.toLocaleString()}
+                  </Badge>
+                </div>
+
+                <div className="space-y-2">
+                  {fields.map((item, index) => (
+                    <div
+                      key={item.id}
+                      className="flex gap-2 items-center bg-secondary/50 p-1.5 rounded-lg border border-border shadow-sm transition-colors"
+                    >
+                      <Input
+                        value={watch(`additional_charges.${index}.category`)}
+                        onChange={(e) =>
+                          setValue(
+                            `additional_charges.${index}.category`,
+                            e.target.value,
+                          )
+                        }
+                        className="h-7 text-[11px] font-semibold bg-background border-border shadow-none focus-visible:ring-1 focus-visible:ring-primary px-2"
+                        placeholder="Item name"
+                      />
+                      <span className="text-[10px] font-bold text-muted-foreground">
+                        ₱
+                      </span>
+                      <Input
+                        type="number"
+                        value={watch(`additional_charges.${index}.amount`)}
+                        onChange={(e) => {
+                          const val = parseFloat(e.target.value);
+                          setValue(
+                            `additional_charges.${index}.amount`,
+                            isNaN(val) ? 0 : val,
+                          );
+                        }}
+                        className="h-7 text-[11px] text-right w-20 bg-background border-border shadow-none focus-visible:ring-1 focus-visible:ring-primary px-2 font-bold text-foreground font-mono"
+                      />
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="ghost"
+                        className="h-7 w-7 text-destructive/70 hover:text-destructive hover:bg-destructive/10 shrink-0 rounded-md transition-colors"
+                        onClick={() => remove(index)}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  ))}
+
+                  <div className="flex gap-2 pt-1.5">
+                    <Select
+                      onValueChange={(val) => {
+                        const pre = PREDEFINED_CHARGES.find(
+                          (p) => p.label === val,
+                        );
+                        if (pre)
+                          append({
+                            category: pre.label,
+                            amount: pre.amount,
+                            description: "",
+                          });
+                      }}
+                    >
+                      <SelectTrigger className="h-8 text-[10px] font-bold uppercase tracking-widest flex-1 bg-secondary border-border shadow-none rounded-lg transition-colors text-muted-foreground">
+                        <SelectValue placeholder="Add predefined item..." />
+                      </SelectTrigger>
+                      <SelectContent className="bg-popover border-border rounded-lg shadow-xl">
+                        {PREDEFINED_CHARGES.map((c) => (
+                          <SelectItem
+                            key={c.label}
+                            value={c.label}
+                            className="text-[10px] font-bold uppercase tracking-widest"
+                          >
+                            {c.label}{" "}
+                            <span className="text-muted-foreground font-medium ml-1">
+                              (+₱{c.amount})
+                            </span>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={() => append({ category: "Custom", amount: 0 })}
+                      className="h-8 text-[10px] font-bold uppercase tracking-widest border-border bg-secondary hover:bg-background text-foreground shadow-none rounded-lg transition-colors"
+                    >
+                      <Plus className="h-3.5 w-3.5 mr-1.5 text-muted-foreground" />{" "}
+                      Custom
+                    </Button>
+                  </div>
+                </div>
+              </div>
             </div>
 
             {/* RIGHT COLUMN: FINANCIAL INVOICE */}
-            <div className="space-y-4">
-              <div className="bg-white border border-slate-200 rounded-lg shadow-md sticky top-6 overflow-hidden flex flex-col">
+            <div className="space-y-4 h-full">
+              <div className="bg-card border border-border rounded-xl shadow-md sticky top-0 overflow-hidden flex flex-col h-auto transition-colors">
                 {/* Header */}
-                <div className="bg-slate-900 border-b border-slate-800 px-5 py-4 flex items-center justify-between shadow-sm">
+                <div className="bg-secondary/50 border-b border-border px-4 py-3 flex items-center justify-between transition-colors">
                   <div className="flex items-center gap-2">
-                    <Receipt className="w-4 h-4 text-slate-300" />
-                    <h3 className="text-sm font-bold text-white tracking-wide uppercase">
+                    <Receipt className="w-4 h-4 text-primary" />
+                    <h3 className="text-xs font-bold text-foreground tracking-widest uppercase">
                       Invoice
                     </h3>
                   </div>
                 </div>
 
                 {/* Line Items */}
-                <div className="p-5 space-y-5 bg-slate-50 flex-1">
+                <div className="p-4 space-y-4 bg-background flex-1 transition-colors">
                   {/* Base Rate */}
-                  <div className="space-y-2.5">
+                  <div className="space-y-2">
                     <div className="flex justify-between items-start">
                       <div className="flex flex-col">
-                        <span className="text-xs font-bold text-slate-800">
-                          Vehicle Rental
+                        <span className="text-[11px] font-bold text-foreground">
+                          Vehicle rental
                         </span>
-                        <span className="text-[10px] font-medium text-slate-500 mt-0.5">
-                          {days} Days x ₱{dailyRate.toLocaleString()}
+                        <span className="text-[9px] font-medium text-muted-foreground mt-0.5">
+                          {days} days x ₱{dailyRate.toLocaleString()}
                         </span>
                       </div>
-                      <span className="text-sm font-bold text-slate-900">
+                      <span className="text-xs font-black text-foreground font-mono">
                         ₱ {rentTotal.toLocaleString()}
                       </span>
                     </div>
@@ -1001,9 +1102,9 @@ export default function AdminBookingForm({
                               : undefined,
                           )
                         }
-                        className="scale-75 origin-left data-[state=checked]:bg-blue-600"
+                        className="scale-75 origin-left data-[state=checked]:bg-primary"
                       />
-                      <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">
+                      <span className="text-[9px] text-muted-foreground font-bold uppercase tracking-wider">
                         Override daily rate
                       </span>
                     </div>
@@ -1012,7 +1113,7 @@ export default function AdminBookingForm({
                       <div className="animate-in slide-in-from-top-1">
                         <Input
                           type="number"
-                          className="h-8 text-right text-xs max-w-[140px] bg-white border-slate-200 font-medium shadow-sm"
+                          className="h-7 text-right text-[11px] font-bold max-w-[120px] bg-secondary border-border shadow-none rounded-md transition-colors"
                           value={wCustomRate}
                           onChange={(e) =>
                             setValue(
@@ -1025,39 +1126,39 @@ export default function AdminBookingForm({
                     )}
                   </div>
 
-                  <Separator className="border-slate-200" />
+                  <Separator className="bg-border" />
 
                   {/* Driver */}
-                  <div className="space-y-3">
+                  <div className="space-y-2.5">
                     <div className="flex justify-between items-center">
                       <div className="flex items-center gap-2">
                         <Switch
                           checked={wWithDriver}
                           onCheckedChange={(c) => setValue("with_driver", c)}
-                          className="scale-75 origin-left data-[state=checked]:bg-blue-600"
+                          className="scale-75 origin-left data-[state=checked]:bg-primary"
                         />
-                        <span className="text-xs font-bold text-slate-800">
-                          Include Driver
+                        <span className="text-[11px] font-bold text-foreground">
+                          Include driver
                         </span>
                       </div>
                       {wWithDriver && (
-                        <span className="text-sm font-bold text-slate-900">
+                        <span className="text-xs font-black text-foreground font-mono">
                           ₱ {driverTotal.toLocaleString()}
                         </span>
                       )}
                     </div>
                     {wWithDriver && (
-                      <div className="flex items-center justify-between pl-10 animate-in slide-in-from-top-1">
-                        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                      <div className="flex items-center justify-between pl-9 animate-in slide-in-from-top-1">
+                        <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">
                           Fee per day
                         </span>
                         <div className="flex items-center gap-1.5">
-                          <span className="text-xs font-semibold text-slate-400">
+                          <span className="text-[10px] font-bold text-muted-foreground">
                             ₱
                           </span>
                           <Input
                             type="number"
-                            className="w-20 h-8 text-right px-2 text-xs bg-white border-slate-200 font-medium shadow-sm"
+                            className="w-16 h-7 text-right px-2 text-[11px] font-bold bg-secondary border-border shadow-none rounded-md transition-colors"
                             value={wDriverFee}
                             onChange={(e) =>
                               setValue(
@@ -1071,131 +1172,23 @@ export default function AdminBookingForm({
                     )}
                   </div>
 
-                  {/* Extras Accordion */}
-                  <Accordion type="single" collapsible className="w-full">
-                    <AccordionItem
-                      value="charges"
-                      className="border-y border-slate-200"
-                    >
-                      <AccordionTrigger className="py-3 hover:no-underline flex justify-between w-full pr-0">
-                        <span className="text-xs font-bold text-slate-800">
-                          Add-ons & Fees
-                        </span>
-                        <span className="text-sm font-bold text-slate-900 pr-2">
-                          ₱ {extrasTotal.toLocaleString()}
-                        </span>
-                      </AccordionTrigger>
-                      <AccordionContent className="pt-2 pb-3">
-                        <div className="space-y-2">
-                          {fields.map((item, index) => (
-                            <div
-                              key={item.id}
-                              className="flex gap-2 items-center bg-white p-1.5 rounded-md border border-slate-200 shadow-sm"
-                            >
-                              <Input
-                                value={watch(
-                                  `additional_charges.${index}.category`,
-                                )}
-                                onChange={(e) =>
-                                  setValue(
-                                    `additional_charges.${index}.category`,
-                                    e.target.value,
-                                  )
-                                }
-                                className="h-7 text-xs bg-transparent border-none shadow-none focus-visible:ring-0 px-2 font-medium"
-                                placeholder="Item name"
-                              />
-                              <span className="text-[10px] font-bold text-slate-400">
-                                ₱
-                              </span>
-                              <Input
-                                type="number"
-                                value={watch(
-                                  `additional_charges.${index}.amount`,
-                                )}
-                                onChange={(e) => {
-                                  const val = parseFloat(e.target.value);
-                                  setValue(
-                                    `additional_charges.${index}.amount`,
-                                    isNaN(val) ? 0 : val,
-                                  );
-                                }}
-                                className="h-7 text-xs text-right w-16 bg-transparent border-none shadow-none focus-visible:ring-0 px-1 font-bold text-slate-700"
-                              />
-                              <Button
-                                size="icon"
-                                variant="ghost"
-                                className="h-7 w-7 text-red-400 hover:text-red-600 hover:bg-red-50 shrink-0 rounded-sm"
-                                onClick={() => remove(index)}
-                              >
-                                <Trash2 className="h-3.5 w-3.5" />
-                              </Button>
-                            </div>
-                          ))}
-                          <div className="flex gap-2 pt-2">
-                            <Select
-                              onValueChange={(val) => {
-                                const pre = PREDEFINED_CHARGES.find(
-                                  (p) => p.label === val,
-                                );
-                                if (pre)
-                                  append({
-                                    category: pre.label,
-                                    amount: pre.amount,
-                                    description: "",
-                                  });
-                              }}
-                            >
-                              <SelectTrigger className="h-8 text-[11px] font-medium flex-1 bg-white border-slate-200 shadow-sm">
-                                <SelectValue placeholder="Add an item..." />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {PREDEFINED_CHARGES.map((c) => (
-                                  <SelectItem
-                                    key={c.label}
-                                    value={c.label}
-                                    className="text-[11px] font-medium"
-                                  >
-                                    {c.label}{" "}
-                                    <span className="text-slate-400 font-bold ml-1">
-                                      (+₱{c.amount})
-                                    </span>
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                            <Button
-                              type="button"
-                              size="sm"
-                              variant="outline"
-                              onClick={() =>
-                                append({ category: "Custom", amount: 0 })
-                              }
-                              className="h-8 w-8 shrink-0 p-0 border-slate-200 shadow-sm bg-white"
-                            >
-                              <Plus className="h-4 w-4 text-slate-600" />
-                            </Button>
-                          </div>
-                        </div>
-                      </AccordionContent>
-                    </AccordionItem>
-                  </Accordion>
+                  <Separator className="bg-border" />
 
                   {/* Logistics Fees */}
                   {((wPickupPrice || 0) > 0 || (wDropoffPrice || 0) > 0) && (
-                    <div className="space-y-2 text-xs">
+                    <div className="space-y-1.5 text-[11px]">
                       {(wPickupPrice || 0) > 0 && (
-                        <div className="flex justify-between items-center text-slate-700">
-                          <span className="font-semibold">Pickup Fee</span>
-                          <span className="font-bold text-slate-900">
+                        <div className="flex justify-between items-center text-foreground">
+                          <span className="font-semibold">Pickup fee</span>
+                          <span className="font-black font-mono">
                             ₱ {wPickupPrice?.toLocaleString()}
                           </span>
                         </div>
                       )}
                       {(wDropoffPrice || 0) > 0 && (
-                        <div className="flex justify-between items-center text-slate-700">
-                          <span className="font-semibold">Dropoff Fee</span>
-                          <span className="font-bold text-slate-900">
+                        <div className="flex justify-between items-center text-foreground">
+                          <span className="font-semibold">Dropoff fee</span>
+                          <span className="font-black font-mono">
                             ₱ {wDropoffPrice?.toLocaleString()}
                           </span>
                         </div>
@@ -1203,18 +1196,40 @@ export default function AdminBookingForm({
                     </div>
                   )}
 
+                  {/* Breakdown of Add-ons (since we moved the inputs to the left) */}
+                  {wExtras && wExtras.length > 0 && (
+                    <div className="space-y-1.5 pt-1.5">
+                      <div className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest mb-1">
+                        Add-ons
+                      </div>
+                      {wExtras.map((extra, idx) => (
+                        <div
+                          key={idx}
+                          className="flex justify-between items-center text-[10px] text-foreground"
+                        >
+                          <span className="font-medium truncate pr-2">
+                            • {extra.category || "Unnamed Item"}
+                          </span>
+                          <span className="font-mono font-bold shrink-0">
+                            ₱ {extra.amount?.toLocaleString()}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
                   {/* Discount */}
-                  <div className="flex justify-between items-center pt-2">
-                    <span className="text-xs font-bold text-slate-800">
+                  <div className="flex justify-between items-center pt-1.5">
+                    <span className="text-[11px] font-bold text-foreground">
                       Discount
                     </span>
                     <div className="flex items-center gap-1.5">
-                      <span className="text-xs font-bold text-slate-400">
+                      <span className="text-[10px] font-bold text-muted-foreground">
                         - ₱
                       </span>
                       <Input
                         type="number"
-                        className="w-20 h-8 text-right text-red-600 font-bold border-red-200 text-xs focus-visible:ring-red-500 bg-white shadow-sm"
+                        className="w-16 h-7 text-right text-destructive font-black font-mono border-destructive/30 focus-visible:ring-destructive bg-destructive/5 shadow-none rounded-md"
                         value={wDiscount}
                         onChange={(e) =>
                           setValue(
@@ -1227,28 +1242,28 @@ export default function AdminBookingForm({
                   </div>
 
                   {/* Deposit */}
-                  <div className="bg-amber-100/50 p-3 rounded-md border border-amber-200 flex justify-between items-center mt-4">
-                    <div className="flex items-center gap-1.5 text-xs">
-                      <span className="font-bold text-amber-900">
-                        Security Deposit
+                  <div className="bg-amber-500/10 p-2.5 rounded-lg border border-amber-500/20 flex justify-between items-center mt-3 transition-colors">
+                    <div className="flex items-center gap-1.5 text-[11px]">
+                      <span className="font-bold text-amber-600 dark:text-amber-400">
+                        Security deposit
                       </span>
                       <Popover>
                         <PopoverTrigger>
-                          <Info className="h-3.5 w-3.5 text-amber-500 hover:text-amber-600 transition-colors" />
+                          <Info className="h-3 w-3 text-amber-500 hover:text-amber-600 transition-colors" />
                         </PopoverTrigger>
-                        <PopoverContent className="text-[10px] w-48 p-2.5 font-medium border-amber-200 shadow-md">
+                        <PopoverContent className="text-[9px] uppercase tracking-widest w-48 p-2 font-bold border-amber-500/20 shadow-xl bg-card">
                           Refundable holding amount required before vehicle
                           release.
                         </PopoverContent>
                       </Popover>
                     </div>
                     <div className="flex items-center gap-1.5">
-                      <span className="text-xs font-bold text-amber-700">
+                      <span className="text-[10px] font-bold text-amber-600/70">
                         ₱
                       </span>
                       <Input
                         type="number"
-                        className="w-20 h-8 text-right text-xs font-bold bg-white border-amber-200 text-amber-900 shadow-sm"
+                        className="w-16 h-7 text-right text-[11px] font-black font-mono bg-background border-amber-500/30 text-amber-700 dark:text-amber-300 shadow-none rounded-md"
                         value={wSecurityDeposit}
                         onChange={(e) =>
                           setValue(
@@ -1262,19 +1277,19 @@ export default function AdminBookingForm({
                 </div>
 
                 {/* --- FOOTER TOTALS --- */}
-                <div className="bg-white border-t border-slate-200 p-0">
-                  <div className="flex justify-between items-end p-5 bg-slate-900 text-white">
-                    <span className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">
+                <div className="bg-card border-t border-border p-0 transition-colors">
+                  <div className="flex justify-between items-end px-4 py-3 bg-primary text-primary-foreground">
+                    <span className="text-[10px] font-bold uppercase tracking-widest opacity-90">
                       Grand Total
                     </span>
-                    <span className="text-3xl font-black leading-none tracking-tight">
+                    <span className="text-2xl font-black leading-none font-mono">
                       ₱ {totalPayable.toLocaleString()}
                     </span>
                   </div>
 
                   {/* Upfront Payment Section connected to Total */}
-                  <div className="p-4 bg-slate-50 border-t border-slate-200">
-                    <div className="flex items-center space-x-2 mb-3">
+                  <div className="p-3 bg-secondary/30 border-t border-border">
+                    <div className="flex items-center space-x-2 mb-2.5">
                       <Checkbox
                         id="pay"
                         checked={!!wPayment}
@@ -1284,27 +1299,27 @@ export default function AdminBookingForm({
                             c ? { amount: 1000, method: "Cash" } : undefined,
                           )
                         }
-                        className="border-slate-300 data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600 rounded-sm"
+                        className="border-muted-foreground data-[state=checked]:bg-primary data-[state=checked]:border-primary rounded"
                       />
                       <label
                         htmlFor="pay"
-                        className="text-xs font-bold text-slate-700 cursor-pointer select-none"
+                        className="text-[10px] font-bold text-foreground uppercase tracking-widest cursor-pointer select-none"
                       >
                         Record initial payment now
                       </label>
                     </div>
 
                     {wPayment && (
-                      <div className="grid gap-2.5 animate-in fade-in slide-in-from-top-2 mb-3">
-                        <div className="flex gap-2">
+                      <div className="grid gap-2 animate-in fade-in slide-in-from-top-2 mb-2">
+                        <div className="flex gap-1.5">
                           <div className="relative flex-1">
-                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">
+                            <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[10px] font-bold text-muted-foreground">
                               ₱
                             </span>
                             <Input
                               type="number"
                               placeholder="Amount"
-                              className="h-9 text-xs pl-7 font-bold text-slate-900 bg-white border-slate-200 shadow-sm"
+                              className="h-8 text-[11px] pl-6 font-black font-mono text-foreground bg-secondary border-border shadow-none rounded-md transition-colors"
                               value={wPayment.amount}
                               onChange={(e) =>
                                 setValue(
@@ -1320,62 +1335,51 @@ export default function AdminBookingForm({
                               setValue("initial_payment.method", v)
                             }
                           >
-                            <SelectTrigger className="h-9 text-xs font-bold w-[110px] bg-white border-slate-200 shadow-sm">
+                            <SelectTrigger className="h-8 text-[11px] font-bold w-[90px] bg-secondary border-border shadow-none rounded-md transition-colors">
                               <SelectValue />
                             </SelectTrigger>
-                            <SelectContent>
+                            <SelectContent className="bg-popover border-border rounded-md shadow-xl">
                               <SelectItem
                                 value="Cash"
-                                className="text-xs font-medium"
+                                className="text-[10px] font-bold uppercase tracking-widest"
                               >
                                 Cash
                               </SelectItem>
                               <SelectItem
                                 value="GCash"
-                                className="text-xs font-medium"
+                                className="text-[10px] font-bold uppercase tracking-widest"
                               >
                                 GCash
                               </SelectItem>
                               <SelectItem
                                 value="Card"
-                                className="text-xs font-medium"
+                                className="text-[10px] font-bold uppercase tracking-widest"
                               >
                                 Card
                               </SelectItem>
                               <SelectItem
                                 value="Bank Transfer"
-                                className="text-xs font-medium"
+                                className="text-[10px] font-bold uppercase tracking-widest"
                               >
-                                Bank Transfer
+                                Transfer
                               </SelectItem>
                             </SelectContent>
                           </Select>
                         </div>
-                        <Input
-                          className="h-9 text-xs font-medium bg-white border-slate-200 shadow-sm"
-                          placeholder="Reference Number (Optional)"
-                          value={wPayment.reference || ""}
-                          onChange={(e) =>
-                            setValue(
-                              "initial_payment.reference",
-                              e.target.value,
-                            )
-                          }
-                        />
                       </div>
                     )}
 
-                    <div className="flex justify-between items-center text-[11px] font-black uppercase tracking-wider pt-3 border-t border-slate-200">
+                    <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest pt-2.5 border-t border-border mt-1">
                       <span
                         className={cn(
                           balanceDue > 0
-                            ? "text-amber-600"
-                            : "text-emerald-600",
+                            ? "text-amber-600 dark:text-amber-400"
+                            : "text-emerald-600 dark:text-emerald-400",
                         )}
                       >
                         Remaining Balance
                       </span>
-                      <span className="text-sm">
+                      <span className="text-xs font-mono">
                         ₱ {balanceDue.toLocaleString()}
                       </span>
                     </div>
@@ -1389,18 +1393,18 @@ export default function AdminBookingForm({
 
       {/* Map Dialog */}
       <Dialog open={mapOpen} onOpenChange={setMapOpen}>
-        <DialogContent className="max-w-4xl h-[80vh] p-0 overflow-hidden flex flex-col rounded-xl border-slate-200 shadow-2xl">
-          <DialogHeader className="p-4 bg-white border-b border-slate-100 z-10 shadow-sm shrink-0">
-            <DialogTitle className="text-base font-bold text-slate-900">
+        <DialogContent className="max-w-4xl w-[95vw] h-[80vh] p-0 overflow-hidden flex flex-col rounded-2xl border-border bg-background shadow-2xl transition-colors duration-300">
+          <DialogHeader className="p-4 bg-card border-b border-border z-10 shadow-sm shrink-0 transition-colors">
+            <DialogTitle className="text-sm font-bold text-foreground uppercase tracking-widest">
               Select {activeMapField === "pickup" ? "Pick-up" : "Drop-off"}{" "}
               Location
             </DialogTitle>
-            <p className="text-[11px] font-medium text-slate-500">
+            <p className="text-[10px] font-medium text-muted-foreground mt-1">
               Click a blue pin to use a Hub (Free), or click anywhere else on
               the map to set a Custom Delivery Location.
             </p>
           </DialogHeader>
-          <div className="flex-1 relative h-full bg-slate-100">
+          <div className="flex-1 relative h-full bg-muted">
             <OrmocMapSelector
               hubs={hubs}
               onLocationSelect={(lat, lng, name) => {

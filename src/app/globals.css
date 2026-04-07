@@ -167,84 +167,36 @@ body {
   * {
     @apply border-border outline-ring/50;
   }
+
   body {
     @apply bg-background text-foreground;
     font-family: var(--font-inter), sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    overflow-x: hidden;
   }
 }
 
 @layer utilities {
   /* 1. Chrome, Edge, and Safari */
   ::-webkit-scrollbar {
-    width: 8px; /* Width of the vertical scrollbar */
-    height: 8px; /* Height of the horizontal scrollbar */
+    width: 6px; /* Reduced from 8px so it stays thin natively */
+    height: 6px;
   }
 
   ::-webkit-scrollbar-track {
-    background: transparent; /* The background of the bar */
+    background: transparent;
   }
 
   ::-webkit-scrollbar-thumb {
-    background: hsl(var(--border)); /* Color of the handle */
-    border-radius: 9999px; /* Rounded corners */
-    border: 2px solid transparent; /* Creates padding around the thumb */
-    background-clip: content-box; /* Makes the border act as padding */
+    background: hsl(var(--border));
+    border-radius: 9999px;
+    /* Removed the transparent border trick so it sits flush against the right edge */
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    background: hsl(var(--muted-foreground)); /* Darker on hover */
-    border: 2px solid transparent;
-    background-clip: content-box;
-  }
-
-  /* 2. Firefox (Standard CSS) */
-  * {
-    scrollbar-width: thin; /* Options: auto, thin, none */
-    scrollbar-color: hsl(var(--border)) transparent; /* thumb track */
-  }
-
-  /* Standard Scrollbar (For the main page body) */
-  .custom-scrollbar {
-    scrollbar-width: auto;
-    scrollbar-color: #cbd5e1 transparent;
-  }
-  .custom-scrollbar::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
-  }
-  .custom-scrollbar::-webkit-scrollbar-track {
-    background: transparent;
-  }
-  .custom-scrollbar::-webkit-scrollbar-thumb {
-    background-color: #cbd5e1; /* slate-300 */
-    border-radius: 10px;
-    border: 2px solid transparent; /* Creates padding around the thumb */
-    background-clip: padding-box;
-  }
-  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-    background-color: #94a3b8; /* slate-400 */
-  }
-
-  /* Thin Scrollbar (For the DataGrid Table and Dossier Sidebar) */
-  .thin-scrollbar {
-    scrollbar-width: thin;
-    scrollbar-color: #cbd5e1 transparent;
-  }
-  .thin-scrollbar::-webkit-scrollbar {
-    width: 4px;
-    height: 4px;
-  }
-  .thin-scrollbar::-webkit-scrollbar-track {
-    background: transparent;
-  }
-  .thin-scrollbar::-webkit-scrollbar-thumb {
-    background-color: #cbd5e1; /* slate-300 */
-    border-radius: 4px;
-  }
-  .thin-scrollbar::-webkit-scrollbar-thumb:hover {
-    background-color: #94a3b8; /* slate-400 */
+    background: hsl(var(--muted-foreground));
   }
 }
 

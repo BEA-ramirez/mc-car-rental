@@ -89,7 +89,7 @@ export default function MyBookingsPage() {
               </span>
             </h1>
             <p className="text-gray-400 text-xs sm:text-sm md:text-base max-w-sm font-medium leading-relaxed">
-              Track your reservations, view your itinerary, and review your
+              Track your reservations, view your bookings, and review your
               rental history all in one place.
             </p>
           </motion.div>
@@ -131,7 +131,7 @@ export default function MyBookingsPage() {
             <div className="flex flex-col items-center justify-center py-16 md:py-24 gap-4 md:gap-6">
               <div className="w-10 h-10 md:w-12 md:h-12 border-4 border-white/10 border-t-[#64c5c3] rounded-full animate-spin" />
               <span className="text-[10px] md:text-xs font-bold uppercase tracking-widest text-gray-500">
-                Loading Secure Itineraries...
+                Loading Secure Bookings...
               </span>
             </div>
           ) : filteredBookings.length > 0 ? (

@@ -5,7 +5,6 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -84,40 +83,40 @@ export default function ExtendBookingDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[450px] p-0 overflow-hidden border-slate-200 rounded-lg shadow-xl">
-        <div className="p-5 border-b border-slate-100 bg-white">
+      <DialogContent className="sm:max-w-[450px] p-0 overflow-hidden border-border bg-background rounded-xl shadow-2xl transition-colors duration-300">
+        <div className="p-4 border-b border-border bg-card transition-colors">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-slate-800 text-base">
-              <CalendarRange className="w-4 h-4 text-blue-600" />
-              Extend or Shorten Booking
+            <DialogTitle className="flex items-center gap-2 text-foreground text-sm font-bold uppercase tracking-wider">
+              <CalendarRange className="w-4 h-4 text-primary" />
+              Extend or Shorten
             </DialogTitle>
-            <DialogDescription className="text-xs">
+            <DialogDescription className="text-[11px] font-medium text-muted-foreground mt-1">
               Manually change the return date for{" "}
-              <b className="text-slate-700 font-semibold">{event.title}</b>.
+              <b className="text-foreground font-bold">{event.title}</b>.
             </DialogDescription>
           </DialogHeader>
         </div>
 
-        <div className="p-5 bg-slate-50/50 flex flex-col gap-5">
-          <div className="flex gap-3 items-end bg-white p-3 rounded-md border border-slate-200 shadow-sm">
+        <div className="p-4 bg-background flex flex-col gap-4">
+          <div className="flex gap-3 items-end bg-card p-3 rounded-xl border border-border shadow-sm transition-colors">
             <div className="flex-1 space-y-1.5">
-              <label className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">
+              <label className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">
                 New Return Date
               </label>
               <Popover>
                 <PopoverTrigger asChild>
                   <Button
-                    variant={"outline"}
+                    variant="outline"
                     className={cn(
-                      "w-full justify-start text-left font-medium h-8 bg-slate-50 border-slate-200 text-xs shadow-none",
+                      "w-full justify-start text-left font-semibold h-8 bg-secondary border-border text-[11px] text-foreground shadow-none hover:bg-background rounded-lg transition-colors",
                     )}
                   >
-                    <CalendarIcon className="mr-2 h-3.5 w-3.5 text-slate-400" />
+                    <CalendarIcon className="mr-2 h-3.5 w-3.5 text-muted-foreground" />
                     {format(newDate, "MMM d, yyyy")}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent
-                  className="w-auto p-0 border-slate-200 shadow-xl rounded-xl"
+                  className="w-auto p-0 border-border shadow-xl rounded-xl bg-card"
                   align="start"
                 >
                   <Calendar
@@ -132,14 +131,14 @@ export default function ExtendBookingDialog({
             </div>
 
             <div className="w-28 space-y-1.5">
-              <label className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">
+              <label className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">
                 Time
               </label>
               <div className="relative">
-                <Clock className="absolute left-2.5 top-2 h-3.5 w-3.5 text-slate-400" />
+                <Clock className="absolute left-2.5 top-2 h-3.5 w-3.5 text-muted-foreground" />
                 <Input
                   type="time"
-                  className="pl-8 bg-slate-50 border-slate-200 h-8 text-xs font-medium shadow-none"
+                  className="pl-8 bg-secondary border-border h-8 text-[11px] text-foreground font-semibold shadow-none hover:bg-background focus-visible:ring-primary rounded-lg transition-colors"
                   value={timeString}
                   onChange={handleTimeChange}
                 />
@@ -147,44 +146,45 @@ export default function ExtendBookingDialog({
             </div>
           </div>
 
-          <div className="flex items-center justify-between gap-4">
-            <div className="flex flex-col flex-1 items-center p-3 bg-white rounded-md border border-slate-200 shadow-sm text-center">
-              <span className="text-[9px] uppercase font-bold text-slate-400 mb-1 tracking-wider">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex flex-col flex-1 items-center p-2.5 bg-card rounded-lg border border-border shadow-sm text-center transition-colors">
+              <span className="text-[9px] uppercase font-bold text-muted-foreground mb-0.5 tracking-widest">
                 Current End
               </span>
-              <div className="font-bold text-sm text-slate-700">
+              <div className="font-bold text-xs text-foreground">
                 {format(new Date(event.end), "MMM d")}
               </div>
-              <div className="text-[10px] font-medium text-slate-500 mt-0.5">
+              <div className="text-[10px] font-medium text-muted-foreground mt-0.5">
                 {format(new Date(event.end), "h:mm a")}
               </div>
             </div>
 
-            <ArrowRight className="w-4 h-4 text-slate-300 shrink-0" />
+            <ArrowRight className="w-4 h-4 text-muted-foreground/50 shrink-0" />
 
-            <div className="flex flex-col flex-1 items-center p-3 bg-blue-50/50 rounded-md border border-blue-200 shadow-sm text-center">
-              <span className="text-[9px] uppercase font-bold text-blue-500 mb-1 tracking-wider">
+            <div className="flex flex-col flex-1 items-center p-2.5 bg-primary/10 rounded-lg border border-primary/30 shadow-sm text-center">
+              <span className="text-[9px] uppercase font-bold text-primary mb-0.5 tracking-widest">
                 New End
               </span>
-              <div className="font-bold text-sm text-blue-700">
+              <div className="font-bold text-xs text-primary">
                 {format(newDate, "MMM d")}
               </div>
-              <div className="text-[10px] font-medium text-blue-600 mt-0.5">
+              <div className="text-[10px] font-medium text-primary/80 mt-0.5">
                 {format(newDate, "h:mm a")}
               </div>
             </div>
           </div>
 
-          <div className="flex justify-center">
+          <div className="flex justify-center mt-1">
             <Badge
               variant="outline"
-              className={`text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 border ${
+              className={cn(
+                "text-[9px] uppercase font-bold tracking-widest px-2 py-0.5 border rounded-md",
                 diffDays === 0
-                  ? "bg-slate-50 text-slate-600 border-slate-200"
+                  ? "bg-secondary text-muted-foreground border-border"
                   : isExtension
-                    ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                    : "bg-red-50 text-red-700 border-red-200"
-              }`}
+                    ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
+                    : "bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20",
+              )}
             >
               {diffDays === 0
                 ? "Time Adjustment Only"
@@ -195,13 +195,13 @@ export default function ExtendBookingDialog({
           </div>
         </div>
 
-        <div className="p-4 bg-white border-t border-slate-100 flex justify-end gap-2">
+        <div className="p-3 bg-card border-t border-border flex justify-end gap-2 transition-colors">
           <Button
-            variant="ghost"
+            variant="outline"
             size="sm"
             onClick={onClose}
             disabled={isSaving}
-            className="text-xs font-semibold text-slate-600"
+            className="h-8 text-[10px] font-semibold bg-card text-foreground hover:bg-secondary border-border rounded-lg shadow-none transition-colors"
           >
             Cancel
           </Button>
@@ -209,7 +209,7 @@ export default function ExtendBookingDialog({
             size="sm"
             onClick={() => onConfirm(newDate)}
             disabled={!isValid || isSaving}
-            className="text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white shadow-sm"
+            className="h-8 text-[10px] font-bold uppercase tracking-widest bg-primary hover:opacity-90 text-primary-foreground rounded-lg shadow-sm transition-opacity"
           >
             {isSaving ? "Updating..." : "Save New Date"}
           </Button>

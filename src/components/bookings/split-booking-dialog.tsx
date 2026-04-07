@@ -5,7 +5,6 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -93,36 +92,36 @@ export default function SplitBookingDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[450px] p-0 overflow-hidden border-slate-200 rounded-lg shadow-xl">
-        <div className="p-5 border-b border-slate-100 bg-white">
+      <DialogContent className="sm:max-w-[450px] p-0 overflow-hidden border-border bg-background rounded-xl shadow-2xl transition-colors duration-300">
+        <div className="p-4 border-b border-border bg-card transition-colors">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-slate-800 text-base">
-              <Scissors className="w-4 h-4 -rotate-90 text-indigo-600" />
+            <DialogTitle className="flex items-center gap-2 text-foreground text-sm font-bold uppercase tracking-wider">
+              <Scissors className="w-4 h-4 -rotate-90 text-indigo-500" />
               Split Booking
             </DialogTitle>
-            <DialogDescription className="text-xs">
+            <DialogDescription className="text-[11px] font-medium text-muted-foreground mt-1">
               Select the exact date and time to cut this booking in half.
             </DialogDescription>
           </DialogHeader>
         </div>
 
-        <div className="p-5 bg-slate-50/50 flex flex-col gap-5">
+        <div className="p-4 bg-background flex flex-col gap-4">
           {/* DATE PICKER CONTROLS */}
-          <div className="flex gap-3 items-end bg-white p-3 rounded-md border border-slate-200 shadow-sm">
+          <div className="flex gap-3 items-end bg-card p-3 rounded-xl border border-border shadow-sm transition-colors">
             <div className="flex-1 space-y-1.5">
-              <label className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">
+              <label className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">
                 Split Date
               </label>
               <Popover>
                 <PopoverTrigger asChild>
                   <Button
-                    variant={"outline"}
+                    variant="outline"
                     className={cn(
-                      "w-full justify-start text-left font-medium h-8 bg-slate-50 border-slate-200 text-xs shadow-none",
+                      "w-full justify-start text-left font-semibold h-8 bg-secondary border-border hover:bg-background text-[11px] text-foreground shadow-none rounded-lg transition-colors",
                       !splitDate && "text-muted-foreground",
                     )}
                   >
-                    <CalendarIcon className="mr-2 h-3.5 w-3.5 text-slate-400" />
+                    <CalendarIcon className="mr-2 h-3.5 w-3.5 text-muted-foreground" />
                     {splitDate ? (
                       format(splitDate, "MMM d, yyyy")
                     ) : (
@@ -131,7 +130,7 @@ export default function SplitBookingDialog({
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent
-                  className="w-auto p-0 border-slate-200 shadow-xl rounded-xl"
+                  className="w-auto p-0 border-border shadow-xl rounded-xl bg-card"
                   align="start"
                 >
                   <Calendar
@@ -149,14 +148,14 @@ export default function SplitBookingDialog({
             </div>
 
             <div className="w-28 space-y-1.5">
-              <label className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">
+              <label className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">
                 Time
               </label>
               <div className="relative">
-                <Clock className="absolute left-2.5 top-2 h-3.5 w-3.5 text-slate-400" />
+                <Clock className="absolute left-2.5 top-2 h-3.5 w-3.5 text-muted-foreground" />
                 <Input
                   type="time"
-                  className="pl-8 bg-slate-50 border-slate-200 h-8 text-xs font-medium shadow-none"
+                  className="pl-8 bg-secondary border-border h-8 text-[11px] text-foreground font-semibold shadow-none hover:bg-background focus-visible:ring-primary rounded-lg transition-colors"
                   value={timeString}
                   onChange={handleTimeChange}
                 />
@@ -167,57 +166,63 @@ export default function SplitBookingDialog({
           {/* VISUAL PREVIEW */}
           <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
             {/* Part 1 */}
-            <div className="border border-slate-200 bg-white p-3 rounded-md shadow-sm">
-              <div className="text-[10px] uppercase font-bold text-emerald-600 mb-1 tracking-wider">
+            <div className="border border-border bg-card p-3 rounded-xl shadow-sm transition-colors text-center">
+              <div className="text-[9px] uppercase font-bold text-emerald-600 dark:text-emerald-400 mb-1 tracking-widest">
                 Part 1 (Keep)
               </div>
-              <div className="text-xs font-bold text-slate-700">
+              <div className="text-[11px] font-bold text-foreground">
                 {format(new Date(event.start), "MMM d")} -{" "}
                 {format(splitDate, "MMM d")}
               </div>
-              <div className="font-mono text-[10px] text-slate-400 mt-1 font-medium">
+              <div className="font-mono text-[10px] text-muted-foreground mt-1 font-medium">
                 ~{daysFirst} Days
               </div>
             </div>
 
-            <div className="bg-slate-200 p-1 rounded-full">
-              <Scissors className="w-3 h-3 text-slate-500 -rotate-90" />
+            <div className="bg-secondary p-1.5 rounded-full border border-border shadow-sm">
+              <Scissors className="w-3.5 h-3.5 text-muted-foreground -rotate-90" />
             </div>
 
             {/* Part 2 */}
-            <div className="border border-indigo-200 bg-indigo-50 p-3 rounded-md shadow-sm">
-              <div className="text-[10px] uppercase font-bold text-indigo-600 mb-1 tracking-wider">
+            <div className="border border-indigo-500/20 bg-indigo-500/10 p-3 rounded-xl shadow-sm transition-colors text-center">
+              <div className="text-[9px] uppercase font-bold text-indigo-600 dark:text-indigo-400 mb-1 tracking-widest">
                 Part 2 (Move)
               </div>
-              <div className="text-xs font-bold text-slate-700">
+              <div className="text-[11px] font-bold text-foreground">
                 {format(splitDate, "MMM d")} -{" "}
                 {format(new Date(event.end), "MMM d")}
               </div>
-              <div className="font-mono text-[10px] text-slate-400 mt-1 font-medium">
+              <div className="font-mono text-[10px] text-muted-foreground mt-1 font-medium">
                 ~{daysSecond} Days
               </div>
             </div>
           </div>
 
           {!isValidSplit && (
-            <div className="bg-red-50 text-red-600 text-[11px] p-2.5 rounded-md font-medium border border-red-200 flex items-center gap-2 shadow-sm">
+            <div className="bg-destructive/10 text-destructive text-[10px] p-2.5 rounded-lg font-medium border border-destructive/20 flex items-center gap-2 shadow-sm transition-colors">
               <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-              <span>
+              <span className="leading-relaxed">
                 Invalid split date. Must fall strictly between{" "}
-                {format(new Date(event.start), "MMM d")} and{" "}
-                {format(new Date(event.end), "MMM d")}.
+                <b className="font-bold">
+                  {format(new Date(event.start), "MMM d")}
+                </b>{" "}
+                and{" "}
+                <b className="font-bold">
+                  {format(new Date(event.end), "MMM d")}
+                </b>
+                .
               </span>
             </div>
           )}
         </div>
 
-        <div className="p-4 bg-white border-t border-slate-100 flex justify-end gap-2">
+        <div className="p-3 bg-card border-t border-border flex justify-end gap-2 transition-colors">
           <Button
-            variant="ghost"
+            variant="outline"
             size="sm"
             onClick={onClose}
             disabled={isProcessing}
-            className="text-xs font-semibold text-slate-600"
+            className="h-8 text-[10px] font-semibold bg-card text-foreground hover:bg-secondary border-border rounded-lg shadow-none transition-colors"
           >
             Cancel
           </Button>
@@ -225,7 +230,7 @@ export default function SplitBookingDialog({
             size="sm"
             onClick={() => onConfirm(splitDate)}
             disabled={!isValidSplit || isProcessing}
-            className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-sm"
+            className="h-8 text-[10px] font-bold uppercase tracking-widest bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm rounded-lg transition-opacity"
           >
             {isProcessing ? "Processing..." : "Confirm Split"}
           </Button>

@@ -248,36 +248,21 @@ function BookingMain() {
   };
 
   return (
-    <div className="flex flex-col h-[calc(100vh-80px)] bg-slate-50 font-sans overflow-hidden">
+    <div className="flex flex-col h-[93vh] bg-background font-sans overflow-hidden transition-colors duration-300">
       {/* GLOBAL PAGE HEADER WITH INTEGRATED CONTROLS */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between px-6 py-4 bg-white border-b border-slate-200 shrink-0 z-20 shadow-sm gap-4">
-        {/* Left Side: Identity */}
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-sm bg-slate-900 flex items-center justify-center shadow-sm shrink-0">
-            <CalendarIcon className="w-4 h-4 text-white" />
-          </div>
-          <div>
-            <h1 className="text-base font-bold text-slate-900 tracking-tight leading-none mb-1">
-              Fleet Schedule
-            </h1>
-            <div className="flex items-center gap-1.5 text-[11px] font-medium text-slate-500 leading-none">
-              <span className="font-bold text-slate-700">
-                {format(date, "MMMM yyyy")}
-              </span>{" "}
-              • Timeline reservations and dispatch.
-            </div>
-          </div>
-        </div>
+      <div className="flex flex-col md:flex-row md:items-center justify-between px-4 pt-3 md:px-6 md:pt-4 shrink-0 gap-4 ">
+        {/* Left Side: Tabs */}
+        <div className="flex items-center gap-3"></div>
 
         {/* Right Side: Integrated Toolbar */}
         <div className="flex flex-wrap items-center gap-2">
           {/* OVERRIDE TOGGLE */}
           <div
             className={cn(
-              "flex items-center gap-1.5 px-2 h-8 rounded-sm transition-colors border",
+              "flex items-center gap-1.5 px-2 h-8 rounded-md transition-colors border",
               isOverrideMode
-                ? "bg-amber-50 border-amber-200"
-                : "bg-white border-slate-200 hover:bg-slate-50",
+                ? "bg-amber-500/10 border-amber-500/30"
+                : "bg-card border-border hover:bg-secondary",
             )}
           >
             <Switch
@@ -290,20 +275,22 @@ function BookingMain() {
               htmlFor="override-mode"
               className={cn(
                 "text-[9px] font-bold uppercase tracking-widest cursor-pointer select-none",
-                isOverrideMode ? "text-amber-700" : "text-slate-500",
+                isOverrideMode
+                  ? "text-amber-600 dark:text-amber-400"
+                  : "text-muted-foreground",
               )}
             >
               Override
             </Label>
           </div>
 
-          <div className="h-5 w-px bg-slate-200 mx-1 hidden sm:block" />
+          <div className="h-5 w-px bg-border mx-1 hidden sm:block" />
 
           {/* NEW BOOKING */}
           <Button
             size="sm"
             onClick={() => handleOpenNewBooking()}
-            className="h-8 text-[10px] font-bold uppercase tracking-widest bg-slate-900 hover:bg-slate-800 text-white px-3 rounded-sm shadow-none"
+            className="h-8 text-[10px] font-bold uppercase tracking-widest bg-primary hover:opacity-90 text-primary-foreground px-3 rounded-md shadow-none transition-opacity"
           >
             <Plus className="w-3.5 h-3.5 mr-1.5" />
             New Booking
@@ -315,10 +302,10 @@ function BookingMain() {
             size="sm"
             onClick={() => setIsSidebarOpen(!isSidebarOpen)}
             className={cn(
-              "h-8 text-[10px] font-bold uppercase tracking-widest px-3 rounded-sm shadow-none transition-all",
+              "h-8 text-[10px] font-bold uppercase tracking-widest px-3 rounded-md shadow-none transition-all",
               !isSidebarOpen && pendingRequests.length > 0
-                ? "border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100 hover:text-amber-800"
-                : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-slate-900",
+                ? "border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400 hover:bg-amber-500/20"
+                : "bg-card border-border text-muted-foreground hover:bg-secondary hover:text-foreground",
             )}
           >
             {isSidebarOpen ? (
@@ -328,7 +315,7 @@ function BookingMain() {
             )}
             Queue
             {!isSidebarOpen && pendingRequests.length > 0 && (
-              <span className="ml-1.5 flex h-4 min-w-[16px] items-center justify-center rounded-sm bg-amber-200 px-1 text-[9px] font-black text-amber-800">
+              <span className="ml-1.5 flex h-4 min-w-[16px] items-center justify-center rounded bg-amber-500 px-1 text-[9px] font-black text-amber-50">
                 {pendingRequests.length}
               </span>
             )}
@@ -338,17 +325,17 @@ function BookingMain() {
 
       {/* FULL-HEIGHT BODY WRAPPER */}
       {/* Note: overflow-hidden is critical here so the Timeline handles its own scrollbars! */}
-      <div className="flex-1 w-full overflow-hidden bg-slate-50/50">
-        <div className="max-w-[1400px] mx-auto p-4 md:p-6 h-full flex flex-col">
+      <div className="flex-1 w-full overflow-hidden bg-background">
+        <div className="max-w-[1600px] mx-auto p-3 md:p-4 h-full flex flex-col">
           {/* MAIN CARD SPLIT (Timeline + Sidebar) */}
-          <div className="flex-1 flex overflow-hidden bg-white border border-slate-200 rounded-sm shadow-sm relative">
+          <div className="flex-1 flex overflow-hidden bg-card border border-border rounded-xl shadow-sm relative transition-colors duration-300">
             {/* TIMELINE AREA */}
             <div className="flex-1 flex flex-col relative min-w-0 transition-all duration-300 ease-in-out">
               {/* MODERN LOADING OVERLAY */}
               {loading && (
-                <div className="absolute inset-0 z-50 bg-white/60 backdrop-blur-[2px] flex flex-col items-center justify-center gap-3 transition-opacity">
-                  <Loader2 className="w-8 h-8 animate-spin text-slate-900" />
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-slate-600">
+                <div className="absolute inset-0 z-50 bg-background/60 backdrop-blur-[2px] flex flex-col items-center justify-center gap-3 transition-opacity">
+                  <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
                     Syncing schedule...
                   </span>
                 </div>
@@ -399,7 +386,7 @@ function BookingMain() {
             {/* QUEUE SIDEBAR */}
             <div
               className={cn(
-                "border-l border-slate-200 bg-slate-50 z-40 transition-all duration-300 ease-in-out overflow-hidden flex flex-col",
+                "border-l border-border bg-secondary/10 z-40 transition-all duration-300 ease-in-out overflow-hidden flex flex-col",
                 isSidebarOpen ? "w-[280px] opacity-100" : "w-0 opacity-0",
               )}
             >
@@ -483,27 +470,27 @@ function BookingMain() {
         open={!!deleteTarget}
         onOpenChange={() => setDeleteTarget(null)}
       >
-        <AlertDialogContent className="border-red-100 bg-white shadow-xl rounded-sm">
+        <AlertDialogContent className="sm:max-w-[400px] border-destructive/20 bg-background shadow-2xl rounded-xl">
           <AlertDialogHeader>
-            <AlertDialogTitle className="text-red-600 flex items-center gap-2 text-sm font-bold uppercase tracking-widest">
+            <AlertDialogTitle className="text-destructive flex items-center gap-2 text-xs font-bold uppercase tracking-widest">
               <Trash className="w-4 h-4" /> Delete Booking?
             </AlertDialogTitle>
-            <AlertDialogDescription className="text-xs text-slate-600 leading-relaxed mt-2">
+            <AlertDialogDescription className="text-[11px] font-medium text-muted-foreground leading-relaxed mt-2">
               This will permanently remove the booking for{" "}
-              <b className="text-slate-900">{deleteTarget?.title}</b>. This
-              action cannot be undone and will delete all associated financial
-              records.
+              <b className="text-foreground font-bold">{deleteTarget?.title}</b>
+              . This action cannot be undone and will delete all associated
+              financial records.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter className="mt-4 border-t border-slate-100 pt-4">
+          <AlertDialogFooter className="mt-4 border-t border-border pt-4">
             <AlertDialogCancel
               disabled={isDeleting}
-              className="h-8 text-[10px] font-bold uppercase tracking-widest bg-white border-slate-200 hover:bg-slate-50 rounded-sm shadow-none"
+              className="h-8 text-[10px] font-semibold uppercase tracking-widest bg-card border-border hover:bg-secondary text-foreground rounded-lg shadow-none transition-colors"
             >
               Cancel
             </AlertDialogCancel>
             <AlertDialogAction
-              className="h-8 text-[10px] font-bold uppercase tracking-widest bg-red-600 hover:bg-red-700 text-white rounded-sm shadow-none"
+              className="h-8 text-[10px] font-bold uppercase tracking-widest bg-destructive hover:opacity-90 text-destructive-foreground rounded-lg shadow-sm transition-opacity"
               disabled={isDeleting}
               onClick={(e) => {
                 e.preventDefault();
@@ -532,7 +519,7 @@ function BookingMain() {
       >
         <SheetContent
           side="right"
-          className="w-full sm:max-w-[800px] xl:max-w-[1000px] overflow-y-auto p-0 bg-slate-50 [&>button.absolute]:hidden shadow-[-10px_0_15px_-3px_rgba(0,0,0,0.05)] border-l-slate-200"
+          className="w-full sm:max-w-[800px] xl:max-w-[1000px] overflow-y-auto p-0 bg-background [&>button.absolute]:hidden shadow-2xl border-l border-border transition-colors duration-300"
         >
           <SheetHeader className="sr-only">
             <SheetTitle>
