@@ -21,6 +21,10 @@ import {
   Calendar as CalendarIcon,
   Loader2,
   Trash,
+  List,
+  CalendarDays,
+  Banknote,
+  AlertCircle,
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
@@ -49,10 +53,17 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import PaymentVerificationView from "./payment-verification-tab";
 
-function BookingMain() {
+// --- Define the Tabs ---
+type ViewTab = "timeline" | "list" | "payments";
+
+export default function BookingMain() {
   const [date, setDate] = useState(new Date());
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+
+  // --- NEW: View State ---
+  const [activeTab, setActiveTab] = useState<ViewTab>("timeline");
 
   // --- HOOK ---
   const {
@@ -122,6 +133,10 @@ function BookingMain() {
   const confirmedEvents = events.filter((e) => e.status !== "pending");
   const originalBooking =
     pendingRequests.find((e) => e.id === selectedPendingId) || null;
+
+  // Calculate how many payments need verification (Assuming your hook fetches this or you do it in the payments tab)
+  // For now, we'll use a placeholder count to show the badge concept
+  const pendingPaymentsCount = 3;
 
   // --- HANDLERS ---
   const handleOpenNewBooking = (
@@ -250,163 +265,232 @@ function BookingMain() {
   return (
     <div className="flex flex-col h-[93vh] bg-background font-sans overflow-hidden transition-colors duration-300">
       {/* GLOBAL PAGE HEADER WITH INTEGRATED CONTROLS */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between px-4 pt-3 md:px-6 md:pt-4 shrink-0 gap-4 ">
-        {/* Left Side: Tabs */}
-        <div className="flex items-center gap-3"></div>
-
-        {/* Right Side: Integrated Toolbar */}
-        <div className="flex flex-wrap items-center gap-2">
-          {/* OVERRIDE TOGGLE */}
-          <div
+      <div className="flex flex-col md:flex-row md:items-center justify-between px-4 pt-3 md:px-6 md:pt-4 shrink-0 gap-4 mb-2">
+        {/* Left Side: View Navigation Tabs */}
+        <div className="flex items-center gap-2 p-1 bg-secondary/30 rounded-lg border border-border w-fit">
+          <button
+            onClick={() => setActiveTab("timeline")}
             className={cn(
-              "flex items-center gap-1.5 px-2 h-8 rounded-md transition-colors border",
-              isOverrideMode
-                ? "bg-amber-500/10 border-amber-500/30"
-                : "bg-card border-border hover:bg-secondary",
+              "flex items-center gap-2 px-4 py-2 rounded-md text-[10px] font-bold uppercase tracking-widest transition-all",
+              activeTab === "timeline"
+                ? "bg-background text-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground",
             )}
           >
-            <Switch
-              id="override-mode"
-              checked={isOverrideMode}
-              onCheckedChange={setIsOverrideMode}
-              className="scale-75 data-[state=checked]:bg-amber-500"
-            />
-            <Label
-              htmlFor="override-mode"
-              className={cn(
-                "text-[9px] font-bold uppercase tracking-widest cursor-pointer select-none",
-                isOverrideMode
-                  ? "text-amber-600 dark:text-amber-400"
-                  : "text-muted-foreground",
-              )}
-            >
-              Override
-            </Label>
-          </div>
+            <CalendarDays className="w-3.5 h-3.5" /> Timeline
+          </button>
+          <button
+            onClick={() => setActiveTab("list")}
+            className={cn(
+              "flex items-center gap-2 px-4 py-2 rounded-md text-[10px] font-bold uppercase tracking-widest transition-all",
+              activeTab === "list"
+                ? "bg-background text-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground",
+            )}
+          >
+            <List className="w-3.5 h-3.5" /> List View
+          </button>
+          <button
+            onClick={() => setActiveTab("payments")}
+            className={cn(
+              "flex items-center gap-2 px-4 py-2 rounded-md text-[10px] font-bold uppercase tracking-widest transition-all relative",
+              activeTab === "payments"
+                ? "bg-background text-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground",
+            )}
+          >
+            <Banknote className="w-3.5 h-3.5" /> Verify Payments
+            {pendingPaymentsCount > 0 && (
+              <span className="absolute -top-1 -right-1 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-amber-500 px-1 text-[8px] font-black text-amber-50 shadow-sm animate-pulse">
+                {pendingPaymentsCount}
+              </span>
+            )}
+          </button>
+        </div>
 
-          <div className="h-5 w-px bg-border mx-1 hidden sm:block" />
-
-          {/* NEW BOOKING */}
+        {/* Right Side: Integrated Toolbar (Only shows relevant tools based on active tab) */}
+        <div className="flex flex-wrap items-center gap-2">
+          {/* New Booking is global */}
           <Button
             size="sm"
             onClick={() => handleOpenNewBooking()}
-            className="h-8 text-[10px] font-bold uppercase tracking-widest bg-primary hover:opacity-90 text-primary-foreground px-3 rounded-md shadow-none transition-opacity"
+            className="h-8 text-[10px] font-bold uppercase tracking-widest bg-primary hover:opacity-90 text-primary-foreground px-4 rounded-md shadow-none transition-opacity"
           >
-            <Plus className="w-3.5 h-3.5 mr-1.5" />
-            New Booking
+            <Plus className="w-3.5 h-3.5 mr-1.5" /> New Booking
           </Button>
 
-          {/* QUEUE TOGGLE */}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-            className={cn(
-              "h-8 text-[10px] font-bold uppercase tracking-widest px-3 rounded-md shadow-none transition-all",
-              !isSidebarOpen && pendingRequests.length > 0
-                ? "border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400 hover:bg-amber-500/20"
-                : "bg-card border-border text-muted-foreground hover:bg-secondary hover:text-foreground",
-            )}
-          >
-            {isSidebarOpen ? (
-              <PanelRightClose className="w-3.5 h-3.5 mr-1.5" />
-            ) : (
-              <Inbox className="w-3.5 h-3.5 mr-1.5" />
-            )}
-            Queue
-            {!isSidebarOpen && pendingRequests.length > 0 && (
-              <span className="ml-1.5 flex h-4 min-w-[16px] items-center justify-center rounded bg-amber-500 px-1 text-[9px] font-black text-amber-50">
-                {pendingRequests.length}
-              </span>
-            )}
-          </Button>
+          {/* Timeline Specific Controls */}
+          {activeTab === "timeline" && (
+            <>
+              <div className="h-5 w-px bg-border mx-1 hidden sm:block" />
+
+              <div
+                className={cn(
+                  "flex items-center gap-1.5 px-2 h-8 rounded-md transition-colors border",
+                  isOverrideMode
+                    ? "bg-amber-500/10 border-amber-500/30"
+                    : "bg-card border-border hover:bg-secondary",
+                )}
+              >
+                <Switch
+                  id="override-mode"
+                  checked={isOverrideMode}
+                  onCheckedChange={setIsOverrideMode}
+                  className="scale-75 data-[state=checked]:bg-amber-500"
+                />
+                <Label
+                  htmlFor="override-mode"
+                  className={cn(
+                    "text-[9px] font-bold uppercase tracking-widest cursor-pointer select-none",
+                    isOverrideMode
+                      ? "text-amber-600 dark:text-amber-400"
+                      : "text-muted-foreground",
+                  )}
+                >
+                  Override
+                </Label>
+              </div>
+
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+                className={cn(
+                  "h-8 text-[10px] font-bold uppercase tracking-widest px-3 rounded-md shadow-none transition-all",
+                  !isSidebarOpen && pendingRequests.length > 0
+                    ? "border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400 hover:bg-amber-500/20"
+                    : "bg-card border-border text-muted-foreground hover:bg-secondary hover:text-foreground",
+                )}
+              >
+                {isSidebarOpen ? (
+                  <PanelRightClose className="w-3.5 h-3.5 mr-1.5" />
+                ) : (
+                  <Inbox className="w-3.5 h-3.5 mr-1.5" />
+                )}
+                Queue
+                {!isSidebarOpen && pendingRequests.length > 0 && (
+                  <span className="ml-1.5 flex h-4 min-w-[16px] items-center justify-center rounded bg-amber-500 px-1 text-[9px] font-black text-amber-50">
+                    {pendingRequests.length}
+                  </span>
+                )}
+              </Button>
+            </>
+          )}
         </div>
       </div>
 
       {/* FULL-HEIGHT BODY WRAPPER */}
-      {/* Note: overflow-hidden is critical here so the Timeline handles its own scrollbars! */}
       <div className="flex-1 w-full overflow-hidden bg-background">
         <div className="max-w-[1600px] mx-auto p-3 md:p-4 h-full flex flex-col">
-          {/* MAIN CARD SPLIT (Timeline + Sidebar) */}
-          <div className="flex-1 flex overflow-hidden bg-card border border-border rounded-xl shadow-sm relative transition-colors duration-300">
-            {/* TIMELINE AREA */}
-            <div className="flex-1 flex flex-col relative min-w-0 transition-all duration-300 ease-in-out">
-              {/* MODERN LOADING OVERLAY */}
-              {loading && (
-                <div className="absolute inset-0 z-50 bg-background/60 backdrop-blur-[2px] flex flex-col items-center justify-center gap-3 transition-opacity">
-                  <Loader2 className="w-8 h-8 animate-spin text-primary" />
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                    Syncing schedule...
-                  </span>
-                </div>
-              )}
-
-              <TimelineScheduler
-                resources={resources}
-                events={confirmedEvents}
-                ghostBooking={ghostBooking}
-                isOverrideMode={isOverrideMode}
-                onDateChange={(newDate) => setDate(newDate)}
-                onGhostMove={handleGhostMove}
-                onEmptyClick={(resourceId, clickedDate) => {
-                  if (ghostBooking) {
-                    handleGhostMove(resourceId);
-                  } else {
-                    handleOpenNewBooking(resourceId, clickedDate);
+          {/* --- TIMELINE VIEW --- */}
+          {activeTab === "timeline" && (
+            <div className="flex-1 flex overflow-hidden bg-card border border-border rounded-xl shadow-sm relative transition-colors duration-300">
+              <div className="flex-1 flex flex-col relative min-w-0 transition-all duration-300 ease-in-out">
+                {loading && (
+                  <div className="absolute inset-0 z-50 bg-background/60 backdrop-blur-[2px] flex flex-col items-center justify-center gap-3 transition-opacity">
+                    <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                      Syncing schedule...
+                    </span>
+                  </div>
+                )}
+                <TimelineScheduler
+                  resources={resources}
+                  events={confirmedEvents}
+                  ghostBooking={ghostBooking}
+                  isOverrideMode={isOverrideMode}
+                  onDateChange={(newDate) => setDate(newDate)}
+                  onGhostMove={handleGhostMove}
+                  onEmptyClick={(resourceId, clickedDate) => {
+                    if (ghostBooking) handleGhostMove(resourceId);
+                    else handleOpenNewBooking(resourceId, clickedDate);
+                  }}
+                  onTimeRangeSelect={handleTimeRangeSelect}
+                  onResizeEvent={(event, newEnd) =>
+                    setResizeTarget({ event, newEnd })
                   }
-                }}
-                onTimeRangeSelect={handleTimeRangeSelect}
-                onResizeEvent={(event, newEnd) =>
-                  setResizeTarget({ event, newEnd })
-                }
-                onEarlyReturnClick={(evt) => setEarlyReturnTarget(evt)}
-                onExtendClick={(event) => setExtendTarget(event)}
-                onAddMaintenance={(resourceId, startDate) =>
-                  createMaintenance({
-                    carId: resourceId,
-                    start: startDate,
-                    end: addDays(startDate, 1),
-                  })
-                }
-                onResizeBuffer={(event, newBuffer) =>
-                  setBufferTarget({ event, newBuffer })
-                }
-                onSplitEvent={(event, splitDate) =>
-                  setSplitTarget({ event, splitDate })
-                }
-                onStatusChange={(event, newStatus) =>
-                  updateStatus({ id: event.id, status: newStatus })
-                }
-                onDeleteClick={(evt) => setDeleteTarget(evt)}
-                onEditClick={(evt) => setEditTarget(evt)}
-                onDispatchClick={(evt) => setDispatchTarget(evt)}
-              />
-            </div>
-
-            {/* QUEUE SIDEBAR */}
-            <div
-              className={cn(
-                "border-l border-border bg-secondary/10 z-40 transition-all duration-300 ease-in-out overflow-hidden flex flex-col",
-                isSidebarOpen ? "w-[280px] opacity-100" : "w-0 opacity-0",
-              )}
-            >
-              <div className="w-[280px] h-full flex flex-col custom-scrollbar overflow-y-auto">
-                <PendingRequestsSidebar
-                  requests={pendingRequests}
-                  selectedId={selectedPendingId}
-                  onSelect={handleSelectRequest}
-                  onApprove={handleApproveClick}
-                  onReject={(req) =>
-                    updateStatus({ id: req.id, status: "rejected" })
+                  onEarlyReturnClick={(evt) => setEarlyReturnTarget(evt)}
+                  onExtendClick={(event) => setExtendTarget(event)}
+                  onAddMaintenance={(resourceId, startDate) =>
+                    createMaintenance({
+                      carId: resourceId,
+                      start: startDate,
+                      end: addDays(startDate, 1),
+                    })
                   }
+                  onResizeBuffer={(event, newBuffer) =>
+                    setBufferTarget({ event, newBuffer })
+                  }
+                  onSplitEvent={(event, splitDate) =>
+                    setSplitTarget({ event, splitDate })
+                  }
+                  onStatusChange={(event, newStatus) =>
+                    updateStatus({ id: event.id, status: newStatus })
+                  }
+                  onDeleteClick={(evt) => setDeleteTarget(evt)}
+                  onEditClick={(evt) => setEditTarget(evt)}
+                  onDispatchClick={(evt) => setDispatchTarget(evt)}
                 />
               </div>
+
+              {/* QUEUE SIDEBAR */}
+              <div
+                className={cn(
+                  "border-l border-border bg-secondary/10 z-40 transition-all duration-300 ease-in-out overflow-hidden flex flex-col",
+                  isSidebarOpen ? "w-[280px] opacity-100" : "w-0 opacity-0",
+                )}
+              >
+                <div className="w-[280px] h-full flex flex-col custom-scrollbar overflow-y-auto">
+                  <PendingRequestsSidebar
+                    requests={pendingRequests}
+                    selectedId={selectedPendingId}
+                    onSelect={handleSelectRequest}
+                    onApprove={handleApproveClick}
+                    onReject={(req) =>
+                      updateStatus({ id: req.id, status: "rejected" })
+                    }
+                  />
+                </div>
+              </div>
             </div>
-          </div>
+          )}
+
+          {/* --- LIST VIEW PLACEHOLDER --- */}
+          {activeTab === "list" && (
+            <div className="flex-1 bg-card border border-border rounded-xl shadow-sm p-6 overflow-y-auto custom-scrollbar">
+              <div className="max-w-4xl mx-auto space-y-6">
+                <div>
+                  <h2 className="text-xl font-black uppercase tracking-tighter text-foreground">
+                    All Bookings Masterlist
+                  </h2>
+                  <p className="text-xs font-medium text-muted-foreground">
+                    View, search, and export all historical and upcoming
+                    bookings.
+                  </p>
+                </div>
+                {/* Drop your Table component here later!
+                  <BookingListTable bookings={events} /> 
+                */}
+                <div className="p-12 border-2 border-dashed border-border rounded-xl flex flex-col items-center justify-center text-muted-foreground">
+                  <List className="w-8 h-8 mb-3 opacity-50" />
+                  <p className="text-[11px] font-bold uppercase tracking-widest">
+                    List View Component Goes Here
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* --- PAYMENTS VERIFICATION PLACEHOLDER --- */}
+          {activeTab === "payments" && (
+            <div className="flex-1 bg-card border border-border rounded-xl shadow-sm p-6 overflow-y-auto custom-scrollbar">
+              <PaymentVerificationView />
+            </div>
+          )}
         </div>
       </div>
 
-      {/* DIALOGS */}
+      {/* DIALOGS (Kept at root level so they work regardless of tab) */}
       <ProposalDialog
         isOpen={isProposalOpen}
         onClose={() => setIsProposalOpen(false)}
@@ -532,7 +616,6 @@ function BookingMain() {
             </SheetDescription>
           </SheetHeader>
 
-          {/* Render the form if we are creating OR editing */}
           {(isFormOpen || editTarget) && (
             <AdminBookingForm
               key={
@@ -575,5 +658,3 @@ function BookingMain() {
     </div>
   );
 }
-
-export default BookingMain;
