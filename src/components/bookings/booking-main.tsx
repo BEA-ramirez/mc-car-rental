@@ -54,6 +54,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import PaymentVerificationView from "./payment-verification-tab";
+import BookingListView from "./booking-list-view";
 
 // --- Define the Tabs ---
 type ViewTab = "timeline" | "list" | "payments";
@@ -458,26 +459,7 @@ export default function BookingMain() {
           {/* --- LIST VIEW PLACEHOLDER --- */}
           {activeTab === "list" && (
             <div className="flex-1 bg-card border border-border rounded-xl shadow-sm p-6 overflow-y-auto custom-scrollbar">
-              <div className="max-w-4xl mx-auto space-y-6">
-                <div>
-                  <h2 className="text-xl font-black uppercase tracking-tighter text-foreground">
-                    All Bookings Masterlist
-                  </h2>
-                  <p className="text-xs font-medium text-muted-foreground">
-                    View, search, and export all historical and upcoming
-                    bookings.
-                  </p>
-                </div>
-                {/* Drop your Table component here later!
-                  <BookingListTable bookings={events} /> 
-                */}
-                <div className="p-12 border-2 border-dashed border-border rounded-xl flex flex-col items-center justify-center text-muted-foreground">
-                  <List className="w-8 h-8 mb-3 opacity-50" />
-                  <p className="text-[11px] font-bold uppercase tracking-widest">
-                    List View Component Goes Here
-                  </p>
-                </div>
-              </div>
+              <BookingListView />
             </div>
           )}
 

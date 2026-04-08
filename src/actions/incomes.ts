@@ -68,6 +68,11 @@ export async function getIncomeDashboardData() {
 export async function getBookingFolio(bookingId: string) {
   const supabase = await createClient();
 
+  // Safety check: If a fake ID somehow slips through, don't crash Postgres
+  if (!bookingId || !bookingId.includes("-")) {
+    return { booking: null, charges: [], payments: [] };
+  }
+
   const { data: booking, error: bErr } = await supabase
     .from("bookings")
     .select(
@@ -79,7 +84,11 @@ export async function getBookingFolio(bookingId: string) {
     .eq("booking_id", bookingId)
     .single();
 
-  if (bErr) throw new Error(bErr.message);
+  // Graceful error handling instead of throwing
+  if (bErr) {
+    console.error("Folio Fetch Error:", bErr.message);
+    return { booking: null, charges: [], payments: [] };
+  }
 
   const { data: charges } = await supabase
     .from("booking_charges")
@@ -134,7 +143,7 @@ export async function recordBookingPayment(input: {
   const totalPaid =
     folio.payments.reduce((sum, p) => sum + Number(p.amount), 0) + input.amount;
   const newStatus =
-    totalPaid >= Number(folio.booking.total_price) ? "Paid" : "Partial";
+    totalPaid >= Number(folio?.booking?.total_price) ? "Paid" : "Partial";
 
   await supabase
     .from("bookings")

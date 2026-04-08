@@ -1,169 +1,848 @@
 "use client";
 
-import { useState } from "react";
-import { Car, Search, MapPin, Inbox } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { Input } from "@/components/ui/input";
+import { useState, useEffect, useMemo, use } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import Image from "next/image";
+import { format, differenceInDays } from "date-fns";
 import { motion } from "framer-motion";
+import {
+  ArrowLeft,
+  MapPin,
+  CalendarDays,
+  Clock,
+  ShieldCheck,
+  Smartphone,
+  Landmark,
+  Banknote,
+  Car,
+  ArrowRight,
+  CheckCircle2,
+  FileText,
+  AlertCircle,
+  UserCheck,
+  CreditCard,
+} from "lucide-react";
 
-import BookingCard from "@/components/customer/booking-card";
-import { useCustomerBookings } from "../../../../../hooks/use-bookings";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogDescription,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { cn } from "@/lib/utils";
 
-const TABS = ["All Trips", "Upcoming", "Ongoing", "History"];
+import OrmocMapSelector, { MapHub } from "@/components/ormoc-map";
+import ReceiptScanner from "@/components/bookings/receipt-scanner";
 
-export default function MyBookingsPage() {
-  const [activeTab, setActiveTab] = useState("All Trips");
-  const { data: dbBookings, isLoading } = useCustomerBookings();
+import { useBookingSettings } from "../../../../../hooks/use-settings";
+import { useUnits } from "../../../../../hooks/use-units";
+import { useBookings } from "../../../../../hooks/use-bookings";
+import { useAvailableDrivers } from "../../../../../hooks/use-bookings";
+import { createClient } from "@/utils/supabase/client";
+import { uploadFile } from "@/actions/helper/upload-file";
 
-  const formattedBookings = (dbBookings || []).map((b: any) => {
-    // --- NEW: Safely extract payments from the joined booking_payments table ---
-    const payments = b.booking_payments || [];
+export default function CustomerBookingPage({
+  params,
+}: {
+  params: Promise<{ carId: string }>;
+}) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const { carId } = use(params);
 
-    const verifiedPaid = payments
-      .filter((p: any) => p.status === "Completed" || p.status === "Paid")
-      .reduce((sum: number, p: any) => sum + Number(p.amount), 0);
+  const { submitCustomerBooking, isSubmittingCustomerBooking } = useBookings();
+  const { data: settings, isLoading: isSettingsLoading } = useBookingSettings();
+  const { unit, isLoadingUnit } = useUnits(carId);
 
-    const pendingPaid = payments
-      .filter((p: any) => p.status === "Pending")
-      .reduce((sum: number, p: any) => sum + Number(p.amount), 0);
+  const realHubs: MapHub[] = useMemo(() => settings?.hubs || [], [settings]);
+  const realFees = useMemo(
+    () =>
+      settings?.fees || {
+        driver_rate_per_day: 1500,
+        custom_pickup_fee: 500,
+        custom_dropoff_fee: 500,
+        security_deposit_default: 5000,
+      },
+    [settings],
+  );
 
-    // Fallbacks just in case your backend already pre-calculated these
-    const amountPaid = b.amountPaid !== undefined ? b.amountPaid : verifiedPaid;
-    const pendingAmount =
-      b.pendingAmount !== undefined ? b.pendingAmount : pendingPaid;
-
-    // Total amount logic
-    const totalAmount = b.total_price || b.totalAmount || 0;
-    const balance = totalAmount - amountPaid;
-
-    let displayStatus = b.booking_status || b.status;
-
-    if (displayStatus === "confirmed") displayStatus = "Upcoming Trip";
-    if (displayStatus === "ongoing") displayStatus = "Currently Driving";
-    if (displayStatus === "completed") displayStatus = "Completed";
-    if (displayStatus === "cancelled" || displayStatus === "CANCELLED")
-      displayStatus = "Cancelled";
-    if (displayStatus === "pending") displayStatus = "Upcoming Trip"; // Treat pending as upcoming for the user
-
+  const car = useMemo(() => {
+    if (!unit) return null;
+    const sortedImages = [...(unit.images || [])].sort((a: any, b: any) => {
+      if (a.is_primary && !b.is_primary) return -1;
+      if (!a.is_primary && b.is_primary) return 1;
+      return 0;
+    });
     return {
-      ...b,
-      startDate: new Date(b.startDate || b.start_date),
-      endDate: new Date(b.endDate || b.end_date),
-      paymentStatus: b.paymentStatus || b.payment_status,
-      status: displayStatus,
-      totalAmount: totalAmount,
-      amountPaid: amountPaid,
-      pendingAmount: pendingAmount, // Pass the pending amount to the card!
-      balanceDueAtPickup: balance > 0 ? balance : 0,
+      id: unit.car_id,
+      brand: unit.brand,
+      model: unit.model,
+      price: Number(unit.rental_rate_per_day) || 0,
+      image:
+        sortedImages.length > 0
+          ? sortedImages[0].image_url
+          : "https://placehold.co/1200x800?text=No+Image",
     };
-  });
+  }, [unit]);
 
-  const filteredBookings = formattedBookings.filter((booking: any) => {
-    if (activeTab === "All Trips") return true;
-    if (activeTab === "Upcoming") return booking.status === "Upcoming Trip";
-    if (activeTab === "Ongoing") return booking.status === "Currently Driving";
-    if (activeTab === "History")
-      return booking.status === "Completed" || booking.status === "Cancelled";
-    return true;
-  });
+  const [startDate, setStartDate] = useState<Date | null>(null);
+  const [endDate, setEndDate] = useState<Date | null>(null);
+  const [time, setTime] = useState("09:00");
+  const [withDriver, setWithDriver] = useState(false);
+  const [pickupType, setPickupType] = useState<"hub" | "custom">("hub");
+  const [pickupLocation, setPickupLocation] = useState("");
+  const [pickupCoords, setPickupCoords] = useState<string | null>(null);
+  const [dropoffType, setDropoffType] = useState<"hub" | "custom">("hub");
+  const [dropoffLocation, setDropoffLocation] = useState("");
+  const [dropoffCoords, setDropoffCoords] = useState<string | null>(null);
+
+  const [mapOpen, setMapOpen] = useState(false);
+  const [activeMapField, setActiveMapField] = useState<
+    "pickup" | "dropoff" | null
+  >(null);
+
+  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+
+  const [isSuccess, setIsSuccess] = useState(false);
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+
+  const { data: hasAvailableDrivers = false, isLoading: isCheckingDrivers } =
+    useAvailableDrivers(startDate, endDate);
+
+  const [receiptFile, setReceiptFile] = useState<File | null>(null);
+  const [receiptRef, setReceiptRef] = useState("");
+  const [receiptAmount, setReceiptAmount] = useState("");
+
+  const handleReceiptScan = (file: File, ref: string, amount: string) => {
+    setReceiptFile(file);
+    setReceiptRef(ref);
+    setReceiptAmount(amount);
+  };
+
+  useEffect(() => {
+    const fromParam = searchParams.get("from");
+    const toParam = searchParams.get("to");
+    const driverParam = searchParams.get("driver") === "true";
+    if (fromParam) setStartDate(new Date(fromParam));
+    if (toParam) setEndDate(new Date(toParam));
+    setWithDriver(driverParam);
+  }, [searchParams]);
+
+  useEffect(() => {
+    if (realHubs.length > 0) {
+      if (!pickupLocation) setPickupLocation(realHubs[0].name);
+      if (!dropoffLocation) setDropoffLocation(realHubs[0].name);
+    }
+  }, [realHubs]);
+
+  useEffect(() => {
+    if (!hasAvailableDrivers && withDriver) {
+      setWithDriver(false);
+    }
+  }, [hasAvailableDrivers, withDriver]);
+
+  let totalDays = 1;
+  if (startDate && endDate) {
+    totalDays = Math.max(1, differenceInDays(endDate, startDate) + 1);
+  }
+
+  const rentTotal = car ? totalDays * car.price : 0;
+  const driverTotal = withDriver ? totalDays * realFees.driver_rate_per_day : 0;
+  const pickupFee = pickupType === "custom" ? realFees.custom_pickup_fee : 0;
+  const dropoffFee = dropoffType === "custom" ? realFees.custom_dropoff_fee : 0;
+
+  const subTotal = rentTotal + driverTotal + pickupFee + dropoffFee;
+  const grandTotal = subTotal + realFees.security_deposit_default;
+
+  const reservationFee = Math.round(subTotal * 0.1);
+  const balanceDue = grandTotal - reservationFee;
+
+  const openMapFor = (field: "pickup" | "dropoff") => {
+    setActiveMapField(field);
+    setMapOpen(true);
+  };
+
+  const handleLocationSelect = (lat: number, lng: number, name?: string) => {
+    const isPickup = activeMapField === "pickup";
+    const setType = isPickup ? setPickupType : setDropoffType;
+    const setLoc = isPickup ? setPickupLocation : setDropoffLocation;
+    const setCoords = isPickup ? setPickupCoords : setDropoffCoords;
+    if (name) {
+      setType("hub");
+      setLoc(name);
+      setCoords(`${lat},${lng}`);
+    } else {
+      setType("custom");
+      setLoc(`Pinned Location (${lat.toFixed(4)}, ${lng.toFixed(4)})`);
+      setCoords(`${lat},${lng}`);
+    }
+    setMapOpen(false);
+  };
+
+  const handleSubmitBooking = async () => {
+    if (!startDate || !endDate || !car || !agreedToTerms) return;
+
+    if (!receiptFile) {
+      alert("Please upload your payment receipt to secure the booking.");
+      return;
+    }
+
+    setIsUploading(true);
+
+    try {
+      const supabase = createClient();
+      const {
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser();
+
+      if (userError || !user) {
+        throw new Error("You must be logged in to upload a receipt.");
+      }
+
+      // --- EXACT 24-HOUR CLOCK MATH ---
+      // 1. Parse the "HH:MM" time string
+      const [hours, minutes] = time.split(":").map(Number);
+
+      // 2. Set the exact Pick-up Timestamp
+      const exactStartDate = new Date(startDate);
+      exactStartDate.setHours(hours, minutes, 0, 0);
+
+      // 3. Add (totalDays * 24 hours) to get the exact Drop-off Timestamp
+      const exactEndDate = new Date(exactStartDate);
+      exactEndDate.setDate(exactStartDate.getDate() + totalDays);
+
+      // --- UPLOAD FILE VIA SERVER ACTION ---
+      const uploadResult = await uploadFile(
+        receiptFile,
+        "documents",
+        "receipts",
+        user.id,
+      );
+
+      if (!uploadResult || !uploadResult.url) {
+        throw new Error("Failed to upload the receipt to the server.");
+      }
+
+      // Construct Payload with EXACT Timestamps and the new URL
+      const bookingPayload = {
+        car_id: car.id,
+        start_date: exactStartDate.toISOString(), // Now includes exact time!
+        end_date: exactEndDate.toISOString(), // Now exactly X days later!
+        pickup_location: pickupLocation,
+        dropoff_location: dropoffLocation,
+        pickup_type: pickupType,
+        dropoff_type: dropoffType,
+        pickup_price: pickupFee,
+        dropoff_price: dropoffFee,
+        is_with_driver: withDriver,
+        daily_rate: car.price,
+        grand_total: grandTotal,
+        security_deposit: realFees.security_deposit_default,
+        pickup_coords: pickupCoords,
+        dropoff_coords: dropoffCoords,
+        booking_status: "confirmed",
+        payment_status: "Unpaid",
+        payment_details: {
+          amount: Number(receiptAmount) || reservationFee,
+          transaction_reference: receiptRef,
+          status: "Pending",
+          receipt_url: uploadResult.url, // URL safely returned from the server action
+        },
+      };
+
+      await submitCustomerBooking(bookingPayload);
+      setIsPaymentModalOpen(false);
+      setIsSuccess(true);
+    } catch (error: any) {
+      console.error("Booking Submission Failed:", error);
+      alert(error.message || "Something went wrong. Please try again.");
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  if (isSettingsLoading || isLoadingUnit) {
+    return (
+      <div className="min-h-screen bg-[#050B10] flex flex-col items-center justify-center text-gray-500">
+        <div className="w-10 h-10 border-4 border-white/10 border-t-[#64c5c3] rounded-full animate-spin mb-4" />
+        <p className="text-xs uppercase tracking-widest font-bold">
+          Authenticating Details...
+        </p>
+      </div>
+    );
+  }
+
+  if (!car && !isLoadingUnit) {
+    return (
+      <div className="min-h-screen bg-[#050B10] flex flex-col items-center justify-center text-gray-500">
+        <Car className="w-16 h-16 mb-6 opacity-20" />
+        <h2 className="text-2xl font-black text-white mb-6 uppercase tracking-tighter">
+          Asset Not Found
+        </h2>
+        <Button
+          onClick={() => router.back()}
+          variant="outline"
+          className="rounded-xl border-white/20 text-white hover:bg-white hover:text-black uppercase tracking-widest text-[10px] font-bold px-8 h-12"
+        >
+          Return to Fleet
+        </Button>
+      </div>
+    );
+  }
+
+  if (isSuccess) {
+    return (
+      <div className="min-h-screen bg-[#050B10] flex flex-col items-center justify-center p-6 selection:bg-[#64c5c3] selection:text-black">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="max-w-md w-full bg-[#0a1118]/80 backdrop-blur-2xl p-8 md:p-10 rounded-3xl border border-[#64c5c3]/30 text-center shadow-[0_0_50px_rgba(100,197,195,0.15)] relative overflow-hidden"
+        >
+          <div className="absolute top-0 right-0 w-64 h-64 bg-[#64c5c3]/10 rounded-full blur-[80px] pointer-events-none -z-10" />
+
+          <div className="w-20 h-20 bg-[#64c5c3]/10 rounded-full flex items-center justify-center mx-auto mb-6">
+            <CheckCircle2 className="w-10 h-10 text-[#64c5c3]" />
+          </div>
+
+          <h1 className="text-3xl md:text-4xl font-black text-white uppercase tracking-tighter mb-4">
+            Vehicle Secured!
+          </h1>
+          <p className="text-gray-400 text-xs uppercase tracking-widest leading-relaxed mb-8">
+            Your booking is confirmed. We are now manually verifying your{" "}
+            <strong className="text-white">
+              ₱{reservationFee.toLocaleString()}
+            </strong>{" "}
+            receipt.
+          </p>
+
+          <div className="bg-black/40 border border-white/5 rounded-2xl p-5 mb-8 text-left">
+            <div className="flex items-center gap-2 mb-2">
+              <FileText className="w-4 h-4 text-[#64c5c3]" />
+              <p className="text-[10px] font-bold text-[#64c5c3] uppercase tracking-widest">
+                Next Steps
+              </p>
+            </div>
+            <p className="text-[10px] sm:text-xs text-gray-400 leading-relaxed font-medium mb-3">
+              Your remaining balance of{" "}
+              <strong className="text-white">
+                ₱{balanceDue.toLocaleString()}
+              </strong>{" "}
+              (including deposit) will be collected during vehicle handover.
+            </p>
+            <p className="text-[10px] sm:text-xs text-gray-400 leading-relaxed font-medium">
+              You can track your itinerary and payment status via your{" "}
+              <strong className="text-white">Customer Dashboard</strong>.
+            </p>
+          </div>
+
+          <Button
+            onClick={() => router.push("/customer/my-bookings")}
+            className="w-full bg-[#64c5c3] text-black hover:bg-[#52a3a1] rounded-xl h-14 font-black text-[11px] uppercase tracking-widest transition-all duration-300 shadow-[0_0_15px_rgba(100,197,195,0.2)] group"
+          >
+            View My Itinerary
+            <ArrowRight className="w-4 h-4 ml-3 group-hover:translate-x-1 transition-transform" />
+          </Button>
+        </motion.div>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-[#050B10] text-white font-sans selection:bg-[#64c5c3] selection:text-black pb-24">
-      {/* --- Hero Header Section --- */}
-      <div className="relative pt-32 pb-16 md:pb-20 px-6 overflow-hidden border-b border-white/5">
-        <div className="absolute top-0 right-1/4 w-[400px] h-[400px] bg-[#64c5c3]/10 rounded-full blur-[120px] pointer-events-none -z-10" />
-        <div className="max-w-6xl mx-auto w-full relative z-10">
-          <motion.div
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.6 }}
+    <div className="min-h-screen bg-[#050B10] font-sans selection:bg-[#64c5c3] selection:text-black text-white pb-24">
+      {/* Sticky Header */}
+      <div className="bg-[#050B10]/80 backdrop-blur-xl border-b border-white/5 sticky top-0 z-50 transition-all duration-500">
+        <div className="max-w-6xl mx-auto px-4 md:px-6 h-16 md:h-20 flex items-center gap-4 md:gap-6">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => router.back()}
+            className="rounded-full text-gray-400 hover:text-white hover:bg-white/10"
           >
-            <p className="text-[#64c5c3] font-bold tracking-widest text-xs md:text-sm mb-2 md:mb-3 uppercase flex items-center gap-2">
-              <span className="w-6 md:w-8 h-[2px] bg-[#64c5c3]"></span>{" "}
-              Dashboard
-            </p>
-            <h1 className="text-4xl sm:text-5xl md:text-7xl font-black uppercase tracking-tighter leading-[0.9] mb-4 md:mb-6">
-              Your <br />{" "}
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-white via-gray-300 to-gray-600">
-                Bookings
-              </span>
-            </h1>
-            <p className="text-gray-400 text-xs sm:text-sm md:text-base max-w-sm font-medium leading-relaxed">
-              Track your reservations, view your bookings, and review your
-              rental history all in one place.
-            </p>
-          </motion.div>
+            <ArrowLeft className="w-5 h-5" />
+          </Button>
+          <h1 className="text-[10px] md:text-xs font-bold text-white uppercase tracking-[0.3em] mt-0.5">
+            Secure Checkout
+          </h1>
         </div>
       </div>
 
-      <div className="max-w-6xl mx-auto px-4 md:px-6 py-6 md:py-8 relative z-10">
-        {/* --- Filters & Search Bar --- */}
-        <div className="bg-[#0a1118]/80 backdrop-blur-xl rounded-2xl md:rounded-3xl p-3 md:p-4 border border-white/5 flex flex-col lg:flex-row items-center justify-between gap-3 md:gap-4 mb-6 md:mb-10 shadow-2xl">
-          <div className="flex w-full lg:w-auto overflow-x-auto custom-scrollbar pb-1 lg:pb-0 gap-1.5 md:gap-2 snap-x">
-            {TABS.map((tab) => (
-              <button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                className={cn(
-                  "shrink-0 px-4 md:px-6 py-2 md:py-3 rounded-full text-[9px] md:text-xs font-bold uppercase tracking-widest transition-all duration-300 snap-start",
-                  activeTab === tab
-                    ? "bg-[#64c5c3] text-black shadow-[0_0_15px_rgba(100,197,195,0.3)]"
-                    : "bg-white/5 text-gray-400 hover:text-white hover:bg-white/10 border border-white/5",
-                )}
-              >
-                {tab}
-              </button>
-            ))}
+      <div className="max-w-6xl mx-auto px-4 md:px-6 py-8 md:py-12">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12">
+          {/* LEFT COLUMN: Forms */}
+          <div className="lg:col-span-7 xl:col-span-8 space-y-8 md:space-y-12">
+            {/* 1. Schedule & Driver */}
+            <section className="bg-[#0a1118]/80 backdrop-blur-xl rounded-2xl md:rounded-3xl p-6 md:p-10 shadow-2xl border border-white/5 relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-64 h-64 bg-[#64c5c3]/5 rounded-full blur-[80px] pointer-events-none -z-10" />
+
+              <div className="flex items-center gap-4 mb-8 md:mb-10 pb-6 border-b border-white/10">
+                <div className="w-10 h-10 rounded-xl bg-[#64c5c3]/10 flex items-center justify-center text-[#64c5c3]">
+                  <span className="text-sm font-black">01</span>
+                </div>
+                <h2 className="text-lg md:text-xl font-black text-white tracking-wider uppercase">
+                  Schedule & Chauffeur
+                </h2>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6 mb-8 md:mb-10">
+                <div className="bg-black/40 p-5 md:p-6 border border-white/5 rounded-2xl">
+                  <p className="text-[9px] md:text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2">
+                    Pick-up Date
+                  </p>
+                  <p className="text-sm md:text-base font-bold text-white uppercase tracking-wider">
+                    {startDate
+                      ? format(startDate, "EEEE, MMM dd, yyyy")
+                      : "Not selected"}
+                  </p>
+                </div>
+                <div className="bg-black/40 p-5 md:p-6 border border-white/5 rounded-2xl">
+                  <p className="text-[9px] md:text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2">
+                    Drop-off Date
+                  </p>
+                  <p className="text-sm md:text-base font-bold text-white uppercase tracking-wider">
+                    {endDate
+                      ? format(endDate, "EEEE, MMM dd, yyyy")
+                      : "Not selected"}
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6 items-center border-t border-white/10 pt-8 md:pt-10">
+                <div className="bg-black/40 border border-white/5 rounded-2xl p-5 flex items-center justify-between transition-colors hover:border-[#64c5c3]/30">
+                  <Label className="text-[10px] font-bold uppercase tracking-widest text-gray-400">
+                    Pick-up Time
+                  </Label>
+                  <input
+                    type="time"
+                    value={time}
+                    onChange={(e) => setTime(e.target.value)}
+                    className="bg-transparent font-black text-white outline-none border-none ring-0 focus:ring-0 text-sm md:text-base tracking-widest"
+                  />
+                </div>
+
+                <div
+                  className={cn(
+                    "flex flex-col justify-center bg-black/40 p-4 border border-white/5 rounded-2xl transition-colors relative",
+                    !hasAvailableDrivers
+                      ? "opacity-60 bg-red-900/10 border-red-500/20"
+                      : "hover:border-[#64c5c3]/30",
+                  )}
+                >
+                  <div className="flex items-center justify-between w-full">
+                    <div className="flex flex-col gap-1 cursor-pointer">
+                      <span className="text-[10px] font-bold uppercase tracking-widest text-white flex items-center gap-2">
+                        Request a Driver
+                        {isCheckingDrivers && (
+                          <span className="animate-pulse text-[#64c5c3]">
+                            ...
+                          </span>
+                        )}
+                      </span>
+                      <span className="text-[9px] font-bold text-[#64c5c3] tracking-widest uppercase">
+                        + ₱{realFees.driver_rate_per_day.toLocaleString()} / day
+                      </span>
+                    </div>
+                    <Switch
+                      checked={withDriver}
+                      onCheckedChange={setWithDriver}
+                      disabled={!hasAvailableDrivers || isCheckingDrivers}
+                      className="data-[state=checked]:bg-[#64c5c3]"
+                    />
+                  </div>
+                  {!hasAvailableDrivers && !isCheckingDrivers && (
+                    <div className="mt-3 pt-3 border-t border-red-500/20 flex items-start gap-2">
+                      <UserCheck className="w-3.5 h-3.5 text-red-400 shrink-0" />
+                      <p className="text-[9px] font-bold text-red-400 uppercase tracking-widest leading-snug">
+                        No chauffeurs available for these dates. Self-drive
+                        only.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </section>
+
+            {/* 2. Location Logistics */}
+            <section className="bg-[#0a1118]/80 backdrop-blur-xl rounded-2xl md:rounded-3xl p-6 md:p-10 shadow-2xl border border-white/5 relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-64 h-64 bg-[#64c5c3]/5 rounded-full blur-[80px] pointer-events-none -z-10" />
+
+              <div className="flex items-center gap-4 mb-8 md:mb-10 pb-6 border-b border-white/10">
+                <div className="w-10 h-10 rounded-xl bg-[#64c5c3]/10 flex items-center justify-center text-[#64c5c3]">
+                  <span className="text-sm font-black">02</span>
+                </div>
+                <h2 className="text-lg md:text-xl font-black text-white tracking-wider uppercase">
+                  Meeting Locations
+                </h2>
+              </div>
+
+              <div className="space-y-6 md:space-y-8">
+                {/* Pick-up Location */}
+                <div className="p-5 md:p-6 bg-black/40 border border-white/5 rounded-2xl">
+                  <Label className="text-[9px] md:text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-4 block">
+                    Pick-up Logistics
+                  </Label>
+                  <div className="flex flex-col sm:flex-row gap-3 md:gap-4">
+                    <div className="flex-1 relative h-12 md:h-14">
+                      {pickupType === "custom" && (
+                        <div className="absolute inset-0 bg-[#64c5c3]/10 border border-[#64c5c3]/30 rounded-xl z-10 flex items-center px-4">
+                          <MapPin className="text-[#64c5c3] w-4 h-4 shrink-0 mr-3" />
+                          <span className="text-[10px] md:text-xs font-bold text-white truncate uppercase tracking-widest">
+                            {pickupLocation}
+                          </span>
+                        </div>
+                      )}
+                      <Select
+                        value={pickupType === "hub" ? pickupLocation : ""}
+                        onValueChange={(val) => {
+                          setPickupType("hub");
+                          setPickupLocation(val);
+                        }}
+                      >
+                        <SelectTrigger className="h-full! rounded-xl text-[9px] md:text-[10px] font-bold uppercase tracking-widest border-white/10 bg-white/5 text-white w-full">
+                          <SelectValue placeholder="SELECT AN OFFICIAL HUB" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-[#0a1118] border-white/10 text-white rounded-xl">
+                          {realHubs.map((hub) => (
+                            <SelectItem
+                              key={hub.id}
+                              value={hub.name}
+                              className="text-[9px] md:text-[10px] uppercase tracking-widest font-bold focus:bg-white/10 focus:text-white"
+                            >
+                              {hub.name}{" "}
+                              <span className="text-[#64c5c3] ml-1">
+                                (FREE)
+                              </span>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <Button
+                      onClick={() => openMapFor("pickup")}
+                      className={cn(
+                        "h-12 md:h-14 px-6 rounded-xl text-[9px] md:text-[10px] font-bold uppercase tracking-widest transition-all w-full sm:w-auto",
+                        pickupType === "custom"
+                          ? "bg-[#64c5c3] text-black hover:bg-[#52a3a1]"
+                          : "bg-transparent border border-white/20 text-white hover:bg-white/10",
+                      )}
+                    >
+                      <MapPin className="w-4 h-4 mr-2" />{" "}
+                      {pickupType === "custom" ? "Adjust Pin" : "Map Selector"}
+                    </Button>
+                  </div>
+                  {pickupType === "custom" && (
+                    <p className="text-[8px] md:text-[9px] font-bold text-[#64c5c3] uppercase tracking-widest mt-4 flex items-center gap-2">
+                      <ShieldCheck className="w-3.5 h-3.5" /> + ₱
+                      {realFees.custom_pickup_fee} Service Fee Applied
+                    </p>
+                  )}
+                </div>
+
+                {/* Drop-off Location */}
+                <div className="p-5 md:p-6 bg-black/40 border border-white/5 rounded-2xl">
+                  <Label className="text-[9px] md:text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-4 block">
+                    Drop-off Logistics
+                  </Label>
+                  <div className="flex flex-col sm:flex-row gap-3 md:gap-4">
+                    <div className="flex-1 relative h-12 md:h-14">
+                      {dropoffType === "custom" && (
+                        <div className="absolute inset-0 bg-[#64c5c3]/10 border border-[#64c5c3]/30 rounded-xl z-10 flex items-center px-4">
+                          <MapPin className="text-[#64c5c3] w-4 h-4 shrink-0 mr-3" />
+                          <span className="text-[10px] md:text-xs font-bold text-white truncate uppercase tracking-widest">
+                            {dropoffLocation}
+                          </span>
+                        </div>
+                      )}
+                      <Select
+                        value={dropoffType === "hub" ? dropoffLocation : ""}
+                        onValueChange={(val) => {
+                          setDropoffType("hub");
+                          setDropoffLocation(val);
+                        }}
+                      >
+                        <SelectTrigger className="h-full! rounded-xl text-[9px] md:text-[10px] font-bold uppercase tracking-widest border-white/10 bg-white/5 text-white w-full">
+                          <SelectValue placeholder="SELECT AN OFFICIAL HUB" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-[#0a1118] border-white/10 text-white rounded-xl">
+                          {realHubs.map((hub) => (
+                            <SelectItem
+                              key={hub.id}
+                              value={hub.name}
+                              className="text-[9px] md:text-[10px] uppercase tracking-widest font-bold focus:bg-white/10 focus:text-white"
+                            >
+                              {hub.name}{" "}
+                              <span className="text-[#64c5c3] ml-1">
+                                (FREE)
+                              </span>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <Button
+                      onClick={() => openMapFor("dropoff")}
+                      className={cn(
+                        "h-12 md:h-14 px-6 rounded-xl text-[9px] md:text-[10px] font-bold uppercase tracking-widest transition-all w-full sm:w-auto",
+                        dropoffType === "custom"
+                          ? "bg-[#64c5c3] text-black hover:bg-[#52a3a1]"
+                          : "bg-transparent border border-white/20 text-white hover:bg-white/10",
+                      )}
+                    >
+                      <MapPin className="w-4 h-4 mr-2" />{" "}
+                      {dropoffType === "custom" ? "Adjust Pin" : "Map Selector"}
+                    </Button>
+                  </div>
+                  {dropoffType === "custom" && (
+                    <p className="text-[8px] md:text-[9px] font-bold text-[#64c5c3] uppercase tracking-widest mt-4 flex items-center gap-2">
+                      <ShieldCheck className="w-3.5 h-3.5" /> + ₱
+                      {realFees.custom_dropoff_fee} Service Fee Applied
+                    </p>
+                  )}
+                </div>
+              </div>
+            </section>
           </div>
 
-          <div className="relative w-full lg:w-80 shrink-0">
-            <Search className="absolute left-3 md:left-4 top-1/2 -translate-y-1/2 w-3.5 md:w-4 h-3.5 md:h-4 text-gray-500" />
-            <Input
-              placeholder="Search Reference ID..."
-              className="pl-10 md:pl-12 h-10 md:h-12 rounded-xl bg-black/50 border-white/10 text-[10px] md:text-xs font-bold uppercase tracking-widest text-white placeholder:text-gray-500 focus-visible:ring-[#64c5c3] focus-visible:border-transparent w-full transition-all"
+          {/* RIGHT COLUMN: The Sticky Summary */}
+          <div className="lg:col-span-5 xl:col-span-4 relative mt-4 lg:mt-0">
+            <div className="bg-[#0a1118]/80 backdrop-blur-2xl rounded-3xl border border-white/5 shadow-2xl overflow-hidden sticky top-28">
+              <div className="p-6 md:p-8 border-b border-white/10 flex gap-4 md:gap-5 items-center bg-black/40">
+                <div className="relative w-24 h-16 md:w-28 md:h-20 rounded-xl bg-black overflow-hidden shrink-0 border border-white/5">
+                  <Image
+                    src={car?.image}
+                    alt="Vehicle"
+                    fill
+                    sizes="112px"
+                    className="object-cover opacity-80"
+                  />
+                </div>
+                <div>
+                  <p className="text-[9px] md:text-[10px] text-[#64c5c3] font-bold mb-1 uppercase tracking-widest">
+                    {car?.brand}
+                  </p>
+                  <h3 className="text-xl md:text-2xl font-black text-white tracking-tighter uppercase">
+                    {car?.model}
+                  </h3>
+                </div>
+              </div>
+
+              <div className="p-6 md:p-8 space-y-6">
+                <h4 className="text-[9px] md:text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-4">
+                  Pricing Breakdown
+                </h4>
+                <div className="space-y-4 text-[10px] md:text-[11px] font-bold uppercase tracking-widest">
+                  <div className="flex justify-between text-gray-400">
+                    <span>Vehicle ({totalDays} days)</span>
+                    <span className="text-white">
+                      ₱{rentTotal.toLocaleString()}
+                    </span>
+                  </div>
+                  {withDriver && (
+                    <div className="flex justify-between text-gray-400">
+                      <span>Chauffeur Service</span>
+                      <span className="text-[#64c5c3]">
+                        ₱{driverTotal.toLocaleString()}
+                      </span>
+                    </div>
+                  )}
+                  {pickupFee > 0 && (
+                    <div className="flex justify-between text-gray-400">
+                      <span>Logistics Pick-up</span>
+                      <span className="text-[#64c5c3]">
+                        ₱{pickupFee.toLocaleString()}
+                      </span>
+                    </div>
+                  )}
+                  {dropoffFee > 0 && (
+                    <div className="flex justify-between text-gray-400">
+                      <span>Logistics Drop-off</span>
+                      <span className="text-[#64c5c3]">
+                        ₱{dropoffFee.toLocaleString()}
+                      </span>
+                    </div>
+                  )}
+
+                  <div className="flex justify-between text-gray-400 border-t border-white/10 pt-4 border-dashed">
+                    <span>Rental Subtotal</span>
+                    <span className="text-white">
+                      ₱{subTotal.toLocaleString()}
+                    </span>
+                  </div>
+
+                  <div className="flex justify-between text-gray-500">
+                    <span className="flex items-center gap-2">
+                      Refundable Deposit{" "}
+                      <ShieldCheck className="w-3 h-3 text-gray-600" />
+                    </span>
+                    <span className="text-gray-400">
+                      ₱{realFees.security_deposit_default.toLocaleString()}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-6 md:p-8 bg-black/60 border-t border-[#64c5c3]/20 shadow-[0_-15px_30px_rgba(100,197,195,0.05)]">
+                <div className="flex items-end justify-between mb-4 pb-4 border-b border-white/10">
+                  <p className="text-[9px] md:text-[10px] font-bold text-gray-500 uppercase tracking-widest">
+                    Total Booking Value
+                  </p>
+                  <p className="text-xl font-black text-gray-300 tracking-tighter leading-none">
+                    ₱{grandTotal.toLocaleString()}
+                  </p>
+                </div>
+
+                <div className="flex items-end justify-between mb-6">
+                  <p className="text-[10px] md:text-[11px] font-black text-[#64c5c3] uppercase tracking-widest flex items-center gap-2">
+                    Due Now{" "}
+                    <span className="text-[8px] bg-[#64c5c3]/20 px-1.5 py-0.5 rounded text-[#64c5c3]">
+                      (10% Fee)
+                    </span>
+                  </p>
+                  <p className="text-3xl md:text-4xl font-black text-[#64c5c3] tracking-tighter leading-none">
+                    ₱{reservationFee.toLocaleString()}
+                  </p>
+                </div>
+
+                {/* --- Button to open Payment Modal --- */}
+                <Button
+                  size="lg"
+                  onClick={() => setIsPaymentModalOpen(true)}
+                  className="w-full bg-[#64c5c3] text-black hover:bg-[#52a3a1] h-14 md:h-16 rounded-xl font-black text-[10px] md:text-[11px] uppercase tracking-widest shadow-[0_0_20px_rgba(100,197,195,0.2)] transition-all duration-500 group"
+                >
+                  Proceed to Payment
+                  <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
+                </Button>
+
+                <div className="flex items-center gap-2 justify-center text-[8px] font-bold text-gray-600 mt-4 uppercase tracking-widest">
+                  <ShieldCheck className="w-3 h-3" /> Secure Payment Gateway
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* --- THE PAYMENT MODAL (Wider & Scrollable) --- */}
+      <Dialog open={isPaymentModalOpen} onOpenChange={setIsPaymentModalOpen}>
+        <DialogContent className="w-[95vw] sm:max-w-lg md:max-w-xl max-h-[85vh] overflow-y-auto custom-scrollbar bg-[#0a1118]/95 backdrop-blur-2xl border border-[#64c5c3]/30 p-6 md:p-8 rounded-3xl shadow-[0_0_50px_rgba(100,197,195,0.15)] text-white">
+          <DialogHeader className="text-center shrink-0">
+            <DialogTitle className="text-2xl font-black uppercase tracking-tighter text-white">
+              Secure Vehicle
+            </DialogTitle>
+            <DialogDescription className="text-[10px] font-bold uppercase tracking-widest text-[#64c5c3] mt-2">
+              Amount Due: ₱{reservationFee.toLocaleString()}
+            </DialogDescription>
+          </DialogHeader>
+
+          {/* Wrapper to handle spacing inside the scrollable area */}
+          <div className="flex flex-col gap-6 mt-4">
+            {/* Payment Instructions / QR Code */}
+            <div className="p-5 bg-black/40 border border-[#64c5c3]/20 rounded-2xl text-center flex flex-col items-center shrink-0">
+              <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-3">
+                Scan to Pay via GCash / Maya
+              </p>
+              <div className="w-32 h-32 bg-white rounded-xl p-2 mb-3 relative flex items-center justify-center">
+                {/* Using standard img tag temporarily to avoid Next.config errors */}
+                <img
+                  src="https://placehold.co/400x400?text=QR+Code"
+                  alt="GCash/Maya QR Code"
+                  className="w-full h-full object-contain p-2"
+                />
+              </div>
+              <p className="text-[10px] text-white font-bold uppercase tracking-widest mb-1">
+                MC Ormoc Car Rental
+              </p>
+              <p className="text-[10px] text-[#64c5c3] font-bold tracking-widest">
+                0976 180 4397
+              </p>
+            </div>
+
+            {/* The OCR Scanner Component */}
+            <div className="shrink-0">
+              <ReceiptScanner
+                onScanComplete={handleReceiptScan}
+                expectedAmount={reservationFee}
+              />
+            </div>
+
+            {/* Consent Checkbox */}
+            <label className="flex items-start gap-3 cursor-pointer group shrink-0">
+              <div className="relative flex items-center justify-center mt-0.5">
+                <input
+                  type="checkbox"
+                  className="peer appearance-none w-4 h-4 border-2 border-white/20 rounded-md checked:bg-[#64c5c3] checked:border-[#64c5c3] transition-all outline-none cursor-pointer"
+                  checked={agreedToTerms}
+                  onChange={(e) => setAgreedToTerms(e.target.checked)}
+                />
+                <CheckCircle2
+                  className="w-3 h-3 text-black absolute opacity-0 peer-checked:opacity-100 pointer-events-none"
+                  strokeWidth={4}
+                />
+              </div>
+              <p className="text-[9px] text-gray-400 font-medium leading-relaxed">
+                I agree to pay the{" "}
+                <strong className="text-white">
+                  non-refundable 10% Reservation Fee
+                </strong>{" "}
+                to secure this vehicle. I understand this will be deducted from
+                my final balance.
+              </p>
+            </label>
+
+            {/* Final Submit */}
+            <Button
+              size="lg"
+              onClick={handleSubmitBooking}
+              disabled={
+                isSubmittingCustomerBooking ||
+                isUploading ||
+                !agreedToTerms ||
+                !receiptFile
+              }
+              className="w-full shrink-0 bg-[#64c5c3] text-black hover:bg-[#52a3a1] h-14 rounded-xl font-black text-[10px] uppercase tracking-widest shadow-[0_0_20px_rgba(100,197,195,0.2)] transition-all duration-500 disabled:opacity-40 disabled:bg-[#64c5c3] disabled:cursor-not-allowed"
+            >
+              {isUploading
+                ? "Uploading Receipt..."
+                : isSubmittingCustomerBooking
+                  ? "Processing..."
+                  : "Confirm & Lock Booking"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Map Dialog */}
+      <Dialog open={mapOpen} onOpenChange={setMapOpen}>
+        <DialogContent className="max-w-5xl bg-[#0a1118] border-white/10 p-0 overflow-hidden flex flex-col h-[85vh] rounded-3xl shadow-2xl gap-0 w-[95vw] md:w-full">
+          <DialogHeader className="p-6 md:p-8 bg-black/40 border-b border-white/5 shrink-0">
+            <DialogTitle className="text-2xl md:text-3xl font-black text-white tracking-tighter uppercase">
+              Select {activeMapField === "pickup" ? "Pick-up" : "Drop-off"} Node
+            </DialogTitle>
+            <DialogDescription className="text-[9px] md:text-[10px] font-bold uppercase tracking-widest text-gray-500 mt-2">
+              Select an official hub (Free) or pin a custom coordinate (+₱
+              {realFees.custom_pickup_fee} Logistics Fee).
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex-1 w-full bg-black relative">
+            <OrmocMapSelector
+              hubs={realHubs}
+              onLocationSelect={handleLocationSelect}
             />
           </div>
-        </div>
-
-        {/* --- The Booking List --- */}
-        <div className="space-y-4 md:space-y-6">
-          {isLoading ? (
-            <div className="flex flex-col items-center justify-center py-16 md:py-24 gap-4 md:gap-6">
-              <div className="w-10 h-10 md:w-12 md:h-12 border-4 border-white/10 border-t-[#64c5c3] rounded-full animate-spin" />
-              <span className="text-[10px] md:text-xs font-bold uppercase tracking-widest text-gray-500">
-                Loading Secure Bookings...
-              </span>
-            </div>
-          ) : filteredBookings.length > 0 ? (
-            filteredBookings.map((booking: any) => (
-              <motion.div
-                initial={{ opacity: 0, y: 15 }}
-                animate={{ opacity: 1, y: 0 }}
-                key={booking.booking_id || booking.id}
-              >
-                <BookingCard booking={booking} />
-              </motion.div>
-            ))
-          ) : (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="bg-[#0a1118] rounded-2xl md:rounded-3xl border border-white/5 p-10 md:p-16 flex flex-col items-center justify-center text-center shadow-lg"
-            >
-              <div className="w-16 h-16 md:w-20 md:h-20 bg-white/5 rounded-full flex items-center justify-center mb-4 md:mb-6">
-                <Inbox className="w-6 h-6 md:w-8 md:h-8 text-gray-500" />
-              </div>
-              <h3 className="text-xl md:text-2xl font-black uppercase text-white mb-2">
-                No Trips Found
-              </h3>
-              <p className="text-xs md:text-sm text-gray-400 font-medium max-w-sm">
-                You don't have any reservations under the "{activeTab}"
-                category. Time to find your next drive.
-              </p>
-            </motion.div>
-          )}
-        </div>
-      </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

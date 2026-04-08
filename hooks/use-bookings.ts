@@ -19,6 +19,9 @@ import {
   submitPaymentReceipt,
   getCarUnavailableDatesAction,
   checkDriverAvailabilityAction,
+  getBookingDetailsAction,
+  cancelBookingAction,
+  updateBookingNoteAction,
 } from "@/actions/bookings"; // Ensure this matches filename!
 
 const fetchBookingsList = async (
@@ -135,6 +138,40 @@ export const useBookings = () => {
     },
   });
 
+  const cancelMutation = useMutation({
+    mutationFn: ({
+      bookingId,
+      reason,
+      refundAction,
+    }: {
+      bookingId: string;
+      reason: string;
+      refundAction: "forfeit" | "refund";
+    }) => cancelBookingAction(bookingId, reason, refundAction),
+    onSuccess: (data) => {
+      if (data.success) {
+        toast.success(data.message);
+        queryClient.invalidateQueries({ queryKey: ["bookings"] });
+        queryClient.invalidateQueries({ queryKey: ["booking-details"] });
+      } else {
+        toast.error(data.message);
+      }
+    },
+  });
+
+  const updateNoteMutation = useMutation({
+    mutationFn: ({ bookingId, note }: { bookingId: string; note: string }) =>
+      updateBookingNoteAction(bookingId, note),
+    onSuccess: (data) => {
+      if (data.success) {
+        toast.success(data.message);
+        queryClient.invalidateQueries({ queryKey: ["booking-details"] });
+      } else {
+        toast.error(data.message);
+      }
+    },
+  });
+
   return {
     bookings: query.data || [],
     isLoading: query.isLoading,
@@ -157,6 +194,10 @@ export const useBookings = () => {
     isSubmittingCustomerBooking: customerCreateMutation.isPending,
     submitPayment: paymentMutation.mutateAsync, // <-- EXPORTED HERE!
     isSubmittingPayment: paymentMutation.isPending,
+    cancelBooking: cancelMutation.mutateAsync,
+    isCancelling: cancelMutation.isPending,
+    updateNote: updateNoteMutation.mutateAsync,
+    isUpdatingNote: updateNoteMutation.isPending,
   };
 };
 
@@ -208,5 +249,17 @@ export const useAvailableDrivers = (
     enabled: !!startDate && !!endDate,
     // Keep it fresh, but don't spam the database every second
     staleTime: 30 * 1000,
+  });
+};
+
+export const useBookingDetails = (bookingId: string | null | undefined) => {
+  return useQuery({
+    queryKey: ["booking-details", bookingId],
+    queryFn: async () => {
+      const res = await getBookingDetailsAction(bookingId!);
+      if (!res.success) throw new Error(res.message);
+      return res.data;
+    },
+    enabled: !!bookingId, // Only run if we actually have an ID
   });
 };

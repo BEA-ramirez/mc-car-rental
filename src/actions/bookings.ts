@@ -781,3 +781,146 @@ export async function checkDriverAvailabilityAction(
   // The RPC returns a boolean
   return !!data;
 }
+
+// --- READ: Get Single Booking Details (Full Overview) ---
+export async function getBookingDetailsAction(bookingId: string) {
+  const supabase = await createClient();
+
+  if (!bookingId || !bookingId.includes("-")) {
+    return { success: false, data: null, message: "Invalid Booking ID" };
+  }
+
+  // Fetch the booking with all relational joins
+  const { data: booking, error } = await supabase
+    .from("bookings")
+    .select(
+      `
+      *,
+      customer:users!user_id(full_name, email, phone_number),
+      car:cars!car_id(brand, model, plate_number, car_images(image_url, is_primary)),
+      driver:drivers!driver_id(driver_id, users(full_name)),
+      payments:booking_payments(amount, status),
+      contracts:booking_contracts(is_signed),
+      inspections:booking_inspections(type)
+    `,
+    )
+    .eq("booking_id", bookingId)
+    .single();
+
+  if (error) {
+    console.error("Error fetching booking details:", error);
+    return { success: false, data: null, message: error.message };
+  }
+
+  // Process the data for the UI
+  const primaryImage =
+    booking.car?.car_images?.find((img: any) => img.is_primary)?.image_url ||
+    booking.car?.car_images?.[0]?.image_url ||
+    "https://placehold.co/600x400?text=No+Image";
+
+  // Calculate amount paid from Approved/Completed payments
+  const amountPaid =
+    booking.payments
+      ?.filter((p: any) => p.status === "Completed" || p.status === "Approved")
+      .reduce((sum: number, p: any) => sum + Number(p.amount), 0) || 0;
+
+  const formattedData = {
+    id: booking.booking_id,
+    status: booking.booking_status,
+    start_date: new Date(booking.start_date),
+    end_date: new Date(booking.end_date),
+    pickup_location: booking.pickup_location,
+    dropoff_location: booking.dropoff_location,
+    total_price: Number(booking.total_price),
+    security_deposit: Number(booking.security_deposit),
+    amount_paid: amountPaid,
+    is_with_driver: booking.is_with_driver,
+    notes: booking.notes || "",
+    customer: {
+      name: booking.customer?.full_name || "Unknown Customer",
+      email: booking.customer?.email || "No Email",
+      phone: booking.customer?.phone_number || "No Phone",
+    },
+    car: {
+      id: booking.car_id,
+      brand: booking.car?.brand,
+      model: booking.car?.model,
+      plate: booking.car?.plate_number,
+      image: primaryImage,
+    },
+    driver: booking.driver
+      ? {
+          id: booking.driver.driver_id,
+          name: booking.driver.users?.full_name || "Unknown Driver",
+        }
+      : null,
+    has_contract: booking.contracts && booking.contracts.length > 0,
+    is_contract_signed: booking.contracts?.some((c: any) => c.is_signed),
+    has_pre_trip: booking.inspections?.some((i: any) => i.type === "Pre-trip"),
+    has_post_trip: booking.inspections?.some(
+      (i: any) => i.type === "Post-trip",
+    ),
+  };
+
+  return { success: true, data: formattedData };
+}
+
+export async function cancelBookingAction(
+  bookingId: string,
+  reason: string,
+  refundAction: "forfeit" | "refund",
+): Promise<ActionState> {
+  const supabase = await createClient();
+
+  // 1. Update the booking status
+  const { error: updateErr } = await supabase
+    .from("bookings")
+    .update({
+      booking_status: "cancelled",
+      notes: reason, // Save the reason in the notes
+    })
+    .eq("booking_id", bookingId);
+
+  if (updateErr) return { success: false, message: updateErr.message };
+
+  // 2. Handle the money logic if they chose to refund
+  if (refundAction === "refund") {
+    // NOTE: In a real app, you might create a negative charge or a specific refund transaction here.
+    // For now, we log the refund intent in the ledger.
+    await supabase.from("financial_transactions").insert({
+      transaction_type: "EXPENSE",
+      category: "REFUND_RECEIVED",
+      amount: 0, // You would calculate the actual paid amount to refund here
+      booking_id: bookingId,
+      notes: `Cancellation Refund Triggered. Reason: ${reason}`,
+      status: "PENDING", // Pending until admin actually sends money back
+    });
+  }
+
+  // 3. Log the cancellation
+  await supabase.from("booking_logs").insert({
+    booking_id: bookingId,
+    action_type: "CANCELLED",
+    message: `Booking cancelled by Admin. Downpayment: ${refundAction}. Reason: ${reason}`,
+  });
+
+  revalidatePath("/admin/bookings");
+  revalidatePath(`/admin/bookings/${bookingId}`);
+  return { success: true, message: "Booking cancelled successfully." };
+}
+
+export async function updateBookingNoteAction(
+  bookingId: string,
+  note: string,
+): Promise<ActionState> {
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("bookings")
+    .update({ notes: note })
+    .eq("booking_id", bookingId);
+
+  if (error) return { success: false, message: error.message };
+
+  revalidatePath(`/admin/bookings/${bookingId}`);
+  return { success: true, message: "Notes updated." };
+}
