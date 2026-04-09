@@ -75,6 +75,7 @@ export const carSchema = z.object({
   rental_rate_per_day: z.coerce.number().min(0, "Rate is required"),
   availability_status: z.string().min(1, "Required"),
   current_mileage: z.coerce.number().min(0).optional(),
+  rental_rate_per_12h: z.number().min(0).default(0),
 
   created_at: z.string().datetime().optional(),
   last_updated_at: z.string().datetime().optional(),

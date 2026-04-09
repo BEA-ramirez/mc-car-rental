@@ -72,6 +72,16 @@ export default function DocumentsMain() {
     isPending,
   } = useDocumentMutations();
 
+  //kyc table pagination & filters
+  const [kycPage, setKycPage] = useState(1);
+  const [kycSearch, setKycSearch] = useState("");
+  const [docFilters, setDocFilters] = useState({
+    category: "all",
+    status: "all",
+    file_type: "all",
+    expiry_date: "",
+  });
+
   return (
     <div className="flex flex-col h-full bg-background font-sans transition-colors duration-300">
       {/* --- SCROLLABLE BODY --- */}
@@ -291,6 +301,9 @@ export default function DocumentsMain() {
                   <input
                     type="text"
                     placeholder="Search customer, ID, or file name..."
+                    onChange={(e) => {
+                      if (activeTab === "kyc") setKycSearch(e.target.value);
+                    }}
                     className="w-full h-8 pl-8 pr-3 text-[11px] font-medium bg-secondary border border-border rounded-lg focus:outline-none focus:ring-1 focus:ring-primary text-foreground placeholder:text-muted-foreground transition-colors shadow-none"
                   />
                 </div>
@@ -307,6 +320,10 @@ export default function DocumentsMain() {
               <div className="bg-background min-h-[400px] transition-colors">
                 {activeTab === "kyc" && (
                   <KYCTable
+                    currentPage={kycPage}
+                    onPageChange={setKycPage}
+                    searchTerm={kycSearch}
+                    filters={docFilters}
                     onEdit={(doc) => {
                       setEditDoc(doc);
                       setIsUploadOpen(true);

@@ -121,17 +121,18 @@ export default function ContractPreviewModal({
 
         {/* --- BODY (PDF VIEWER STYLE) --- */}
         <ScrollArea className="flex-1 h-full p-4 sm:p-6 bg-secondary/30 custom-scrollbar">
-          {/* THE PAPER DOCUMENT */}
-          <div className="w-full max-w-[700px] mx-auto bg-card shadow-sm border border-border p-6 sm:p-10 min-h-[800px] flex flex-col rounded-xl relative transition-colors">
+          {/* THE PAPER DOCUMENT - Locked to white background with black text */}
+          <div className="w-full max-w-[700px] mx-auto bg-white shadow-sm border border-border p-6 sm:p-10 min-h-[800px] flex flex-col rounded-xl relative">
             {/* If we have the dynamic HTML, render it! */}
             {contract.htmlContent ? (
               <div
-                className="prose prose-sm dark:prose-invert max-w-none prose-p:leading-relaxed prose-headings:text-foreground text-foreground"
+                // Removed dark:prose-invert, locked text to black
+                className="prose prose-sm max-w-none prose-p:leading-relaxed prose-headings:text-black text-black"
                 dangerouslySetInnerHTML={{ __html: contract.htmlContent }}
               />
             ) : (
               /* Fallback for old contracts without HTML */
-              <div className="text-center py-20 text-muted-foreground font-medium text-xs">
+              <div className="text-center py-20 text-zinc-500 font-medium text-xs">
                 Legacy contract data not available for rendering.
               </div>
             )}
@@ -142,16 +143,17 @@ export default function ContractPreviewModal({
                 <img
                   src={contract.signatureUrl}
                   alt="Customer Signature"
-                  className="max-h-full object-contain drop-shadow-sm opacity-90 dark:invert"
+                  // Removed dark:invert so the signature stays dark on the white paper
+                  className="max-h-full object-contain drop-shadow-sm opacity-90"
                 />
-                <span className="absolute -bottom-5 bg-card px-2 text-[9px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-widest border border-emerald-500/20 rounded">
+                <span className="absolute -bottom-5 bg-white px-2 text-[9px] font-bold text-emerald-700 uppercase tracking-widest border border-emerald-500/20 rounded">
                   Verified: {contract.signedAt}
                 </span>
               </div>
             )}
           </div>
 
-          {/* THE SIGNATURE EXECUTION PANEL */}
+          {/* THE SIGNATURE EXECUTION PANEL (Remains theme-adaptable) */}
           {!isSigned && (
             <div className="w-full max-w-[700px] mx-auto mt-6 bg-card border border-border rounded-xl shadow-sm overflow-hidden animate-in slide-in-from-bottom-4 fade-in duration-500 transition-colors">
               <div className="bg-secondary/50 px-4 py-2.5 flex items-center gap-2 border-b border-border transition-colors">

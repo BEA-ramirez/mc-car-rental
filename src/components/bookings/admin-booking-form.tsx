@@ -29,6 +29,7 @@ import {
   Car,
   CalendarDays,
   Loader2,
+  CheckCircle2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -55,12 +56,6 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
 import { Calendar } from "@/components/ui/calendar";
 import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -94,7 +89,7 @@ import { useCustomers } from "../../../hooks/use-users";
 import { useUnits } from "../../../hooks/use-units";
 import { createClient } from "@/utils/supabase/client";
 
-// --- TYPES ---
+// --- TYPES & EXTRACTED COMPONENTS (Unchanged) ---
 type LocationFieldProps = {
   type: "pickup" | "dropoff";
   hubs: any[];
@@ -112,7 +107,6 @@ type AdminBookingFormProps = {
   onCancel?: () => void;
 };
 
-// --- EXTRACTED COMPONENT ---
 const LocationField = ({
   type,
   hubs,
@@ -310,7 +304,6 @@ export default function AdminBookingForm({
     "pickup" | "dropoff" | null
   >(null);
 
-  // --- FALLBACK USER STATE ---
   const [fallbackUser, setFallbackUser] = useState<{
     user_id: string;
     full_name: string;
@@ -341,6 +334,7 @@ export default function AdminBookingForm({
       additional_charges: [],
       car_id: initialCarId || "",
       start_date: initialStartDate || undefined,
+      is_12_hour_promo: false, // <-- NEW DEFAULT
     },
   });
 
@@ -363,22 +357,43 @@ export default function AdminBookingForm({
   const wDriverFee = watch("driver_fee_per_day");
   const wExtras = watch("additional_charges");
   const wSecurityDeposit = watch("security_deposit");
+  const w12HourPromo = watch("is_12_hour_promo"); // <-- NEW WATCHER
 
   // Calculations
   const selectedCar = units.find((c) => c.car_id === wCarId);
-  const days = duration > 0 ? duration : 1;
+  const price12h = Number(selectedCar?.rental_rate_per_12h || 0);
   const dailyRate = wCustomRate || selectedCar?.rental_rate_per_day || 0;
+
+  const days = duration > 0 ? duration : 1;
+  const isPromoEligible = price12h > 0 && days === 1 && !wCustomRate;
+
+  // Auto-disable promo if they change to > 1 day or use a custom rate
+  useEffect(() => {
+    if (!isPromoEligible && w12HourPromo) {
+      setValue("is_12_hour_promo", false);
+    }
+  }, [isPromoEligible, w12HourPromo, setValue]);
+
   const rentTotal = days * dailyRate;
+
+  // Apply the 12h promo logically as a discount
+  const promoDiscount =
+    w12HourPromo && isPromoEligible ? dailyRate - price12h : 0;
+
   const driverTotal = wWithDriver ? days * (wDriverFee || 0) : 0;
   const extrasTotal =
     wExtras?.reduce((acc, curr) => acc + (curr.amount || 0), 0) || 0;
+
   const subTotal =
     rentTotal +
     (wPickupPrice || 0) +
     (wDropoffPrice || 0) +
     driverTotal +
     extrasTotal;
-  const totalPayable = subTotal - (wDiscount || 0) + (wSecurityDeposit || 0);
+
+  // Ensure the promo discount is subtracted from totalPayable
+  const totalPayable =
+    subTotal - promoDiscount - (wDiscount || 0) + (wSecurityDeposit || 0);
   const balanceDue = totalPayable - (wPayment?.amount || 0);
 
   // --- FETCH EDIT DATA ---
@@ -412,12 +427,12 @@ export default function AdminBookingForm({
 
         const startDate = new Date(booking.start_date);
         const endDate = new Date(booking.end_date);
-        const diffDays = Math.max(
-          1,
-          Math.ceil(
-            (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24),
-          ),
-        );
+
+        // --- DETECT IF IT WAS A 12 HOUR PROMO ---
+        const diffHours =
+          (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60);
+        const is12HourPromo = diffHours === 12;
+        const diffDays = Math.max(1, Math.ceil(diffHours / 24)); // 12h becomes 1 day
 
         setStartTime(format(startDate, "HH:mm"));
         setDuration(diffDays);
@@ -433,7 +448,8 @@ export default function AdminBookingForm({
             discount = Math.abs(c.amount);
           } else if (
             c.category !== "Base Rate" &&
-            c.category !== "Delivery Fee"
+            c.category !== "Delivery Fee" &&
+            c.category !== "PROMO_DISCOUNT" // Ignore promo discount, handled by state
           ) {
             extras.push({
               category: c.category,
@@ -454,6 +470,7 @@ export default function AdminBookingForm({
           car_id: booking.car_id,
           start_date: startDate,
           end_date: endDate,
+          is_12_hour_promo: is12HourPromo, // <-- INJECTED HERE
 
           pickup_type: booking.pickup_type as "hub" | "custom",
           pickup_location: booking.pickup_location,
@@ -488,7 +505,7 @@ export default function AdminBookingForm({
     fetchEditData();
   }, [bookingId, fees.driver_rate_per_day, replace, reset, units]);
 
-  // --- EFFECTS ---
+  // --- EFFECTS (Unchanged) ---
   useEffect(() => {
     if (!fees || bookingId) return;
     const { dirtyFields } = form.formState;
@@ -837,7 +854,6 @@ export default function AdminBookingForm({
                       Rental Period
                     </h3>
                   </div>
-                  {/* Auto-Return Summary Badge */}
                   <div className="flex items-center gap-1.5 text-[9px] font-bold bg-secondary border border-border px-2 py-0.5 rounded uppercase tracking-widest text-muted-foreground">
                     <span>Duration:</span>
                     <span className="text-foreground">{duration * 24} hrs</span>
@@ -924,6 +940,46 @@ export default function AdminBookingForm({
                     />
                   </FormItem>
                 </div>
+
+                {/* --- PROMO CHECKBOX SECTION --- */}
+                {isPromoEligible && (
+                  <div className="mt-4 pt-4 border-t border-border">
+                    <div
+                      onClick={() =>
+                        setValue("is_12_hour_promo", !w12HourPromo)
+                      }
+                      className={cn(
+                        "flex items-start gap-3 p-4 border rounded-xl cursor-pointer transition-all duration-300",
+                        w12HourPromo
+                          ? "bg-primary/10 border-primary/40 shadow-sm"
+                          : "bg-secondary/50 border-border hover:border-primary/30",
+                      )}
+                    >
+                      <div className="relative flex items-center justify-center mt-0.5 shrink-0">
+                        <input
+                          type="checkbox"
+                          className="peer appearance-none w-4 h-4 border-2 border-primary/50 rounded text-primary checked:bg-primary checked:border-primary transition-all outline-none cursor-pointer"
+                          checked={w12HourPromo}
+                          readOnly
+                        />
+                        <CheckCircle2
+                          className="w-3 h-3 text-primary-foreground absolute opacity-0 peer-checked:opacity-100 pointer-events-none"
+                          strokeWidth={4}
+                        />
+                      </div>
+                      <div className="flex flex-col">
+                        <label className="text-xs font-bold text-primary uppercase tracking-wider cursor-pointer">
+                          Apply 12-Hour Rental Promo
+                        </label>
+                        <span className="text-[10px] text-muted-foreground mt-0.5 leading-relaxed">
+                          Locks the system calendar to exactly 12 hours from
+                          pick-up and applies the discounted rate of ₱
+                          {price12h.toLocaleString()}.
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* SECTION 3: LOGISTICS */}
@@ -1128,6 +1184,21 @@ export default function AdminBookingForm({
 
                   <Separator className="bg-border" />
 
+                  {/* --- PROMO DISPLAY --- */}
+                  {w12HourPromo && isPromoEligible && (
+                    <>
+                      <div className="flex justify-between items-center text-primary bg-primary/10 p-2 rounded-lg border border-primary/20">
+                        <span className="text-[10px] font-bold uppercase tracking-widest">
+                          12H Promo Applied
+                        </span>
+                        <span className="text-xs font-black font-mono">
+                          - ₱ {promoDiscount.toLocaleString()}
+                        </span>
+                      </div>
+                      <Separator className="bg-border" />
+                    </>
+                  )}
+
                   {/* Driver */}
                   <div className="space-y-2.5">
                     <div className="flex justify-between items-center">
@@ -1196,7 +1267,7 @@ export default function AdminBookingForm({
                     </div>
                   )}
 
-                  {/* Breakdown of Add-ons (since we moved the inputs to the left) */}
+                  {/* Breakdown of Add-ons */}
                   {wExtras && wExtras.length > 0 && (
                     <div className="space-y-1.5 pt-1.5">
                       <div className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest mb-1">
@@ -1273,6 +1344,21 @@ export default function AdminBookingForm({
                         }
                       />
                     </div>
+                  </div>
+
+                  <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest pt-2.5 border-t border-border mt-1">
+                    <span
+                      className={cn(
+                        balanceDue > 0
+                          ? "text-amber-600 dark:text-amber-400"
+                          : "text-emerald-600 dark:text-emerald-400",
+                      )}
+                    >
+                      Remaining Balance
+                    </span>
+                    <span className="text-xs font-mono">
+                      ₱ {Math.max(0, balanceDue).toLocaleString()}
+                    </span>
                   </div>
                 </div>
 
@@ -1368,21 +1454,6 @@ export default function AdminBookingForm({
                         </div>
                       </div>
                     )}
-
-                    <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest pt-2.5 border-t border-border mt-1">
-                      <span
-                        className={cn(
-                          balanceDue > 0
-                            ? "text-amber-600 dark:text-amber-400"
-                            : "text-emerald-600 dark:text-emerald-400",
-                        )}
-                      >
-                        Remaining Balance
-                      </span>
-                      <span className="text-xs font-mono">
-                        ₱ {balanceDue.toLocaleString()}
-                      </span>
-                    </div>
                   </div>
                 </div>
               </div>

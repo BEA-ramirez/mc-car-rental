@@ -90,11 +90,11 @@ export const AdminCreateBookingSchema = z.object({
   pickup_coordinates: z.string().optional().nullable(),
   pickup_price: z.number().default(0),
 
+  is_12_hour_promo: z.boolean().optional().default(false),
   dropoff_type: z.enum(["hub", "custom"]),
   dropoff_location: z.string().min(1, "Dropoff location is required"),
   dropoff_coordinates: z.string().optional().nullable(),
   dropoff_price: z.number().default(0),
-
   // Driver Options
   with_driver: z.boolean().default(false), // Maps to 'is_with_driver'
   driver_fee_per_day: z.number().default(500), // Used for calculation

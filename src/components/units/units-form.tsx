@@ -63,7 +63,6 @@ import { FleetPartnerType } from "@/lib/schemas/car-owner";
 interface UnitsFormProp {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  // Use 'any' or an extended type here since initialData might be the mapped RPC response
   initialData?: any | null;
 }
 
@@ -111,6 +110,7 @@ export function UnitsForm({ open, onOpenChange, initialData }: UnitsFormProp) {
       year: new Date().getFullYear(),
       color: "",
       rental_rate_per_day: 0,
+      rental_rate_per_12h: 0, // <--- ADDED DEFAULT
       availability_status: "Available",
       spec_id: "",
       car_owner_id: "",
@@ -124,11 +124,9 @@ export function UnitsForm({ open, onOpenChange, initialData }: UnitsFormProp) {
     },
   });
 
-  // --- UPDATED HYDRATION LOGIC ---
   useEffect(() => {
     if (open) {
       if (initialData) {
-        // Ensure numeric fields are actually numbers and arrays are mapped correctly
         form.reset({
           car_id: initialData.car_id,
           plate_number: initialData.plate_number || "",
@@ -137,6 +135,7 @@ export function UnitsForm({ open, onOpenChange, initialData }: UnitsFormProp) {
           year: Number(initialData.year) || new Date().getFullYear(),
           color: initialData.color || "",
           rental_rate_per_day: Number(initialData.rental_rate_per_day) || 0,
+          rental_rate_per_12h: Number(initialData.rental_rate_per_12h) || 0, // <--- ADDED MAPPING
           availability_status: initialData.availability_status || "Available",
           spec_id: initialData.spec_id || "",
           car_owner_id: initialData.car_owner_id || "",
@@ -147,7 +146,6 @@ export function UnitsForm({ open, onOpenChange, initialData }: UnitsFormProp) {
           is_archived: initialData.is_archived || false,
         });
       } else {
-        // Create Mode - Wipe form
         form.reset({
           car_id: undefined,
           plate_number: "",
@@ -156,6 +154,7 @@ export function UnitsForm({ open, onOpenChange, initialData }: UnitsFormProp) {
           year: new Date().getFullYear(),
           color: "",
           rental_rate_per_day: 0,
+          rental_rate_per_12h: 0, // <--- ADDED MAPPING
           availability_status: "Available",
           spec_id: "",
           car_owner_id: "",
@@ -182,16 +181,18 @@ export function UnitsForm({ open, onOpenChange, initialData }: UnitsFormProp) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[950px] h-[85vh] flex flex-col p-0 gap-0 overflow-hidden rounded-xl bg-background shadow-2xl border-border transition-colors duration-300">
+      <DialogContent className="sm:max-w-[950px] h-[85vh] flex flex-col p-0 gap-0 overflow-hidden rounded-xl bg-background shadow-2xl border-border transition-colors duration-300 [&>button.absolute]:hidden">
         {/* HEADER */}
-        <DialogHeader className="px-5 py-4 border-b border-border bg-card shrink-0 transition-colors">
-          <DialogTitle className="text-sm font-bold text-foreground flex items-center gap-2 uppercase tracking-wider">
-            <CarFront className="w-4 h-4 text-primary" />
-            {initialData ? "Edit Unit Details" : "Add New Unit"}
-          </DialogTitle>
-          <DialogDescription className="text-[11px] font-medium text-muted-foreground mt-1">
-            Configure the vehicle identity, specifications, and features.
-          </DialogDescription>
+        <DialogHeader className="px-5 py-4 border-b border-border bg-card shrink-0 flex flex-row items-center justify-between transition-colors">
+          <div>
+            <DialogTitle className="text-sm font-bold text-foreground flex items-center gap-2 uppercase tracking-wider">
+              <CarFront className="w-4 h-4 text-primary" />
+              {initialData ? "Edit Unit Details" : "Add New Unit"}
+            </DialogTitle>
+            <DialogDescription className="text-[11px] font-medium text-muted-foreground mt-1">
+              Configure the vehicle identity, specifications, and features.
+            </DialogDescription>
+          </div>
         </DialogHeader>
 
         <Form {...form}>
@@ -438,6 +439,7 @@ export function UnitsForm({ open, onOpenChange, initialData }: UnitsFormProp) {
                           </h3>
                         </div>
 
+                        {/* --- ADDED 12-HOUR RATE TO THE GRID --- */}
                         <div className="grid grid-cols-2 gap-3">
                           <FormField
                             control={form.control}
@@ -473,6 +475,49 @@ export function UnitsForm({ open, onOpenChange, initialData }: UnitsFormProp) {
                               </FormItem>
                             )}
                           />
+
+                          {/* --- NEW 12-HOUR RATE FIELD --- */}
+                          <FormField
+                            control={form.control}
+                            name="rental_rate_per_12h"
+                            render={({ field }) => (
+                              <FormItem className="space-y-1">
+                                <FormLabel className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">
+                                  12-Hour Rate (₱){" "}
+                                  <span className="lowercase font-normal opacity-70">
+                                    (Optional)
+                                  </span>
+                                </FormLabel>
+                                <FormControl>
+                                  <Input
+                                    type="number"
+                                    placeholder="2000"
+                                    className="h-8 text-[11px] font-medium bg-secondary border-border text-foreground rounded-lg focus-visible:ring-primary shadow-none"
+                                    {...field}
+                                    onChange={(e) => {
+                                      const val = parseInt(e.target.value);
+                                      if (!isNaN(val))
+                                        form.setValue(
+                                          "rental_rate_per_12h",
+                                          val,
+                                        );
+                                      else if (e.target.value === "")
+                                        form.setValue(
+                                          "rental_rate_per_12h",
+                                          "" as any,
+                                        );
+                                    }}
+                                    value={(field.value as number) || ""}
+                                  />
+                                </FormControl>
+                                <FormMessage className="text-[9px]" />
+                              </FormItem>
+                            )}
+                          />
+                        </div>
+
+                        {/* Moved Status & Owner to their own row */}
+                        <div className="grid grid-cols-2 gap-3 mt-3">
                           <FormField
                             control={form.control}
                             name="availability_status"
@@ -515,44 +560,43 @@ export function UnitsForm({ open, onOpenChange, initialData }: UnitsFormProp) {
                               </FormItem>
                             )}
                           />
+                          <FormField
+                            control={form.control}
+                            name="car_owner_id"
+                            render={({ field }) => (
+                              <FormItem className="space-y-1">
+                                <FormLabel className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">
+                                  Owner / Partner
+                                </FormLabel>
+                                <Select
+                                  onValueChange={field.onChange}
+                                  defaultValue={field.value}
+                                >
+                                  <FormControl>
+                                    <SelectTrigger className="h-8 text-[11px] font-medium bg-secondary border-border text-foreground rounded-lg focus-visible:ring-primary shadow-none">
+                                      <SelectValue placeholder="Assign fleet partner" />
+                                    </SelectTrigger>
+                                  </FormControl>
+                                  <SelectContent className="rounded-lg border-border bg-popover">
+                                    {fleetPartners?.map(
+                                      (partner: FleetPartnerType) => (
+                                        <SelectItem
+                                          key={partner.car_owner_id}
+                                          value={partner.car_owner_id}
+                                          className="text-[11px]"
+                                        >
+                                          {partner.business_name ||
+                                            partner.users.first_name}
+                                        </SelectItem>
+                                      ),
+                                    )}
+                                  </SelectContent>
+                                </Select>
+                                <FormMessage className="text-[9px]" />
+                              </FormItem>
+                            )}
+                          />
                         </div>
-
-                        <FormField
-                          control={form.control}
-                          name="car_owner_id"
-                          render={({ field }) => (
-                            <FormItem className="space-y-1">
-                              <FormLabel className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">
-                                Owner / Partner
-                              </FormLabel>
-                              <Select
-                                onValueChange={field.onChange}
-                                defaultValue={field.value}
-                              >
-                                <FormControl>
-                                  <SelectTrigger className="h-8 text-[11px] font-medium bg-secondary border-border text-foreground rounded-lg focus-visible:ring-primary shadow-none">
-                                    <SelectValue placeholder="Assign fleet partner" />
-                                  </SelectTrigger>
-                                </FormControl>
-                                <SelectContent className="rounded-lg border-border bg-popover">
-                                  {fleetPartners?.map(
-                                    (partner: FleetPartnerType) => (
-                                      <SelectItem
-                                        key={partner.car_owner_id}
-                                        value={partner.car_owner_id}
-                                        className="text-[11px]"
-                                      >
-                                        {partner.business_name ||
-                                          partner.users.first_name}
-                                      </SelectItem>
-                                    ),
-                                  )}
-                                </SelectContent>
-                              </Select>
-                              <FormMessage className="text-[9px]" />
-                            </FormItem>
-                          )}
-                        />
                       </div>
                     </div>
 

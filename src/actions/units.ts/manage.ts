@@ -60,26 +60,19 @@ export async function searchFeatures(
 export async function saveUnit(data: CompleteCarType): Promise<ActionReponse> {
   const supabase = await createClient();
 
-  //validate data
   const parsed = completeCarSchema.safeParse(data);
   if (!parsed.success) {
-    return {
-      success: false,
-      message: parsed.error.issues[0].message,
-    };
+    return { success: false, message: parsed.error.issues[0].message };
   }
 
   const { features, images, owner, specifications, car_id, ...carDetails } =
     parsed.data;
 
-  let savedCarId = car_id;
-
   try {
-    // 3. Call the RPC
     const { data: savedId, error } = await supabase.rpc("save_unit_v1", {
       p_car_id: car_id || null,
       p_car_owner_id: carDetails.car_owner_id,
-      p_spec_id: carDetails.spec_id, // Ensure this ID is valid in car_specifications
+      p_spec_id: carDetails.spec_id,
       p_plate_number: carDetails.plate_number,
       p_brand: carDetails.brand,
       p_model: carDetails.model,
@@ -87,10 +80,12 @@ export async function saveUnit(data: CompleteCarType): Promise<ActionReponse> {
       p_color: carDetails.color,
       p_vin: carDetails.vin || null,
       p_rental_rate_per_day: carDetails.rental_rate_per_day,
+      p_rental_rate_per_12h: (carDetails as any).rental_rate_per_12h || 0,
+
       p_availability_status: carDetails.availability_status,
       p_current_mileage: carDetails.current_mileage || 0,
-      p_features: features || [], // Pass the array of features
-      p_images: images || [], // Pass the array of images
+      p_features: features || [],
+      p_images: images || [],
     });
 
     if (error) throw new Error(error.message);

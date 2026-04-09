@@ -8,7 +8,7 @@ import {
 } from "@/lib/schemas/booking";
 import { revalidatePath } from "next/cache";
 import { getInspectionTemplate, getContractTemplate } from "@/actions/settings";
-import { Data } from "@syncfusion/ej2-react-grids";
+import { addHours } from "date-fns";
 
 export type ActionState = {
   success?: boolean;
@@ -34,14 +34,23 @@ export async function createCustomerBooking(data: any): Promise<any> {
     };
   }
 
-  // Call the updated RPC
+  // HANDLE THE 12-HOUR PROMO DATE LOGIC ---
+  const startDate = new Date(data.start_date);
+  let finalEndDate = new Date(data.end_date);
+
+  if (data.is12HourPromo && data.car12HourRate > 0) {
+    // Force the end date to be exactly 12 hours after pickup
+    finalEndDate = addHours(startDate, 12);
+  }
+
+  // --- 2. CALL THE RPC TO CREATE THE BOOKING ---
   const { data: bookingId, error } = await supabase.rpc(
     "create_customer_booking_v1",
     {
       p_user_id: user.id,
       p_car_id: data.car_id,
-      p_start_date: new Date(data.start_date).toISOString(),
-      p_end_date: new Date(data.end_date).toISOString(),
+      p_start_date: startDate.toISOString(),
+      p_end_date: finalEndDate.toISOString(), // <-- Use the adjusted date!
       p_pickup_loc: data.pickup_location,
       p_dropoff_loc: data.dropoff_location,
       p_pickup_type: data.pickup_type,
@@ -50,7 +59,7 @@ export async function createCustomerBooking(data: any): Promise<any> {
       p_dropoff_price: data.dropoff_price,
       p_is_with_driver: data.is_with_driver,
       p_base_rate_snapshot: data.daily_rate,
-      p_total_price: data.grand_total,
+      p_total_price: data.grand_total, // Frontend already applied the discount to this!
       p_security_deposit: data.security_deposit,
       p_pickup_coordinates: data.pickup_coords,
       p_dropoff_coordinates: data.dropoff_coords,
@@ -59,7 +68,7 @@ export async function createCustomerBooking(data: any): Promise<any> {
       p_reservation_fee_paid: data.payment_details?.amount || 0,
       p_transaction_reference:
         data.payment_details?.transaction_reference || null,
-      p_receipt_url: data.payment_details?.receipt_url || null, // Pass the uploaded file path
+      p_receipt_url: data.payment_details?.receipt_url || null,
     },
   );
 
@@ -69,6 +78,21 @@ export async function createCustomerBooking(data: any): Promise<any> {
       success: false,
       message: error.message || "Failed to submit booking request.",
     };
+  }
+
+  // --- 3. AUTO-LOG THE PROMO DISCOUNT IN CHARGES ---
+  // We do this AFTER the RPC so we have the newly created bookingId
+  if (data.is12HourPromo && bookingId) {
+    const discountAmount = data.carDailyRate - data.car12HourRate;
+
+    if (discountAmount > 0) {
+      await supabase.from("booking_charges").insert({
+        booking_id: bookingId,
+        category: "PROMO_DISCOUNT",
+        description: "12-Hour Rental Promo",
+        amount: -Math.abs(discountAmount), // Ensure it saves as a negative number
+      });
+    }
   }
 
   // Revalidate the UI
@@ -81,6 +105,7 @@ export async function createCustomerBooking(data: any): Promise<any> {
   };
 }
 
+// CREATE (Admin Super Form)
 // CREATE (Admin Super Form)
 export async function createAdminBooking(data: unknown) {
   const supabase = await createClient();
@@ -96,20 +121,38 @@ export async function createAdminBooking(data: unknown) {
   }
   const input = result.data;
 
+  // --- NEW: FETCH CAR FOR BASE RATE AND PROMO RATE ---
+  const { data: car } = await supabase
+    .from("cars")
+    .select(
+      "rental_rate_per_day, rental_rate_per_12h, brand, model, plate_number",
+    )
+    .eq("car_id", input.car_id)
+    .single();
+
+  if (!car) return { success: false, message: "Car not found" };
+
+  const dailyRate = input.custom_daily_rate || car.rental_rate_per_day;
+
+  // --- NEW: DATE & PROMO LOGIC ---
+  const startDate = input.start_date;
+  let endDate = input.end_date;
+
+  if (input.is_12_hour_promo) {
+    endDate = addHours(startDate, 12);
+  }
+
   // =========================================================================
-  // NEW: CONFLICT CHECK (The "Block and Alert" Method)
+  // CONFLICT CHECK (The "Block and Alert" Method)
   // =========================================================================
-  // This looks for any active booking where:
-  // Existing Start < New End  AND  Existing End > New Start
   const { data: conflicts, error: conflictError } = await supabase
     .from("bookings")
     .select("booking_id")
     .eq("car_id", input.car_id)
-    // We only care about blocking statuses. Pending requests don't block admins.
     .in("booking_status", ["confirmed", "ongoing", "maintenance"])
-    .lt("start_date", input.end_date.toISOString())
-    .gt("end_date", input.start_date.toISOString())
-    .limit(1); // We only need to find 1 to know there's a conflict
+    .lt("start_date", endDate.toISOString()) // Uses adjusted endDate
+    .gt("end_date", startDate.toISOString())
+    .limit(1);
 
   if (conflictError) {
     console.error("Conflict Check Error:", conflictError);
@@ -128,23 +171,12 @@ export async function createAdminBooking(data: unknown) {
   }
   // =========================================================================
 
-  // 2. Calculate Base Rent Logic
+  // Calculate Base Rent Logic
   const days =
     Math.ceil(
       (input.end_date.getTime() - input.start_date.getTime()) /
         (1000 * 60 * 60 * 24),
     ) || 1;
-
-  let dailyRate = input.custom_daily_rate;
-  if (!dailyRate) {
-    const { data: car } = await supabase
-      .from("cars")
-      .select("rental_rate_per_day")
-      .eq("car_id", input.car_id)
-      .single();
-    if (!car) return { success: false, message: "Car not found" };
-    dailyRate = car.rental_rate_per_day;
-  }
   const baseRent = days * dailyRate!;
 
   // 3. COMPILE ALL CHARGES
@@ -157,7 +189,19 @@ export async function createAdminBooking(data: unknown) {
     description: `${days} days @ ₱${dailyRate}/day`,
   });
 
-  // B. Driver Fee
+  // B. Promo Discount
+  if (input.is_12_hour_promo && car.rental_rate_per_12h > 0) {
+    const discount = dailyRate - car.rental_rate_per_12h;
+    if (discount > 0) {
+      charges.push({
+        category: "PROMO_DISCOUNT",
+        amount: -discount,
+        description: "12-Hour Rental Promo",
+      });
+    }
+  }
+
+  // C. Driver Fee
   if (input.with_driver) {
     const driverTotal = days * input.driver_fee_per_day;
     charges.push({
@@ -167,7 +211,7 @@ export async function createAdminBooking(data: unknown) {
     });
   }
 
-  // C. Pickup/Dropoff Fees
+  // D. Pickup/Dropoff Fees
   if (input.pickup_price > 0) {
     charges.push({
       category: "Delivery Fee",
@@ -183,7 +227,7 @@ export async function createAdminBooking(data: unknown) {
     });
   }
 
-  // D. Additional Charges
+  // E. Additional Charges
   if (input.additional_charges && input.additional_charges.length > 0) {
     input.additional_charges.forEach((c) => {
       charges.push({
@@ -194,7 +238,7 @@ export async function createAdminBooking(data: unknown) {
     });
   }
 
-  // E. Discount
+  // F. Manual Discount
   if (input.discount_amount > 0) {
     charges.push({
       category: "Discount",
@@ -217,7 +261,7 @@ export async function createAdminBooking(data: unknown) {
       items: category.items.map((item) => ({
         itemId: item.id,
         label: item.label,
-        status: "PENDING", // Pre-fill the staff action states
+        status: "PENDING",
         notes: "",
         photoUrl: null,
       })),
@@ -227,31 +271,24 @@ export async function createAdminBooking(data: unknown) {
   const rawContract = await getContractTemplate();
   let filledContractHtml = null;
 
-  // 2. Fetch the Customer & Car details (if you don't already have them in 'input')
   const { data: customer } = await supabase
     .from("users")
     .select("full_name, address")
     .eq("user_id", input.user_id)
     .single();
-  const { data: carData } = await supabase
-    .from("cars")
-    .select("brand, model, plate_number")
-    .eq("car_id", input.car_id)
-    .single();
 
-  if (rawContract && customer && carData) {
-    // 3. Inject variables into the HTML
+  if (rawContract && customer) {
     filledContractHtml = rawContract
       .replace(/{{CUSTOMER_NAME}}/g, customer.full_name || "Unknown Customer")
       .replace(
         /{{CUSTOMER_ADDRESS}}/g,
         customer.address || "Address not provided",
       )
-      .replace(/{{CAR_BRAND_MODEL}}/g, `${carData.brand} ${carData.model}`)
-      .replace(/{{PLATE_NUMBER}}/g, carData.plate_number)
-      .replace(/{{START_DATE}}/g, input.start_date.toLocaleDateString())
-      .replace(/{{END_DATE}}/g, input.end_date.toLocaleDateString())
-      .replace(/{{TOTAL_PRICE}}/g, baseRent.toFixed(2)) // Or total including charges
+      .replace(/{{CAR_BRAND_MODEL}}/g, `${car.brand} ${car.model}`)
+      .replace(/{{PLATE_NUMBER}}/g, car.plate_number)
+      .replace(/{{START_DATE}}/g, startDate.toLocaleDateString())
+      .replace(/{{END_DATE}}/g, endDate.toLocaleDateString())
+      .replace(/{{TOTAL_PRICE}}/g, baseRent.toFixed(2))
       .replace(
         /{{SECURITY_DEPOSIT}}/g,
         (input.security_deposit || 0).toFixed(2),
@@ -264,8 +301,8 @@ export async function createAdminBooking(data: unknown) {
     {
       p_user_id: input.user_id,
       p_car_id: input.car_id,
-      p_start_date: input.start_date.toISOString(),
-      p_end_date: input.end_date.toISOString(),
+      p_start_date: startDate.toISOString(),
+      p_end_date: endDate.toISOString(), // Adjusted date!
       p_pickup_loc: input.pickup_location,
       p_dropoff_loc: input.dropoff_location,
       p_pickup_coordinates: input.pickup_coordinates || null,
@@ -293,10 +330,10 @@ export async function createAdminBooking(data: unknown) {
   return { success: true, message: "Booking created successfully", bookingId };
 }
 
+// UPDATE (Admin Super Form)
 export async function updateAdminBooking(bookingId: string, data: unknown) {
   const supabase = await createClient();
 
-  // 1. Validate Input
   const result = AdminCreateBookingSchema.safeParse(data);
   if (!result.success) {
     return {
@@ -307,36 +344,51 @@ export async function updateAdminBooking(bookingId: string, data: unknown) {
   }
   const input = result.data;
 
-  // 2. Calculate Base Rent Logic
+  // --- NEW: FETCH CAR FOR BASE RATE AND PROMO RATE ---
+  const { data: car } = await supabase
+    .from("cars")
+    .select("rental_rate_per_day, rental_rate_per_12h")
+    .eq("car_id", input.car_id)
+    .single();
+
+  if (!car) return { success: false, message: "Car not found" };
+
+  const dailyRate = input.custom_daily_rate || car.rental_rate_per_day;
+
+  // --- NEW: DATE & PROMO LOGIC ---
+  const startDate = input.start_date;
+  let endDate = input.end_date;
+
+  if (input.is_12_hour_promo) {
+    endDate = addHours(startDate, 12);
+  }
+
   const days =
     Math.ceil(
       (input.end_date.getTime() - input.start_date.getTime()) /
         (1000 * 60 * 60 * 24),
     ) || 1;
-
-  let dailyRate = input.custom_daily_rate;
-  if (!dailyRate) {
-    const { data: car } = await supabase
-      .from("cars")
-      .select("rental_rate_per_day")
-      .eq("car_id", input.car_id)
-      .single();
-    if (!car) return { success: false, message: "Car not found" };
-    dailyRate = car.rental_rate_per_day;
-  }
   const baseRent = days * dailyRate!;
 
-  // 3. COMPILE ALL CHARGES
   const charges = [];
 
-  // A. Base Rent
   charges.push({
     category: "Base Rate",
     amount: baseRent,
     description: `${days} days @ ₱${dailyRate}/day`,
   });
 
-  // B. Driver Fee
+  if (input.is_12_hour_promo && car.rental_rate_per_12h > 0) {
+    const discount = dailyRate - car.rental_rate_per_12h;
+    if (discount > 0) {
+      charges.push({
+        category: "PROMO_DISCOUNT",
+        amount: -discount,
+        description: "12-Hour Rental Promo",
+      });
+    }
+  }
+
   if (input.with_driver) {
     const driverTotal = days * input.driver_fee_per_day;
     charges.push({
@@ -346,7 +398,6 @@ export async function updateAdminBooking(bookingId: string, data: unknown) {
     });
   }
 
-  // C. Pickup/Dropoff Fees
   if (input.pickup_price > 0) {
     charges.push({
       category: "Delivery Fee",
@@ -362,7 +413,6 @@ export async function updateAdminBooking(bookingId: string, data: unknown) {
     });
   }
 
-  // D. Additional Charges
   if (input.additional_charges && input.additional_charges.length > 0) {
     input.additional_charges.forEach((c) => {
       charges.push({
@@ -373,7 +423,6 @@ export async function updateAdminBooking(bookingId: string, data: unknown) {
     });
   }
 
-  // E. Discount
   if (input.discount_amount > 0) {
     charges.push({
       category: "Discount",
@@ -386,13 +435,12 @@ export async function updateAdminBooking(bookingId: string, data: unknown) {
     return { success: false, message: "Invalid Payment Amount" };
   }
 
-  // 4. Call the Update RPC
   const { error } = await supabase.rpc("admin_update_booking_v1", {
-    p_booking_id: bookingId, // <--- THIS IS THE ONLY DIFFERENCE
+    p_booking_id: bookingId,
     p_user_id: input.user_id,
     p_car_id: input.car_id,
-    p_start_date: input.start_date.toISOString(),
-    p_end_date: input.end_date.toISOString(),
+    p_start_date: startDate.toISOString(),
+    p_end_date: endDate.toISOString(), // Adjusted date!
     p_pickup_loc: input.pickup_location,
     p_dropoff_loc: input.dropoff_location,
     p_pickup_coordinates: input.pickup_coordinates || null,
@@ -405,7 +453,7 @@ export async function updateAdminBooking(bookingId: string, data: unknown) {
     p_base_rate_snapshot: dailyRate,
     p_security_deposit: input.security_deposit,
     p_charges_json: charges,
-    p_new_payment_json: input.initial_payment ?? null, // Note: named differently in update RPC
+    p_new_payment_json: input.initial_payment ?? null,
   });
 
   if (error) {

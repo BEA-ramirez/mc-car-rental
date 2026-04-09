@@ -12,6 +12,7 @@ import {
 import { format } from "date-fns";
 import { formatCategory } from "./documents-main";
 import { cn } from "@/lib/utils";
+import { TablePagination } from "../table-pagination";
 
 // status badge component
 const StatusBadge = ({ status }: { status: string }) => {
@@ -59,15 +60,32 @@ const StatusBadge = ({ status }: { status: string }) => {
 };
 
 export function KYCTable({
+  currentPage,
+  onPageChange,
+  searchTerm,
+  filters,
   onViewReview,
   onEdit,
   onDelete,
 }: {
+  currentPage: number;
+  onPageChange: (page: number) => void;
+  searchTerm: string;
+  filters: any;
   onViewReview: (row: any) => void;
   onEdit: (row: any) => void;
   onDelete: (row: any) => void;
 }) {
-  const { data: documents = [], isLoading } = useKYCDocuments();
+  const { data: response, isLoading } = useKYCDocuments(
+    currentPage,
+    searchTerm,
+    filters,
+  );
+  const documents = response?.data || [];
+  const totalCount = response?.count || 0;
+  const totalPages = Math.ceil(totalCount / 10);
+
+  console.log("Documents", documents);
 
   if (isLoading)
     return (
@@ -84,107 +102,114 @@ export function KYCTable({
     );
 
   return (
-    <div className="w-full overflow-x-auto custom-scrollbar">
-      <table className="w-full text-left border-collapse">
-        <thead>
-          <tr className="bg-secondary/30 border-b border-border transition-colors">
-            <th className="px-3 py-2 text-[9px] font-bold text-muted-foreground uppercase tracking-widest w-[250px]">
-              Customer
-            </th>
-            <th className="px-3 py-2 text-[9px] font-bold text-muted-foreground uppercase tracking-widest">
-              Document Type
-            </th>
-            <th className="px-3 py-2 text-[9px] font-bold text-muted-foreground uppercase tracking-widest">
-              Uploaded Date
-            </th>
-            <th className="px-3 py-2 text-[9px] font-bold text-muted-foreground uppercase tracking-widest">
-              Expiry Date
-            </th>
-            <th className="px-3 py-2 text-[9px] font-bold text-muted-foreground uppercase tracking-widest">
-              Status
-            </th>
-            {/* Split into two columns for perfect alignment */}
-            <th className="px-3 py-2 text-[9px] font-bold text-muted-foreground uppercase tracking-widest text-right w-[80px]">
-              Manage
-            </th>
-            <th className="px-3 py-2 text-[9px] font-bold text-muted-foreground uppercase tracking-widest text-right w-[80px]">
-              Action
-            </th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-border">
-          {documents.map((doc: any, idx: number) => (
-            <tr
-              key={doc.document_id || `kyc-${idx}`}
-              className="hover:bg-secondary/30 transition-colors group bg-background"
-            >
-              <td className="px-3 py-2">
-                <div className="flex flex-col">
-                  <span className="text-[11px] font-bold text-foreground">
-                    {doc.users?.full_name || "Unknown"}
-                  </span>
-                  <span className="text-[9px] font-medium text-muted-foreground truncate">
-                    {doc.users?.email || "No email"}
-                  </span>
-                </div>
-              </td>
-              <td className="px-3 py-2 text-[10px] font-bold text-foreground">
-                {formatCategory(doc.category)}
-              </td>
-              <td className="px-3 py-2 text-[10px] font-semibold text-muted-foreground font-mono">
-                {doc.created_at
-                  ? format(new Date(doc.created_at), "MMM dd, yyyy")
-                  : "---"}
-              </td>
-              <td className="px-3 py-2 text-[10px] font-semibold text-muted-foreground font-mono">
-                {doc.expiry_date
-                  ? format(new Date(doc.expiry_date), "MMM dd, yyyy")
-                  : "---"}
-              </td>
-              <td className="px-3 py-2">
-                <StatusBadge status={doc.status} />
-              </td>
-              
-              {/* COLUMN 1: Edit & Delete Icons */}
-              <td className="px-3 py-2">
-                <div className="flex items-center justify-end gap-1 opacity-80 group-hover:opacity-100 transition-opacity">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-6 w-6 text-muted-foreground hover:text-foreground hover:bg-secondary rounded-md transition-colors"
-                    onClick={() => onEdit(doc)}
-                    title="Edit Document"
-                  >
-                    <Edit2 className="w-3.5 h-3.5" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-6 w-6 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-md transition-colors"
-                    onClick={() => onDelete(doc)}
-                    title="Delete Document"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </Button>
-                </div>
-              </td>
-
-              {/* COLUMN 2: Primary Action Button */}
-              <td className="px-3 py-2 text-right">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  /* Added w-[64px] (w-16) to ensure the button itself is the exact same width regardless of the word */
-                  className="h-6 w-16 px-0 text-[9px] font-bold text-primary hover:text-primary hover:bg-primary/10 rounded-md transition-colors flex items-center justify-center"
-                  onClick={() => onViewReview(doc)}
-                >
-                  {doc.status?.toUpperCase() === "PENDING" ? "REVIEW" : "VIEW"}
-                </Button>
-              </td>
+    <div className="flex flex-col h-full w-full bg-card rounded-xl border border-border">
+      <div className="w-full overflow-x-auto custom-scrollbar">
+        <table className="w-full text-left border-collapse">
+          <thead>
+            <tr className="bg-secondary/30 border-b border-border transition-colors">
+              <th className="px-3 py-2 text-[9px] font-bold text-muted-foreground uppercase tracking-widest w-[250px]">
+                Customer
+              </th>
+              <th className="px-3 py-2 text-[9px] font-bold text-muted-foreground uppercase tracking-widest">
+                Document Type
+              </th>
+              <th className="px-3 py-2 text-[9px] font-bold text-muted-foreground uppercase tracking-widest">
+                Uploaded Date
+              </th>
+              <th className="px-3 py-2 text-[9px] font-bold text-muted-foreground uppercase tracking-widest">
+                Expiry Date
+              </th>
+              <th className="px-3 py-2 text-[9px] font-bold text-muted-foreground uppercase tracking-widest">
+                Status
+              </th>
+              {/* Split into two columns for perfect alignment */}
+              <th className="px-3 py-2 text-[9px] font-bold text-muted-foreground uppercase tracking-widest text-right w-[80px]">
+                Manage
+              </th>
+              <th className="px-3 py-2 text-[9px] font-bold text-muted-foreground uppercase tracking-widest text-right w-[80px]">
+                Action
+              </th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody className="divide-y divide-border">
+            {documents.map((doc: any, idx: number) => (
+              <tr
+                key={doc.document_id || `kyc-${idx}`}
+                className="hover:bg-secondary/30 transition-colors group bg-background"
+              >
+                <td className="px-3 py-2">
+                  <div className="flex flex-col">
+                    <span className="text-[11px] font-bold text-foreground">
+                      {doc.users?.full_name || "Unknown"}
+                    </span>
+                    <span className="text-[9px] font-medium text-muted-foreground truncate">
+                      {doc.users?.email || "No email"}
+                    </span>
+                  </div>
+                </td>
+                <td className="px-3 py-2 text-[10px] font-bold text-foreground">
+                  {formatCategory(doc.category)}
+                </td>
+                <td className="px-3 py-2 text-[10px] font-semibold text-muted-foreground font-mono">
+                  {doc.created_at
+                    ? format(new Date(doc.created_at), "MMM dd, yyyy")
+                    : "---"}
+                </td>
+                <td className="px-3 py-2 text-[10px] font-semibold text-muted-foreground font-mono">
+                  {doc.expiry_date
+                    ? format(new Date(doc.expiry_date), "MMM dd, yyyy")
+                    : "---"}
+                </td>
+                <td className="px-3 py-2">
+                  <StatusBadge status={doc.status} />
+                </td>
+
+                {/* COLUMN 1: Edit & Delete Icons */}
+                <td className="px-3 py-2">
+                  <div className="flex items-center justify-end gap-1 opacity-80 group-hover:opacity-100 transition-opacity">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-6 w-6 text-muted-foreground hover:text-foreground hover:bg-secondary rounded-md transition-colors"
+                      onClick={() => onEdit(doc)}
+                      title="Edit Document"
+                    >
+                      <Edit2 className="w-3.5 h-3.5" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-6 w-6 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-md transition-colors"
+                      onClick={() => onDelete(doc)}
+                      title="Delete Document"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </Button>
+                  </div>
+                </td>
+
+                {/* COLUMN 2: Primary Action Button */}
+                <td className="px-3 py-2 text-right">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 w-16 px-0 text-[9px] font-bold text-primary hover:text-primary hover:bg-primary/10 rounded-md transition-colors flex items-center justify-center"
+                    onClick={() => onViewReview(doc)}
+                  >
+                    {doc.status === "pending" ? "REVIEW" : "VIEW"}
+                  </Button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <TablePagination
+        currentPage={currentPage}
+        totalPages={totalPages}
+        onPageChange={onPageChange}
+        isLoading={isLoading}
+      />
     </div>
   );
 }

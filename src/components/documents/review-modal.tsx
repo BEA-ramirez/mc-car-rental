@@ -33,6 +33,7 @@ import {
   RotateCw,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { InteractiveImageViewer } from "../interactive-image-viewer";
 
 // Mock interface for the document being reviewed
 export type ReviewDocument = {
@@ -81,10 +82,13 @@ export default function ReviewModal({
 
   if (!doc) return null;
 
+  // clean filename for downloads
+  const cleanFileName = `${doc.type.replace(/\s+/g, "_")}_${doc.customerName.replace(/\s+/g, "_")}.jpg`;
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       {/* --- IMPROVED: MASSIVE WIDTH & HEIGHT --- */}
-      <DialogContent className="max-w-[80vw] xl:max-w-[1000px] p-0 overflow-hidden border-border bg-background shadow-2xl rounded-2xl flex flex-col h-[90vh] transition-colors duration-300 [&>button.absolute]:hidden">
+      <DialogContent className="max-w-[80vw] gap-0! xl:max-w-[1000px] p-0 overflow-hidden border-border bg-background shadow-2xl rounded-2xl flex flex-col h-[90vh] transition-colors duration-300 [&>button.absolute]:hidden">
         {/* HEADER */}
         <DialogHeader className="px-5 py-3 border-b border-border bg-card shrink-0 flex flex-row items-center justify-between transition-colors">
           <div className="flex items-center gap-3">
@@ -120,67 +124,13 @@ export default function ReviewModal({
 
         {/* SPLIT BODY */}
         <div className="flex flex-1 overflow-hidden">
-          {/* --- LEFT: IMAGE VIEWER (MUCH LARGER flex-[4]) --- */}
-          <div className="flex-[4] bg-zinc-950 dark:bg-black relative flex flex-col border-r border-border">
-            {/* Overlay Toolbar */}
-            <div className="absolute top-4 left-4 flex gap-2 z-10 bg-zinc-900/80 p-1 rounded-lg border border-zinc-800 backdrop-blur-md shadow-2xl">
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-7 text-[10px] font-bold text-zinc-300 hover:bg-zinc-800 hover:text-white rounded-md transition-colors uppercase tracking-widest"
-              >
-                <ZoomIn className="w-3 h-3 mr-1.5" /> Fit
-              </Button>
-              <div className="w-px h-7 bg-zinc-800" />
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-7 w-7 text-zinc-300 hover:bg-zinc-800 hover:text-white rounded-md transition-colors"
-              >
-                <Download className="w-3.5 h-3.5" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-7 text-[10px] font-bold text-zinc-300 hover:bg-zinc-800 hover:text-white rounded-md transition-colors uppercase tracking-widest"
-              >
-                <ZoomIn className="w-3 h-3 mr-1.5" /> Zoom
-              </Button>
-              <div className="w-px h-7 bg-zinc-800" />
-              {/* <-- ADDED ROTATE BUTTON --> */}
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-7 text-[10px] font-bold text-zinc-300 hover:bg-zinc-800 hover:text-white rounded-md transition-colors uppercase tracking-widest"
-                onClick={() => setRotation((r) => (r + 90) % 360)}
-              >
-                <RotateCw className="w-3 h-3 mr-1.5" /> Rotate
-              </Button>
-              <div className="w-px h-7 bg-zinc-800" />
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-7 w-7 text-zinc-300 hover:bg-zinc-800 hover:text-white rounded-md transition-colors"
-                title="Download Document"
-              >
-                <Download className="w-3.5 h-3.5" />
-              </Button>
-            </div>
-
-            {/* --- IMPROVED: Removed max-w-lg to allow full expansion --- */}
-            <div className="flex-1 flex items-center justify-center p-6 lg:p-12 overflow-hidden">
-              <div className="w-full h-full flex items-center justify-center">
-                <div className="w-full h-auto aspect-[1.58/1] max-h-full bg-zinc-900 border-2 border-zinc-800 border-dashed rounded-xl flex flex-col items-center justify-center text-zinc-600 gap-3 shadow-2xl transition-all">
-                  <FileText className="w-12 h-12 opacity-30" />
-                  <span className="text-[10px] font-bold uppercase tracking-widest opacity-70">
-                    [ Document Image Rendered Here ]
-                  </span>
-                  <span className="text-[9px] font-medium font-mono bg-black px-2 py-1 rounded-md border border-zinc-800">
-                    mock_id_card_visual.png
-                  </span>
-                </div>
-              </div>
-            </div>
+          {/* LEFT: IMAGE VIEWER*/}
+          <div className="flex-[4] relative flex flex-col border-r border-border transition-colors overflow-hidden">
+            <InteractiveImageViewer
+              url={doc.imageUrl}
+              alt={`${doc.customerName}'s ${doc.type}`}
+              downloadFilename={cleanFileName}
+            />
           </div>
 
           {/* RIGHT: DATA & ACTIONS (Fixed width) */}

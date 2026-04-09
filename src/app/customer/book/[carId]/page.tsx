@@ -89,6 +89,7 @@ export default function CustomerBookingPage({
       brand: unit.brand,
       model: unit.model,
       price: Number(unit.rental_rate_per_day) || 0,
+      price12h: Number(unit.rental_rate_per_12h) || 0, // <-- NEW 12H RATE
       image:
         sortedImages.length > 0
           ? sortedImages[0].image_url
@@ -106,6 +107,9 @@ export default function CustomerBookingPage({
   const [dropoffType, setDropoffType] = useState<"hub" | "custom">("hub");
   const [dropoffLocation, setDropoffLocation] = useState("");
   const [dropoffCoords, setDropoffCoords] = useState<string | null>(null);
+
+  // --- PROMO STATE ---
+  const [is12HourPromo, setIs12HourPromo] = useState(false);
 
   const [mapOpen, setMapOpen] = useState(false);
   const [activeMapField, setActiveMapField] = useState<
@@ -153,12 +157,27 @@ export default function CustomerBookingPage({
     }
   }, [hasAvailableDrivers, withDriver]);
 
+  // --- DYNAMIC PRICING MATH ---
   let totalDays = 1;
   if (startDate && endDate) {
     totalDays = Math.max(1, differenceInDays(endDate, startDate) + 1);
   }
 
-  const rentTotal = car ? totalDays * car.price : 0;
+  // Safety Check: Promo is only valid if duration is exactly 1 day and car supports it
+  const isPromoEligible = !!car && car.price12h > 0 && totalDays === 1;
+
+  // Auto-reset promo if they change dates to > 1 day
+  useEffect(() => {
+    if (!isPromoEligible && is12HourPromo) {
+      setIs12HourPromo(false);
+    }
+  }, [isPromoEligible, is12HourPromo]);
+
+  const baseRentTotal = car ? totalDays * car.price : 0;
+  const promoDiscount =
+    is12HourPromo && isPromoEligible ? car!.price - car!.price12h : 0;
+  const rentTotal = baseRentTotal - promoDiscount;
+
   const driverTotal = withDriver ? totalDays * realFees.driver_rate_per_day : 0;
   const pickupFee = pickupType === "custom" ? realFees.custom_pickup_fee : 0;
   const dropoffFee = dropoffType === "custom" ? realFees.custom_dropoff_fee : 0;
@@ -213,14 +232,11 @@ export default function CustomerBookingPage({
       }
 
       // --- EXACT 24-HOUR CLOCK MATH ---
-      // 1. Parse the "HH:MM" time string
       const [hours, minutes] = time.split(":").map(Number);
 
-      // 2. Set the exact Pick-up Timestamp
       const exactStartDate = new Date(startDate);
       exactStartDate.setHours(hours, minutes, 0, 0);
 
-      // 3. Add (totalDays * 24 hours) to get the exact Drop-off Timestamp
       const exactEndDate = new Date(exactStartDate);
       exactEndDate.setDate(exactStartDate.getDate() + totalDays);
 
@@ -236,11 +252,10 @@ export default function CustomerBookingPage({
         throw new Error("Failed to upload the receipt to the server.");
       }
 
-      // Construct Payload with EXACT Timestamps and the new URL
       const bookingPayload = {
         car_id: car.id,
-        start_date: exactStartDate.toISOString(), // Now includes exact time!
-        end_date: exactEndDate.toISOString(), // Now exactly X days later!
+        start_date: exactStartDate.toISOString(),
+        end_date: exactEndDate.toISOString(),
         pickup_location: pickupLocation,
         dropoff_location: dropoffLocation,
         pickup_type: pickupType,
@@ -255,11 +270,17 @@ export default function CustomerBookingPage({
         dropoff_coords: dropoffCoords,
         booking_status: "confirmed",
         payment_status: "Unpaid",
+
+        // --- NEW PROMO FIELDS FOR BACKEND TO INTERCEPT ---
+        is12HourPromo: is12HourPromo,
+        car12HourRate: car.price12h,
+        carDailyRate: car.price,
+
         payment_details: {
           amount: Number(receiptAmount) || reservationFee,
           transaction_reference: receiptRef,
           status: "Pending",
-          receipt_url: uploadResult.url, // URL safely returned from the server action
+          receipt_url: uploadResult.url,
         },
       };
 
@@ -472,6 +493,47 @@ export default function CustomerBookingPage({
                   )}
                 </div>
               </div>
+
+              {/* --- NEW 12-HOUR PROMO CHECKBOX --- */}
+              {isPromoEligible && (
+                <div className="mt-6 border-t border-white/10 pt-6 animate-in fade-in slide-in-from-top-4 duration-500">
+                  <div
+                    onClick={() => setIs12HourPromo(!is12HourPromo)}
+                    className={cn(
+                      "flex items-start gap-4 p-5 border rounded-2xl cursor-pointer transition-all duration-300",
+                      is12HourPromo
+                        ? "bg-[#64c5c3]/10 border-[#64c5c3]/40 shadow-[0_0_20px_rgba(100,197,195,0.1)]"
+                        : "bg-[#64c5c3]/5 border-[#64c5c3]/20 hover:border-[#64c5c3]/30",
+                    )}
+                  >
+                    <div className="relative flex items-center justify-center mt-0.5 shrink-0">
+                      <input
+                        type="checkbox"
+                        className="peer appearance-none w-5 h-5 border-2 border-[#64c5c3]/50 rounded text-[#64c5c3] checked:bg-[#64c5c3] checked:border-[#64c5c3] transition-all outline-none cursor-pointer"
+                        checked={is12HourPromo}
+                        onChange={(e) => setIs12HourPromo(e.target.checked)}
+                      />
+                      <CheckCircle2
+                        className="w-3.5 h-3.5 text-black absolute opacity-0 peer-checked:opacity-100 pointer-events-none"
+                        strokeWidth={4}
+                      />
+                    </div>
+                    <div className="flex flex-col">
+                      <label className="text-sm font-bold text-[#64c5c3] uppercase tracking-wider cursor-pointer">
+                        Avail 12-Hour Rental Promo
+                      </label>
+                      <span className="text-[10px] sm:text-xs text-gray-400 mt-1 leading-relaxed">
+                        Commit to returning the vehicle exactly within 12 hours
+                        of pick-up to secure the special discounted rate of{" "}
+                        <strong className="text-white">
+                          ₱{car.price12h.toLocaleString()}
+                        </strong>
+                        .
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
             </section>
 
             {/* 2. Location Logistics */}
@@ -643,12 +705,21 @@ export default function CustomerBookingPage({
                   Pricing Breakdown
                 </h4>
                 <div className="space-y-4 text-[10px] md:text-[11px] font-bold uppercase tracking-widest">
+                  {/* --- DYNAMIC RENT BREAKDOWN --- */}
                   <div className="flex justify-between text-gray-400">
                     <span>Vehicle ({totalDays} days)</span>
                     <span className="text-white">
-                      ₱{rentTotal.toLocaleString()}
+                      ₱{baseRentTotal.toLocaleString()}
                     </span>
                   </div>
+
+                  {is12HourPromo && isPromoEligible && (
+                    <div className="flex justify-between text-[#64c5c3] bg-[#64c5c3]/10 p-2 rounded-lg border border-[#64c5c3]/20 animate-in fade-in zoom-in duration-300">
+                      <span>12-Hour Promo Applied</span>
+                      <span>- ₱{promoDiscount.toLocaleString()}</span>
+                    </div>
+                  )}
+
                   {withDriver && (
                     <div className="flex justify-between text-gray-400">
                       <span>Chauffeur Service</span>

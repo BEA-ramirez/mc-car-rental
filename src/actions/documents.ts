@@ -4,27 +4,81 @@ import { createClient } from "@/utils/supabase/server";
 import { getPublicUrl } from "./helper/upload-file";
 
 // fetch all the kyc docs for the main table
-export async function getKYCDocuments() {
+export async function getKYCDocuments(
+  page: number = 1,
+  search: string = "",
+  filters?: {
+    category?: string;
+    file_type?: string;
+    status?: string;
+  },
+) {
   try {
     const supabase = await createClient();
-    const { data, error } = await supabase
+    const pageSize = 10;
+    const from = (page - 1) * pageSize;
+    const to = from + pageSize - 1;
+
+    let query = supabase
       .from("documents")
-      .select(`*, users!user_id (full_name, email, phone_number, trust_score)`)
+      .select(
+        `*, users!user_id (full_name, email, phone_number, trust_score)`,
+        { count: "exact" },
+      )
       .order("created_at", { ascending: false });
+
+    if (filters?.category && filters.category !== "all") {
+      query = query.eq("category", filters.category);
+    }
+
+    if (filters?.status && filters.status !== "all") {
+      query = query.eq("status", filters.status);
+    }
+
+    if (filters?.file_type && filters.file_type !== "all") {
+      query = query.ilike("file_type", `%${filters.file_type}%`);
+    }
+
+    if (search) {
+      // find users
+      const { data: matchingUsers } = await supabase
+        .from("users")
+        .select("user_id")
+        .or(`full_name.ilike.%${search}%,email.ilike.%${search}%`);
+
+      const matchingUserIds = matchingUsers?.map((u) => u.user_id) || [];
+
+      // Build the dynamic OR string for the documents table
+      let orString = `file_name.ilike.%${search}%`;
+
+      if (matchingUserIds.length > 0) {
+        // If found users, append them to the OR condition
+        // Wrap UUIDs in quotes to ensure PostgREST parses them correctly
+        const idString = matchingUserIds.map((id) => `"${id}"`).join(",");
+        orString += `,user_id.in.(${idString})`;
+      }
+      // Apply the final OR condition
+      query = query.or(orString);
+    }
+
+    const { data, count, error } = await query.range(from, to);
 
     if (error) {
       console.error("Error fetching documents:", error);
-      return { succes: false, data: [], message: error.message };
+      return { success: false, data: [], message: error.message };
     }
 
-    const formattedData = data.map((doc: any) => {
-      return {
-        ...doc,
-        file_url: getPublicUrl(doc.file_path),
-      };
-    });
+    const formattedData = await Promise.all(
+      data.map(async (doc: any) => {
+        const url = await getPublicUrl(doc.file_path);
+        return {
+          ...doc,
+          file_url: url,
+        };
+      }),
+    );
 
-    return { success: true, data: formattedData || [], message: null };
+    return { success: true, data: formattedData || [], count, message: null };
   } catch (error) {
     console.error("Unexpected fetch error:", error);
     return {

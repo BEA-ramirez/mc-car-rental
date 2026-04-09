@@ -21,18 +21,17 @@ import {
   adminUpdateDocumentAction,
   saveContractSignature,
 } from "@/actions/docs-mutations";
-import { UsersIcon } from "lucide-react";
-import { get } from "http";
 
-export function useKYCDocuments() {
+export function useKYCDocuments(page: number, search: string, filters: any) {
   return useQuery({
-    queryKey: ["documents", "kyc", "all"],
+    queryKey: ["documents", "kyc", "all", page, search, filters], // adding page and search tells react query to refetch when they change
     queryFn: async () => {
-      const response = await getKYCDocuments();
+      const response = await getKYCDocuments(page, search, filters);
       if (!response.success)
         throw new Error(response.message || "Failed to fetch KYC documents");
-      return response.data;
+      return response;
     },
+    placeholderData: (prev) => prev, //keeps the old data on the screen while the new page loads
   });
 }
 
