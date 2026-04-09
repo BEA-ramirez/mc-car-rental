@@ -77,9 +77,11 @@ export default function BookingIncomeBreakdownModal({
   const [payAmount, setPayAmount] = useState("");
   const [payMethod, setPayMethod] = useState("GCash");
   const [payRef, setPayRef] = useState("");
+  const [payTitle, setPayTitle] = useState("");
 
   const [chargeAmount, setChargeAmount] = useState("");
   const [chargeCat, setChargeCat] = useState("");
+  const [customChargeCat, setCustomChargeCat] = useState(""); // <-- NEW STATE FOR CUSTOM CATEGORY
   const [chargeDesc, setChargeDesc] = useState("");
 
   const [refundAmount, setRefundAmount] = useState("");
@@ -101,9 +103,11 @@ export default function BookingIncomeBreakdownModal({
       setActiveTab(initial);
       setPayAmount("");
       setPayRef("");
+      setPayTitle("");
       setChargeAmount("");
       setChargeDesc("");
       setChargeCat("");
+      setCustomChargeCat(""); // <-- RESET IT
       setRefundAmount("");
       setRefundRef("");
 
@@ -136,15 +140,21 @@ export default function BookingIncomeBreakdownModal({
       amount: parseFloat(payAmount),
       method: payMethod,
       reference: payRef || "N/A",
+      title: payTitle || "Payment",
     });
     setActiveTab("ledger");
   };
 
   const handleAddCharge = async () => {
-    if (!bookingId || !chargeAmount || !chargeCat) return;
+    // 1. Determine which category to use (the dropdown value OR the custom typed value)
+    const finalCategory = chargeCat === "CUSTOM" ? customChargeCat : chargeCat;
+
+    if (!bookingId || !chargeAmount || !finalCategory) return;
+
     await addCharge({
       bookingId,
-      category: chargeCat,
+      // 2. Format the custom string to be DB friendly (e.g., "Towing Fee" -> "TOWING_FEE")
+      category: finalCategory.toUpperCase().replace(/\s+/g, "_"),
       amount: parseFloat(chargeAmount),
       description: chargeDesc || "Added manually",
     });
@@ -164,19 +174,19 @@ export default function BookingIncomeBreakdownModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-6xl xl:max-w-[1000px] p-0 overflow-hidden border-slate-200 shadow-2xl rounded-sm flex flex-col h-[85vh] max-h-[800px] [&>button.absolute]:hidden bg-white">
+      <DialogContent className="max-w-6xl xl:max-w-[1000px] p-0 overflow-hidden border-border bg-background shadow-2xl rounded-2xl flex flex-col h-[85vh] max-h-[800px] transition-colors duration-300 [&>button.absolute]:hidden">
         {/* --- COMPACT HEADER --- */}
-        <DialogHeader className="px-5 py-3 border-b border-slate-200 bg-slate-50 shrink-0 flex flex-row items-center justify-between">
+        <DialogHeader className="px-4 py-3 border-b border-border bg-card shrink-0 flex flex-row items-center justify-between transition-colors">
           <div className="flex items-center gap-3">
-            <div className="w-7 h-7 rounded-sm bg-slate-200 border border-slate-300 flex items-center justify-center shadow-sm">
-              <Receipt className="w-3.5 h-3.5 text-slate-700" />
+            <div className="w-8 h-8 rounded-lg bg-secondary border border-border flex items-center justify-center shadow-sm">
+              <Receipt className="w-4 h-4 text-muted-foreground" />
             </div>
             <div className="flex flex-col text-left">
-              <DialogTitle className="text-sm font-bold text-slate-900 tracking-tight leading-none mb-1">
+              <DialogTitle className="text-sm font-bold text-foreground tracking-tight leading-none mb-1 uppercase">
                 Financial Folio
               </DialogTitle>
               <div className="flex items-center gap-2">
-                <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest leading-none font-mono">
+                <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest leading-none font-mono">
                   REF: {bookingId?.split("-")[0]}
                 </span>
               </div>
@@ -187,20 +197,20 @@ export default function BookingIncomeBreakdownModal({
               <Badge
                 variant="outline"
                 className={cn(
-                  "text-[9px] font-bold uppercase tracking-widest rounded-sm h-6 px-2.5 border shadow-sm",
+                  "text-[9px] font-bold uppercase tracking-widest rounded h-6 px-2 border shadow-sm",
                   balanceDue <= 0
-                    ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                    : "bg-amber-50 text-amber-700 border-amber-200",
+                    ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
+                    : "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20",
                 )}
               >
                 {balanceDue <= 0 ? "Fully Paid" : "Balance Due"}
               </Badge>
             )}
-            <div className="w-px h-5 bg-slate-300 mx-1" />
+            <div className="w-px h-5 bg-border mx-1" />
             <Button
               variant="ghost"
               size="icon"
-              className="h-7 w-7 text-slate-400 hover:text-slate-900 hover:bg-slate-200 rounded-sm transition-colors"
+              className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-secondary rounded-lg transition-colors"
               onClick={onClose}
             >
               <X className="w-4 h-4" />
@@ -211,42 +221,42 @@ export default function BookingIncomeBreakdownModal({
         {/* --- SPLIT BODY --- */}
         <div className="flex flex-1 overflow-hidden min-h-0">
           {/* LEFT COLUMN: CONTEXT & SUMMARY */}
-          <div className="w-[320px] bg-slate-50 border-r border-slate-200 flex flex-col shrink-0 z-10">
+          <div className="w-[320px] bg-background border-r border-border flex flex-col shrink-0 z-10 transition-colors">
             <div className="flex-1 min-h-0 overflow-hidden">
-              <ScrollArea className="h-full w-full">
-                <div className="p-6 space-y-8">
+              <ScrollArea className="h-full w-full custom-scrollbar">
+                <div className="p-4 space-y-6">
                   {isLoading ? (
                     <div className="flex justify-center py-10">
-                      <Loader2 className="w-5 h-5 animate-spin text-slate-300" />
+                      <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
                     </div>
                   ) : (
                     <>
                       {/* Entity Details */}
-                      <div className="space-y-5">
+                      <div className="bg-card border border-border p-3 rounded-xl shadow-sm space-y-3 transition-colors">
                         <div className="flex flex-col">
-                          <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1 flex items-center gap-1.5">
+                          <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest mb-0.5 flex items-center gap-1.5">
                             <User className="w-3 h-3" /> Customer Profile
                           </span>
-                          <span className="text-xs font-bold text-slate-900">
+                          <span className="text-[11px] font-bold text-foreground">
                             {customerName}
                           </span>
                         </div>
                         <div className="flex flex-col">
-                          <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1 flex items-center gap-1.5">
+                          <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest mb-0.5 flex items-center gap-1.5">
                             <Car className="w-3 h-3" /> Assigned Asset
                           </span>
-                          <span className="text-xs font-bold text-slate-900">
+                          <span className="text-[11px] font-bold text-foreground truncate">
                             {carBrand}{" "}
-                            <span className="text-slate-500 font-mono">
+                            <span className="text-muted-foreground font-mono">
                               ({carPlate})
                             </span>
                           </span>
                         </div>
                         <div className="flex flex-col">
-                          <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1 flex items-center gap-1.5">
+                          <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest mb-0.5 flex items-center gap-1.5">
                             <CalendarDays className="w-3 h-3" /> Contract Dates
                           </span>
-                          <span className="text-xs font-medium text-slate-700">
+                          <span className="text-[10px] font-medium text-foreground">
                             {folio?.booking?.start_date &&
                               format(
                                 new Date(folio.booking.start_date),
@@ -262,27 +272,25 @@ export default function BookingIncomeBreakdownModal({
                         </div>
                       </div>
 
-                      <hr className="border-slate-200" />
-
                       {/* Financial Snapshot */}
-                      <div>
-                        <h4 className="text-[10px] font-bold text-slate-800 uppercase tracking-widest mb-4">
+                      <div className="bg-card border border-border rounded-xl shadow-sm p-4 transition-colors">
+                        <h4 className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest mb-3 border-b border-border pb-1.5">
                           Financial Snapshot
                         </h4>
-                        <div className="space-y-3 mb-5">
+                        <div className="space-y-2 mb-4">
                           <div className="flex justify-between items-center">
-                            <span className="text-xs font-bold text-slate-500">
+                            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
                               Total Billed
                             </span>
-                            <span className="text-xs font-bold text-slate-900 font-mono">
+                            <span className="text-[11px] font-bold text-foreground font-mono">
                               ₱ {basePrice.toLocaleString()}
                             </span>
                           </div>
                           <div className="flex justify-between items-center">
-                            <span className="text-xs font-bold text-slate-500">
+                            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
                               Total Paid
                             </span>
-                            <span className="text-xs font-bold text-emerald-600 font-mono">
+                            <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 font-mono">
                               - ₱ {totalPaid.toLocaleString()}
                             </span>
                           </div>
@@ -290,26 +298,28 @@ export default function BookingIncomeBreakdownModal({
 
                         <div
                           className={cn(
-                            "p-4 rounded-sm shadow-sm flex flex-col justify-center items-center text-center border",
+                            "p-3 rounded-lg shadow-sm flex flex-col justify-center items-center text-center border transition-colors",
                             balanceDue > 0
-                              ? "bg-amber-50 border-amber-200"
-                              : "bg-slate-900 border-slate-900 text-white",
+                              ? "bg-amber-500/10 border-amber-500/20"
+                              : "bg-primary border-primary text-primary-foreground",
                           )}
                         >
                           <span
                             className={cn(
                               "text-[9px] font-bold uppercase tracking-widest mb-1",
                               balanceDue > 0
-                                ? "text-amber-700"
-                                : "text-slate-400",
+                                ? "text-amber-600 dark:text-amber-400"
+                                : "text-primary-foreground/80",
                             )}
                           >
                             {balanceDue > 0 ? "Balance Due" : "Net Settled"}
                           </span>
                           <span
                             className={cn(
-                              "text-2xl font-black tracking-tight font-mono",
-                              balanceDue > 0 ? "text-amber-700" : "text-white",
+                              "text-xl font-black tracking-tight font-mono",
+                              balanceDue > 0
+                                ? "text-amber-600 dark:text-amber-400"
+                                : "text-primary-foreground",
                             )}
                           >
                             ₱ {Math.max(0, balanceDue).toLocaleString()}
@@ -324,36 +334,36 @@ export default function BookingIncomeBreakdownModal({
           </div>
 
           {/* RIGHT COLUMN: TABS (Ledger & Forms) */}
-          <div className="flex-1 flex flex-col bg-white overflow-hidden min-h-0">
+          <div className="flex-1 flex flex-col bg-background overflow-hidden min-h-0 transition-colors">
             <Tabs
               value={activeTab}
               onValueChange={handleTabChange}
               className="flex flex-col h-full overflow-hidden"
             >
               {/* Tab Navigation */}
-              <div className="px-6 pt-4 border-b border-slate-200 bg-slate-50/50 shrink-0">
-                <TabsList className="bg-transparent p-0 flex gap-6 border-b-0 justify-start w-full">
+              <div className="px-4 pt-3 border-b border-border bg-secondary/30 shrink-0 transition-colors">
+                <TabsList className="bg-transparent p-0 flex gap-4 border-b-0 justify-start w-full h-9">
                   <TabsTrigger
                     value="ledger"
-                    className="rounded-none border-b-2 border-transparent data-[state=active]:border-slate-900 data-[state=active]:bg-transparent data-[state=active]:shadow-none px-1 py-2 text-[11px] font-bold text-slate-500 data-[state=active]:text-slate-900 transition-none uppercase tracking-wider"
+                    className="rounded-none border-b-2 border-transparent data-[state=active]:border-foreground data-[state=active]:bg-transparent data-[state=active]:shadow-none px-1 py-2 text-[10px] font-bold text-muted-foreground data-[state=active]:text-foreground transition-all uppercase tracking-widest"
                   >
-                    Ledger View
+                    Ledger
                   </TabsTrigger>
                   <TabsTrigger
                     value="payment"
-                    className="rounded-none border-b-2 border-transparent data-[state=active]:border-emerald-600 data-[state=active]:bg-transparent data-[state=active]:shadow-none px-1 py-2 text-[11px] font-bold text-slate-500 data-[state=active]:text-emerald-700 transition-none uppercase tracking-wider flex items-center gap-1.5"
+                    className="rounded-none border-b-2 border-transparent data-[state=active]:border-emerald-500 data-[state=active]:bg-transparent data-[state=active]:shadow-none px-1 py-2 text-[10px] font-bold text-muted-foreground data-[state=active]:text-emerald-600 dark:data-[state=active]:text-emerald-400 transition-all uppercase tracking-widest flex items-center gap-1.5"
                   >
                     <CreditCard className="w-3.5 h-3.5" /> Receive
                   </TabsTrigger>
                   <TabsTrigger
                     value="charge"
-                    className="rounded-none border-b-2 border-transparent data-[state=active]:border-amber-500 data-[state=active]:bg-transparent data-[state=active]:shadow-none px-1 py-2 text-[11px] font-bold text-slate-500 data-[state=active]:text-amber-700 transition-none uppercase tracking-wider flex items-center gap-1.5"
+                    className="rounded-none border-b-2 border-transparent data-[state=active]:border-amber-500 data-[state=active]:bg-transparent data-[state=active]:shadow-none px-1 py-2 text-[10px] font-bold text-muted-foreground data-[state=active]:text-amber-600 dark:data-[state=active]:text-amber-400 transition-all uppercase tracking-widest flex items-center gap-1.5"
                   >
                     <Plus className="w-3.5 h-3.5" /> Charge
                   </TabsTrigger>
                   <TabsTrigger
                     value="refund"
-                    className="rounded-none border-b-2 border-transparent data-[state=active]:border-blue-600 data-[state=active]:bg-transparent data-[state=active]:shadow-none px-1 py-2 text-[11px] font-bold text-slate-500 data-[state=active]:text-blue-700 transition-none uppercase tracking-wider flex items-center gap-1.5"
+                    className="rounded-none border-b-2 border-transparent data-[state=active]:border-indigo-500 data-[state=active]:bg-transparent data-[state=active]:shadow-none px-1 py-2 text-[10px] font-bold text-muted-foreground data-[state=active]:text-indigo-600 dark:data-[state=active]:text-indigo-400 transition-all uppercase tracking-widest flex items-center gap-1.5"
                   >
                     <Undo2 className="w-3.5 h-3.5" /> Refund
                   </TabsTrigger>
@@ -361,56 +371,58 @@ export default function BookingIncomeBreakdownModal({
               </div>
 
               {/* Tab Contents */}
-              <div className="flex-1 min-h-0 overflow-hidden bg-white">
-                <ScrollArea className="h-full w-full">
+              <div className="flex-1 min-h-0 overflow-hidden bg-background">
+                <ScrollArea className="h-full w-full custom-scrollbar">
                   {/* 1. LEDGER TAB */}
                   <TabsContent
                     value="ledger"
-                    className="m-0 p-6 space-y-8 border-none outline-none"
+                    className="m-0 p-4 space-y-6 border-none outline-none"
                   >
                     {isLoading ? (
                       <div className="flex justify-center py-10">
-                        <Loader2 className="w-5 h-5 animate-spin text-slate-300" />
+                        <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
                       </div>
                     ) : (
                       <>
-                        <div>
-                          <h4 className="text-[10px] font-bold text-slate-800 uppercase tracking-widest mb-3 flex items-center gap-2">
-                            Itemized Charges
-                          </h4>
-                          <div className="border border-slate-200 rounded-sm overflow-hidden">
-                            <div className="grid grid-cols-[1.5fr_2fr_1fr] p-2.5 px-4 border-b border-slate-100 bg-slate-50 text-[9px] font-bold text-slate-500 uppercase tracking-widest">
+                        <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden transition-colors">
+                          <div className="bg-secondary/50 border-b border-border px-3 py-2.5">
+                            <h4 className="text-[9px] font-bold text-foreground uppercase tracking-widest flex items-center gap-2">
+                              Itemized Charges
+                            </h4>
+                          </div>
+                          <div>
+                            <div className="grid grid-cols-[1.5fr_2fr_1fr] p-2 px-3 border-b border-border bg-secondary text-[9px] font-bold text-muted-foreground uppercase tracking-widest transition-colors">
                               <div>Category</div>
                               <div>Description</div>
                               <div className="text-right">Amount</div>
                             </div>
-                            <div className="divide-y divide-slate-100">
+                            <div className="divide-y divide-border">
                               {folio?.charges?.map((charge: any) => (
                                 <div
                                   key={charge.charge_id}
-                                  className="grid grid-cols-[1.5fr_2fr_1fr] p-3 px-4 items-center hover:bg-slate-50 transition-colors"
+                                  className="grid grid-cols-[1.5fr_2fr_1fr] p-2.5 px-3 items-center hover:bg-secondary/50 transition-colors"
                                 >
                                   <span
                                     className={cn(
-                                      "text-xs font-bold",
+                                      "text-[10px] font-bold",
                                       charge.category.includes("FEE")
-                                        ? "text-red-700"
+                                        ? "text-destructive"
                                         : charge.category === "DEPOSIT_REFUND"
-                                          ? "text-blue-700"
-                                          : "text-slate-800",
+                                          ? "text-indigo-600 dark:text-indigo-400"
+                                          : "text-foreground",
                                     )}
                                   >
-                                    {charge.category.replace("_", " ")}
+                                    {charge.category.replace(/_/g, " ")}
                                   </span>
-                                  <span className="text-[10px] font-medium text-slate-500 truncate pr-4">
+                                  <span className="text-[10px] font-medium text-muted-foreground truncate pr-4">
                                     {charge.description}
                                   </span>
                                   <span
                                     className={cn(
-                                      "text-xs font-bold font-mono text-right",
+                                      "text-[11px] font-bold font-mono text-right",
                                       charge.amount < 0
-                                        ? "text-blue-700"
-                                        : "text-slate-900",
+                                        ? "text-indigo-600 dark:text-indigo-400"
+                                        : "text-foreground",
                                     )}
                                   >
                                     {charge.amount < 0 ? "" : "₱ "}
@@ -419,7 +431,7 @@ export default function BookingIncomeBreakdownModal({
                                 </div>
                               ))}
                               {folio?.charges?.length === 0 && (
-                                <div className="p-5 text-xs text-slate-400 text-center font-medium">
+                                <div className="p-4 text-[10px] text-muted-foreground text-center font-medium">
                                   No charges recorded.
                                 </div>
                               )}
@@ -427,41 +439,50 @@ export default function BookingIncomeBreakdownModal({
                           </div>
                         </div>
 
-                        <div>
-                          <h4 className="text-[10px] font-bold text-slate-800 uppercase tracking-widest mb-3 flex items-center gap-2">
-                            Payment History
-                          </h4>
-                          <div className="border border-slate-200 rounded-sm overflow-hidden">
-                            <div className="grid grid-cols-[1.5fr_1fr_1fr_1fr] p-2.5 px-4 border-b border-slate-100 bg-slate-50 text-[9px] font-bold text-slate-500 uppercase tracking-widest">
+                        <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden transition-colors">
+                          <div className="bg-secondary/50 border-b border-border px-3 py-2.5">
+                            <h4 className="text-[9px] font-bold text-foreground uppercase tracking-widest flex items-center gap-2">
+                              Payment History
+                            </h4>
+                          </div>
+                          <div>
+                            <div className="grid grid-cols-[1.5fr_1fr_1fr_1fr] p-2 px-3 border-b border-border bg-secondary text-[9px] font-bold text-muted-foreground uppercase tracking-widest transition-colors">
                               <div>Date & Time</div>
-                              <div>Method</div>
+                              <div>Title & Method</div>
                               <div>Reference</div>
                               <div className="text-right">Amount</div>
                             </div>
-                            <div className="divide-y divide-slate-100">
+                            <div className="divide-y divide-border">
                               {folio?.payments?.map((payment: any) => (
                                 <div
                                   key={payment.payment_id}
-                                  className="grid grid-cols-[1.5fr_1fr_1fr_1fr] p-3 px-4 items-center hover:bg-slate-50 transition-colors"
+                                  className="grid grid-cols-[1.5fr_1fr_1fr_1fr] p-2.5 px-3 items-center hover:bg-secondary/50 transition-colors"
                                 >
-                                  <span className="text-[10px] font-medium text-slate-500">
+                                  <span className="text-[9px] font-medium text-muted-foreground">
                                     {format(
-                                      new Date(payment.paid_at),
+                                      new Date(
+                                        payment.paid_at || payment.created_at,
+                                      ),
                                       "MMM dd, yyyy • hh:mm a",
                                     )}
                                   </span>
-                                  <span className="text-[11px] font-bold text-slate-800">
-                                    {payment.payment_method}
-                                  </span>
-                                  <span className="text-[10px] font-mono text-slate-500 truncate pr-2">
-                                    {payment.transaction_reference}
+                                  <div className="flex flex-col">
+                                    <span className="text-[10px] font-bold text-foreground truncate">
+                                      {payment.title || "Payment"}
+                                    </span>
+                                    <span className="text-[9px] text-muted-foreground">
+                                      {payment.payment_method}
+                                    </span>
+                                  </div>
+                                  <span className="text-[10px] font-mono text-muted-foreground truncate pr-2">
+                                    {payment.transaction_reference || "N/A"}
                                   </span>
                                   <span
                                     className={cn(
-                                      "text-xs font-bold font-mono text-right",
+                                      "text-[11px] font-bold font-mono text-right",
                                       payment.amount < 0
-                                        ? "text-blue-700"
-                                        : "text-emerald-700",
+                                        ? "text-indigo-600 dark:text-indigo-400"
+                                        : "text-emerald-600 dark:text-emerald-400",
                                     )}
                                   >
                                     {payment.amount > 0 ? "+" : ""}₱{" "}
@@ -470,7 +491,7 @@ export default function BookingIncomeBreakdownModal({
                                 </div>
                               ))}
                               {folio?.payments?.length === 0 && (
-                                <div className="p-5 text-xs text-slate-400 text-center font-medium">
+                                <div className="p-4 text-[10px] text-muted-foreground text-center font-medium">
                                   No payments recorded.
                                 </div>
                               )}
@@ -481,58 +502,70 @@ export default function BookingIncomeBreakdownModal({
                     )}
                   </TabsContent>
 
-                  {/* 2. RECEIVE PAYMENT TAB (Horizontal Layout) */}
+                  {/* 2. RECEIVE PAYMENT TAB */}
                   <TabsContent
                     value="payment"
-                    className="m-0 p-6 border-none outline-none"
+                    className="m-0 p-4 border-none outline-none"
                   >
-                    <div className="bg-white border border-slate-200 rounded-sm shadow-sm overflow-hidden">
-                      <div className="bg-emerald-50/50 border-b border-slate-200 px-5 py-3.5 flex items-center gap-2.5">
-                        <CreditCard className="w-4 h-4 text-emerald-600" />
-                        <h3 className="text-xs font-bold text-slate-800 uppercase tracking-widest">
+                    <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden transition-colors">
+                      <div className="bg-emerald-500/10 border-b border-border px-4 py-3 flex items-center gap-2">
+                        <CreditCard className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                        <h3 className="text-[10px] font-bold text-foreground uppercase tracking-widest">
                           Record New Payment
                         </h3>
                       </div>
-                      <div className="p-6">
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-6">
+                      <div className="p-4">
+                        <div className="space-y-1.5 mb-4">
+                          <label className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">
+                            Payment Purpose / Title
+                          </label>
+                          <Input
+                            type="text"
+                            value={payTitle}
+                            onChange={(e) => setPayTitle(e.target.value)}
+                            placeholder="e.g., 10% Downpayment, Final Handover Balance"
+                            className="h-8 text-[11px] font-semibold bg-secondary border-border rounded-lg focus-visible:ring-emerald-500 shadow-none transition-colors"
+                          />
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-5">
                           <div className="space-y-1.5">
-                            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                            <label className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">
                               Amount (₱)
                             </label>
                             <Input
                               type="number"
                               value={payAmount}
                               onChange={(e) => setPayAmount(e.target.value)}
-                              className="h-9 text-xs font-bold border-slate-200 rounded-sm focus-visible:ring-emerald-500"
+                              className="h-8 text-[11px] font-semibold bg-secondary border-border rounded-lg focus-visible:ring-emerald-500 shadow-none transition-colors"
                             />
                           </div>
                           <div className="space-y-1.5">
-                            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                            <label className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">
                               Method
                             </label>
                             <Select
                               value={payMethod}
                               onValueChange={setPayMethod}
                             >
-                              <SelectTrigger className="h-9 text-xs font-bold border-slate-200 rounded-sm focus:ring-emerald-500">
+                              <SelectTrigger className="h-8 text-[11px] font-semibold bg-secondary border-border rounded-lg focus:ring-emerald-500 shadow-none transition-colors">
                                 <SelectValue />
                               </SelectTrigger>
-                              <SelectContent className="rounded-sm">
+                              <SelectContent className="rounded-xl border-border bg-popover shadow-xl">
                                 <SelectItem
                                   value="GCash"
-                                  className="text-xs font-medium"
+                                  className="text-[11px] font-medium"
                                 >
                                   GCash
                                 </SelectItem>
                                 <SelectItem
                                   value="Cash"
-                                  className="text-xs font-medium"
+                                  className="text-[11px] font-medium"
                                 >
                                   Cash
                                 </SelectItem>
                                 <SelectItem
                                   value="Bank Transfer"
-                                  className="text-xs font-medium"
+                                  className="text-[11px] font-medium"
                                 >
                                   Bank Transfer
                                 </SelectItem>
@@ -540,7 +573,7 @@ export default function BookingIncomeBreakdownModal({
                             </Select>
                           </div>
                           <div className="space-y-1.5">
-                            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                            <label className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">
                               Ref No. (Optional)
                             </label>
                             <Input
@@ -548,44 +581,44 @@ export default function BookingIncomeBreakdownModal({
                               value={payRef}
                               onChange={(e) => setPayRef(e.target.value)}
                               placeholder="e.g. 1029384"
-                              className="h-9 text-xs font-medium border-slate-200 rounded-sm focus-visible:ring-emerald-500"
+                              className="h-8 text-[11px] font-semibold bg-secondary border-border rounded-lg focus-visible:ring-emerald-500 shadow-none transition-colors"
                             />
                           </div>
                         </div>
-                        <div className="flex justify-end pt-5 border-t border-slate-100">
+                        <div className="flex justify-end pt-4 border-t border-border">
                           <Button
                             onClick={handleRecordPayment}
                             disabled={isRecordingPayment || !payAmount}
-                            className="h-9 px-6 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white rounded-sm shadow-sm transition-colors"
+                            className="h-8 px-5 text-[10px] font-bold uppercase tracking-widest bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg shadow-sm transition-colors"
                           >
                             {isRecordingPayment ? (
                               <Loader2 className="w-3.5 h-3.5 animate-spin mr-2" />
                             ) : (
                               <CheckCircle2 className="w-3.5 h-3.5 mr-2" />
                             )}
-                            Confirm & Save Payment
+                            Confirm Payment
                           </Button>
                         </div>
                       </div>
                     </div>
                   </TabsContent>
 
-                  {/* 3. ADD CHARGE TAB (Horizontal Layout) */}
+                  {/* 3. ADD CHARGE TAB */}
                   <TabsContent
                     value="charge"
-                    className="m-0 p-6 border-none outline-none"
+                    className="m-0 p-4 border-none outline-none"
                   >
-                    <div className="bg-white border border-slate-200 rounded-sm shadow-sm overflow-hidden">
-                      <div className="bg-amber-50/50 border-b border-slate-200 px-5 py-3.5 flex items-center gap-2.5">
-                        <AlertTriangle className="w-4 h-4 text-amber-600" />
-                        <h3 className="text-xs font-bold text-slate-800 uppercase tracking-widest">
+                    <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden transition-colors">
+                      <div className="bg-amber-500/10 border-b border-border px-4 py-3 flex items-center gap-2">
+                        <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                        <h3 className="text-[10px] font-bold text-foreground uppercase tracking-widest">
                           Add Invoice Charge
                         </h3>
                       </div>
-                      <div className="p-6">
-                        <div className="grid grid-cols-1 md:grid-cols-4 gap-5 mb-6">
+                      <div className="p-4">
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-5">
                           <div className="space-y-1.5 col-span-1">
-                            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                            <label className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">
                               Amount (₱)
                             </label>
                             <Input
@@ -593,44 +626,69 @@ export default function BookingIncomeBreakdownModal({
                               value={chargeAmount}
                               onChange={(e) => setChargeAmount(e.target.value)}
                               placeholder="0.00"
-                              className="h-9 text-xs font-bold border-slate-200 rounded-sm focus-visible:ring-amber-500"
+                              className="h-8 text-[11px] font-semibold bg-secondary border-border rounded-lg focus-visible:ring-amber-500 shadow-none transition-colors"
                             />
                           </div>
-                          <div className="space-y-1.5 col-span-1">
-                            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+
+                          {/* --- MODIFIED CATEGORY SELECT WITH CUSTOM INPUT --- */}
+                          <div className="space-y-1.5 col-span-1 flex flex-col justify-start">
+                            <label className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">
                               Category
                             </label>
                             <Select
                               value={chargeCat}
-                              onValueChange={setChargeCat}
+                              onValueChange={(val) => {
+                                setChargeCat(val);
+                                if (val !== "CUSTOM") setCustomChargeCat(""); // reset if they pick a standard one
+                              }}
                             >
-                              <SelectTrigger className="h-9 text-xs font-bold border-slate-200 rounded-sm focus:ring-amber-500">
+                              <SelectTrigger className="h-8 text-[11px] font-semibold bg-secondary border-border rounded-lg focus:ring-amber-500 shadow-none transition-colors">
                                 <SelectValue placeholder="Select" />
                               </SelectTrigger>
-                              <SelectContent className="rounded-sm">
+                              <SelectContent className="rounded-xl border-border bg-popover shadow-xl">
                                 <SelectItem
                                   value="DAMAGE_FEE"
-                                  className="text-xs font-medium"
+                                  className="text-[11px] font-medium"
                                 >
                                   Damage
                                 </SelectItem>
                                 <SelectItem
                                   value="LATE_FEE"
-                                  className="text-xs font-medium"
+                                  className="text-[11px] font-medium"
                                 >
                                   Late Fee
                                 </SelectItem>
                                 <SelectItem
                                   value="CLEANING_FEE"
-                                  className="text-xs font-medium"
+                                  className="text-[11px] font-medium"
                                 >
                                   Cleaning
                                 </SelectItem>
+                                <SelectItem
+                                  value="CUSTOM"
+                                  className="text-[11px] font-bold text-amber-600"
+                                >
+                                  Other (Custom)
+                                </SelectItem>
                               </SelectContent>
                             </Select>
+
+                            {/* Conditionally Render Custom Input */}
+                            {chargeCat === "CUSTOM" && (
+                              <Input
+                                type="text"
+                                value={customChargeCat}
+                                onChange={(e) =>
+                                  setCustomChargeCat(e.target.value)
+                                }
+                                placeholder="Type category..."
+                                className="h-8 text-[11px] font-semibold bg-secondary border-amber-500/50 rounded-lg focus-visible:ring-amber-500 shadow-none transition-colors mt-2"
+                              />
+                            )}
                           </div>
+
                           <div className="space-y-1.5 col-span-2">
-                            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                            <label className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">
                               Reason / Description
                             </label>
                             <Input
@@ -638,82 +696,85 @@ export default function BookingIncomeBreakdownModal({
                               value={chargeDesc}
                               onChange={(e) => setChargeDesc(e.target.value)}
                               placeholder="e.g. Scratched bumper"
-                              className="h-9 text-xs font-medium border-slate-200 rounded-sm focus-visible:ring-amber-500"
+                              className="h-8 text-[11px] font-semibold bg-secondary border-border rounded-lg focus-visible:ring-amber-500 shadow-none transition-colors"
                             />
                           </div>
                         </div>
-                        <div className="flex justify-end pt-5 border-t border-slate-100">
+                        <div className="flex justify-end pt-4 border-t border-border">
                           <Button
                             onClick={handleAddCharge}
                             disabled={
-                              isAddingCharge || !chargeAmount || !chargeCat
+                              isAddingCharge ||
+                              !chargeAmount ||
+                              !chargeCat ||
+                              (chargeCat === "CUSTOM" && !customChargeCat)
                             }
-                            className="h-9 px-6 text-xs font-bold bg-amber-600 hover:bg-amber-700 text-white rounded-sm shadow-sm transition-colors"
+                            className="h-8 px-5 text-[10px] font-bold uppercase tracking-widest bg-amber-600 hover:bg-amber-700 text-white rounded-lg shadow-sm transition-colors"
                           >
                             {isAddingCharge ? (
                               <Loader2 className="w-3.5 h-3.5 animate-spin mr-2" />
                             ) : (
                               <Plus className="w-3.5 h-3.5 mr-2" />
                             )}
-                            Apply Charge to Invoice
+                            Apply Charge
                           </Button>
                         </div>
                       </div>
                     </div>
                   </TabsContent>
 
-                  {/* 4. REFUND DEPOSIT TAB (Horizontal Layout) */}
+                  {/* 4. REFUND DEPOSIT TAB */}
                   <TabsContent
                     value="refund"
-                    className="m-0 p-6 border-none outline-none"
+                    className="m-0 p-4 border-none outline-none"
                   >
-                    <div className="bg-white border border-slate-200 rounded-sm shadow-sm overflow-hidden">
-                      <div className="bg-blue-50/50 border-b border-slate-200 px-5 py-3.5 flex items-center gap-2.5">
-                        <Undo2 className="w-4 h-4 text-blue-600" />
-                        <h3 className="text-xs font-bold text-slate-800 uppercase tracking-widest">
+                    <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden transition-colors">
+                      <div className="bg-indigo-500/10 border-b border-border px-4 py-3 flex items-center gap-2">
+                        <Undo2 className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                        <h3 className="text-[10px] font-bold text-foreground uppercase tracking-widest">
                           Process Security Refund
                         </h3>
                       </div>
-                      <div className="p-6">
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-6">
+                      <div className="p-4">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-5">
                           <div className="space-y-1.5">
-                            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                            <label className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">
                               Amount (₱)
                             </label>
                             <Input
                               type="number"
                               value={refundAmount}
                               onChange={(e) => setRefundAmount(e.target.value)}
-                              className="h-9 text-xs font-bold border-slate-200 rounded-sm focus-visible:ring-blue-500"
+                              className="h-8 text-[11px] font-semibold bg-secondary border-border rounded-lg focus-visible:ring-indigo-500 shadow-none transition-colors"
                             />
                           </div>
                           <div className="space-y-1.5">
-                            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                            <label className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">
                               Method
                             </label>
                             <Select
                               value={refundMethod}
                               onValueChange={setRefundMethod}
                             >
-                              <SelectTrigger className="h-9 text-xs font-bold border-slate-200 rounded-sm focus:ring-blue-500">
+                              <SelectTrigger className="h-8 text-[11px] font-semibold bg-secondary border-border rounded-lg focus:ring-indigo-500 shadow-none transition-colors">
                                 <SelectValue />
                               </SelectTrigger>
-                              <SelectContent className="rounded-sm">
+                              <SelectContent className="rounded-xl border-border bg-popover shadow-xl">
                                 <SelectItem
                                   value="GCash"
-                                  className="text-xs font-medium"
+                                  className="text-[11px] font-medium"
                                 >
                                   GCash
                                 </SelectItem>
                                 <SelectItem
                                   value="Cash"
-                                  className="text-xs font-medium"
+                                  className="text-[11px] font-medium"
                                 >
                                   Cash
                                 </SelectItem>
                                 <SelectItem
                                   value="Bank Transfer"
-                                  className="text-xs font-medium"
+                                  className="text-[11px] font-medium"
                                 >
                                   Bank Transfer
                                 </SelectItem>
@@ -721,7 +782,7 @@ export default function BookingIncomeBreakdownModal({
                             </Select>
                           </div>
                           <div className="space-y-1.5">
-                            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                            <label className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">
                               Ref No. (Optional)
                             </label>
                             <Input
@@ -729,15 +790,15 @@ export default function BookingIncomeBreakdownModal({
                               value={refundRef}
                               onChange={(e) => setRefundRef(e.target.value)}
                               placeholder="e.g. GCash Ref"
-                              className="h-9 text-xs font-medium border-slate-200 rounded-sm focus-visible:ring-blue-500"
+                              className="h-8 text-[11px] font-semibold bg-secondary border-border rounded-lg focus-visible:ring-indigo-500 shadow-none transition-colors"
                             />
                           </div>
                         </div>
-                        <div className="flex justify-end pt-5 border-t border-slate-100">
+                        <div className="flex justify-end pt-4 border-t border-border">
                           <Button
                             onClick={handleRefundDeposit}
                             disabled={isRefunding || !refundAmount}
-                            className="h-9 px-6 text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white rounded-sm shadow-sm transition-colors"
+                            className="h-8 px-5 text-[10px] font-bold uppercase tracking-widest bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg shadow-sm transition-colors"
                           >
                             {isRefunding ? (
                               <Loader2 className="w-3.5 h-3.5 animate-spin mr-2" />
@@ -757,16 +818,16 @@ export default function BookingIncomeBreakdownModal({
         </div>
 
         {/* --- FOOTER --- */}
-        <div className="bg-slate-50 border-t border-slate-200 p-3 px-5 shrink-0 flex justify-end gap-2 z-20">
+        <div className="bg-card border-t border-border p-3 shrink-0 flex justify-end gap-2 z-20 transition-colors">
           <Button
             variant="outline"
-            className="h-8 px-5 text-xs font-bold text-slate-600 border-slate-300 rounded-sm hover:bg-slate-100"
+            className="h-8 px-4 text-[10px] font-semibold text-foreground hover:bg-secondary border-border rounded-lg shadow-none transition-colors"
             onClick={onClose}
           >
             Close
           </Button>
-          <Button className="h-8 px-5 text-xs font-bold bg-slate-900 text-white hover:bg-slate-800 rounded-sm shadow-sm transition-all">
-            <Download className="w-3.5 h-3.5 mr-2" /> Download Folio PDF
+          <Button className="h-8 px-5 text-[10px] font-bold uppercase tracking-widest bg-primary text-primary-foreground hover:opacity-90 rounded-lg shadow-sm transition-opacity">
+            <Download className="w-3.5 h-3.5 mr-2" /> Download PDF
           </Button>
         </div>
       </DialogContent>

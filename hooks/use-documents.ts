@@ -15,49 +15,80 @@ import {
   revokeDocumentAction,
   updateInternalNoteAction,
   deleteDocumentAction,
-} from "@/actions/docs-mutations";
-import {
-  getCustomersForDropdown,
+  getAllUsersForDropdown,
   getBookingsForDropdown,
   adminUploadDocumentAction,
+  adminUpdateDocumentAction,
   saveContractSignature,
 } from "@/actions/docs-mutations";
+import { UsersIcon } from "lucide-react";
+import { get } from "http";
 
 export function useKYCDocuments() {
   return useQuery({
     queryKey: ["documents", "kyc", "all"],
-    queryFn: () => getKYCDocuments(),
+    queryFn: async () => {
+      const response = await getKYCDocuments();
+      if (!response.success)
+        throw new Error(response.message || "Failed to fetch KYC documents");
+      return response.data;
+    },
   });
 }
 
 export function usePendingDocuments() {
   return useQuery({
     queryKey: ["documents", "kyc", "pending"],
-    queryFn: () => getPendingDocuments(),
+    queryFn: async () => {
+      const response = await getPendingDocuments();
+      if (!response.success) {
+        throw new Error(
+          response.message || "Failed to fetch pending documents",
+        );
+      }
+      return response.data;
+    },
   });
 }
 
-// 3. Expiring Inbox
 export function useExpiringDocuments() {
   return useQuery({
     queryKey: ["documents", "kyc", "expiring"],
-    queryFn: () => getExpiringDocuments(),
+    queryFn: async () => {
+      const response = await getExpiringDocuments();
+      if (!response.success) {
+        throw new Error(
+          response.message || "Failed to fetch expiring documents in 30 days",
+        );
+      }
+      return response.data;
+    },
   });
 }
 
-// 4. Contracts Table
 export function useContracts() {
   return useQuery({
     queryKey: ["documents", "contracts"],
-    queryFn: () => getContracts(),
+    queryFn: async () => {
+      const response = await getContracts();
+      if (!response.success)
+        throw new Error(response.message || "Failed to fetch contracts");
+      return response.data;
+    },
   });
 }
 
-// 5. Inspections Table
 export function useInspections() {
   return useQuery({
     queryKey: ["documents", "inspections"],
-    queryFn: () => getInspections(),
+    queryFn: async () => {
+      const response = await getInspections();
+      if (!response.success)
+        throw new Error(
+          response.message || "Failed to fetch booking inspections",
+        );
+      return response.data;
+    },
   });
 }
 
@@ -70,73 +101,120 @@ export function useDocumentMutations() {
   };
 
   const verifyDoc = useMutation({
-    mutationFn: ({ id, expiry }: { id: string; expiry?: Date }) =>
-      verifyDocumentAction(id, expiry),
-    onSuccess: () => {
-      toast.success("Document verified successfully.");
+    mutationFn: async ({ id, expiry }: { id: string; expiry?: Date }) => {
+      const result = await verifyDocumentAction(id, expiry);
+      if (!result.success)
+        throw new Error(result.message || "Failed to verify document.");
+      return result;
+    },
+    onSuccess: (data) => {
+      toast.success(data.message || "Document verified successfully.");
       invalidateDocs();
     },
     onError: (error) => toast.error(`Verification failed: ${error.message}`),
   });
 
   const rejectDoc = useMutation({
-    mutationFn: ({ id, reason }: { id: string; reason: string }) =>
-      rejectDocumentAction(id, reason),
-    onSuccess: () => {
-      toast.success("Document rejected. Customer will be notified.");
+    mutationFn: async ({ id, reason }: { id: string; reason: string }) => {
+      const result = await rejectDocumentAction(id, reason);
+      if (!result.success)
+        throw new Error(result.message || "Failed to reject document.");
+      return result;
+    },
+    onSuccess: (data) => {
+      toast.success(
+        data.message || "Document rejected. Customer will be notified.",
+      );
       invalidateDocs();
     },
     onError: (error) => toast.error(`Rejection failed: ${error.message}`),
   });
 
   const revokeDoc = useMutation({
-    mutationFn: (id: string) => revokeDocumentAction(id),
-    onSuccess: () => {
-      toast.warning("Document approval revoked.");
+    mutationFn: async (id: string) => {
+      const result = await revokeDocumentAction(id);
+      if (!result.success)
+        throw new Error(result.message || "Failed to revoke document.");
+      return result;
+    },
+    onSuccess: (data) => {
+      toast.warning(data.message || "Document approval revoked.");
       invalidateDocs();
     },
     onError: (error) => toast.error(`Revocation failed: ${error.message}`),
   });
 
   const updateNote = useMutation({
-    mutationFn: ({ id, note }: { id: string; note: string }) =>
-      updateInternalNoteAction(id, note),
-    onSuccess: () => {
-      toast.success("Internal note saved.");
+    mutationFn: async ({ id, note }: { id: string; note: string }) => {
+      const result = await updateInternalNoteAction(id, note);
+      if (!result.success)
+        throw new Error(result.message || "Failed to update internal note.");
+      return result;
+    },
+    onSuccess: (data) => {
+      toast.success(data.message || "Internal note saved.");
       invalidateDocs();
     },
     onError: (error) => toast.error(`Failed to save note: ${error.message}`),
   });
 
   const deleteDoc = useMutation({
-    mutationFn: ({ id, path }: { id: string; path?: string }) =>
-      deleteDocumentAction(id, path),
-    onSuccess: () => {
-      toast.success("Document permanently deleted.");
+    mutationFn: async (id: string) => {
+      const result = await deleteDocumentAction(id);
+      if (!result.success)
+        throw new Error(result.message || "Failed to delete document.");
+      return result;
+    },
+    onSuccess: (data) => {
+      toast.success(data.message);
       invalidateDocs();
     },
-    onError: (error) => toast.error(`Deletion failed: ${error.message}`),
+    onError: (error: Error) => toast.error(error.message),
   });
 
   const uploadDoc = useMutation({
-    mutationFn: (formData: FormData) => adminUploadDocumentAction(formData),
-    onSuccess: () => {
-      toast.success("File uploaded and record created successfully.");
+    mutationFn: async (formData: FormData) => {
+      const res = await adminUploadDocumentAction(formData);
+      if (!res.success)
+        throw new Error(res.message || "Failed to upload document.");
+      return res;
+    },
+    onSuccess: (data) => {
+      toast.success(
+        data.message || "File uploaded and record created successfully.",
+      );
       invalidateDocs();
     },
-    onError: (error) => toast.error(`Upload failed: ${error.message}`),
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  const updateDoc = useMutation({
+    mutationFn: async (formData: FormData) => {
+      const result = await adminUpdateDocumentAction(formData);
+      if (!result.success) throw new Error(result.message);
+      return result;
+    },
+    onSuccess: (data) => {
+      toast.success(data.message);
+      invalidateDocs();
+    },
+    onError: (error: Error) => toast.error(error.message),
   });
 
   const signContract = useMutation({
-    mutationFn: ({
+    mutationFn: async ({
       id,
       signatureDataUrl,
     }: {
       id: string;
       signatureDataUrl: string;
-    }) => saveContractSignature(id, signatureDataUrl),
-    onSuccess: () => {
-      toast.success("Contract successfully executed!");
+    }) => {
+      const result = await saveContractSignature(id, signatureDataUrl);
+      if (!result.success) throw new Error(result.message);
+      return result;
+    },
+    onSuccess: (data) => {
+      toast.success(data.message || "Contract successfully executed!");
       invalidateDocs();
     },
     onError: (error) =>
@@ -144,27 +222,29 @@ export function useDocumentMutations() {
   });
 
   return {
-    verifyDoc,
-    rejectDoc,
-    revokeDoc,
-    updateNote,
-    deleteDoc,
-    uploadDoc,
-    signContract,
+    verifyDoc: verifyDoc.mutateAsync,
+    rejectDoc: rejectDoc.mutateAsync,
+    revokeDoc: revokeDoc.mutateAsync,
+    updateNote: updateNote.mutateAsync,
+    deleteDoc: deleteDoc.mutateAsync,
+    uploadDoc: uploadDoc.mutateAsync,
+    signContract: signContract.mutateAsync,
+    updateDoc: updateDoc.mutateAsync,
     isPending:
       verifyDoc.isPending ||
       rejectDoc.isPending ||
       revokeDoc.isPending ||
       deleteDoc.isPending ||
       uploadDoc.isPending ||
-      signContract.isPending,
+      signContract.isPending ||
+      updateDoc.isPending,
   };
 }
 
 export function useDropdownData() {
-  const customers = useQuery({
-    queryKey: ["dropdown", "customers"],
-    queryFn: () => getCustomersForDropdown(),
+  const users = useQuery({
+    queryKey: ["dropdown", "users"],
+    queryFn: () => getAllUsersForDropdown(),
   });
 
   const bookings = useQuery({
@@ -172,5 +252,5 @@ export function useDropdownData() {
     queryFn: () => getBookingsForDropdown(),
   });
 
-  return { customers, bookings };
+  return { users, bookings };
 }

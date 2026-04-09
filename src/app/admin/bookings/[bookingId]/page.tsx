@@ -26,6 +26,7 @@ import {
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { toast } from "sonner";
 
 // --- EXISTING COMPONENT IMPORTS ---
 import CancelBookingDialog from "@/components/bookings/cancel-booking-dialog";
@@ -41,6 +42,8 @@ import {
 } from "../../../../../hooks/use-bookings";
 import { useDocumentMutations } from "../../../../../hooks/use-documents";
 import { useBookingWorkflows } from "../../../../../hooks/use-booking-workflow";
+import { generateInvoicePDF } from "@/utils/export-pdf";
+import { useBookingFolio } from "../../../../../hooks/use-incomes";
 
 export default function AdminBookingDetailsPage() {
   const params = useParams();
@@ -60,6 +63,7 @@ export default function AdminBookingDetailsPage() {
     isStartingTrip,
   } = useBookingWorkflows(bookingId);
   const { signContract } = useDocumentMutations();
+  const { data: folio } = useBookingFolio(bookingId);
 
   // --- MODAL STATES ---
   const [isCancelOpen, setIsCancelOpen] = useState(false);
@@ -132,6 +136,17 @@ export default function AdminBookingDetailsPage() {
       })),
     })) || [];
 
+  const handleContractSigned = async (id: string, signatureDataUrl: string) => {
+    try {
+      await signContract.mutateAsync({ id, signatureDataUrl });
+      setIsContractOpen(false);
+      // Contract signed, vehicle released -> Trip is Ongoing!
+      await startTrip(bookingId);
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
   const handleStartHandoverClick = async () => {
     // 1. Generate contract if it doesn't exist yet
     if (!contract) {
@@ -145,17 +160,6 @@ export default function AdminBookingDetailsPage() {
     setIsInspectionExecOpen(false);
     // After Inspection closes, automatically ask customer to sign
     setIsContractOpen(true);
-  };
-
-  const handleContractSigned = async (id: string, signatureDataUrl: string) => {
-    try {
-      await signContract.mutateAsync({ id, signatureDataUrl });
-      setIsContractOpen(false);
-      // Contract signed, vehicle released -> Trip is Ongoing!
-      await startTrip(bookingId);
-    } catch (error) {
-      console.error(error);
-    }
   };
 
   return (
@@ -205,12 +209,12 @@ export default function AdminBookingDetailsPage() {
           </Button>
 
           <Button
+            onClick={() => generateInvoicePDF(folio)}
             variant="outline"
             size="sm"
             className="h-8 text-[10px] font-bold uppercase tracking-widest"
-            onClick={() => window.print()}
           >
-            <Printer className="w-3.5 h-3.5 mr-2" /> Invoice
+            <Printer className="w-3.5 h-3.5 mr-2" /> Print Invoice
           </Button>
 
           <Button
@@ -400,17 +404,22 @@ export default function AdminBookingDetailsPage() {
                   <div className="space-y-3 text-xs font-medium">
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">
-                        Base Rental Rate
+                        Gross Rental Total
                       </span>
-                      <span>₱{booking.total_price.toLocaleString()}</span>
+                      <span className="font-bold">
+                        ₱{booking.total_price.toLocaleString()}
+                      </span>
                     </div>
-                    <div className="flex justify-between text-emerald-500">
-                      <span>Total Paid</span>
+                    <div className="flex justify-between text-emerald-600 bg-emerald-500/5 px-2 py-1 rounded-sm border border-emerald-500/10">
+                      <span className="flex items-center gap-1">
+                        <CheckCircle2 className="w-3 h-3" /> Reservation Fee
+                        Paid
+                      </span>
                       <span>- ₱{booking.amount_paid.toLocaleString()}</span>
                     </div>
                     <div className="pt-3 border-t border-dashed border-border flex justify-between items-center">
-                      <span className="font-bold uppercase tracking-widest text-[10px]">
-                        Rental Balance Due
+                      <span className="font-black uppercase tracking-widest text-[10px]">
+                        Remaining Balance Due
                       </span>
                       <span className="text-sm font-black text-primary">
                         ₱{Math.max(0, balance).toLocaleString()}

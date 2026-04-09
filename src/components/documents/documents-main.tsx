@@ -31,6 +31,7 @@ import {
   useDocumentMutations,
 } from "../../../hooks/use-documents";
 import { format, differenceInDays } from "date-fns";
+import { DeleteDialog } from "../delete-dialog";
 import { cn } from "@/lib/utils";
 
 export const formatCategory = (cat: string) => {
@@ -44,13 +45,17 @@ export const formatCategory = (cat: string) => {
 export default function DocumentsMain() {
   const [activeTab, setActiveTab] = useState("kyc");
   const [reviewDoc, setReviewDoc] = useState<ReviewDocument | null>(null);
-  const [isUploadOpen, setIsUploadOpen] = useState(false);
   const [reminderCtx, setReminderCtx] = useState<ReminderContext | null>(null);
   const [viewDoc, setViewDoc] = useState<ViewedDocument | null>(null);
   const [inspectionDoc, setInspectionDoc] = useState<InspectionReport | null>(
     null,
   );
   const [contractDoc, setContractDoc] = useState<ContractPreview | null>(null);
+  const [activeInspection, setActiveInspection] = useState<any | null>(null);
+
+  const [isUploadOpen, setIsUploadOpen] = useState(false);
+  const [editDoc, setEditDoc] = useState<any | null>(null);
+  const [docToDelete, setDocToDelete] = useState<any | null>(null);
 
   const { data: pendingDocs = [], isLoading: loadingPending } =
     usePendingDocuments();
@@ -67,80 +72,53 @@ export default function DocumentsMain() {
     isPending,
   } = useDocumentMutations();
 
-  // New state for the interactive Digital Clipboard
-  const [activeInspection, setActiveInspection] = useState<any | null>(null);
-
   return (
-    <div className="flex flex-col h-[calc(100vh-80px)] bg-slate-50 font-sans">
-      {/* --- FORMAL HEADER --- */}
-      <div className="flex items-center justify-between px-6 py-4 bg-white border-b border-slate-200 shrink-0 sticky top-0 z-20 shadow-sm">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-sm bg-slate-900 flex items-center justify-center shadow-sm">
-            <ShieldCheck className="w-4 h-4 text-white" />
-          </div>
-          <div>
-            <h1 className="text-base font-bold text-slate-900 tracking-tight leading-none mb-1">
-              Documents & Compliance
-            </h1>
-            <p className="text-[11px] font-medium text-slate-500 leading-none">
-              Verify identities, manage contracts, and track inspections.
-            </p>
-          </div>
-        </div>
-        <Button
-          size="sm"
-          className="h-8 text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white rounded-sm shadow-sm"
-          onClick={() => setIsUploadOpen(true)}
-        >
-          <Upload className="w-3.5 h-3.5 mr-1.5" /> Upload Document
-        </Button>
-      </div>
-
+    <div className="flex flex-col h-full bg-background font-sans transition-colors duration-300">
       {/* --- SCROLLABLE BODY --- */}
-      <div className="flex-1 overflow-y-auto p-6">
-        <div className="max-w-[1400px] mx-auto space-y-6">
+      <div className="flex-1 overflow-y-auto p-4 md:p-5 custom-scrollbar">
+        <div className="max-w-[1400px] mx-auto space-y-5">
           {/* --- PRIORITY INBOX (ACTION REQUIRED) --- */}
           <div>
-            <h2 className="text-[11px] font-black text-slate-500 uppercase tracking-widest mb-3 flex items-center gap-1.5">
+            <h2 className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-2.5 flex items-center gap-1.5">
               <AlertCircle className="w-3.5 h-3.5 text-amber-500" />
               Action Required
             </h2>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               {/* Box 1: Pending Verifications */}
-              <div className="bg-white border border-slate-200 rounded-sm shadow-sm flex flex-col overflow-hidden">
-                <div className="bg-amber-50 border-b border-amber-100 px-3 py-2 flex justify-between items-center shrink-0">
-                  <span className="text-[10px] font-bold text-amber-800 uppercase tracking-wider flex items-center gap-1.5">
+              <div className="bg-card border border-border rounded-xl shadow-sm flex flex-col overflow-hidden transition-colors">
+                <div className="bg-amber-500/10 border-b border-border px-3 py-2 flex justify-between items-center shrink-0 transition-colors">
+                  <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400 uppercase tracking-widest flex items-center gap-1.5">
                     <FileText className="w-3 h-3" /> Pending Verifications
                   </span>
                   <Badge
-                    variant="secondary"
-                    className="bg-amber-200/50 text-amber-800 hover:bg-amber-200/50 text-[9px] px-1.5 h-4 rounded-sm"
+                    variant="outline"
+                    className="bg-amber-500/20 border-amber-500/30 text-amber-700 dark:text-amber-300 text-[9px] px-1.5 h-4 rounded-md font-bold tracking-widest"
                   >
                     {pendingDocs.length}
                   </Badge>
                 </div>
-                <ScrollArea className="h-[140px]">
+                <ScrollArea className="h-[140px] bg-background/50">
                   {loadingPending ? (
-                    <div className="p-4 text-xs font-medium text-slate-400 text-center">
+                    <div className="p-4 text-[11px] font-medium text-muted-foreground text-center">
                       Loading...
                     </div>
                   ) : pendingDocs.length === 0 ? (
-                    <div className="p-4 text-xs font-medium text-slate-400 text-center">
+                    <div className="p-4 text-[11px] font-medium text-muted-foreground text-center">
                       No pending verifications.
                     </div>
                   ) : (
-                    <div className="divide-y divide-slate-100">
+                    <div className="divide-y divide-border">
                       {pendingDocs.map((doc: any) => (
                         <div
                           key={doc.document_id}
-                          className="p-3 flex items-center justify-between hover:bg-slate-50 transition-colors group"
+                          className="p-2.5 flex items-center justify-between hover:bg-secondary/50 transition-colors group cursor-default"
                         >
-                          <div className="flex flex-col">
-                            <span className="text-xs font-bold text-slate-800">
+                          <div className="flex flex-col overflow-hidden pr-2">
+                            <span className="text-[11px] font-bold text-foreground truncate">
                               {doc.users?.full_name || "Unknown"}
                             </span>
-                            <span className="text-[10px] font-medium text-slate-500">
+                            <span className="text-[9px] font-medium text-muted-foreground truncate uppercase tracking-widest mt-0.5">
                               {formatCategory(doc.category)} •{" "}
                               {format(new Date(doc.created_at), "MMM dd")}
                             </span>
@@ -148,7 +126,7 @@ export default function DocumentsMain() {
                           <Button
                             variant="outline"
                             size="sm"
-                            className="h-7 text-[10px] font-bold border-slate-200 bg-white rounded-sm text-slate-700 hover:bg-slate-100 opacity-0 group-hover:opacity-100 transition-opacity"
+                            className="h-7 text-[9px] font-bold border-border bg-card rounded-lg text-foreground hover:bg-secondary opacity-100 md:opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
                             onClick={() =>
                               setReviewDoc({
                                 id: doc.document_id,
@@ -176,29 +154,29 @@ export default function DocumentsMain() {
               </div>
 
               {/* Box 2: Expiring Soon */}
-              <div className="bg-white border border-slate-200 rounded-sm shadow-sm flex flex-col overflow-hidden">
-                <div className="bg-orange-50 border-b border-orange-100 px-3 py-2 flex justify-between items-center shrink-0">
-                  <span className="text-[10px] font-bold text-orange-800 uppercase tracking-wider flex items-center gap-1.5">
+              <div className="bg-card border border-border rounded-xl shadow-sm flex flex-col overflow-hidden transition-colors">
+                <div className="bg-orange-500/10 border-b border-border px-3 py-2 flex justify-between items-center shrink-0 transition-colors">
+                  <span className="text-[10px] font-bold text-orange-600 dark:text-orange-400 uppercase tracking-widest flex items-center gap-1.5">
                     <Clock className="w-3 h-3" /> Expiring Soon
                   </span>
                   <Badge
-                    variant="secondary"
-                    className="bg-orange-200/50 text-orange-800 hover:bg-orange-200/50 text-[9px] px-1.5 h-4 rounded-sm"
+                    variant="outline"
+                    className="bg-orange-500/20 border-orange-500/30 text-orange-700 dark:text-orange-300 text-[9px] px-1.5 h-4 rounded-md font-bold tracking-widest"
                   >
                     {expiringDocs.length}
                   </Badge>
                 </div>
-                <ScrollArea className="h-[140px]">
+                <ScrollArea className="h-[140px] bg-background/50">
                   {loadingExpiring ? (
-                    <div className="p-4 text-xs font-medium text-slate-400 text-center">
+                    <div className="p-4 text-[11px] font-medium text-muted-foreground text-center">
                       Loading...
                     </div>
                   ) : expiringDocs.length === 0 ? (
-                    <div className="p-4 text-xs font-medium text-slate-400 text-center">
+                    <div className="p-4 text-[11px] font-medium text-muted-foreground text-center">
                       No documents expiring soon.
                     </div>
                   ) : (
-                    <div className="divide-y divide-slate-100">
+                    <div className="divide-y divide-border">
                       {expiringDocs.map((doc: any) => {
                         const daysLeft = differenceInDays(
                           new Date(doc.expiry_date),
@@ -207,24 +185,27 @@ export default function DocumentsMain() {
                         return (
                           <div
                             key={doc.document_id}
-                            className="p-3 flex items-center justify-between hover:bg-slate-50 transition-colors group"
+                            className="p-2.5 flex items-center justify-between hover:bg-secondary/50 transition-colors group cursor-default"
                           >
-                            <div className="flex flex-col">
-                              <span className="text-xs font-bold text-slate-800">
+                            <div className="flex flex-col overflow-hidden pr-2">
+                              <span className="text-[11px] font-bold text-foreground truncate">
                                 {doc.users?.full_name || "Unknown"}
                               </span>
-                              <span className="text-[10px] font-medium text-slate-500">
+                              <span className="text-[9px] font-medium text-muted-foreground truncate uppercase tracking-widest mt-0.5">
                                 {formatCategory(doc.category)}
                               </span>
                             </div>
-                            <div className="flex items-center gap-3">
-                              <span className="text-[10px] font-bold text-orange-600 bg-orange-100 px-1.5 py-0.5 rounded-sm">
+                            <div className="flex items-center gap-2 shrink-0">
+                              <Badge
+                                variant="outline"
+                                className="text-[9px] font-bold text-orange-600 dark:text-orange-400 bg-orange-500/10 border-orange-500/20 px-1.5 py-0 h-5 rounded uppercase tracking-widest"
+                              >
                                 In {daysLeft} Days
-                              </span>
+                              </Badge>
                               <Button
                                 variant="ghost"
                                 size="icon"
-                                className="h-6 w-6 rounded-sm text-slate-400 hover:text-blue-600 opacity-0 group-hover:opacity-100 transition-opacity"
+                                className="h-7 w-7 rounded-md text-muted-foreground hover:text-primary hover:bg-primary/10 opacity-100 md:opacity-0 group-hover:opacity-100 transition-opacity"
                                 title="Send Reminder"
                                 onClick={() =>
                                   setReminderCtx({
@@ -238,7 +219,7 @@ export default function DocumentsMain() {
                                   })
                                 }
                               >
-                                <ArrowRight className="w-3 h-3" />
+                                <ArrowRight className="w-3.5 h-3.5" />
                               </Button>
                             </div>
                           </div>
@@ -251,19 +232,30 @@ export default function DocumentsMain() {
             </div>
           </div>
 
-          <hr className="border-slate-200" />
+          <hr className="border-border" />
 
           {/* --- MAIN DOCUMENT REGISTRY --- */}
-          <div className="space-y-4">
+          <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <h2 className="text-[11px] font-black text-slate-500 uppercase tracking-widest">
+              <h2 className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
                 Document Registry
               </h2>
+              <Button
+                size="sm"
+                className="h-8 text-[10px] font-bold uppercase tracking-widest bg-primary hover:opacity-90 text-primary-foreground rounded-lg shadow-sm transition-opacity"
+                onClick={() => {
+                  // ENSURE we clear edit state before opening!
+                  setEditDoc(null);
+                  setIsUploadOpen(true);
+                }}
+              >
+                <Upload className="w-3.5 h-3.5 mr-1.5" /> Upload Document
+              </Button>
             </div>
 
-            <div className="bg-white border border-slate-200 rounded-sm shadow-sm overflow-hidden flex flex-col">
+            <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden flex flex-col transition-colors">
               {/* Custom Tab Header */}
-              <div className="border-b border-slate-200 bg-slate-50/50 px-2 pt-2 flex items-center justify-between">
+              <div className="border-b border-border bg-secondary/30 px-3 pt-2 flex items-center justify-between transition-colors">
                 <Tabs
                   value={activeTab}
                   onValueChange={setActiveTab}
@@ -272,49 +264,56 @@ export default function DocumentsMain() {
                   <TabsList className="bg-transparent h-9 p-0 flex gap-4 border-b-0 justify-start w-full">
                     <TabsTrigger
                       value="kyc"
-                      className="rounded-none border-b-2 border-transparent data-[state=active]:border-slate-900 data-[state=active]:bg-transparent data-[state=active]:shadow-none px-2 py-1.5 text-xs font-bold text-slate-500 data-[state=active]:text-slate-900 transition-none"
+                      className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-2 py-1.5 text-[10px] font-bold uppercase tracking-widest text-muted-foreground data-[state=active]:text-foreground transition-all"
                     >
                       Customer KYC
                     </TabsTrigger>
                     <TabsTrigger
                       value="contracts"
-                      className="rounded-none border-b-2 border-transparent data-[state=active]:border-slate-900 data-[state=active]:bg-transparent data-[state=active]:shadow-none px-2 py-1.5 text-xs font-bold text-slate-500 data-[state=active]:text-slate-900 transition-none"
+                      className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-2 py-1.5 text-[10px] font-bold uppercase tracking-widest text-muted-foreground data-[state=active]:text-foreground transition-all"
                     >
-                      Agreements & Contracts
+                      Agreements
                     </TabsTrigger>
                     <TabsTrigger
                       value="inspections"
-                      className="rounded-none border-b-2 border-transparent data-[state=active]:border-slate-900 data-[state=active]:bg-transparent data-[state=active]:shadow-none px-2 py-1.5 text-xs font-bold text-slate-500 data-[state=active]:text-slate-900 transition-none"
+                      className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-2 py-1.5 text-[10px] font-bold uppercase tracking-widest text-muted-foreground data-[state=active]:text-foreground transition-all"
                     >
-                      Inspection Reports
+                      Inspections
                     </TabsTrigger>
                   </TabsList>
                 </Tabs>
               </div>
 
               {/* Toolbar */}
-              <div className="p-3 border-b border-slate-100 flex gap-2 bg-white">
+              <div className="p-3 border-b border-border flex gap-2 bg-card transition-colors">
                 <div className="relative flex-1 max-w-sm">
-                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
                   <input
                     type="text"
                     placeholder="Search customer, ID, or file name..."
-                    className="w-full h-8 pl-8 pr-3 text-xs bg-slate-50 border border-slate-200 rounded-sm focus:outline-none focus:ring-1 focus:ring-slate-300 transition-all font-medium"
+                    className="w-full h-8 pl-8 pr-3 text-[11px] font-medium bg-secondary border border-border rounded-lg focus:outline-none focus:ring-1 focus:ring-primary text-foreground placeholder:text-muted-foreground transition-colors shadow-none"
                   />
                 </div>
                 <Button
                   variant="outline"
                   size="sm"
-                  className="h-8 text-xs font-semibold rounded-sm border-slate-200 text-slate-600 bg-white"
+                  className="h-8 text-[11px] font-semibold rounded-lg border-border text-foreground bg-card hover:bg-secondary transition-colors"
                 >
-                  <Filter className="w-3 h-3 mr-1.5" /> Filter
+                  <Filter className="w-3.5 h-3.5 mr-1.5" /> Filter
                 </Button>
               </div>
 
               {/* Table Container Placeholder */}
-              <div className="bg-white min-h-[400px]">
+              <div className="bg-background min-h-[400px] transition-colors">
                 {activeTab === "kyc" && (
                   <KYCTable
+                    onEdit={(doc) => {
+                      setEditDoc(doc);
+                      setIsUploadOpen(true);
+                    }}
+                    onDelete={(doc) => {
+                      setDocToDelete(doc);
+                    }}
                     onViewReview={(doc) => {
                       const mappedDoc = {
                         id: doc.document_id,
@@ -327,7 +326,7 @@ export default function DocumentsMain() {
                           new Date(doc.created_at),
                           "MMM dd, yyyy HH:mm",
                         ),
-                        imageUrl: doc.file_path,
+                        imageUrl: doc.file_url,
                         status: doc.status.toUpperCase(),
                         expiryDate: doc.expiry_date
                           ? format(new Date(doc.expiry_date), "MMM dd, yyyy")
@@ -371,8 +370,8 @@ export default function DocumentsMain() {
                               "MMM dd, yyyy HH:mm",
                             )
                           : undefined,
-                        htmlContent: row.contract_html, // <--- Add this!
-                        signatureUrl: row.customer_signature_url, // <--- Add this!
+                        htmlContent: row.contract_html,
+                        signatureUrl: row.customer_signature_url,
                       })
                     }
                   />
@@ -393,50 +392,65 @@ export default function DocumentsMain() {
         isOpen={!!reviewDoc}
         onClose={() => setReviewDoc(null)}
         document={reviewDoc}
-        onVerify={(id, expiry) => {
-          verifyDoc.mutate({ id, expiry });
-          setReviewDoc(null);
+        onVerify={async (id, expiry) => {
+          try {
+            await verifyDoc({ id, expiry });
+            setReviewDoc(null);
+          } catch (error) {}
         }}
-        onReject={(id, reason) => {
-          rejectDoc.mutate({ id, reason });
-          setReviewDoc(null);
+        onReject={async (id, reason) => {
+          try {
+            await rejectDoc({ id, reason });
+            setReviewDoc(null);
+          } catch (error) {}
         }}
       />
+
       <UploadModal
         isOpen={isUploadOpen}
-        onClose={() => setIsUploadOpen(false)}
+        initialData={editDoc}
+        onClose={() => {
+          setIsUploadOpen(false);
+          setEditDoc(null); // Clear on close
+        }}
       />
+
       <ReminderModal
         isOpen={!!reminderCtx}
         onClose={() => setReminderCtx(null)}
         context={reminderCtx}
         onSend={(id, subject, message) => {
           console.log(`Sent to ${id}:`, { subject, message });
-          // Implement actual send logic here later
         }}
       />
+
       <ViewDocumentModal
         isOpen={!!viewDoc}
         onClose={() => setViewDoc(null)}
         document={viewDoc}
-        onRevoke={(id) => {
-          revokeDoc.mutate(id);
+        onRevoke={async (id) => {
+          await revokeDoc(id);
           setViewDoc(null);
         }}
-        onDelete={(id) => {
+        onDelete={async (id) => {
           if (
             confirm(
               "Are you absolutely sure you want to permanently delete this document?",
             )
           ) {
-            deleteDoc.mutate({ id });
-            setViewDoc(null);
+            try {
+              await deleteDoc(id);
+              setViewDoc(null);
+            } catch (error) {
+              // If it fails, keeps the modal open
+            }
           }
         }}
-        onSaveNote={(id, note) => {
-          updateNote.mutate({ id, note });
+        onSaveNote={async (id, note) => {
+          await updateNote({ id, note });
         }}
       />
+
       <InspectionModal
         isOpen={!!inspectionDoc}
         onClose={() => setInspectionDoc(null)}
@@ -448,22 +462,32 @@ export default function DocumentsMain() {
         onClose={() => setContractDoc(null)}
         contract={contractDoc}
         onDownload={(id) => console.log("Downloading contract PDF:", id)}
-        onSign={(id, signatureDataUrl) => {
-          // Simply call the mutation and let React Query handle the rest!
-          signContract.mutate(
-            { id, signatureDataUrl },
-            {
-              onSuccess: () => setContractDoc(null), // Close modal on success
-            },
-          );
+        onSign={async (id, signatureDataUrl) => {
+          try {
+            await signContract({ id, signatureDataUrl });
+            setContractDoc(null);
+          } catch (error) {}
         }}
       />
 
-      {/* NEW: Digital Clipboard Execution Modal */}
       <InspectionExecutionModal
         isOpen={!!activeInspection}
         onClose={() => setActiveInspection(null)}
         inspection={activeInspection}
+      />
+
+      {/* WIRED DELETE DIALOG */}
+      <DeleteDialog
+        isOpen={!!docToDelete}
+        onClose={() => setDocToDelete(null)}
+        onConfirm={async () => {
+          if (docToDelete?.document_id) {
+            await deleteDoc(docToDelete.document_id);
+          }
+        }}
+        isDeleting={isPending}
+        title="Delete Document"
+        description={`Are you sure you want to delete ${docToDelete?.file_name || "this document"}? This action cannot be undone and may affect the customer's verification status.`}
       />
     </div>
   );

@@ -31,28 +31,28 @@ export function DeleteDialog({
 }: DeleteDialogProps) {
   return (
     <AlertDialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <AlertDialogContent className="sm:max-w-[380px] p-5 bg-white border-slate-200 rounded-sm shadow-xl gap-0">
+      <AlertDialogContent className="sm:max-w-[360px] p-4 bg-background border-border rounded-2xl shadow-2xl gap-0 transition-colors duration-300">
         <AlertDialogHeader className="text-left flex flex-row items-start gap-3 space-y-0">
-          {/* Sharp, squared-off icon container instead of a bubbly circle */}
-          <div className="flex items-center justify-center w-8 h-8 rounded-sm border border-red-200 bg-red-50 shrink-0 mt-0.5">
-            <AlertTriangle className="w-4 h-4 text-red-600" />
+          {/* Sharp, geometric icon container with glassmorphic styling */}
+          <div className="flex items-center justify-center w-8 h-8 rounded-lg border border-destructive/20 bg-destructive/10 shrink-0 mt-0.5 transition-colors">
+            <AlertTriangle className="w-4 h-4 text-destructive" />
           </div>
 
           {/* Tighter text grouping */}
           <div className="flex flex-col gap-1.5">
-            <AlertDialogTitle className="text-sm font-bold text-slate-900 leading-none mt-1">
+            <AlertDialogTitle className="text-[12px] font-bold text-foreground uppercase tracking-widest leading-none mt-1">
               {title}
             </AlertDialogTitle>
-            <AlertDialogDescription className="text-xs text-slate-500 leading-relaxed pr-2">
+            <AlertDialogDescription className="text-[12px] font-medium text-muted-foreground leading-relaxed pr-2">
               {description}
             </AlertDialogDescription>
           </div>
         </AlertDialogHeader>
 
-        <AlertDialogFooter className="mt-6 sm:space-x-2">
+        <AlertDialogFooter className="mt-5 sm:space-x-2">
           <AlertDialogCancel
             disabled={isDeleting}
-            className="h-8 px-4 text-[10px] font-bold uppercase tracking-widest text-slate-600 shadow-none border-slate-200 rounded-sm hover:bg-slate-50 m-0"
+            className="h-8 px-4 text-[10px] font-semibold uppercase tracking-widest text-foreground bg-card shadow-none border-border rounded-lg hover:bg-secondary transition-colors m-0"
           >
             Cancel
           </AlertDialogCancel>
@@ -65,7 +65,7 @@ export function DeleteDialog({
             disabled={isDeleting}
             className={cn(
               buttonVariants({ variant: "destructive" }),
-              "h-8 px-4 text-[10px] font-bold uppercase tracking-widest shadow-none min-w-[100px] rounded-sm m-0",
+              "h-8 px-5 text-[10px] font-bold uppercase tracking-widest shadow-sm min-w-[100px] rounded-lg m-0 transition-colors",
             )}
           >
             {isDeleting ? (

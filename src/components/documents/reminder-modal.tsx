@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Send, X, Mail, Clock, FileSignature, User } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 export type ReminderContext = {
   id: string;
@@ -77,19 +78,18 @@ export default function ReminderModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      {/* IMPROVED: max-h-[90vh] flex flex-col to force internal scrolling if needed */}
-      <DialogContent className="max-w-[500px] p-0 border-slate-200 shadow-2xl rounded-sm flex flex-col max-h-[90vh] [&>button.absolute]:hidden">
-        {/* HEADER - Tighter padding */}
-        <DialogHeader className="px-4 py-3 border-b border-slate-100 bg-white shrink-0 flex flex-row items-center justify-between">
+      <DialogContent className="max-w-[450px] p-0 border-border shadow-2xl rounded-xl flex flex-col max-h-[90vh] bg-background transition-colors duration-300 [&>button.absolute]:hidden">
+        {/* HEADER */}
+        <DialogHeader className="px-4 py-3 border-b border-border bg-card shrink-0 flex flex-row items-center justify-between transition-colors">
           <div className="flex items-center gap-3">
-            <div className="w-7 h-7 rounded-sm bg-slate-900 flex items-center justify-center shadow-sm">
-              <Mail className="w-3.5 h-3.5 text-white" />
+            <div className="w-8 h-8 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center shadow-sm">
+              <Mail className="w-4 h-4 text-primary" />
             </div>
             <div className="flex flex-col text-left">
-              <DialogTitle className="text-sm font-bold text-slate-900 tracking-tight leading-none mb-1">
+              <DialogTitle className="text-sm font-bold text-foreground uppercase tracking-wider leading-none mb-1">
                 Send Notification
               </DialogTitle>
-              <span className="text-[10px] font-medium text-slate-500 uppercase tracking-widest leading-none">
+              <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-widest leading-none">
                 {context.type === "expiry"
                   ? "Document Expiry Reminder"
                   : "Contract Signature Reminder"}
@@ -99,7 +99,7 @@ export default function ReminderModal({
           <Button
             variant="ghost"
             size="icon"
-            className="h-7 w-7 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-sm"
+            className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-secondary rounded-lg transition-colors"
             onClick={onClose}
             disabled={isSending}
           >
@@ -107,26 +107,26 @@ export default function ReminderModal({
           </Button>
         </DialogHeader>
 
-        {/* BODY - overflow-y-auto to handle short screens cleanly */}
-        <div className="p-4 bg-slate-50 space-y-4 overflow-y-auto flex-1">
+        {/* BODY */}
+        <div className="p-4 bg-background space-y-4 overflow-y-auto flex-1 custom-scrollbar">
           {/* Context Banner */}
-          <div className="bg-white border border-slate-200 rounded-sm p-2.5 flex items-center gap-2.5 shadow-sm">
-            <div className="w-7 h-7 rounded-full bg-slate-100 flex items-center justify-center shrink-0">
-              <User className="w-3.5 h-3.5 text-slate-500" />
+          <div className="bg-card border border-border rounded-xl p-3 flex items-center gap-3 shadow-sm transition-colors">
+            <div className="w-8 h-8 rounded-lg bg-secondary border border-border flex items-center justify-center shrink-0">
+              <User className="w-4 h-4 text-muted-foreground" />
             </div>
-            <div className="flex flex-col flex-1 truncate">
-              <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider leading-none mb-1">
+            <div className="flex flex-col flex-1 truncate pr-2">
+              <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest leading-none mb-1">
                 Recipient
               </span>
-              <span className="text-xs font-bold text-slate-800 leading-none truncate">
+              <span className="text-[11px] font-bold text-foreground leading-none truncate">
                 {context.customerName}
               </span>
             </div>
-            <div className="flex flex-col text-right pl-3 border-l border-slate-100 shrink-0">
-              <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider leading-none mb-1">
-                Email Destination
+            <div className="flex flex-col text-right pl-3 border-l border-border shrink-0 max-w-[150px]">
+              <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest leading-none mb-1">
+                Destination
               </span>
-              <span className="text-[10px] font-medium text-slate-600 leading-none">
+              <span className="text-[11px] font-medium text-foreground leading-none truncate">
                 {context.customerEmail}
               </span>
             </div>
@@ -135,40 +135,40 @@ export default function ReminderModal({
           <div className="space-y-3">
             {/* Subject Field */}
             <div className="space-y-1.5">
-              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+              <label className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">
                 Subject Line
               </label>
               <Input
                 value={subject}
                 onChange={(e) => setSubject(e.target.value)}
-                className="h-8 text-xs font-semibold bg-white border-slate-200 shadow-sm rounded-sm focus-visible:ring-1 focus-visible:ring-slate-300"
+                className="h-8 text-[11px] font-semibold text-foreground bg-secondary border-border shadow-none rounded-lg focus-visible:ring-primary transition-colors"
               />
             </div>
 
-            {/* Message Body Field - Reduced min-height */}
+            {/* Message Body Field */}
             <div className="space-y-1.5 flex flex-col">
-              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider flex justify-between items-end">
+              <label className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest flex justify-between items-end">
                 <span>Message Body</span>
-                <span className="normal-case font-medium text-[9px] text-slate-400">
+                <span className="normal-case font-medium text-[9px] text-muted-foreground/70">
                   Editable template
                 </span>
               </label>
               <Textarea
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
-                className="min-h-[120px] text-xs font-medium leading-relaxed bg-white border-slate-200 shadow-sm rounded-sm resize-y focus-visible:ring-1 focus-visible:ring-slate-300 p-2.5"
+                className="min-h-[120px] text-[11px] font-medium leading-relaxed text-foreground bg-secondary border-border shadow-none rounded-lg resize-y focus-visible:ring-primary p-3 transition-colors custom-scrollbar"
               />
             </div>
           </div>
 
-          {/* Quick Context Hint - Fixed className typo */}
-          <div className="flex items-start gap-2 text-[10px] font-medium text-slate-500 bg-slate-100/50 p-2 rounded-sm border border-slate-200/60">
+          {/* Quick Context Hint */}
+          <div className="flex items-start gap-2.5 text-[10px] font-medium text-muted-foreground bg-secondary/50 p-2.5 rounded-lg border border-border transition-colors shadow-sm">
             {context.type === "expiry" ? (
-              <Clock className="w-3.5 h-3.5 text-orange-500 shrink-0 mt-0.5" />
+              <Clock className="w-3.5 h-3.5 text-orange-500 dark:text-orange-400 shrink-0 mt-0.5" />
             ) : (
-              <FileSignature className="w-3.5 h-3.5 text-blue-500 shrink-0 mt-0.5" />
+              <FileSignature className="w-3.5 h-3.5 text-primary shrink-0 mt-0.5" />
             )}
-            <p className="leading-tight">
+            <p className="leading-relaxed">
               An automated log of this communication will be saved to the
               customer's profile history upon sending.
             </p>
@@ -176,17 +176,17 @@ export default function ReminderModal({
         </div>
 
         {/* FOOTER */}
-        <div className="bg-white border-t border-slate-200 p-3 shrink-0 flex gap-2 justify-end">
+        <div className="bg-card border-t border-border p-3 shrink-0 flex gap-2 justify-end transition-colors">
           <Button
-            variant="ghost"
-            className="h-8 px-4 text-xs font-bold text-slate-600 rounded-sm hover:text-slate-900 hover:bg-slate-100"
+            variant="outline"
+            className="h-8 px-4 text-[10px] font-semibold text-foreground bg-card hover:bg-secondary border-border rounded-lg shadow-none transition-colors"
             onClick={onClose}
             disabled={isSending}
           >
             Cancel
           </Button>
           <Button
-            className="h-8 px-6 text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white rounded-sm shadow-sm"
+            className="h-8 px-5 text-[10px] font-bold uppercase tracking-widest bg-primary hover:opacity-90 text-primary-foreground rounded-lg shadow-sm transition-opacity"
             onClick={handleSend}
             disabled={isSending || !subject.trim() || !message.trim()}
           >

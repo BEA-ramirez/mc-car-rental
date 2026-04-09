@@ -24,9 +24,9 @@ import {
 import { toast } from "sonner";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { updateInspectionChecklist } from "@/actions/docs-mutations";
-import { uploadInspectionPhotoAction } from "@/actions/docs-mutations"; // <--- NEW IMPORT
+import { uploadInspectionPhotoAction } from "@/actions/docs-mutations";
 import { cn } from "@/lib/utils";
-import imageCompression from "browser-image-compression"; // <--- COMPRESSION LIBRARY
+import imageCompression from "browser-image-compression";
 
 type InspectionExecutionModalProps = {
   isOpen: boolean;
@@ -131,10 +131,10 @@ export default function InspectionExecutionModal({
     setUploadingItemId(itemId);
 
     try {
-      // 1. Compress the Image (The Storage Saver!)
+      // 1. Compress the Image
       const options = {
-        maxSizeMB: 0.3, // Crush it down to 300KB max
-        maxWidthOrHeight: 1280, // Keep resolution crisp enough for web
+        maxSizeMB: 0.3,
+        maxWidthOrHeight: 1280,
         useWebWorker: true,
       };
       const compressedFile = await imageCompression(file, options);
@@ -185,29 +185,32 @@ export default function InspectionExecutionModal({
 
   const getSegmentBtnClass = (currentStatus: string, targetStatus: string) => {
     const base =
-      "flex-1 h-7 text-[10px] font-bold rounded-sm flex items-center justify-center gap-1.5 transition-all outline-none";
+      "flex-1 h-7 text-[9px] font-bold uppercase tracking-widest rounded-md flex items-center justify-center gap-1 transition-all outline-none";
     if (currentStatus !== targetStatus)
       return cn(
         base,
-        "text-slate-500 hover:text-slate-900 hover:bg-slate-200/50 bg-transparent",
+        "text-muted-foreground hover:text-foreground hover:bg-secondary bg-transparent shadow-none",
       );
 
     if (targetStatus === "PASS")
       return cn(
         base,
-        "bg-emerald-100 text-emerald-800 shadow-sm ring-1 ring-emerald-300",
+        "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 shadow-sm ring-1 ring-emerald-500/20",
       );
     if (targetStatus === "ISSUE")
-      return cn(base, "bg-red-100 text-red-800 shadow-sm ring-1 ring-red-300");
+      return cn(
+        base,
+        "bg-destructive/10 text-destructive shadow-sm ring-1 ring-destructive/20",
+      );
     return cn(
       base,
-      "bg-amber-100 text-amber-800 shadow-sm ring-1 ring-amber-300",
+      "bg-amber-500/10 text-amber-600 dark:text-amber-400 shadow-sm ring-1 ring-amber-500/20",
     );
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-[80vw] xl:max-w-[1000px] p-0 h-[85vh] flex flex-col border-slate-200 shadow-2xl rounded-sm [&>button.absolute]:hidden">
+      <DialogContent className="max-w-[80vw] xl:max-w-[1000px] p-0 h-[85vh] flex flex-col border-border bg-background shadow-2xl rounded-2xl transition-colors duration-300 [&>button.absolute]:hidden">
         {/* Hidden File Input for Camera */}
         <input
           type="file"
@@ -219,26 +222,23 @@ export default function InspectionExecutionModal({
         />
 
         {/* --- FORMAL HEADER --- */}
-        <DialogHeader className="px-5 py-4 border-b border-slate-100 bg-white shrink-0 flex flex-row items-center justify-between">
+        <DialogHeader className="px-4 py-3 border-b border-border bg-card shrink-0 flex flex-row items-center justify-between transition-colors">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-sm bg-slate-900 flex items-center justify-center shadow-sm">
-              <ShieldCheck className="w-4 h-4 text-white" />
+            <div className="w-8 h-8 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center shadow-sm">
+              <ShieldCheck className="w-4 h-4 text-primary" />
             </div>
             <div className="flex flex-col text-left">
-              <DialogTitle className="text-sm font-bold text-slate-900 tracking-tight leading-none mb-1">
+              <DialogTitle className="text-sm font-bold text-foreground tracking-tight leading-none mb-1 uppercase">
                 {inspection.type} Inspection: {vehicleName}
               </DialogTitle>
-              <div className="flex items-center gap-2 text-[10px] font-medium text-slate-500 leading-none">
+              <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground leading-none">
                 <span>
-                  Ref:{" "}
-                  <span className="font-mono font-bold text-slate-700">
-                    {bookingRef}
-                  </span>
+                  Ref: <span className="text-foreground">{bookingRef}</span>
                 </span>
-                <span className="w-1 h-1 rounded-full bg-slate-300" />
+                <span className="w-1 h-1 rounded-full bg-border" />
                 <span>
                   Inspector:{" "}
-                  <span className="font-bold text-slate-700">
+                  <span className="text-foreground">
                     {inspection.users?.full_name || "System"}
                   </span>
                 </span>
@@ -248,7 +248,7 @@ export default function InspectionExecutionModal({
           <Button
             variant="ghost"
             size="icon"
-            className="h-8 w-8 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-sm"
+            className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-secondary rounded-lg transition-colors"
             onClick={onClose}
             disabled={saveMutation.isPending || uploadingItemId !== null}
           >
@@ -257,28 +257,28 @@ export default function InspectionExecutionModal({
         </DialogHeader>
 
         {/* --- SCROLLABLE BODY --- */}
-        <div className="flex-1 overflow-y-auto p-5 bg-slate-50 space-y-5">
+        <div className="flex-1 overflow-y-auto p-4 bg-background space-y-4 custom-scrollbar">
           {checklist.map((category) => (
             <div
               key={category.categoryId}
-              className="bg-white border border-slate-200 rounded-sm shadow-sm overflow-hidden"
+              className="bg-card border border-border rounded-xl shadow-sm overflow-hidden transition-colors"
             >
-              <div className="bg-slate-100/50 border-b border-slate-200 px-4 py-2.5 flex items-center gap-1.5">
-                <ListChecks className="w-3.5 h-3.5 text-slate-400" />
-                <h3 className="text-[10px] font-black text-slate-600 uppercase tracking-widest">
+              <div className="bg-secondary/50 border-b border-border px-3 py-2 flex items-center gap-1.5 transition-colors">
+                <ListChecks className="w-3.5 h-3.5 text-muted-foreground" />
+                <h3 className="text-[10px] font-bold text-foreground uppercase tracking-widest">
                   {category.categoryName}
                 </h3>
               </div>
 
-              <div className="divide-y divide-slate-100">
+              <div className="divide-y divide-border">
                 {category.items.map((item: any) => (
                   <div
                     key={item.itemId}
-                    className="p-3 flex flex-col lg:flex-row lg:items-start gap-4 hover:bg-slate-50 transition-colors group"
+                    className="p-2.5 flex flex-col lg:flex-row lg:items-start gap-3 hover:bg-secondary/30 transition-colors group"
                   >
                     {/* Item Label */}
-                    <div className="lg:w-1/3 flex items-center pt-1.5">
-                      <span className="text-xs font-bold text-slate-800">
+                    <div className="lg:w-1/3 flex items-center pt-1">
+                      <span className="text-[11px] font-bold text-foreground">
                         {item.label}
                       </span>
                     </div>
@@ -287,7 +287,7 @@ export default function InspectionExecutionModal({
                     <div className="flex-1 flex flex-col gap-2">
                       <div className="flex flex-col sm:flex-row gap-3">
                         {/* Segmented Control */}
-                        <div className="flex items-center p-0.5 bg-slate-100 border border-slate-200 rounded-sm w-full sm:w-[220px] shrink-0 h-8">
+                        <div className="flex items-center p-0.5 bg-secondary border border-border rounded-lg w-full sm:w-[220px] shrink-0 h-8 transition-colors">
                           <button
                             onClick={() =>
                               handleStatusChange(
@@ -334,7 +334,7 @@ export default function InspectionExecutionModal({
                           {item.status === "ISSUE" ? (
                             <div className="flex-1 flex items-center gap-2 animate-in fade-in slide-in-from-right-2 duration-200 w-full">
                               <Input
-                                placeholder="Describe the issue in detail..."
+                                placeholder="Describe the issue..."
                                 value={item.notes || ""}
                                 onChange={(e) =>
                                   handleNoteChange(
@@ -343,12 +343,12 @@ export default function InspectionExecutionModal({
                                     e.target.value,
                                   )
                                 }
-                                className="h-8 text-xs bg-red-50/30 border-red-200 focus-visible:ring-red-400 rounded-sm shadow-none flex-1"
+                                className="h-8 text-[10px] font-medium bg-destructive/5 border-destructive/20 focus-visible:ring-destructive text-foreground rounded-lg shadow-none flex-1 transition-colors"
                               />
                               <Button
                                 variant="outline"
                                 size="icon"
-                                className="h-8 w-8 shrink-0 text-slate-500 border-slate-200 rounded-sm hover:text-slate-900 hover:bg-slate-100"
+                                className="h-8 w-8 shrink-0 text-muted-foreground border-border bg-card rounded-lg hover:text-foreground hover:bg-secondary transition-colors"
                                 title="Attach Photo"
                                 onClick={() => {
                                   setActiveUploadContext({
@@ -360,15 +360,15 @@ export default function InspectionExecutionModal({
                                 disabled={uploadingItemId === item.itemId}
                               >
                                 {uploadingItemId === item.itemId ? (
-                                  <Loader2 className="w-3.5 h-3.5 animate-spin text-blue-600" />
+                                  <Loader2 className="w-3.5 h-3.5 animate-spin text-primary" />
                                 ) : (
                                   <Camera className="w-3.5 h-3.5" />
                                 )}
                               </Button>
                             </div>
                           ) : (
-                            <span className="text-[10px] font-medium text-slate-400 italic opacity-0 group-hover:opacity-100 transition-opacity hidden sm:block mt-1">
-                              No action required.
+                            <span className="text-[9px] uppercase tracking-widest font-bold text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity hidden sm:block mt-1">
+                              No action required
                             </span>
                           )}
                         </div>
@@ -381,18 +381,18 @@ export default function InspectionExecutionModal({
                             <img
                               src={item.photoUrl}
                               alt="Issue evidence"
-                              className="h-14 w-14 object-cover rounded-sm border border-slate-200 shadow-sm"
+                              className="h-10 w-10 object-cover rounded-md border border-border shadow-sm"
                             />
                             <button
                               onClick={() =>
                                 removePhoto(category.categoryId, item.itemId)
                               }
-                              className="absolute -top-1.5 -right-1.5 bg-red-600 text-white rounded-full p-0.5 opacity-0 group-hover/photo:opacity-100 transition-opacity shadow-sm"
+                              className="absolute -top-1.5 -right-1.5 bg-destructive text-destructive-foreground rounded-full p-0.5 opacity-0 group-hover/photo:opacity-100 transition-opacity shadow-sm"
                             >
                               <X className="w-3 h-3" />
                             </button>
                           </div>
-                          <span className="text-[10px] font-bold text-emerald-600 flex items-center gap-1 bg-emerald-50 px-2 py-1 rounded-sm border border-emerald-100">
+                          <span className="text-[9px] font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1 bg-emerald-500/10 px-2 py-1 rounded border border-emerald-500/20 uppercase tracking-widest">
                             <ImageIcon className="w-3 h-3" /> Evidence Attached
                           </span>
                         </div>
@@ -406,17 +406,17 @@ export default function InspectionExecutionModal({
         </div>
 
         {/* --- FOOTER ACTIONS --- */}
-        <div className="bg-white border-t border-slate-200 p-4 shrink-0 flex gap-2 justify-end">
+        <div className="bg-card border-t border-border p-3 shrink-0 flex gap-2 justify-end transition-colors z-10">
           <Button
-            variant="ghost"
-            className="h-9 px-4 text-xs font-bold text-slate-600 rounded-sm hover:text-slate-900 hover:bg-slate-100"
+            variant="outline"
+            className="h-8 px-4 text-[10px] font-semibold bg-card text-foreground hover:bg-secondary border-border rounded-lg shadow-none transition-colors"
             onClick={onClose}
             disabled={saveMutation.isPending || uploadingItemId !== null}
           >
             Cancel
           </Button>
           <Button
-            className="h-9 px-6 text-xs font-bold bg-slate-900 hover:bg-slate-800 text-white rounded-sm shadow-sm"
+            className="h-8 px-5 text-[10px] font-bold uppercase tracking-widest bg-primary hover:opacity-90 text-primary-foreground rounded-lg shadow-sm transition-opacity"
             onClick={() => saveMutation.mutate(checklist)}
             disabled={saveMutation.isPending || uploadingItemId !== null}
           >
@@ -425,7 +425,7 @@ export default function InspectionExecutionModal({
             ) : (
               <Save className="w-3.5 h-3.5 mr-2" />
             )}
-            Save & Execute Report
+            Save & Execute
           </Button>
         </div>
       </DialogContent>

@@ -77,8 +77,16 @@ export async function getBookingFolio(bookingId: string) {
     .from("bookings")
     .select(
       `
-      booking_id, start_date, end_date, total_price, security_deposit, payment_status,
-      users(full_name), cars(brand, plate_number)
+      booking_id, 
+      start_date, 
+      end_date, 
+      total_price, 
+      base_rate_snapshot, 
+      security_deposit, 
+      payment_status, 
+      booking_status, 
+      users(full_name, phone_number, email), 
+      cars(brand, model, plate_number, rental_rate_per_day)
     `,
     )
     .eq("booking_id", bookingId)
@@ -111,7 +119,8 @@ export async function recordBookingPayment(input: {
   bookingId: string;
   amount: number;
   method: string;
-  reference: string;
+  reference?: string;
+  title?: string;
 }): Promise<ActionState> {
   const supabase = await createClient();
 
@@ -122,6 +131,7 @@ export async function recordBookingPayment(input: {
     payment_method: input.method,
     transaction_reference: input.reference,
     status: "Completed",
+    title: input.title || "General Payment",
     paid_at: new Date().toISOString(),
   });
 

@@ -1,6 +1,6 @@
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-import { format } from "date-fns";
+import { format, differenceInCalendarDays } from "date-fns";
 import { ClientRow } from "../../hooks/use-clients";
 import { toTitleCase } from "@/actions/helper/format-text";
 
@@ -321,3 +321,241 @@ export async function exportClientsToPDF(filteredUsers: ClientRow[]) {
   const fileName = `Client_Directory_Export_${format(new Date(), "MMM_dd_yyyy")}.pdf`;
   doc.save(fileName);
 }
+
+export const generateInvoicePDF = (folio: any) => {
+  if (!folio || !folio.booking) return;
+
+  const doc = new jsPDF();
+  const booking = folio.booking;
+  const customer = Array.isArray(booking.users)
+    ? booking.users[0]
+    : booking.users;
+  const car = Array.isArray(booking.cars) ? booking.cars[0] : booking.cars;
+
+  // --- SAFE FALLBACKS (Prevents crashes) ---
+  const safeId = booking.booking_id || booking.id || "0000";
+  const shortId = safeId.split("-")[0].toUpperCase();
+  const safeStatus = booking.booking_status || booking.status || "UNKNOWN";
+  const currentDate = format(new Date(), "MMM dd, yyyy");
+
+  // Calculate Days
+  const startDate = new Date(booking.start_date || Date.now());
+  const endDate = new Date(booking.end_date || Date.now());
+  const days = Math.max(1, differenceInCalendarDays(endDate, startDate));
+
+  // --- FINANCIAL MATH ---
+  const dailyRate = Number(car?.rental_rate_per_day || 0);
+  // EXPLICIT MULTIPLICATION: Unit Price * Days
+  const baseRental = dailyRate * days;
+  const securityDeposit = Number(booking.security_deposit || 0);
+
+  // --- 1. HEADER SECTION ---
+  doc.setTextColor(15, 23, 42);
+  doc.setFontSize(22);
+  doc.setFont("helvetica", "bold");
+  doc.text("MC ORMOC CAR RENTAL", 14, 22);
+
+  doc.setFontSize(10);
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(100, 116, 139); // Muted slate
+  doc.text("Brgy. Cogon, Ormoc City", 14, 28);
+  doc.text("Leyte 6541, Philippines", 14, 33);
+  doc.text("Phone: 09958930398", 14, 38);
+
+  // Invoice Meta (Right Aligned)
+  doc.setFontSize(24);
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(100, 197, 195); // Teal
+  doc.text("INVOICE", 195, 22, { align: "right" });
+
+  doc.setFontSize(10);
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(15, 23, 42);
+  doc.text(`INVOICE #: ${shortId}`, 195, 28, { align: "right" });
+  doc.setFont("helvetica", "normal");
+  doc.text(`Date: ${currentDate}`, 195, 33, { align: "right" });
+  doc.text(`Status: ${safeStatus.toUpperCase()}`, 195, 38, { align: "right" });
+
+  // --- 2. BILLING & VEHICLE INFO ---
+  doc.setDrawColor(226, 232, 240);
+  doc.line(14, 45, 195, 45); // Horizontal divider
+
+  // Bill To
+  doc.setFontSize(10);
+  doc.setFont("helvetica", "bold");
+  doc.text("BILLED TO:", 14, 53);
+  doc.setFont("helvetica", "normal");
+  doc.text(customer?.full_name || "Guest", 14, 58);
+  doc.text(customer?.phone_number || "N/A", 14, 63);
+  doc.text(customer?.email || "N/A", 14, 68);
+
+  // Vehicle Details
+  doc.setFont("helvetica", "bold");
+  doc.text("VEHICLE DETAILS:", 120, 53);
+  doc.setFont("helvetica", "normal");
+  doc.text(`Unit: ${car?.brand} ${car?.model}`, 120, 58);
+  doc.text(`Plate No: ${car?.plate_number || "N/A"}`, 120, 63);
+  doc.text(
+    `Duration: ${format(startDate, "MMM dd")} - ${format(endDate, "MMM dd")} (${days} Days)`,
+    120,
+    68,
+  );
+
+  let currentY = 78;
+
+  // --- 3. LINE ITEMS (CHARGES) ---
+  const chargeRows = [];
+
+  // Base Rental Row (Now explicitly using the multiplied value)
+  chargeRows.push([
+    "Vehicle Base Rental",
+    `${days} Day(s)`,
+    `P ${dailyRate.toLocaleString()}`,
+    `P ${baseRental.toLocaleString()}`,
+  ]);
+
+  // Additional Charges from DB
+  let totalExtraCharges = 0;
+  if (folio.charges && folio.charges.length > 0) {
+    folio.charges.forEach((c: any) => {
+      const amount = Number(c.amount);
+      totalExtraCharges += amount;
+      chargeRows.push([
+        c.description || c.category.replace("_", " "),
+        "1",
+        `P ${Math.abs(amount).toLocaleString()}`,
+        `P ${amount.toLocaleString()}`,
+      ]);
+    });
+  }
+
+  // Security Deposit Row
+  if (securityDeposit > 0) {
+    chargeRows.push([
+      "Refundable Security Deposit",
+      "1",
+      `P ${securityDeposit.toLocaleString()}`,
+      `P ${securityDeposit.toLocaleString()}`,
+    ]);
+  }
+
+  const grandTotal = baseRental + totalExtraCharges + securityDeposit;
+
+  autoTable(doc, {
+    startY: currentY,
+    head: [["DESCRIPTION", "QTY", "UNIT PRICE", "AMOUNT"]],
+    body: chargeRows,
+    theme: "striped",
+    headStyles: {
+      fillColor: [15, 23, 42],
+      textColor: 255,
+      fontSize: 9,
+      fontStyle: "bold",
+    },
+    styles: { fontSize: 9, cellPadding: 5 },
+    columnStyles: {
+      0: { cellWidth: 80 },
+      1: { halign: "center" },
+      2: { halign: "right" },
+      3: { halign: "right", fontStyle: "bold" },
+    },
+  });
+
+  currentY = (doc as any).lastAutoTable.finalY + 10;
+
+  // --- 4. PAYMENTS SECTION ---
+  const paymentRows: any[] = [];
+  let totalPaid = 0;
+
+  if (folio.payments && folio.payments.length > 0) {
+    folio.payments.forEach((p: any) => {
+      const amount = Number(p.amount);
+      totalPaid += amount;
+
+      // Format the method and reference nicely
+      const methodAndRef = `${p.payment_method} ${p.transaction_reference ? `(${p.transaction_reference})` : ""}`;
+
+      paymentRows.push([
+        format(
+          new Date(p.paid_at || p.created_at || Date.now()),
+          "MMM dd, yyyy",
+        ),
+        p.title || "Payment", // <--- THE NEW PURPOSE/TITLE FIELD!
+        methodAndRef,
+        `P ${amount.toLocaleString()}`,
+      ]);
+    });
+  } else {
+    paymentRows.push(["No payments", "-", "-", "P 0"]);
+  }
+
+  doc.setFontSize(11);
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(15, 23, 42);
+  doc.text("PAYMENT HISTORY", 14, currentY);
+
+  autoTable(doc, {
+    startY: currentY + 4,
+    head: [["DATE", "PURPOSE", "METHOD / REF", "AMOUNT"]], // <--- UPDATED HEADERS
+    body: paymentRows,
+    theme: "plain",
+    headStyles: {
+      fillColor: [241, 245, 249],
+      textColor: [100, 116, 139],
+      fontSize: 8,
+    },
+    styles: { fontSize: 8, cellPadding: 4, textColor: [71, 85, 105] },
+    columnStyles: {
+      3: { halign: "right", fontStyle: "bold", textColor: [16, 185, 129] }, // Green for payments
+    },
+  });
+
+  currentY = (doc as any).lastAutoTable.finalY + 15;
+
+  // --- 5. TOTALS & BALANCE DUE ---
+  const balanceDue = grandTotal - totalPaid;
+
+  doc.setFontSize(10);
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(15, 23, 42);
+
+  // Layout the totals on the right side
+  doc.text("Total Charges:", 130, currentY);
+  doc.text(`P ${grandTotal.toLocaleString()}`, 195, currentY, {
+    align: "right",
+  });
+
+  doc.text("Total Paid:", 130, currentY + 7);
+  doc.text(`- P ${totalPaid.toLocaleString()}`, 195, currentY + 7, {
+    align: "right",
+  });
+
+  doc.setDrawColor(15, 23, 42);
+  doc.setLineWidth(0.5);
+  doc.line(130, currentY + 11, 195, currentY + 11);
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(12);
+  if (balanceDue <= 0) {
+    doc.setTextColor(16, 185, 129); // Green if paid
+    doc.text("NET SETTLED:", 130, currentY + 18);
+    doc.text(`P ${Math.abs(balanceDue).toLocaleString()}`, 195, currentY + 18, {
+      align: "right",
+    });
+  } else {
+    doc.setTextColor(220, 38, 38); // Red if balance due
+    doc.text("BALANCE DUE:", 130, currentY + 18);
+    doc.text(`P ${balanceDue.toLocaleString()}`, 195, currentY + 18, {
+      align: "right",
+    });
+  }
+
+  // --- 6. FOOTER ---
+  doc.setFont("helvetica", "italic");
+  doc.setFontSize(9);
+  doc.setTextColor(148, 163, 184);
+  doc.text("Thank you for your business!", 105, 280, { align: "center" });
+
+  // Download the PDF
+  doc.save(`Invoice_${shortId}.pdf`);
+};
