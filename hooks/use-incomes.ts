@@ -14,7 +14,7 @@ import {
 export const useIncomes = () => {
   const queryClient = useQueryClient();
 
-  // 1. Fetch Dashboard Data
+  // Fetch Dashboard Data
   const dashboardQuery = useQuery({
     queryKey: ["incomes-dashboard"],
     queryFn: async () => {
@@ -24,14 +24,17 @@ export const useIncomes = () => {
     staleTime: 30 * 1000,
   });
 
-  // 2. Mutation: Record Payment
+  // Mutation: Record Payment
   const recordPaymentMutation = useMutation({
     mutationFn: recordBookingPayment,
     onSuccess: (data) => {
       if (data.success) {
         toast.success(data.message);
-        queryClient.invalidateQueries({ queryKey: ["incomes-dashboard"] });
+        queryClient.invalidateQueries({
+          queryKey: ["incomes-dashboard"],
+        });
         queryClient.invalidateQueries({ queryKey: ["booking-folio"] });
+        queryClient.invalidateQueries({ queryKey: ["booking-details"] });
       } else {
         toast.error(data.message);
       }
@@ -39,14 +42,17 @@ export const useIncomes = () => {
     onError: (err) => toast.error("Failed to record payment: " + err.message),
   });
 
-  // 3. Mutation: Add Charge
+  // Mutation: Add Charge
   const addChargeMutation = useMutation({
     mutationFn: addBookingCharge,
     onSuccess: (data) => {
       if (data.success) {
         toast.success(data.message);
-        queryClient.invalidateQueries({ queryKey: ["incomes-dashboard"] });
+        queryClient.invalidateQueries({
+          queryKey: ["incomes-dashboard"],
+        });
         queryClient.invalidateQueries({ queryKey: ["booking-folio"] });
+        queryClient.invalidateQueries({ queryKey: ["booking-details"] });
       } else {
         toast.error(data.message);
       }
@@ -73,9 +79,13 @@ export const useIncomes = () => {
     onSuccess: (data) => {
       if (data.success) {
         toast.success(data.message);
-        queryClient.invalidateQueries({ queryKey: ["incomes-dashboard"] });
-        queryClient.invalidateQueries({ queryKey: ["booking-folio"] });
-        queryClient.invalidateQueries({ queryKey: ["master-ledger"] }); // Update ledger
+        // Return Promise.all so the mutation waits for the refetches to finish
+        return Promise.all([
+          queryClient.invalidateQueries({ queryKey: ["incomes-dashboard"] }),
+          queryClient.invalidateQueries({ queryKey: ["booking-folio"] }),
+          queryClient.invalidateQueries({ queryKey: ["master-ledger"] }),
+          queryClient.invalidateQueries({ queryKey: ["booking-details"] }), // Separated!
+        ]);
       } else {
         toast.error(data.message);
       }
@@ -83,6 +93,7 @@ export const useIncomes = () => {
     onError: (err) => toast.error("Failed to refund deposit: " + err.message),
   });
 
+  console.log("kpi data", dashboardQuery.data);
   return {
     data: dashboardQuery.data,
     isLoading: dashboardQuery.isLoading,

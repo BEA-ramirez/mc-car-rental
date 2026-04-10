@@ -96,7 +96,7 @@ async function createDocumentRecord(
     file_name: file.name,
     file_path: filePath,
     file_type: file.type || "application/octet-stream",
-    status: "pending",
+    status: "PENDING",
     expiry_date: validExpiry,
     created_at: new Date().toISOString(),
   });

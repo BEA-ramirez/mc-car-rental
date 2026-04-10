@@ -49,7 +49,7 @@ export default function RequestsQueue() {
     page: currentPage,
     limit: limit,
     search: debouncedSearch,
-    statusFilter: ["pending"],
+    statusFilter: ["PENDING"],
     roleFilter: [],
   });
 

@@ -113,16 +113,16 @@ export type SchedulerEvent = {
   color?: string;
   group_id?: string;
   status?:
-    | "confirmed"
-    | "pending"
-    | "maintenance"
-    | "displaced"
-    | "ongoing"
-    | "completed"
-    | "no_show"
-    | "cancelled";
+    | "CONFIRMED"
+    | "PENDING"
+    | "MAINTENANCE"
+    | "DISPLACED"
+    | "ONGOING"
+    | "COMPLETED"
+    | "NO_SHOW"
+    | "CANCELLED";
   bufferDuration?: number;
-  paymentStatus?: "Paid" | "Pending" | "Partial" | "Unpaid";
+  paymentStatus?: "PAID" | "PENDING" | "PARTIAL" | "UNPAID";
   amount?: number;
   customerPhone?: string;
   customerEmail?: string;
@@ -485,8 +485,8 @@ export default function TimelineScheduler({
           evt.resourceId === res.id &&
           (evt.end as Date) > timelineStart &&
           (evt.start as Date) < timelineEnd &&
-          evt.status !== "no_show" &&
-          evt.status !== "cancelled",
+          evt.status !== "NO_SHOW" &&
+          evt.status !== "CANCELLED",
       );
       if (filterMode === "booked") return hasBooking;
       if (filterMode === "available") return !hasBooking;
@@ -780,11 +780,11 @@ export default function TimelineScheduler({
                 events.some((e) => {
                   if (e.id === parsedGhostBooking.id) return false;
                   const isConflictStatus = [
-                    "confirmed",
-                    "ongoing",
-                    "maintenance",
-                    "pending",
-                    "displaced",
+                    "CONFIRMED",
+                    "ONGOING",
+                    "MAINTENANCE",
+                    "PENDING",
+                    "DISPLACED",
                   ].includes(e.status || "");
                   if (e.resourceId !== res.id || !isConflictStatus)
                     return false;
@@ -1008,8 +1008,8 @@ export default function TimelineScheduler({
                       .filter(
                         (evt) =>
                           evt.resourceId === res.id &&
-                          evt.status !== "cancelled" &&
-                          evt.status !== "no_show",
+                          evt.status !== "CANCELLED" &&
+                          evt.status !== "NO_SHOW",
                       )
                       .map((evt) => {
                         const isResizing = resizingEventId === evt.id;
@@ -1033,15 +1033,15 @@ export default function TimelineScheduler({
                         )
                           return null;
 
-                        const isMaintenance = evt.status === "maintenance";
-                        const isDisplaced = evt.status === "displaced";
-                        const isOngoing = evt.status === "ongoing";
-                        const isCompleted = evt.status === "completed";
+                        const isMaintenance = evt.status === "MAINTENANCE";
+                        const isDisplaced = evt.status === "DISPLACED";
+                        const isOngoing = evt.status === "ONGOING";
+                        const isCompleted = evt.status === "COMPLETED";
                         const isLateArrival =
-                          evt.status === "confirmed" &&
+                          evt.status === "CONFIRMED" &&
                           now > (evt.start as Date);
                         const isOverdueReturn =
-                          evt.status === "ongoing" && now > (evt.end as Date);
+                          evt.status === "ONGOING" && now > (evt.end as Date);
 
                         // --- DRIVER ASSIGNMENT LOGIC ---
                         const needsDriver = evt.withDriver === true;
@@ -1050,8 +1050,8 @@ export default function TimelineScheduler({
                         const missingDriverWarning =
                           needsDriver &&
                           !hasAssignedDriver &&
-                          evt.status !== "completed" &&
-                          evt.status !== "maintenance";
+                          evt.status !== "COMPLETED" &&
+                          evt.status !== "MAINTENANCE";
 
                         let isOverlappingOther = false;
                         if (!isResizing && !isCompleted) {
@@ -1059,9 +1059,9 @@ export default function TimelineScheduler({
                             (other) =>
                               other.id !== evt.id &&
                               other.resourceId === evt.resourceId &&
-                              other.status !== "displaced" &&
-                              other.status !== "cancelled" &&
-                              other.status !== "no_show" &&
+                              other.status !== "DISPLACED" &&
+                              other.status !== "CANCELLED" &&
+                              other.status !== "NO_SHOW" &&
                               (other.start as Date) <
                                 addMinutes(displayEnd, displayBuffer || 0) &&
                               addMinutes(
@@ -1093,10 +1093,10 @@ export default function TimelineScheduler({
                         } else if (isLateArrival) {
                           eventColorClass =
                             "bg-orange-500/20 border-orange-500 text-orange-600 dark:text-orange-400 shadow-md animate-pulse";
-                        } else if (evt.status === "confirmed") {
+                        } else if (evt.status === "CONFIRMED") {
                           eventColorClass =
                             "bg-emerald-500/20 border-emerald-500/50 text-foreground shadow-sm";
-                        } else if (evt.status === "pending") {
+                        } else if (evt.status === "PENDING") {
                           eventColorClass =
                             "bg-amber-500/20 border-amber-500/50 text-foreground shadow-sm";
                         }
@@ -1353,7 +1353,7 @@ export default function TimelineScheduler({
                                               if (onStatusChange)
                                                 onStatusChange(
                                                   evt,
-                                                  "completed",
+                                                  "COMPLETED",
                                                 );
                                             }
                                           }}
@@ -1373,7 +1373,7 @@ export default function TimelineScheduler({
                                             className="text-[11px] font-medium cursor-pointer focus:bg-secondary text-popover-foreground"
                                             onClick={() =>
                                               onStatusChange &&
-                                              onStatusChange(evt, "pending")
+                                              onStatusChange(evt, "PENDING")
                                             }
                                           >
                                             Set Pending
@@ -1382,7 +1382,7 @@ export default function TimelineScheduler({
                                             className="text-[11px] font-medium cursor-pointer focus:bg-secondary text-popover-foreground"
                                             onClick={() =>
                                               onStatusChange &&
-                                              onStatusChange(evt, "confirmed")
+                                              onStatusChange(evt, "CONFIRMED")
                                             }
                                           >
                                             Set Confirmed
@@ -1391,7 +1391,7 @@ export default function TimelineScheduler({
                                             className="text-[11px] font-medium cursor-pointer focus:bg-secondary text-popover-foreground"
                                             onClick={() =>
                                               onStatusChange &&
-                                              onStatusChange(evt, "ongoing")
+                                              onStatusChange(evt, "ONGOING")
                                             }
                                           >
                                             Set Ongoing
@@ -1400,7 +1400,7 @@ export default function TimelineScheduler({
                                             className="text-[11px] font-medium cursor-pointer focus:bg-secondary text-popover-foreground"
                                             onClick={() =>
                                               onStatusChange &&
-                                              onStatusChange(evt, "completed")
+                                              onStatusChange(evt, "COMPLETED")
                                             }
                                           >
                                             Set Completed
@@ -1410,7 +1410,7 @@ export default function TimelineScheduler({
                                             className="text-[11px] font-medium text-destructive cursor-pointer focus:bg-secondary focus:text-destructive"
                                             onClick={() =>
                                               onStatusChange &&
-                                              onStatusChange(evt, "no_show")
+                                              onStatusChange(evt, "NO_SHOW")
                                             }
                                           >
                                             Set No-Show
@@ -1473,17 +1473,17 @@ export default function TimelineScheduler({
                                           variant="outline"
                                           className={cn(
                                             "uppercase text-[8px] tracking-widest font-bold border px-1.5 py-0 rounded-sm",
-                                            evt.status === "confirmed" &&
+                                            evt.status === "CONFIRMED" &&
                                               !isLateArrival &&
                                               "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30",
-                                            evt.status === "ongoing" &&
+                                            evt.status === "ONGOING" &&
                                               !isOverdueReturn &&
                                               "bg-emerald-500 text-white border-emerald-600 shadow-sm",
                                             isLateArrival &&
                                               "bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-500/30",
                                             isOverdueReturn &&
                                               "bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/30",
-                                            evt.status === "pending" &&
+                                            evt.status === "PENDING" &&
                                               "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30",
                                           )}
                                         >
@@ -1702,12 +1702,12 @@ export default function TimelineScheduler({
                                               variant="outline"
                                               className={cn(
                                                 "text-[8px] font-bold uppercase tracking-widest h-4 px-1.5 rounded",
-                                                evt.paymentStatus === "Paid"
+                                                evt.paymentStatus === "PAID"
                                                   ? "border-emerald-500/30 text-emerald-600 dark:text-emerald-400 bg-emerald-500/10"
                                                   : "border-amber-500/30 text-amber-600 dark:text-amber-400 bg-amber-500/10",
                                               )}
                                             >
-                                              {evt.paymentStatus || "Pending"}
+                                              {evt.paymentStatus || "PENDING"}
                                             </Badge>
                                           </div>
                                         </AccordionContent>
@@ -1716,14 +1716,14 @@ export default function TimelineScheduler({
 
                                     {/* Action Footer inside Popover */}
                                     <div className="p-2.5 bg-secondary/30 border-t border-border flex flex-col gap-1.5">
-                                      {evt.status === "pending" && (
+                                      {evt.status === "PENDING" && (
                                         <div className="flex gap-1.5 w-full">
                                           {now >= (evt.start as Date) && (
                                             <Button
                                               size="sm"
                                               className="flex-1 h-8 text-[9px] font-bold uppercase tracking-widest bg-primary text-primary-foreground hover:opacity-90 rounded-md shadow-none transition-opacity"
                                               onClick={() =>
-                                                onStatusChange?.(evt, "ongoing")
+                                                onStatusChange?.(evt, "ONGOING")
                                               }
                                             >
                                               Approve & Release
@@ -1743,7 +1743,7 @@ export default function TimelineScheduler({
                                                 : "bg-card text-foreground border-border hover:bg-secondary",
                                             )}
                                             onClick={() =>
-                                              onStatusChange?.(evt, "confirmed")
+                                              onStatusChange?.(evt, "CONFIRMED")
                                             }
                                           >
                                             <Check className="w-3 h-3 mr-1" />{" "}
@@ -1751,7 +1751,7 @@ export default function TimelineScheduler({
                                           </Button>
                                         </div>
                                       )}
-                                      {evt.status === "confirmed" &&
+                                      {evt.status === "CONFIRMED" &&
                                         !isLateArrival && (
                                           <Button
                                             size="sm"
@@ -1764,14 +1764,14 @@ export default function TimelineScheduler({
                                             <MoveRight className="w-3 h-3 ml-1.5" />{" "}
                                           </Button>
                                         )}
-                                      {evt.status === "confirmed" &&
+                                      {evt.status === "CONFIRMED" &&
                                         isLateArrival && (
                                           <div className="flex gap-1.5 w-full">
                                             <Button
                                               size="sm"
                                               className="flex-1 h-8 text-[9px] font-bold uppercase tracking-widest bg-primary text-primary-foreground hover:opacity-90 rounded-md shadow-none transition-opacity"
                                               onClick={() =>
-                                                onStatusChange?.(evt, "ongoing")
+                                                onStatusChange?.(evt, "ONGOING")
                                               }
                                             >
                                               <Key className="w-3 h-3 mr-1" />{" "}
@@ -1782,7 +1782,7 @@ export default function TimelineScheduler({
                                               variant="outline"
                                               className="flex-1 h-8 text-[9px] font-bold uppercase tracking-widest text-destructive border-destructive/30 hover:bg-destructive/10 hover:border-destructive/50 rounded-md shadow-none bg-card transition-colors"
                                               onClick={() =>
-                                                onStatusChange?.(evt, "no_show")
+                                                onStatusChange?.(evt, "NO_SHOW")
                                               }
                                             >
                                               <UserX className="w-3 h-3 mr-1" />{" "}
@@ -1790,7 +1790,7 @@ export default function TimelineScheduler({
                                             </Button>
                                           </div>
                                         )}
-                                      {evt.status === "ongoing" && (
+                                      {evt.status === "ONGOING" && (
                                         <Button
                                           size="sm"
                                           className="w-full h-8 text-[9px] font-bold uppercase tracking-widest bg-primary text-primary-foreground hover:opacity-90 rounded-md shadow-none transition-opacity"
@@ -1802,7 +1802,7 @@ export default function TimelineScheduler({
                                               if (onStatusChange)
                                                 onStatusChange(
                                                   evt,
-                                                  "completed",
+                                                  "COMPLETED",
                                                 );
                                             }
                                           }}
@@ -1811,7 +1811,7 @@ export default function TimelineScheduler({
                                           Process Return
                                         </Button>
                                       )}
-                                      {evt.status === "completed" && (
+                                      {evt.status === "COMPLETED" && (
                                         <div className="w-full text-center text-[10px] font-bold uppercase tracking-widest text-muted-foreground py-1.5 flex items-center justify-center bg-secondary/50 rounded border border-border">
                                           <CheckCircle className="w-3 h-3 mr-1.5 text-muted-foreground/70" />{" "}
                                           Trip Completed

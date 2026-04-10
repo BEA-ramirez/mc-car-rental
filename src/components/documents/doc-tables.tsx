@@ -196,7 +196,7 @@ export function KYCTable({
                     className="h-6 w-16 px-0 text-[9px] font-bold text-primary hover:text-primary hover:bg-primary/10 rounded-md transition-colors flex items-center justify-center"
                     onClick={() => onViewReview(doc)}
                   >
-                    {doc.status === "pending" ? "REVIEW" : "VIEW"}
+                    {doc.status === "PENDING" ? "REVIEW" : "VIEW"}
                   </Button>
                 </td>
               </tr>

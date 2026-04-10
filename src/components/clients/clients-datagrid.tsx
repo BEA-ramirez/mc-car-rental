@@ -87,7 +87,7 @@ function getRoleBadgeStyle(role: string) {
 }
 
 function getStatusBadge(status: string) {
-  if (status === "verified" || status === "active")
+  if (status === "VERIFIED" || status === "active")
     return (
       <Badge
         variant="outline"
@@ -96,7 +96,7 @@ function getStatusBadge(status: string) {
         Verified
       </Badge>
     );
-  if (status === "suspended")
+  if (status === "SUSPENDED")
     return (
       <Badge
         variant="outline"
@@ -105,7 +105,7 @@ function getStatusBadge(status: string) {
         Suspended
       </Badge>
     );
-  if (status === "rejected")
+  if (status === "REJECTED")
     return (
       <Badge
         variant="outline"
@@ -305,32 +305,32 @@ export default function ClientsDataGrid() {
                 </DropdownMenuLabel>
                 <DropdownMenuCheckboxItem
                   className="text-xs font-medium rounded-sm cursor-pointer"
-                  checked={statusFilter.includes("pending")}
-                  onCheckedChange={() => handleStatusCheckedChange("pending")}
+                  checked={statusFilter.includes("PENDING")}
+                  onCheckedChange={() => handleStatusCheckedChange("PENDING")}
                   onSelect={(e) => e.preventDefault()}
                 >
                   Pending
                 </DropdownMenuCheckboxItem>
                 <DropdownMenuCheckboxItem
                   className="text-xs font-medium rounded-sm cursor-pointer"
-                  checked={statusFilter.includes("verified")}
-                  onCheckedChange={() => handleStatusCheckedChange("verified")}
+                  checked={statusFilter.includes("VERIFIED")}
+                  onCheckedChange={() => handleStatusCheckedChange("VERIFIED")}
                   onSelect={(e) => e.preventDefault()}
                 >
                   Verified
                 </DropdownMenuCheckboxItem>
                 <DropdownMenuCheckboxItem
                   className="text-xs font-medium rounded-sm cursor-pointer"
-                  checked={statusFilter.includes("rejected")}
-                  onCheckedChange={() => handleStatusCheckedChange("rejected")}
+                  checked={statusFilter.includes("REJECTED")}
+                  onCheckedChange={() => handleStatusCheckedChange("REJECTED")}
                   onSelect={(e) => e.preventDefault()}
                 >
                   Rejected
                 </DropdownMenuCheckboxItem>
                 <DropdownMenuCheckboxItem
                   className="text-xs font-medium rounded-sm cursor-pointer"
-                  checked={statusFilter.includes("suspended")}
-                  onCheckedChange={() => handleStatusCheckedChange("suspended")}
+                  checked={statusFilter.includes("SUSPENDED")}
+                  onCheckedChange={() => handleStatusCheckedChange("SUSPENDED")}
                   onSelect={(e) => e.preventDefault()}
                 >
                   Suspended
@@ -603,7 +603,7 @@ export default function ClientsDataGrid() {
 
                         {/* STATUS */}
                         <TableCell className="py-3 align-middle">
-                          {getStatusBadge(user.account_status || "pending")}
+                          {getStatusBadge(user.account_status || "PENDING")}
                         </TableCell>
 
                         <TableCell
@@ -811,7 +811,7 @@ export default function ClientsDataGrid() {
                           Status
                         </p>
                         {getStatusBadge(
-                          selectedUser.account_status || "pending",
+                          selectedUser.account_status || "PENDING",
                         )}
                       </div>
                       <div>

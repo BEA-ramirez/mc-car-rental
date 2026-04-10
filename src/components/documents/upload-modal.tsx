@@ -71,7 +71,7 @@ const uploadDocSchema = z
     documentId: z.string().optional(),
     customerId: z.string().min(1, "Customer is required."),
     docCategory: z.string().min(1, "Document category is required."),
-    status: z.enum(["pending", "verified", "rejected", "expired"]),
+    status: z.enum(["PENDING", "VERIFIED", "REJECTED", "EXPIRED"]),
     expiryDate: z.date().optional().nullable(),
     internal_notes: z.string().optional().nullable(),
     file: z.any().optional(),
@@ -114,7 +114,7 @@ export default function UploadModal({
       documentId: "",
       customerId: "",
       docCategory: "",
-      status: "pending",
+      status: "PENDING",
       internal_notes: "",
       file: null,
     },
@@ -130,7 +130,7 @@ export default function UploadModal({
           documentId: initialData.document_id,
           customerId: initialData.user_id,
           docCategory: initialData.category,
-          status: initialData.status.toLowerCase() || "pending",
+          status: initialData.status || "PENDING",
           expiryDate: initialData.expiry_date
             ? new Date(initialData.expiry_date)
             : undefined,
@@ -142,7 +142,7 @@ export default function UploadModal({
           documentId: "",
           customerId: "",
           docCategory: "",
-          status: "pending",
+          status: "PENDING",
           internal_notes: "",
           file: null,
         });
@@ -392,25 +392,25 @@ export default function UploadModal({
                         </FormControl>
                         <SelectContent className="rounded-xl border-border bg-popover shadow-xl">
                           <SelectItem
-                            value="pending"
+                            value="PENDING"
                             className="text-[11px] font-medium text-amber-600 dark:text-amber-500"
                           >
                             Pending
                           </SelectItem>
                           <SelectItem
-                            value="verified"
+                            value="VERIFIED"
                             className="text-[11px] font-medium text-emerald-600 dark:text-emerald-500"
                           >
                             Verified
                           </SelectItem>
                           <SelectItem
-                            value="rejected"
+                            value="REJECTED"
                             className="text-[11px] font-medium text-destructive"
                           >
                             Rejected
                           </SelectItem>
                           <SelectItem
-                            value="expired"
+                            value="EXPIRED"
                             className="text-[11px] font-medium text-slate-500"
                           >
                             Expired

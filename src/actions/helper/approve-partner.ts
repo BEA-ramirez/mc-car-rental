@@ -17,7 +17,7 @@ export async function updatePartnerStatus(
       const { error: ownerError } = await supabase
         .from("car_owner")
         .update({
-          verification_status: "verified",
+          verification_status: "VERIFIED",
           active_status: true,
           last_updated_at: new Date(),
         })
@@ -46,7 +46,7 @@ export async function updatePartnerStatus(
       const { error: ownerError } = await supabase
         .from("car_owner")
         .update({
-          verification_status: "rejected",
+          verification_status: "REJECTED",
           active_status: false,
           owner_notes: rejectionReason
             ? `REJECTED: ${rejectionReason}`

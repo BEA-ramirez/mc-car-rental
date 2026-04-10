@@ -22,11 +22,8 @@ export async function GET(request: NextRequest) {
     .eq("is_archived", false)
     .order("created_at", { ascending: false });
 
-  // --- THE FIX: ACTUALLY APPLY THE STATUS FILTER ---
   if (status && status !== "All") {
-    // Note: Ensure the 'status' text from the frontend matches your DB exactly
-    // e.g. 'confirmed', 'ongoing', 'completed', 'pending'
-    query = query.eq("booking_status", status.toLowerCase());
+    query = query.eq("booking_status", status.toUpperCase());
   }
 
   query = query.range(from, to);

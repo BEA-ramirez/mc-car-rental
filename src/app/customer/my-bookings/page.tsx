@@ -21,11 +21,11 @@ export default function MyBookingsPage() {
 
     // Map raw database statuses to customer-friendly display statuses
     let displayStatus = b.status; // This comes from b.booking_status in the Server Action
-    if (b.status === "confirmed" || b.status === "pending")
+    if (b.status === "CONFIRMED" || b.status === "PENDING")
       displayStatus = "Upcoming Trip";
-    if (b.status === "ongoing") displayStatus = "Currently Driving";
-    if (b.status === "completed") displayStatus = "Completed";
-    if (b.status === "cancelled") displayStatus = "Cancelled";
+    if (b.status === "ONGOING") displayStatus = "Currently Driving";
+    if (b.status === "COMPLETED") displayStatus = "Completed";
+    if (b.status === "CANCELLED") displayStatus = "Cancelled";
 
     return {
       ...b,

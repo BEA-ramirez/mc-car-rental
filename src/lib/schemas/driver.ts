@@ -4,7 +4,7 @@ import z from "zod";
 export const driverFormSchema = z.object({
   driver_id: z.string().optional(),
   user_id: z.string().min(1, "You must select a user account"),
-  driver_status: z.string().min(5, "Status is required"),
+  driver_status: z.string().min(5, "Status is required").toUpperCase(),
   is_verified: z.boolean(),
 });
 
@@ -14,7 +14,7 @@ export const driverSchema = z.object({
   driver_id: z.string().uuid().optional(),
   display_id: z.string().optional(),
   user_id: z.string().uuid().optional(),
-  driver_status: z.string().default("Pending"),
+  driver_status: z.string().toUpperCase().default("PENDING"),
   is_verified: z.boolean().default(false),
   is_archived: z.boolean().default(false),
   created_at: z.string().optional(),
@@ -40,7 +40,7 @@ export const completeDriverSchema = driverSchema.extend({
         document_id: z.string().uuid(),
         category: z.string(),
         file_path: z.string(),
-        status: z.string(),
+        status: z.string().toUpperCase(),
         expiry_date: z.string().nullable(),
       }),
     )

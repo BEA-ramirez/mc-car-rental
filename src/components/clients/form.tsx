@@ -176,7 +176,7 @@ export function ClientForm({ data: rawData, closeDialog }: ClientFormProps) {
       password: "",
       email: rawData?.email || "",
       role: rawData?.role || "customer",
-      account_status: rawData?.account_status || "pending",
+      account_status: rawData?.account_status || "PENDING",
       phone_number: rawData?.phone_number || "",
       address: rawData?.address || "",
       license_number: rawData?.license_number || "",
@@ -225,7 +225,7 @@ export function ClientForm({ data: rawData, closeDialog }: ClientFormProps) {
                 variant="outline"
                 className="text-[10px] font-bold bg-slate-50 border-slate-200 text-slate-600 uppercase tracking-widest rounded-sm h-7 px-3 hidden sm:inline-flex"
               >
-                Status: {rawData?.account_status || "Pending"}
+                Status: {rawData?.account_status || "PENDING"}
               </Badge>
             )}
             <Button
@@ -394,10 +394,10 @@ export function ClientForm({ data: rawData, closeDialog }: ClientFormProps) {
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent className="rounded-sm">
-                              <SelectItem value="pending">Pending</SelectItem>
-                              <SelectItem value="verified">Verified</SelectItem>
-                              <SelectItem value="rejected">Rejected</SelectItem>
-                              <SelectItem value="suspended">
+                              <SelectItem value="PENDING">Pending</SelectItem>
+                              <SelectItem value="VERIFIED">Verified</SelectItem>
+                              <SelectItem value="REJECTED">Rejected</SelectItem>
+                              <SelectItem value="SUSPENDED">
                                 Suspended
                               </SelectItem>
                             </SelectContent>

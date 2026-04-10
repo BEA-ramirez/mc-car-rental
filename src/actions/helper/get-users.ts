@@ -1,7 +1,6 @@
 import { createClient } from "@/utils/supabase/server";
-import { UserType } from "@/lib/schemas/client";
 
-export async function getUsers(): Promise<UserType[]> {
+export async function getUsers(): Promise<any[]> {
   const supabase = await createClient();
 
   const { data, error } = await supabase
@@ -13,10 +12,10 @@ export async function getUsers(): Promise<UserType[]> {
     console.error("Error fetching users:", error);
     return [];
   }
-  return data as UserType[];
+  return data;
 }
 
-export async function getUserById(userId: string): Promise<UserType | null> {
+export async function getUserById(userId: string): Promise<any | null> {
   const supabase = await createClient();
   const { data: user, error } = await supabase
     .from("users")
@@ -28,5 +27,5 @@ export async function getUserById(userId: string): Promise<UserType | null> {
     console.error("Error fetching user by ID:", error);
     return null;
   }
-  return user as UserType;
+  return user;
 }

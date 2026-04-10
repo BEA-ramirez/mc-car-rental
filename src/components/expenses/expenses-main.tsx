@@ -3,15 +3,12 @@
 import React, { useState } from "react";
 import {
   Wallet,
-  ArrowDownRight,
   TrendingDown,
   Wrench,
   Plus,
   Calculator,
   Search,
   Filter,
-  Download,
-  Building2,
   ChevronRight,
   Receipt,
   Loader2,
@@ -49,10 +46,10 @@ export default function ExpensesMain() {
   // Loading State
   if (isLoading) {
     return (
-      <div className="flex h-full w-full items-center justify-center bg-slate-50">
-        <div className="flex flex-col items-center gap-2 text-slate-400">
+      <div className="flex h-full w-full items-center justify-center bg-background transition-colors">
+        <div className="flex flex-col items-center gap-2 text-muted-foreground">
           <Loader2 className="h-6 w-6 animate-spin" />
-          <span className="text-xs font-medium uppercase tracking-widest">
+          <span className="text-[10px] font-bold uppercase tracking-widest">
             Loading Financials...
           </span>
         </div>
@@ -60,7 +57,7 @@ export default function ExpensesMain() {
     );
   }
 
-  // Fallbacks in case data is undefined
+  // Fallbacks
   const kpis = data?.kpis || {
     totalOutflow: 0,
     pendingLiabilities: 0,
@@ -71,94 +68,83 @@ export default function ExpensesMain() {
   const operational = data?.operational || [];
 
   return (
-    <div className="flex flex-col h-[calc(100vh-80px)] bg-slate-50 font-sans">
-      {/* --- FORMAL HEADER --- */}
-      <div className="flex items-center justify-between px-6 py-4 bg-white border-b border-slate-200 shrink-0 sticky top-0 z-20 shadow-sm">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-sm bg-slate-900 flex items-center justify-center shadow-sm">
-            <ArrowDownRight className="w-4 h-4 text-white" />
-          </div>
-          <div>
-            <h1 className="text-base font-bold text-slate-900 tracking-tight leading-none mb-1">
-              Expenses & Payouts
-            </h1>
-            <p className="text-[11px] font-medium text-slate-500 leading-none">
-              Track operational costs, maintenance, and fleet partner
-              settlements.
-            </p>
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-8 text-xs font-bold border-slate-300 text-slate-700 bg-white rounded-sm shadow-sm hover:bg-slate-50"
-            onClick={() => setIsLogOpen(true)}
-          >
-            <Plus className="w-3.5 h-3.5 mr-1.5" /> Log Expense
-          </Button>
-          <Button
-            size="sm"
-            className="h-8 text-xs font-bold bg-slate-900 hover:bg-slate-800 text-white rounded-sm shadow-sm"
-            onClick={() => openGenerateModal()}
-          >
-            <Calculator className="w-3.5 h-3.5 mr-1.5" /> Generate Payout
-          </Button>
-        </div>
-      </div>
-
+    <div className="flex flex-col h-full bg-background font-sans transition-colors duration-300">
       {/* --- SCROLLABLE BODY --- */}
-      <ScrollArea className="flex-1">
-        <div className="max-w-[1400px] mx-auto p-6 space-y-6">
+      <ScrollArea className="flex-1 custom-scrollbar">
+        <div className="max-w-[1400px] mx-auto p-4 md:p-5 space-y-5">
           {/* --- KPI PULSE CARDS --- */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="bg-white border border-slate-200 p-4 rounded-sm shadow-sm flex items-center gap-4">
-              <div className="w-10 h-10 rounded-full bg-red-50 flex items-center justify-center shrink-0">
-                <TrendingDown className="w-4 h-4 text-red-600" />
+            <div className="bg-card border border-border p-4 rounded-xl shadow-sm flex items-center justify-between transition-colors">
+              <div className="flex items-center gap-4">
+                <div className="w-10 h-10 rounded-xl bg-destructive/10 border border-destructive/20 flex items-center justify-center shrink-0 transition-colors">
+                  <TrendingDown className="w-4 h-4 text-destructive" />
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest mb-0.5">
+                    Total Outflow (MTD)
+                  </span>
+                  <span className="text-xl font-black text-foreground tracking-tight font-mono">
+                    ₱ {Number(kpis.totalOutflow).toLocaleString()}
+                  </span>
+                </div>
               </div>
-              <div className="flex flex-col">
-                <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest mb-0.5">
-                  Total Outflow (MTD)
-                </span>
-                <span className="text-xl font-bold text-slate-900 tracking-tight">
-                  ₱ {Number(kpis.totalOutflow).toLocaleString()}
-                </span>
-              </div>
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-8 w-8 rounded-lg border-border text-muted-foreground hover:text-foreground hover:bg-secondary shadow-none transition-colors"
+                onClick={() => setIsLogOpen(true)}
+                title="Log Expense"
+              >
+                <Plus className="w-4 h-4" />
+              </Button>
             </div>
-            <div className="bg-white border border-slate-200 p-4 rounded-sm shadow-sm flex items-center gap-4">
-              <div className="w-10 h-10 rounded-full bg-amber-50 flex items-center justify-center shrink-0">
-                <Wallet className="w-4 h-4 text-amber-600" />
+
+            <div className="bg-card border border-border p-4 rounded-xl shadow-sm flex items-center justify-between transition-colors">
+              <div className="flex items-center gap-4">
+                <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center shrink-0 transition-colors">
+                  <Wallet className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest mb-0.5">
+                    Pending Liabilities
+                  </span>
+                  <span className="text-xl font-black text-foreground tracking-tight font-mono">
+                    ₱ {Number(kpis.pendingLiabilities).toLocaleString()}
+                  </span>
+                </div>
               </div>
-              <div className="flex flex-col">
-                <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest mb-0.5">
-                  Pending Liabilities
-                </span>
-                <span className="text-xl font-bold text-slate-900 tracking-tight">
-                  ₱ {Number(kpis.pendingLiabilities).toLocaleString()}
-                </span>
-              </div>
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-8 w-8 rounded-lg border-border text-muted-foreground hover:text-foreground hover:bg-secondary shadow-none transition-colors"
+                onClick={() => openGenerateModal()}
+                title="Generate Payout"
+              >
+                <Calculator className="w-4 h-4" />
+              </Button>
             </div>
-            <div className="bg-white border border-slate-200 p-4 rounded-sm shadow-sm flex items-center gap-4">
-              <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center shrink-0">
-                <Wrench className="w-4 h-4 text-blue-600" />
+
+            <div className="bg-card border border-border p-4 rounded-xl shadow-sm flex items-center gap-4 transition-colors">
+              <div className="w-10 h-10 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center shrink-0 transition-colors">
+                <Wrench className="w-4 h-4 text-blue-600 dark:text-blue-400" />
               </div>
               <div className="flex flex-col">
-                <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest mb-0.5">
+                <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest mb-0.5">
                   Maintenance Spend
                 </span>
-                <span className="text-xl font-bold text-slate-900 tracking-tight">
+                <span className="text-xl font-black text-foreground tracking-tight font-mono">
                   ₱ {Number(kpis.maintenanceSpend).toLocaleString()}
                 </span>
               </div>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 xl:grid-cols-3 gap-5">
             {/* LEFT COLUMN: MAIN REGISTRY */}
             <div className="xl:col-span-2 space-y-4">
-              <div className="bg-white border border-slate-200 rounded-sm shadow-sm overflow-hidden flex flex-col min-h-[500px]">
-                {/* Tabs */}
-                <div className="border-b border-slate-200 bg-slate-50/50 px-2 pt-2 flex items-center justify-between">
+              <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden flex flex-col min-h-[500px] transition-colors">
+                {/* Tabs Header */}
+                <div className="border-b border-border bg-secondary/30 px-3 pt-2 flex items-center justify-between transition-colors">
                   <Tabs
                     value={activeTab}
                     onValueChange={setActiveTab}
@@ -167,13 +153,13 @@ export default function ExpensesMain() {
                     <TabsList className="bg-transparent h-9 p-0 flex gap-4 border-b-0 justify-start w-full">
                       <TabsTrigger
                         value="payouts"
-                        className="rounded-none border-b-2 border-transparent data-[state=active]:border-slate-900 data-[state=active]:bg-transparent data-[state=active]:shadow-none px-2 py-1.5 text-xs font-bold text-slate-500 data-[state=active]:text-slate-900 transition-none"
+                        className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-2 py-1.5 text-[10px] font-bold uppercase tracking-widest text-muted-foreground data-[state=active]:text-foreground transition-all"
                       >
-                        Owner Payout History
+                        Payout History
                       </TabsTrigger>
                       <TabsTrigger
                         value="operational"
-                        className="rounded-none border-b-2 border-transparent data-[state=active]:border-slate-900 data-[state=active]:bg-transparent data-[state=active]:shadow-none px-2 py-1.5 text-xs font-bold text-slate-500 data-[state=active]:text-slate-900 transition-none"
+                        className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-2 py-1.5 text-[10px] font-bold uppercase tracking-widest text-muted-foreground data-[state=active]:text-foreground transition-all"
                       >
                         Operational Expenses
                       </TabsTrigger>
@@ -181,12 +167,30 @@ export default function ExpensesMain() {
                   </Tabs>
                 </div>
 
+                {/* Toolbar */}
+                <div className="p-3 border-b border-border flex gap-2 bg-card transition-colors justify-between items-center">
+                  <div className="relative flex-1 max-w-sm">
+                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                    <input
+                      type="text"
+                      placeholder="Search records..."
+                      className="w-full h-8 pl-8 pr-3 text-[11px] font-medium bg-secondary border border-border rounded-lg focus:outline-none focus:ring-1 focus:ring-primary text-foreground placeholder:text-muted-foreground transition-colors shadow-none"
+                    />
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 text-[11px] font-semibold rounded-lg border-border text-foreground bg-card hover:bg-secondary transition-colors"
+                  >
+                    <Filter className="w-3.5 h-3.5 mr-1.5" /> Filter
+                  </Button>
+                </div>
+
                 {/* Table View */}
-                <div className="flex-1 bg-white">
-                  {/* PAYOUTS TAB */}
+                <div className="flex-1 bg-background transition-colors">
                   {activeTab === "payouts" && (
-                    <div className="divide-y divide-slate-100">
-                      <div className="grid grid-cols-5 p-3 px-5 text-[10px] font-semibold text-slate-500 uppercase tracking-widest bg-slate-50">
+                    <div className="divide-y divide-border">
+                      <div className="grid grid-cols-5 p-2.5 px-4 text-[9px] font-bold text-muted-foreground uppercase tracking-widest bg-secondary/50 transition-colors">
                         <div>Reference</div>
                         <div>Fleet Owner</div>
                         <div>Billing Period</div>
@@ -194,24 +198,23 @@ export default function ExpensesMain() {
                         <div className="text-right">Net Payout</div>
                       </div>
                       {payouts.length === 0 ? (
-                        <div className="p-8 text-center text-xs font-medium text-slate-400">
+                        <div className="p-8 text-center text-[10px] font-medium text-muted-foreground uppercase tracking-widest">
                           No payout history found.
                         </div>
                       ) : (
                         payouts.map((pay: any) => (
                           <div
                             key={pay.payout_id}
-                            className="grid grid-cols-5 p-3 px-5 items-center hover:bg-slate-50 cursor-pointer transition-colors group"
+                            className="grid grid-cols-5 p-2.5 px-4 items-center hover:bg-secondary/30 cursor-pointer transition-colors group"
                             onClick={() => setViewPayout(pay)}
                           >
-                            <div className="text-xs font-bold text-slate-900 font-mono group-hover:text-blue-600 transition-colors truncate pr-4">
+                            <div className="text-[10px] font-bold text-foreground font-mono group-hover:text-primary transition-colors truncate pr-4">
                               {pay.payout_id.split("-")[0]}...
                             </div>
-                            <div className="text-xs font-bold text-slate-700 truncate pr-4">
-                              {pay.car_owner?.users?.full_name ||
-                                "Unknown Owner"}
+                            <div className="text-[11px] font-bold text-foreground truncate pr-4">
+                              {pay.car_owner?.users?.full_name || "Unknown"}
                             </div>
-                            <div className="text-[10px] font-medium text-slate-500">
+                            <div className="text-[10px] font-medium text-muted-foreground">
                               {format(new Date(pay.period_start), "MMM dd")} -{" "}
                               {format(new Date(pay.period_end), "MMM dd")}
                             </div>
@@ -219,16 +222,16 @@ export default function ExpensesMain() {
                               <Badge
                                 variant="outline"
                                 className={cn(
-                                  "text-[9px] font-bold h-5 px-2 rounded-sm uppercase tracking-widest",
+                                  "text-[8px] font-bold h-4 px-1.5 rounded uppercase tracking-widest",
                                   pay.status === "PAID"
-                                    ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                                    : "bg-amber-50 text-amber-700 border-amber-200",
+                                    ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
+                                    : "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20",
                                 )}
                               >
                                 {pay.status}
                               </Badge>
                             </div>
-                            <div className="text-right text-xs font-bold text-slate-900">
+                            <div className="text-right text-[11px] font-bold text-foreground font-mono">
                               ₱ {Number(pay.net_payout).toLocaleString()}
                             </div>
                           </div>
@@ -237,49 +240,50 @@ export default function ExpensesMain() {
                     </div>
                   )}
 
-                  {/* OPERATIONAL EXPENSES TAB */}
                   {activeTab === "operational" && (
-                    <div className="divide-y divide-slate-100">
-                      <div className="grid grid-cols-[1fr_1fr_2fr_1fr] p-3 px-5 text-[10px] font-semibold text-slate-500 uppercase tracking-widest bg-slate-50">
+                    <div className="divide-y divide-border">
+                      <div className="grid grid-cols-[1fr_1fr_2fr_1fr] p-2.5 px-4 text-[9px] font-bold text-muted-foreground uppercase tracking-widest bg-secondary/50 transition-colors">
                         <div>Date</div>
                         <div>Category</div>
                         <div>Description</div>
                         <div className="text-right">Amount</div>
                       </div>
-
                       {operational.length === 0 ? (
-                        <div className="p-10 flex flex-col items-center justify-center text-slate-400 space-y-3">
+                        <div className="p-10 flex flex-col items-center justify-center text-muted-foreground space-y-2">
                           <Receipt className="w-8 h-8 opacity-20" />
-                          <span className="text-xs font-medium">
-                            No operational expenses logged.
+                          <span className="text-[10px] font-medium uppercase tracking-widest">
+                            No expenses logged.
                           </span>
                         </div>
                       ) : (
                         operational.map((txn: any) => (
                           <div
                             key={txn.transaction_id}
-                            className="grid grid-cols-[1fr_1fr_2fr_1fr] p-3 px-5 items-center hover:bg-slate-50 transition-colors"
+                            className="grid grid-cols-[1fr_1fr_2fr_1fr] p-2.5 px-4 items-center hover:bg-secondary/30 transition-colors"
                           >
                             <div className="flex flex-col">
-                              <span className="text-xs font-bold text-slate-800">
+                              <span className="text-[10px] font-bold text-foreground">
                                 {format(
                                   new Date(txn.transaction_date),
                                   "MMM dd, yyyy",
                                 )}
                               </span>
-                              <span className="text-[10px] font-bold text-slate-400 font-mono mt-0.5 truncate pr-2">
+                              <span className="text-[9px] font-medium text-muted-foreground font-mono mt-0.5 uppercase tracking-widest">
                                 {txn.transaction_id.split("-")[0]}
                               </span>
                             </div>
                             <div>
-                              <span className="text-[10px] font-bold text-slate-600 bg-slate-100 border border-slate-200 px-2 py-1 rounded-sm uppercase tracking-wider">
+                              <Badge
+                                variant="outline"
+                                className="text-[8px] font-bold bg-secondary text-muted-foreground border-border px-1.5 py-0 h-4 rounded uppercase tracking-widest"
+                              >
                                 {txn.category.replace("_", " ")}
-                              </span>
+                              </Badge>
                             </div>
-                            <div className="text-xs font-medium text-slate-600 truncate pr-4">
+                            <div className="text-[10px] font-medium text-muted-foreground truncate pr-4">
                               {txn.notes}
                             </div>
-                            <div className="text-right text-xs font-bold text-slate-900">
+                            <div className="text-right text-[11px] font-bold text-destructive font-mono">
                               - ₱ {Number(txn.amount).toLocaleString()}
                             </div>
                           </div>
@@ -292,71 +296,69 @@ export default function ExpensesMain() {
             </div>
 
             {/* RIGHT COLUMN: ACTION QUEUE */}
-            <div className="space-y-4">
+            <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <h2 className="text-[11px] font-bold text-slate-500 uppercase tracking-widest">
+                <h2 className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
                   Ready for Settlement
                 </h2>
               </div>
 
-              <div className="bg-white border border-slate-200 rounded-sm shadow-sm flex flex-col overflow-hidden">
-                <div className="bg-slate-900 px-4 py-3 flex justify-between items-center shrink-0">
-                  <span className="text-[11px] font-bold text-white uppercase tracking-widest">
+              <div className="bg-card border border-border rounded-xl shadow-sm flex flex-col overflow-hidden transition-colors">
+                <div className="bg-secondary/50 border-b border-border px-4 py-2.5 flex justify-between items-center shrink-0 transition-colors">
+                  <span className="text-[10px] font-bold text-foreground uppercase tracking-widest">
                     Unsettled Revenue
                   </span>
                   <Badge
-                    variant="secondary"
-                    className="bg-slate-800 text-slate-300 border-none text-[9px] px-1.5 h-4 rounded-sm"
+                    variant="outline"
+                    className="bg-primary/10 text-primary border-primary/20 text-[9px] px-1.5 h-4 rounded uppercase tracking-widest font-bold"
                   >
                     {readyToSettle.length} Owners
                   </Badge>
                 </div>
 
-                <div className="divide-y divide-slate-100">
+                <div className="divide-y divide-border">
                   {readyToSettle.map((owner: any) => (
                     <div
                       key={owner.owner_id}
-                      className="p-4 flex flex-col gap-3 hover:bg-slate-50 transition-colors"
+                      className="p-3 flex flex-col gap-2 hover:bg-secondary/30 transition-colors"
                     >
-                      <div className="flex justify-between items-start">
-                        <div className="flex flex-col">
-                          <span className="text-sm font-bold text-slate-900">
-                            {owner.owner_name}
-                          </span>
-                          <span className="text-[10px] font-medium text-slate-500 mt-0.5">
-                            {owner.vehicles} Vehicle(s) •{" "}
-                            {owner.unsettled_count} Completed Trips
-                          </span>
-                        </div>
+                      <div className="flex flex-col">
+                        <span className="text-[11px] font-bold text-foreground truncate">
+                          {owner.owner_name}
+                        </span>
+                        <span className="text-[9px] font-medium text-muted-foreground mt-0.5 uppercase tracking-widest">
+                          {owner.vehicles} Asset(s) • {owner.unsettled_count}{" "}
+                          Trips
+                        </span>
                       </div>
 
                       <div className="flex items-center justify-between pt-1">
                         <div className="flex flex-col">
-                          <span className="text-[9px] font-semibold text-slate-500 uppercase tracking-widest">
+                          <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">
                             Est. Payout
                           </span>
-                          <span className="text-sm font-bold text-amber-600">
+                          <span className="text-[11px] font-bold text-amber-600 dark:text-amber-400 font-mono">
                             ₱ {Number(owner.est_owed).toLocaleString()}
                           </span>
                         </div>
                         <Button
                           variant="outline"
                           size="sm"
-                          className="h-8 text-[10px] font-bold border-slate-300 bg-white rounded-sm text-slate-700 hover:bg-slate-100 shadow-sm"
+                          className="h-7 text-[9px] font-bold uppercase tracking-widest border-border bg-card rounded-lg text-foreground hover:bg-secondary shadow-none transition-colors"
                           onClick={() => openGenerateModal(owner.owner_id)}
                         >
-                          Draft Payout <ChevronRight className="w-3 h-3 ml-1" />
+                          Draft{" "}
+                          <ChevronRight className="w-3 h-3 ml-0.5 text-muted-foreground" />
                         </Button>
                       </div>
                     </div>
                   ))}
+                  {readyToSettle.length === 0 && (
+                    <div className="p-6 text-center text-[10px] font-medium text-muted-foreground uppercase tracking-widest">
+                      All owners settled.
+                    </div>
+                  )}
                 </div>
-
-                {readyToSettle.length === 0 && (
-                  <div className="p-6 text-center text-xs font-medium text-slate-400">
-                    All fleet owners are fully settled.
-                  </div>
-                )}
               </div>
             </div>
           </div>

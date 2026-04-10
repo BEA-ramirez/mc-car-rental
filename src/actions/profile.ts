@@ -87,7 +87,7 @@ export async function uploadCustomerDocument(formData: FormData) {
     file_name: file.name,
     file_path: uploadResult.path,
     file_type: file.type || "application/octet-stream",
-    status: "pending",
+    status: "PENDING",
     created_at: new Date().toISOString(),
   });
 

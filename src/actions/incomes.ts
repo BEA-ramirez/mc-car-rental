@@ -24,7 +24,7 @@ export async function getIncomeDashboardData() {
       bookings(booking_id, users(full_name))
     `,
     )
-    .eq("status", "Completed")
+    .eq("status", "COMPLETED")
     .order("paid_at", { ascending: false })
     .limit(20);
 
@@ -35,7 +35,7 @@ export async function getIncomeDashboardData() {
       `
       booking_id, start_date, security_deposit, booking_status,
       users(full_name),
-      booking_charges(category, amount) -- NEW: Fetch charges to check for refunds
+      booking_charges(category, amount)
     `,
     )
     .gt("security_deposit", 0)
@@ -47,15 +47,18 @@ export async function getIncomeDashboardData() {
     .from("financial_transactions")
     .select("*")
     .eq("transaction_type", "INCOME")
-    .is("booking_id", null) // Ensures it's not tied directly to a booking checkout
+    .is("booking_id", null)
     .order("transaction_date", { ascending: false })
     .limit(20);
 
   return {
     kpis: kpis || {
       grossRevenue: 0,
+      grossRevenueGrowth: 0,
       outstandingReceivables: 0,
+      outstandingReceivablesGrowth: 0,
       ancillaryIncome: 0,
+      ancillaryIncomeGrowth: 0,
     },
     awaitingPayment: awaitingPayment || [],
     recentPayments: recentPayments || [],
@@ -108,60 +111,59 @@ export async function getBookingFolio(bookingId: string) {
     .from("booking_payments")
     .select("*")
     .eq("booking_id", bookingId)
-    .eq("status", "Completed")
+    .eq("status", "COMPLETED")
     .order("paid_at", { ascending: true });
 
   return { booking, charges: charges || [], payments: payments || [] };
 }
 
-// --- WRITE: Record a Booking Payment ---
+// Record a Booking Payment
 export async function recordBookingPayment(input: {
   bookingId: string;
   amount: number;
   method: string;
   reference?: string;
   title?: string;
-}): Promise<ActionState> {
-  const supabase = await createClient();
+}) {
+  try {
+    const supabase = await createClient();
 
-  // 1. Insert into booking_payments
-  const { error: pErr } = await supabase.from("booking_payments").insert({
-    booking_id: input.bookingId,
-    amount: input.amount,
-    payment_method: input.method,
-    transaction_reference: input.reference,
-    status: "Completed",
-    title: input.title || "General Payment",
-    paid_at: new Date().toISOString(),
-  });
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
 
-  if (pErr) return { success: false, message: pErr.message };
+    if (userError || !user) {
+      console.error("User authentication error:", userError);
+      return {
+        success: false,
+        message: "You must be logged in.",
+      };
+    }
 
-  // 2. Insert into master financial_transactions ledger
-  await supabase.from("financial_transactions").insert({
-    transaction_type: "INCOME",
-    category: "BOOKING_PAYMENT",
-    amount: input.amount,
-    booking_id: input.bookingId,
-    notes: `Payment via ${input.method} (${input.reference})`,
-    status: "COMPLETED",
-  });
+    const { error } = await supabase.rpc("record_booking_payment", {
+      p_booking_id: input.bookingId,
+      p_admin_id: user.id,
+      p_amount: input.amount,
+      p_method: input.method,
+      p_reference: input.reference || null,
+      p_title: input.title || "General Payment",
+    });
 
-  // 3. Auto-update booking payment_status
-  // Fetch current totals to see if they are now fully paid
-  const folio = await getBookingFolio(input.bookingId);
-  const totalPaid =
-    folio.payments.reduce((sum, p) => sum + Number(p.amount), 0) + input.amount;
-  const newStatus =
-    totalPaid >= Number(folio?.booking?.total_price) ? "Paid" : "Partial";
+    if (error) {
+      console.error("RPC Error (recordBookingPayment):", error);
+      return {
+        success: false,
+        message: error.message || "Failed to record payment.",
+      };
+    }
 
-  await supabase
-    .from("bookings")
-    .update({ payment_status: newStatus })
-    .eq("booking_id", input.bookingId);
-
-  revalidatePath("/admin/financials/incomes");
-  return { success: true, message: "Payment recorded successfully." };
+    revalidatePath("/admin/financials/incomes");
+    return { success: true, message: "Payment recorded successfully." };
+  } catch (error) {
+    console.error("Unexpected error occurred.", error);
+    return { success: false, message: "An unexpected error occurred." };
+  }
 }
 
 // --- WRITE: Add a Booking Charge ---
@@ -170,43 +172,48 @@ export async function addBookingCharge(input: {
   category: string;
   description: string;
   amount: number;
-}): Promise<ActionState> {
-  const supabase = await createClient();
+}) {
+  try {
+    const supabase = await createClient();
 
-  // 1. Insert the new charge
-  const { error: cErr } = await supabase.from("booking_charges").insert({
-    booking_id: input.bookingId,
-    category: input.category,
-    description: input.description,
-    amount: input.amount,
-  });
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
 
-  if (cErr) return { success: false, message: cErr.message };
+    if (userError || !user) {
+      console.error("User authentication error:", userError);
+      return {
+        success: false,
+        message: "You must be logged in.",
+      };
+    }
 
-  // 2. Add the charge amount to the booking's total_price
-  const { data: bkg } = await supabase
-    .from("bookings")
-    .select("total_price, payment_status")
-    .eq("booking_id", input.bookingId)
-    .single();
+    const { error } = await supabase.rpc("add_booking_charge_v2", {
+      p_booking_id: input.bookingId,
+      p_admin_id: user.id,
+      p_category: input.category,
+      p_description: input.description,
+      p_amount: input.amount,
+    });
 
-  if (bkg) {
-    const newTotal = Number(bkg.total_price) + input.amount;
-    // If they were "Paid" before, they are now "Partial" because the total went up
-    const newStatus =
-      bkg.payment_status === "Paid" ? "Partial" : bkg.payment_status;
+    if (error) {
+      console.error("RPC Error (addBookingCharge):", error);
+      return {
+        success: false,
+        message: error.message || "Failed to add charge.",
+      };
+    }
 
-    await supabase
-      .from("bookings")
-      .update({ total_price: newTotal, payment_status: newStatus })
-      .eq("booking_id", input.bookingId);
+    revalidatePath("/admin/financials/incomes");
+    return { success: true, message: "Charge added to folio successfully." };
+  } catch (error) {
+    console.error("Unexpected error occurred.", error);
+    return { success: false, message: "An unexpected error occurred." };
   }
-
-  revalidatePath("/admin/financials/incomes");
-  return { success: true, message: "Charge added to folio." };
 }
 
-// --- WRITE: Log Misc Income ---
+// Log Misc Income
 export async function logMiscIncome(input: {
   amount: number;
   category: string;
@@ -235,17 +242,36 @@ export async function refundSecurityDeposit(input: {
   method: string;
   reference: string;
 }): Promise<ActionState> {
-  const supabase = await createClient();
+  try {
+    const supabase = await createClient();
 
-  const { error } = await supabase.rpc("refund_security_deposit", {
-    p_booking_id: input.bookingId,
-    p_amount: input.amount,
-    p_method: input.method,
-    p_reference: input.reference,
-  });
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
 
-  if (error) return { success: false, message: error.message };
+    if (userError || !user) {
+      console.error("User authentication error:", userError);
+      return {
+        success: false,
+        message: "You must be logged in.",
+      };
+    }
 
-  revalidatePath("/admin/financials/incomes");
-  return { success: true, message: "Security Deposit Refunded." };
+    const { error } = await supabase.rpc("refund_security_deposit", {
+      p_booking_id: input.bookingId,
+      p_admin_id: user.id,
+      p_amount: input.amount,
+      p_method: input.method,
+      p_reference: input.reference,
+    });
+
+    if (error) return { success: false, message: error.message };
+
+    revalidatePath("/admin/financials/incomes");
+    return { success: true, message: "Security Deposit Refunded." };
+  } catch (error) {
+    console.error("Unexpected error occurred.", error);
+    return { success: false, message: "An unexpected error occurred." };
+  }
 }

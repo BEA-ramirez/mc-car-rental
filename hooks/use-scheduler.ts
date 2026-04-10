@@ -207,7 +207,7 @@ export function useScheduler(currentDate: Date) {
               ? {
                   ...evt,
                   end: variables.newEnd,
-                  status: "completed",
+                  status: "COMPLETED",
                   amount: variables.finalPrice,
                   subtitle: "Returned Early",
                 }
@@ -261,7 +261,7 @@ export function useScheduler(currentDate: Date) {
           end: variables.end,
           title: "Maintenance",
           subtitle: "Blocked",
-          status: "maintenance",
+          status: "MAINTENANCE",
           amount: 0,
         };
         return {
@@ -309,7 +309,7 @@ export function useScheduler(currentDate: Date) {
           id: `temp-split-${Date.now()}`,
           start: variables.splitDate,
           title: `${originalEvent.title} (Part 2)`,
-          status: "pending",
+          status: "PENDING",
         };
         // update the array: modify part 1 and part 2
         return {
@@ -372,7 +372,7 @@ export function useScheduler(currentDate: Date) {
                   ...evt,
                   resourceId: variables.newCarId, // Move to the new row!
                   amount: variables.newPrice, // Update the price!
-                  status: "confirmed", // Lock it in!
+                  status: "CONFIRMED", // Lock it in!
                 }
               : evt,
           ),

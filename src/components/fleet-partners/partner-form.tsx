@@ -67,7 +67,7 @@ export const fleetPartnerFormSchema = z.object({
   car_owner_id: z.string().optional(),
   user_id: z.string().min(1, "You must link a user account."),
   business_name: z.string().min(1, "Business name is required."),
-  verification_status: z.enum(["pending", "verified", "rejected"]),
+  verification_status: z.enum(["PENDING", "VERIFIED", "REJECTED"]),
   active_status: z.boolean(),
   owner_notes: z.string().optional().nullable(),
   revenue_share_percentage: z.number().min(0).max(100),
@@ -105,7 +105,7 @@ export function PartnerForm({
     defaultValues: {
       user_id: "",
       business_name: "",
-      verification_status: "pending",
+      verification_status: "PENDING",
       active_status: false,
       owner_notes: "",
       revenue_share_percentage: 70,
@@ -126,9 +126,9 @@ export function PartnerForm({
           business_name: initialData.business_name || "",
           verification_status:
             (initialData.verification_status as
-              | "pending"
-              | "verified"
-              | "rejected") || "pending",
+              | "PENDING"
+              | "VERIFIED"
+              | "REJECTED") || "PENDING",
           active_status: initialData.active_status ?? false,
           owner_notes: initialData.owner_notes || "",
           revenue_share_percentage: initialData.revenue_share_percentage ?? 70,
@@ -145,7 +145,7 @@ export function PartnerForm({
         form.reset({
           user_id: "",
           business_name: "",
-          verification_status: "pending",
+          verification_status: "PENDING",
           active_status: false,
           owner_notes: "",
           revenue_share_percentage: 70,
@@ -404,19 +404,19 @@ export function PartnerForm({
                             </FormControl>
                             <SelectContent className="rounded-sm border-slate-200">
                               <SelectItem
-                                value="pending"
+                                value="PENDING"
                                 className="text-xs font-medium text-amber-600"
                               >
                                 Pending
                               </SelectItem>
                               <SelectItem
-                                value="verified"
+                                value="VERIFIED"
                                 className="text-xs font-medium text-emerald-600"
                               >
                                 Verified
                               </SelectItem>
                               <SelectItem
-                                value="rejected"
+                                value="REJECTED"
                                 className="text-xs font-medium text-red-600"
                               >
                                 Rejected

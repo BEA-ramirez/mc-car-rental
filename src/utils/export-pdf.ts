@@ -1,6 +1,6 @@
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-import { format, differenceInCalendarDays } from "date-fns";
+import { format, differenceInCalendarDays, differenceInHours } from "date-fns";
 import { ClientRow } from "../../hooks/use-clients";
 import { toTitleCase } from "@/actions/helper/format-text";
 
@@ -332,22 +332,20 @@ export const generateInvoicePDF = (folio: any) => {
     : booking.users;
   const car = Array.isArray(booking.cars) ? booking.cars[0] : booking.cars;
 
-  // --- SAFE FALLBACKS (Prevents crashes) ---
+  // --- SAFE FALLBACKS ---
   const safeId = booking.booking_id || booking.id || "0000";
   const shortId = safeId.split("-")[0].toUpperCase();
   const safeStatus = booking.booking_status || booking.status || "UNKNOWN";
   const currentDate = format(new Date(), "MMM dd, yyyy");
 
-  // Calculate Days
+  // Calculate Duration for display purposes
   const startDate = new Date(booking.start_date || Date.now());
   const endDate = new Date(booking.end_date || Date.now());
-  const days = Math.max(1, differenceInCalendarDays(endDate, startDate));
 
-  // --- FINANCIAL MATH ---
-  const dailyRate = Number(car?.rental_rate_per_day || 0);
-  // EXPLICIT MULTIPLICATION: Unit Price * Days
-  const baseRental = dailyRate * days;
-  const securityDeposit = Number(booking.security_deposit || 0);
+  const totalHours = differenceInHours(endDate, startDate);
+  const is12Hour = totalHours <= 12;
+  const days = Math.max(1, Math.ceil(totalHours / 24));
+  const durationLabel = is12Hour ? "12 Hours" : `${days} Day(s)`;
 
   // --- 1. HEADER SECTION ---
   doc.setTextColor(15, 23, 42);
@@ -357,15 +355,15 @@ export const generateInvoicePDF = (folio: any) => {
 
   doc.setFontSize(10);
   doc.setFont("helvetica", "normal");
-  doc.setTextColor(100, 116, 139); // Muted slate
+  doc.setTextColor(100, 116, 139);
   doc.text("Brgy. Cogon, Ormoc City", 14, 28);
   doc.text("Leyte 6541, Philippines", 14, 33);
   doc.text("Phone: 09958930398", 14, 38);
 
-  // Invoice Meta (Right Aligned)
+  // Invoice Meta
   doc.setFontSize(24);
   doc.setFont("helvetica", "bold");
-  doc.setTextColor(100, 197, 195); // Teal
+  doc.setTextColor(100, 197, 195);
   doc.text("INVOICE", 195, 22, { align: "right" });
 
   doc.setFontSize(10);
@@ -378,7 +376,7 @@ export const generateInvoicePDF = (folio: any) => {
 
   // --- 2. BILLING & VEHICLE INFO ---
   doc.setDrawColor(226, 232, 240);
-  doc.line(14, 45, 195, 45); // Horizontal divider
+  doc.line(14, 45, 195, 45);
 
   // Bill To
   doc.setFontSize(10);
@@ -396,7 +394,7 @@ export const generateInvoicePDF = (folio: any) => {
   doc.text(`Unit: ${car?.brand} ${car?.model}`, 120, 58);
   doc.text(`Plate No: ${car?.plate_number || "N/A"}`, 120, 63);
   doc.text(
-    `Duration: ${format(startDate, "MMM dd")} - ${format(endDate, "MMM dd")} (${days} Days)`,
+    `Duration: ${format(startDate, "MMM dd")} - ${format(endDate, "MMM dd")} (${durationLabel})`,
     120,
     68,
   );
@@ -404,42 +402,34 @@ export const generateInvoicePDF = (folio: any) => {
   let currentY = 78;
 
   // --- 3. LINE ITEMS (CHARGES) ---
-  const chargeRows = [];
+  const chargeRows: any[] = [];
+  let grandTotalCharges = 0;
 
-  // Base Rental Row (Now explicitly using the multiplied value)
-  chargeRows.push([
-    "Vehicle Base Rental",
-    `${days} Day(s)`,
-    `P ${dailyRate.toLocaleString()}`,
-    `P ${baseRental.toLocaleString()}`,
-  ]);
-
-  // Additional Charges from DB
-  let totalExtraCharges = 0;
   if (folio.charges && folio.charges.length > 0) {
     folio.charges.forEach((c: any) => {
       const amount = Number(c.amount);
-      totalExtraCharges += amount;
+      grandTotalCharges += amount;
+
+      // Formatting logic to match the UI
+      let description = c.category.replace(/_/g, " ");
+      let qty = "1";
+      let unitPrice = `P ${Math.abs(amount).toLocaleString()}`;
+
+      if (c.category === "BASE_RATE") {
+        qty = durationLabel;
+        unitPrice = `P ${Number(booking.base_rate_snapshot || 0).toLocaleString()}`;
+      }
+
       chargeRows.push([
-        c.description || c.category.replace("_", " "),
-        "1",
-        `P ${Math.abs(amount).toLocaleString()}`,
-        `P ${amount.toLocaleString()}`,
+        description,
+        qty,
+        unitPrice,
+        `${amount < 0 ? "-" : ""} P ${Math.abs(amount).toLocaleString()}`,
       ]);
     });
+  } else {
+    chargeRows.push(["No charges recorded", "-", "-", "P 0"]);
   }
-
-  // Security Deposit Row
-  if (securityDeposit > 0) {
-    chargeRows.push([
-      "Refundable Security Deposit",
-      "1",
-      `P ${securityDeposit.toLocaleString()}`,
-      `P ${securityDeposit.toLocaleString()}`,
-    ]);
-  }
-
-  const grandTotal = baseRental + totalExtraCharges + securityDeposit;
 
   autoTable(doc, {
     startY: currentY,
@@ -472,17 +462,16 @@ export const generateInvoicePDF = (folio: any) => {
       const amount = Number(p.amount);
       totalPaid += amount;
 
-      // Format the method and reference nicely
       const methodAndRef = `${p.payment_method} ${p.transaction_reference ? `(${p.transaction_reference})` : ""}`;
 
       paymentRows.push([
         format(
-          new Date(p.paid_at || p.created_at || Date.now()),
+          new Date(p.paid_at || p.created_at), // UTC fix applied here!
           "MMM dd, yyyy",
         ),
-        p.title || "Payment", // <--- THE NEW PURPOSE/TITLE FIELD!
+        p.title || "Payment",
         methodAndRef,
-        `P ${amount.toLocaleString()}`,
+        `${amount < 0 ? "-" : ""} P ${Math.abs(amount).toLocaleString()}`,
       ]);
     });
   } else {
@@ -496,7 +485,7 @@ export const generateInvoicePDF = (folio: any) => {
 
   autoTable(doc, {
     startY: currentY + 4,
-    head: [["DATE", "PURPOSE", "METHOD / REF", "AMOUNT"]], // <--- UPDATED HEADERS
+    head: [["DATE", "PURPOSE", "METHOD / REF", "AMOUNT"]],
     body: paymentRows,
     theme: "plain",
     headStyles: {
@@ -506,22 +495,22 @@ export const generateInvoicePDF = (folio: any) => {
     },
     styles: { fontSize: 8, cellPadding: 4, textColor: [71, 85, 105] },
     columnStyles: {
-      3: { halign: "right", fontStyle: "bold", textColor: [16, 185, 129] }, // Green for payments
+      3: { halign: "right", fontStyle: "bold", textColor: [16, 185, 129] },
     },
   });
 
   currentY = (doc as any).lastAutoTable.finalY + 15;
 
   // --- 5. TOTALS & BALANCE DUE ---
-  const balanceDue = grandTotal - totalPaid;
+  const balanceDue = grandTotalCharges - totalPaid;
 
   doc.setFontSize(10);
   doc.setFont("helvetica", "normal");
   doc.setTextColor(15, 23, 42);
 
-  // Layout the totals on the right side
+  // Layout the totals
   doc.text("Total Charges:", 130, currentY);
-  doc.text(`P ${grandTotal.toLocaleString()}`, 195, currentY, {
+  doc.text(`P ${grandTotalCharges.toLocaleString()}`, 195, currentY, {
     align: "right",
   });
 
@@ -556,6 +545,5 @@ export const generateInvoicePDF = (folio: any) => {
   doc.setTextColor(148, 163, 184);
   doc.text("Thank you for your business!", 105, 280, { align: "center" });
 
-  // Download the PDF
   doc.save(`Invoice_${shortId}.pdf`);
 };

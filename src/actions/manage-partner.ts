@@ -145,7 +145,7 @@ export async function saveFleetPartnerApplication(
   try {
     const { error } = await supabase.from("car_owner").insert({
       user_id: user.id,
-      verification_status: "pending",
+      verification_status: "PENDING",
       active_status: false,
       revenue_share_percentage: 70,
       business_name: businessName,

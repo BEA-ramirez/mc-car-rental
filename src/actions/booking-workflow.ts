@@ -104,7 +104,7 @@ export async function startTripAction(bookingId: string) {
   const supabase = await createClient();
   const { error } = await supabase
     .from("bookings")
-    .update({ booking_status: "ongoing" })
+    .update({ booking_status: "ONGOING" })
     .eq("booking_id", bookingId);
 
   if (error) return { success: false, message: error.message };

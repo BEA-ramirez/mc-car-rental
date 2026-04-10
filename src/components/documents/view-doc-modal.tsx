@@ -44,7 +44,7 @@ export type ViewedDocument = {
   type: string;
   uploadedAt: string;
   imageUrl?: string;
-  status: "verified" | "rejected" | "expired";
+  status: "VERIFIED" | "REJECTED" | "EXPIRED";
   expiryDate?: string;
   rejectionReason?: string;
   internalNotes?: string;
@@ -83,9 +83,9 @@ export default function ViewDocumentModal({
 
   if (!doc) return null;
 
-  const isVerified = doc.status === "verified";
-  const isRejected = doc.status === "rejected";
-  const isExpired = doc.status === "expired";
+  const isVerified = doc.status === "VERIFIED";
+  const isRejected = doc.status === "REJECTED";
+  const isExpired = doc.status === "EXPIRED";
 
   // clean filename for downloads
   const cleanFileName = `${doc.type.replace(/\s+/g, "_")}_${doc.customerName.replace(/\s+/g, "_")}.jpg`;

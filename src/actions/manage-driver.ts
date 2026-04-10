@@ -42,7 +42,7 @@ export async function saveDriver(data: DriverFormValues): Promise<ActionState> {
     const supabase = await createClient();
     const { error } = await supabase.rpc("save_driver_v1", {
       p_user_id: validData.user_id,
-      p_driver_status: validData.driver_status || "Pending",
+      p_driver_status: validData.driver_status || "PENDING",
       p_is_verified: validData.is_verified || false,
     });
 
@@ -83,7 +83,7 @@ export async function saveDriverApplication(): Promise<ActionState> {
     }
     const { error } = await supabase.from("drivers").insert({
       user_id: user.id,
-      driver_status: "pending",
+      driver_status: "PENDING",
       is_verified: false,
       is_archived: false,
       created_at: new Date().toISOString(),

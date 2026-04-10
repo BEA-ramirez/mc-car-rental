@@ -26,17 +26,17 @@ import { cn } from "@/lib/utils";
 import { useBookings } from "../../../hooks/use-bookings";
 
 const getStatusBadge = (status: string) => {
-  switch (status?.toLowerCase()) {
-    case "ongoing":
+  switch (status) {
+    case "ONGOING":
       return "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20";
-    case "unpaid":
-    case "pending":
+    case "PENDING":
       return "bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-500/20";
-    case "confirmed":
+    case "CONFIRMED":
       return "bg-primary/10 text-primary border-primary/20";
-    case "completed":
+    case "COMPLETED":
       return "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20";
-    case "cancelled":
+    case "NO_SHOW":
+    case "CANCELLED":
       return "bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20";
     default:
       return "bg-secondary text-muted-foreground border-border";
@@ -83,10 +83,10 @@ export default function BookingListView() {
             className="h-8 text-[10px] font-bold uppercase tracking-widest bg-secondary border border-border rounded-md px-2 focus:outline-none focus:ring-1 focus:ring-primary"
           >
             <option value="All">All Statuses</option>
-            <option value="confirmed">Confirmed</option>
-            <option value="ongoing">Ongoing</option>
-            <option value="completed">Completed</option>
-            <option value="cancelled">Cancelled</option>
+            <option value="CONFIRMED">Confirmed</option>
+            <option value="ONGOING">Ongoing</option>
+            <option value="COMPLETED">Completed</option>
+            <option value="CANCELLED">Cancelled</option>
           </select>
         </div>
       </div>

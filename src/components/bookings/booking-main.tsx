@@ -6,7 +6,7 @@ import TimelineScheduler, {
   SchedulerResource,
 } from "@/components/scheduler/timeline-scheduler";
 import { getSchedulerData } from "@/actions/scheduler";
-import { differenceInHours, addDays, format } from "date-fns";
+import { differenceInHours, addDays, format, addHours } from "date-fns";
 import PendingRequestsSidebar from "./pending-request-sidebar";
 import ProposalDialog from "@/components/bookings/proposal-dialog";
 import ResizeDialog from "@/components/bookings/resize-dialog";
@@ -130,8 +130,8 @@ export default function BookingMain() {
   // --- SETTINGS STATE ---
   const [isOverrideMode, setIsOverrideMode] = useState(false);
 
-  const pendingRequests = events.filter((e) => e.status === "pending");
-  const confirmedEvents = events.filter((e) => e.status !== "pending");
+  const pendingRequests = events.filter((e) => e.status === "PENDING");
+  const confirmedEvents = events.filter((e) => e.status !== "PENDING");
   const originalBooking =
     pendingRequests.find((e) => e.id === selectedPendingId) || null;
 
@@ -166,7 +166,21 @@ export default function BookingMain() {
     } else {
       setSelectedPendingId(req.id);
       const resource = resources.find((r) => r.id === req.resourceId);
-      setGhostBooking({ ...req, subtitle: resource?.title || "Unknown Car" });
+
+      // SAFETY NET: Ensure the end date is never identical to the start date!
+      // If they are identical (which means it's broken data), force it to be 12 hours long for the preview.
+      let safeEnd = new Date(req.end);
+      const start = new Date(req.start);
+
+      if (safeEnd.getTime() === start.getTime()) {
+        safeEnd = addHours(start, 12);
+      }
+
+      setGhostBooking({
+        ...req,
+        end: safeEnd, // Use the corrected end date
+        subtitle: resource?.title || "Unknown Car",
+      });
     }
   };
 
@@ -186,14 +200,14 @@ export default function BookingMain() {
       (e) =>
         e.resourceId === req.resourceId &&
         e.id !== req.id &&
-        e.status === "confirmed" &&
+        e.status === "CONFIRMED" &&
         req.start < e.end &&
         req.end > e.start,
     );
 
     if (conflictingBooking) {
       if (isOverrideMode) {
-        updateStatus({ id: req.id, status: "confirmed" });
+        updateStatus({ id: req.id, status: "CONFIRMED" });
         setSelectedPendingId(null);
         setGhostBooking(null);
       } else if (ghostBooking && ghostBooking.resourceId !== req.resourceId) {
@@ -207,7 +221,7 @@ export default function BookingMain() {
       if (ghostBooking && ghostBooking.resourceId !== req.resourceId) {
         setIsProposalOpen(true);
       } else {
-        updateStatus({ id: req.id, status: "confirmed" });
+        updateStatus({ id: req.id, status: "CONFIRMED" });
         setSelectedPendingId(null);
         setGhostBooking(null);
       }
@@ -448,7 +462,7 @@ export default function BookingMain() {
                     onSelect={handleSelectRequest}
                     onApprove={handleApproveClick}
                     onReject={(req) =>
-                      updateStatus({ id: req.id, status: "rejected" })
+                      updateStatus({ id: req.id, status: "REJECTED" })
                     }
                   />
                 </div>

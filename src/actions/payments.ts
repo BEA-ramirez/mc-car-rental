@@ -19,7 +19,7 @@ export async function getPendingPayments() {
       )
     `,
     )
-    .eq("status", "Pending")
+    .eq("status", "PENDING")
     .order("paid_at", { ascending: false });
 
   if (error) {
@@ -45,7 +45,7 @@ export async function verifyPayment(
   if (!user) return { success: false, message: "Unauthorized" };
 
   // Call the updated RPC with the override parameters
-  const { error } = await supabase.rpc("verify_booking_payment_v1", {
+  const { error } = await supabase.rpc("verify_booking_payment", {
     p_payment_id: paymentId,
     p_admin_id: user.id,
     p_action: action,

@@ -6,7 +6,7 @@ export const documentSchema = z.object({
   category: z.enum(["invoice", "license_id", "valid_id", "contract", "other"]),
   file_name: z.string().min(1, "File name is required"),
   file_path: z.string().min(1, "File path is required"),
-  status: z.enum(["pending", "rejected", "verified"]).default("pending"),
+  status: z.enum(["PENDING", "REJECTED", "VERIFIED"]).default("PENDING"),
   expiry_date: z.coerce.date().optional().nullable(),
   created_at: z.coerce.date().optional(),
 });

@@ -8,7 +8,7 @@ export const baseClientSchema = z.object({
   password: z.string().optional(),
   phone_number: z.string().optional(),
   address: z.string().optional(),
-  account_status: z.string(),
+  account_status: z.string().toUpperCase(),
   role: z.string(),
   license_number: z.string().optional(),
   license_expiry_date: z.string().optional(),

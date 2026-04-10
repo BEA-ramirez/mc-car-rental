@@ -351,7 +351,7 @@ export default function DocumentsMain() {
                         rejectionReason: doc.rejection_reason,
                         internalNotes: doc.internal_notes,
                       };
-                      if (doc.status === "pending") setReviewDoc(mappedDoc);
+                      if (doc.status === "PENDING") setReviewDoc(mappedDoc);
                       else setViewDoc(mappedDoc as ViewedDocument);
                     }}
                   />

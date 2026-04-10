@@ -32,11 +32,11 @@ export const BookingSchema = z.object({
   base_rate_snapshot: z.number().default(0),
 
   booking_status: z.enum([
-    "Pending",
-    "Confirmed",
-    "Ongoing",
-    "Completed",
-    "Cancelled",
+    "PENDING",
+    "CONFIRMED",
+    "ONGOING",
+    "COMPLETED",
+    "CANCELLED",
   ]),
   payment_status: z.enum(["Unpaid", "Partial", "Paid", "Refunded"]),
 
@@ -145,7 +145,7 @@ export const BookingPaymentSchema = z.object({
     "PayPal",
   ]),
   transaction_reference: z.string().optional().nullable(),
-  status: z.enum(["Pending", "Paid", "Failed", "Refunded"]).default("Pending"),
+  status: z.enum(["PAID", "UNPAID", "PARTIAL", "REFUNDED"]).default("UNPAID"),
   paid_at: z.string().or(z.date()).optional().nullable(),
 });
 

@@ -48,10 +48,13 @@ export function usePendingPayments() {
       toast.success(data.result.message);
 
       // Instant UI Update: Remove the verified payment from the cache directly
-      queryClient.setQueryData(["pendingPayments"], (oldData: any[]) => {
-        if (!oldData) return [];
-        return oldData.filter((p) => p.payment_id !== variables.paymentId);
-      });
+      queryClient.setQueryData(
+        ["pendingPayments", "scheduler-data"],
+        (oldData: any[]) => {
+          if (!oldData) return [];
+          return oldData.filter((p) => p.payment_id !== variables.paymentId);
+        },
+      );
     },
     onError: (error) => {
       toast.error(error.message);

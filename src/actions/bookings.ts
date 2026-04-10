@@ -21,7 +21,6 @@ export type ActionState = {
 export async function createCustomerBooking(data: any): Promise<any> {
   const supabase = await createClient();
 
-  // Authenticate and get the logged-in user
   const {
     data: { user },
     error: authError,
@@ -34,37 +33,55 @@ export async function createCustomerBooking(data: any): Promise<any> {
     };
   }
 
-  // HANDLE THE 12-HOUR PROMO DATE LOGIC ---
+  // --- MATH CALCULATION FOR ITEMIZATION ---
+  // A 12-hour rental is essentially a 1-day base rate, minus the discount.
+  // Standard day calculation:
   const startDate = new Date(data.start_date);
-  let finalEndDate = new Date(data.end_date);
+  const endDate = new Date(data.end_date);
 
-  if (data.is12HourPromo && data.car12HourRate > 0) {
-    // Force the end date to be exactly 12 hours after pickup
-    finalEndDate = addHours(startDate, 12);
-  }
+  // Calculate days on the server so it never fails (returns at least 1)
+  const msDiff = endDate.getTime() - startDate.getTime();
+  const totalHours = msDiff / (1000 * 60 * 60);
+  const calculatedDays = Math.max(1, Math.ceil(totalHours / 24));
 
-  // --- 2. CALL THE RPC TO CREATE THE BOOKING ---
+  // Now baseRentTotal is guaranteed to be a valid number > 0!
+  const baseRentTotal = data.is12HourPromo
+    ? data.carDailyRate
+    : data.carDailyRate * calculatedDays;
+
+  const discountAmount = data.is12HourPromo
+    ? data.carDailyRate - data.car12HourRate
+    : 0;
+
+  // --- CALL THE MASTER RPC ---
   const { data: bookingId, error } = await supabase.rpc(
-    "create_customer_booking_v1",
+    "create_customer_booking_v2",
     {
       p_user_id: user.id,
       p_car_id: data.car_id,
-      p_start_date: startDate.toISOString(),
-      p_end_date: finalEndDate.toISOString(), // <-- Use the adjusted date!
+      p_start_date: new Date(data.start_date).toISOString(),
+      p_end_date: new Date(data.end_date).toISOString(), // RPC will override this if 12-hr
       p_pickup_loc: data.pickup_location,
       p_dropoff_loc: data.dropoff_location,
       p_pickup_type: data.pickup_type,
       p_dropoff_type: data.dropoff_type,
-      p_pickup_price: data.pickup_price,
-      p_dropoff_price: data.dropoff_price,
-      p_is_with_driver: data.is_with_driver,
-      p_base_rate_snapshot: data.daily_rate,
-      p_total_price: data.grand_total, // Frontend already applied the discount to this!
-      p_security_deposit: data.security_deposit,
-      p_pickup_coordinates: data.pickup_coords,
-      p_dropoff_coordinates: data.dropoff_coords,
+      p_pickup_price: data.pickup_price || 0,
+      p_dropoff_price: data.dropoff_price || 0,
+      p_is_with_driver: data.is_with_driver || false,
 
-      // Pass the payment data
+      // Financials
+      p_base_rate_snapshot: data.carDailyRate,
+      p_total_base_rent: baseRentTotal,
+      p_total_price: data.grand_total,
+      p_security_deposit: data.security_deposit || 0,
+
+      // Coordinates & Promos
+      p_pickup_coordinates: data.pickup_coords || null,
+      p_dropoff_coordinates: data.dropoff_coords || null,
+      p_is_12_hour_promo: data.is12HourPromo || false,
+      p_promo_discount_amount: discountAmount,
+
+      // Payment Data
       p_reservation_fee_paid: data.payment_details?.amount || 0,
       p_transaction_reference:
         data.payment_details?.transaction_reference || null,
@@ -80,22 +97,6 @@ export async function createCustomerBooking(data: any): Promise<any> {
     };
   }
 
-  // --- 3. AUTO-LOG THE PROMO DISCOUNT IN CHARGES ---
-  // We do this AFTER the RPC so we have the newly created bookingId
-  if (data.is12HourPromo && bookingId) {
-    const discountAmount = data.carDailyRate - data.car12HourRate;
-
-    if (discountAmount > 0) {
-      await supabase.from("booking_charges").insert({
-        booking_id: bookingId,
-        category: "PROMO_DISCOUNT",
-        description: "12-Hour Rental Promo",
-        amount: -Math.abs(discountAmount), // Ensure it saves as a negative number
-      });
-    }
-  }
-
-  // Revalidate the UI
   revalidatePath("/customer/my-bookings");
   revalidatePath("/admin/bookings");
 
@@ -149,7 +150,7 @@ export async function createAdminBooking(data: unknown) {
     .from("bookings")
     .select("booking_id")
     .eq("car_id", input.car_id)
-    .in("booking_status", ["confirmed", "ongoing", "maintenance"])
+    .in("booking_status", ["CONFIRMED", "ONGOING", "MAINTENANCE"])
     .lt("start_date", endDate.toISOString()) // Uses adjusted endDate
     .gt("end_date", startDate.toISOString())
     .limit(1);
@@ -184,7 +185,7 @@ export async function createAdminBooking(data: unknown) {
 
   // A. Base Rent
   charges.push({
-    category: "Base Rate",
+    category: "BASE_RATE",
     amount: baseRent,
     description: `${days} days @ ₱${dailyRate}/day`,
   });
@@ -205,7 +206,7 @@ export async function createAdminBooking(data: unknown) {
   if (input.with_driver) {
     const driverTotal = days * input.driver_fee_per_day;
     charges.push({
-      category: "Driver Fee",
+      category: "DRIVER_FEE",
       amount: driverTotal,
       description: `Chauffeur service (${days} days)`,
     });
@@ -214,14 +215,14 @@ export async function createAdminBooking(data: unknown) {
   // D. Pickup/Dropoff Fees
   if (input.pickup_price > 0) {
     charges.push({
-      category: "Delivery Fee",
+      category: "DELIVERY_FEE",
       amount: input.pickup_price,
       description: "Pickup: " + input.pickup_location,
     });
   }
   if (input.dropoff_price > 0) {
     charges.push({
-      category: "Delivery Fee",
+      category: "DELIVERY_FEE",
       amount: input.dropoff_price,
       description: "Dropoff: " + input.dropoff_location,
     });
@@ -241,7 +242,7 @@ export async function createAdminBooking(data: unknown) {
   // F. Manual Discount
   if (input.discount_amount > 0) {
     charges.push({
-      category: "Discount",
+      category: "DISCOUNT",
       amount: -input.discount_amount,
       description: "Admin Discount",
     });
@@ -373,7 +374,7 @@ export async function updateAdminBooking(bookingId: string, data: unknown) {
   const charges = [];
 
   charges.push({
-    category: "Base Rate",
+    category: "BASE_RATE",
     amount: baseRent,
     description: `${days} days @ ₱${dailyRate}/day`,
   });
@@ -392,7 +393,7 @@ export async function updateAdminBooking(bookingId: string, data: unknown) {
   if (input.with_driver) {
     const driverTotal = days * input.driver_fee_per_day;
     charges.push({
-      category: "Driver Fee",
+      category: "DRIVER_FEE",
       amount: driverTotal,
       description: `Chauffeur service (${days} days)`,
     });
@@ -400,14 +401,14 @@ export async function updateAdminBooking(bookingId: string, data: unknown) {
 
   if (input.pickup_price > 0) {
     charges.push({
-      category: "Delivery Fee",
+      category: "DELIVERY_FEE",
       amount: input.pickup_price,
       description: "Pickup: " + input.pickup_location,
     });
   }
   if (input.dropoff_price > 0) {
     charges.push({
-      category: "Delivery Fee",
+      category: "DELIVERY_FEE",
       amount: input.dropoff_price,
       description: "Dropoff: " + input.dropoff_location,
     });
@@ -425,7 +426,7 @@ export async function updateAdminBooking(bookingId: string, data: unknown) {
 
   if (input.discount_amount > 0) {
     charges.push({
-      category: "Discount",
+      category: "DISCOUNT",
       amount: -input.discount_amount,
       description: "Admin Discount",
     });
@@ -620,7 +621,7 @@ export async function createMaintenanceBlock(
         car_id: carId,
         start_date: startDate.toISOString(),
         end_date: endDate.toISOString(),
-        booking_status: "maintenance",
+        booking_status: "MAINTENANCE",
         total_price: 0,
       })
       .select("booking_id")
@@ -673,7 +674,7 @@ export async function reassignBooking(
       .update({
         car_id: newCarId,
         total_price: newPrice, // THE CRUCIAL PRICE UPDATE!
-        booking_status: "confirmed", // Since they accepted the proposal
+        booking_status: "CONFIRMED", // Since they accepted the proposal
         last_updated_at: new Date().toISOString(),
       })
       .eq("booking_id", bookingId);
@@ -730,9 +731,9 @@ export async function getCustomerBookings() {
 
     // Calculate Payments
     const approvedPayments =
-      b.payments?.filter((p: any) => p.status === "Approved") || [];
+      b.payments?.filter((p: any) => p.status === "COMPLETED") || [];
     const pendingPayments =
-      b.payments?.filter((p: any) => p.status === "Pending") || [];
+      b.payments?.filter((p: any) => p.status === "PENDING") || [];
 
     const amountPaid = approvedPayments.reduce(
       (sum: number, p: any) => sum + Number(p.amount),
@@ -830,7 +831,6 @@ export async function checkDriverAvailabilityAction(
   return !!data;
 }
 
-// --- READ: Get Single Booking Details (Full Overview) ---
 export async function getBookingDetailsAction(bookingId: string) {
   const supabase = await createClient();
 
@@ -849,7 +849,8 @@ export async function getBookingDetailsAction(bookingId: string) {
       driver:drivers!driver_id(driver_id, users(full_name)),
       payments:booking_payments(amount, status),
       contracts:booking_contracts(is_signed),
-      inspections:booking_inspections(type)
+      inspections:booking_inspections(type),
+      logs:booking_logs(log_id, action_type, message, created_at)
     `,
     )
     .eq("booking_id", bookingId)
@@ -860,17 +861,23 @@ export async function getBookingDetailsAction(bookingId: string) {
     return { success: false, data: null, message: error.message };
   }
 
-  // Process the data for the UI
   const primaryImage =
     booking.car?.car_images?.find((img: any) => img.is_primary)?.image_url ||
     booking.car?.car_images?.[0]?.image_url ||
     "https://placehold.co/600x400?text=No+Image";
 
-  // Calculate amount paid from Approved/Completed payments
   const amountPaid =
     booking.payments
-      ?.filter((p: any) => p.status === "Completed" || p.status === "Approved")
+      ?.filter((p: any) => p.status === "COMPLETED")
       .reduce((sum: number, p: any) => sum + Number(p.amount), 0) || 0;
+
+  // Sort logs dynamically so newest is at the top
+  const sortedLogs = booking.logs
+    ? booking.logs.sort(
+        (a: any, b: any) =>
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+      )
+    : [];
 
   const formattedData = {
     id: booking.booking_id,
@@ -884,6 +891,7 @@ export async function getBookingDetailsAction(bookingId: string) {
     amount_paid: amountPaid,
     is_with_driver: booking.is_with_driver,
     notes: booking.notes || "",
+    logs: sortedLogs, // <-- NEW: Added to payload
     customer: {
       name: booking.customer?.full_name || "Unknown Customer",
       email: booking.customer?.email || "No Email",
@@ -924,7 +932,7 @@ export async function cancelBookingAction(
   const { error: updateErr } = await supabase
     .from("bookings")
     .update({
-      booking_status: "cancelled",
+      booking_status: "CANCELLED",
       notes: reason, // Save the reason in the notes
     })
     .eq("booking_id", bookingId);

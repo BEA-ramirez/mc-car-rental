@@ -34,7 +34,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { format } from "date-fns";
+import { format, differenceInHours, differenceInDays } from "date-fns";
 
 import { useIncomes, useBookingFolio } from "../../../hooks/use-incomes";
 
@@ -81,7 +81,7 @@ export default function BookingIncomeBreakdownModal({
 
   const [chargeAmount, setChargeAmount] = useState("");
   const [chargeCat, setChargeCat] = useState("");
-  const [customChargeCat, setCustomChargeCat] = useState(""); // <-- NEW STATE FOR CUSTOM CATEGORY
+  const [customChargeCat, setCustomChargeCat] = useState("");
   const [chargeDesc, setChargeDesc] = useState("");
 
   const [refundAmount, setRefundAmount] = useState("");
@@ -97,6 +97,22 @@ export default function BookingIncomeBreakdownModal({
     ) || 0;
   const balanceDue = basePrice - totalPaid;
 
+  // --- DURATION CALCULATION FOR INVOICE ---
+  // Calculates if this was a 12-hour rental or a multi-day rental
+  const getDurationString = () => {
+    if (!folio?.booking?.start_date || !folio?.booking?.end_date) return "";
+    const start = new Date(folio.booking.start_date);
+    const end = new Date(folio.booking.end_date);
+    const hours = differenceInHours(end, start);
+
+    if (hours <= 12) {
+      return "12 Hours";
+    }
+    const days = Math.ceil(hours / 24);
+    return `${days} Day${days > 1 ? "s" : ""}`;
+  };
+  const durationText = getDurationString();
+
   useEffect(() => {
     if (isOpen) {
       const initial = getInitialTab();
@@ -107,7 +123,7 @@ export default function BookingIncomeBreakdownModal({
       setChargeAmount("");
       setChargeDesc("");
       setChargeCat("");
-      setCustomChargeCat(""); // <-- RESET IT
+      setCustomChargeCat("");
       setRefundAmount("");
       setRefundRef("");
 
@@ -146,14 +162,11 @@ export default function BookingIncomeBreakdownModal({
   };
 
   const handleAddCharge = async () => {
-    // 1. Determine which category to use (the dropdown value OR the custom typed value)
     const finalCategory = chargeCat === "CUSTOM" ? customChargeCat : chargeCat;
-
     if (!bookingId || !chargeAmount || !finalCategory) return;
 
     await addCharge({
       bookingId,
-      // 2. Format the custom string to be DB friendly (e.g., "Towing Fee" -> "TOWING_FEE")
       category: finalCategory.toUpperCase().replace(/\s+/g, "_"),
       amount: parseFloat(chargeAmount),
       description: chargeDesc || "Added manually",
@@ -172,9 +185,19 @@ export default function BookingIncomeBreakdownModal({
     setActiveTab("ledger");
   };
 
+  // Helper variable to keep a running total of the invoice
+  let runningSubtotal = 0;
+
+  // --- NEW: Calculate the Grand Total of all charges ---
+  const totalChargesAmount =
+    folio?.charges?.reduce(
+      (sum: number, c: any) => sum + Number(c.amount),
+      0,
+    ) || 0;
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-6xl xl:max-w-[1000px] p-0 overflow-hidden border-border bg-background shadow-2xl rounded-2xl flex flex-col h-[85vh] max-h-[800px] transition-colors duration-300 [&>button.absolute]:hidden">
+      <DialogContent className="max-w-6xl xl:max-w-[1000px] gap-0! p-0 overflow-hidden border-border bg-background shadow-2xl rounded-2xl flex flex-col h-[85vh] max-h-[800px] transition-colors duration-300 [&>button.absolute]:hidden">
         {/* --- COMPACT HEADER --- */}
         <DialogHeader className="px-4 py-3 border-b border-border bg-card shrink-0 flex flex-row items-center justify-between transition-colors">
           <div className="flex items-center gap-3">
@@ -259,14 +282,13 @@ export default function BookingIncomeBreakdownModal({
                           <span className="text-[10px] font-medium text-foreground">
                             {folio?.booking?.start_date &&
                               format(
-                                new Date(folio.booking.start_date),
-                                "MMM dd, yyyy",
-                              )}{" "}
-                            -{" "}
+                                new Date(folio.booking.start_date), // Convert from UTC database string to local Browser time
+                                "MMM dd, yyyy • hh:mm a",
+                              )}
                             {folio?.booking?.end_date &&
                               format(
                                 new Date(folio.booking.end_date),
-                                "MMM dd, yyyy",
+                                "MMM dd, yyyy • hh:mm a",
                               )}
                           </span>
                         </div>
@@ -387,24 +409,29 @@ export default function BookingIncomeBreakdownModal({
                         <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden transition-colors">
                           <div className="bg-secondary/50 border-b border-border px-3 py-2.5">
                             <h4 className="text-[9px] font-bold text-foreground uppercase tracking-widest flex items-center gap-2">
-                              Itemized Charges
+                              Itemized Charges (Invoice)
                             </h4>
                           </div>
                           <div>
-                            <div className="grid grid-cols-[1.5fr_2fr_1fr] p-2 px-3 border-b border-border bg-secondary text-[9px] font-bold text-muted-foreground uppercase tracking-widest transition-colors">
+                            {/* --- UPDATED HEADERS --- */}
+                            <div className="grid grid-cols-[1.5fr_2fr_1fr_1fr] p-2 px-3 border-b border-border bg-secondary text-[9px] font-bold text-muted-foreground uppercase tracking-widest transition-colors">
                               <div>Category</div>
                               <div>Description</div>
-                              <div className="text-right">Amount</div>
+                              <div className="text-right">Breakdown</div>
+                              <div className="text-right text-foreground">
+                                Subtotal
+                              </div>
                             </div>
+
                             <div className="divide-y divide-border">
                               {folio?.charges?.map((charge: any) => (
                                 <div
                                   key={charge.charge_id}
-                                  className="grid grid-cols-[1.5fr_2fr_1fr] p-2.5 px-3 items-center hover:bg-secondary/50 transition-colors"
+                                  className="grid grid-cols-[1.5fr_2fr_1fr_1fr] p-2.5 px-3 items-center hover:bg-secondary/50 transition-colors"
                                 >
                                   <span
                                     className={cn(
-                                      "text-[10px] font-bold",
+                                      "text-[10px] font-bold flex items-center flex-wrap gap-1.5",
                                       charge.category.includes("FEE")
                                         ? "text-destructive"
                                         : charge.category === "DEPOSIT_REFUND"
@@ -413,23 +440,61 @@ export default function BookingIncomeBreakdownModal({
                                     )}
                                   >
                                     {charge.category.replace(/_/g, " ")}
+                                    {/* Duration Pill for Base Rate */}
+                                    {charge.category === "BASE_RATE" &&
+                                      durationText && (
+                                        <span className="text-[8px] font-mono text-muted-foreground bg-secondary px-1 py-0.5 rounded border border-border whitespace-nowrap">
+                                          {durationText}
+                                        </span>
+                                      )}
                                   </span>
+
                                   <span className="text-[10px] font-medium text-muted-foreground truncate pr-4">
                                     {charge.description}
                                   </span>
-                                  <span
-                                    className={cn(
-                                      "text-[11px] font-bold font-mono text-right",
-                                      charge.amount < 0
-                                        ? "text-indigo-600 dark:text-indigo-400"
-                                        : "text-foreground",
+
+                                  {/* --- BREAKDOWN COLUMN --- */}
+                                  <div className="flex flex-col items-end justify-center">
+                                    {charge.category === "BASE_RATE" &&
+                                    folio?.booking?.base_rate_snapshot ? (
+                                      <span className="text-[9px] font-medium text-muted-foreground whitespace-nowrap">
+                                        {durationText} × ₱
+                                        {Number(
+                                          folio.booking.base_rate_snapshot,
+                                        ).toLocaleString()}
+                                      </span>
+                                    ) : (
+                                      <span className="text-[10px] font-medium text-muted-foreground whitespace-nowrap">
+                                        {charge.amount < 0 ? "- ₱ " : "+ ₱ "}
+                                        {Math.abs(
+                                          Number(charge.amount),
+                                        ).toLocaleString()}
+                                      </span>
                                     )}
-                                  >
-                                    {charge.amount < 0 ? "" : "₱ "}
-                                    {Number(charge.amount).toLocaleString()}
-                                  </span>
+                                  </div>
+
+                                  {/* --- ROW SUBTOTAL COLUMN --- */}
+                                  <div className="text-[11px] font-bold font-mono text-right text-foreground border-l border-border pl-3 ml-3 flex items-center justify-end h-full">
+                                    {charge.amount < 0 ? "- ₱ " : "₱ "}
+                                    {Math.abs(
+                                      Number(charge.amount),
+                                    ).toLocaleString()}
+                                  </div>
                                 </div>
                               ))}
+
+                              {/* --- NEW: GRAND TOTAL ROW --- */}
+                              {(folio?.charges?.length ?? 0) > 0 && (
+                                <div className="grid grid-cols-[1.5fr_2fr_1fr_1fr] p-3 items-center bg-secondary/20 transition-colors border-t-2 border-border">
+                                  <div className="col-span-3 text-right pr-4 text-[10px] font-bold text-foreground uppercase tracking-widest">
+                                    Total Charges
+                                  </div>
+                                  <div className="text-[12px] font-black font-mono text-right text-foreground border-l border-border pl-3 ml-3 flex items-center justify-end">
+                                    ₱ {totalChargesAmount.toLocaleString()}
+                                  </div>
+                                </div>
+                              )}
+
                               {folio?.charges?.length === 0 && (
                                 <div className="p-4 text-[10px] text-muted-foreground text-center font-medium">
                                   No charges recorded.
@@ -485,8 +550,10 @@ export default function BookingIncomeBreakdownModal({
                                         : "text-emerald-600 dark:text-emerald-400",
                                     )}
                                   >
-                                    {payment.amount > 0 ? "+" : ""}₱{" "}
-                                    {Number(payment.amount).toLocaleString()}
+                                    {payment.amount > 0 ? "+ ₱ " : "- ₱ "}
+                                    {Math.abs(
+                                      Number(payment.amount),
+                                    ).toLocaleString()}
                                   </span>
                                 </div>
                               ))}
@@ -547,7 +614,7 @@ export default function BookingIncomeBreakdownModal({
                               value={payMethod}
                               onValueChange={setPayMethod}
                             >
-                              <SelectTrigger className="h-8 text-[11px] font-semibold bg-secondary border-border rounded-lg focus:ring-emerald-500 shadow-none transition-colors">
+                              <SelectTrigger className="h-8 w-full! text-[11px] font-semibold bg-secondary border-border rounded-lg focus:ring-emerald-500 shadow-none transition-colors">
                                 <SelectValue />
                               </SelectTrigger>
                               <SelectContent className="rounded-xl border-border bg-popover shadow-xl">
@@ -630,7 +697,6 @@ export default function BookingIncomeBreakdownModal({
                             />
                           </div>
 
-                          {/* --- MODIFIED CATEGORY SELECT WITH CUSTOM INPUT --- */}
                           <div className="space-y-1.5 col-span-1 flex flex-col justify-start">
                             <label className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">
                               Category
@@ -639,10 +705,10 @@ export default function BookingIncomeBreakdownModal({
                               value={chargeCat}
                               onValueChange={(val) => {
                                 setChargeCat(val);
-                                if (val !== "CUSTOM") setCustomChargeCat(""); // reset if they pick a standard one
+                                if (val !== "CUSTOM") setCustomChargeCat("");
                               }}
                             >
-                              <SelectTrigger className="h-8 text-[11px] font-semibold bg-secondary border-border rounded-lg focus:ring-amber-500 shadow-none transition-colors">
+                              <SelectTrigger className="h-8 w-full! text-[11px] font-semibold bg-secondary border-border rounded-lg focus:ring-amber-500 shadow-none transition-colors">
                                 <SelectValue placeholder="Select" />
                               </SelectTrigger>
                               <SelectContent className="rounded-xl border-border bg-popover shadow-xl">
@@ -687,7 +753,7 @@ export default function BookingIncomeBreakdownModal({
                             )}
                           </div>
 
-                          <div className="space-y-1.5 col-span-2">
+                          <div className="space-y-1.5 col-span-2 h-8">
                             <label className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">
                               Reason / Description
                             </label>
@@ -756,7 +822,7 @@ export default function BookingIncomeBreakdownModal({
                               value={refundMethod}
                               onValueChange={setRefundMethod}
                             >
-                              <SelectTrigger className="h-8 text-[11px] font-semibold bg-secondary border-border rounded-lg focus:ring-indigo-500 shadow-none transition-colors">
+                              <SelectTrigger className="h-8 w-full! text-[11px] font-semibold bg-secondary border-border rounded-lg focus:ring-indigo-500 shadow-none transition-colors">
                                 <SelectValue />
                               </SelectTrigger>
                               <SelectContent className="rounded-xl border-border bg-popover shadow-xl">

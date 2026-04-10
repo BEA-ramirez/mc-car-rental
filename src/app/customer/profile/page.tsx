@@ -111,19 +111,19 @@ export default function CustomerProfilePage() {
 
   // Main Account Status Badge
   const getStatusBadge = (status: string) => {
-    if (status === "verified")
+    if (status === "VERIFIED")
       return (
         <span className="flex items-center gap-1.5 text-[10px] uppercase tracking-widest font-bold text-emerald-400 bg-emerald-500/10 px-3 py-1 rounded-full border border-emerald-500/20">
           <CheckCircle2 className="w-3.5 h-3.5" /> Verified
         </span>
       );
-    if (status === "pending")
+    if (status === "PENDING")
       return (
         <span className="flex items-center gap-1.5 text-[10px] uppercase tracking-widest font-bold text-amber-400 bg-amber-500/10 px-3 py-1 rounded-full border border-amber-500/20">
           <Clock className="w-3.5 h-3.5" /> In Review
         </span>
       );
-    if (status === "expired" || status === "rejected") {
+    if (status === "EXPIRED" || status === "REJECTED") {
       return (
         <span className="flex items-center gap-1.5 text-[10px] uppercase tracking-widest font-bold text-red-400 bg-red-500/10 px-3 py-1 rounded-full border border-red-500/20">
           <AlertCircle className="w-3.5 h-3.5" /> Action Needed
@@ -139,19 +139,19 @@ export default function CustomerProfilePage() {
 
   // Specific colored badges for the document list
   const getDocStatusBadge = (status: string) => {
-    if (status === "verified")
+    if (status === "VERIFIED")
       return (
         <span className="text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full text-[9px] uppercase tracking-widest font-bold">
           Verified
         </span>
       );
-    if (status === "pending")
+    if (status === "PENDING")
       return (
         <span className="text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-full text-[9px] uppercase tracking-widest font-bold">
           Reviewing
         </span>
       );
-    if (status === "expired" || status === "rejected")
+    if (status === "EXPIRED" || status === "REJECTED")
       return (
         <span className="text-red-400 bg-red-500/10 border border-red-500/20 px-2 py-0.5 rounded-full text-[9px] uppercase tracking-widest font-bold">
           Rejected/Expired
@@ -425,9 +425,9 @@ export default function CustomerProfilePage() {
                       )}
                     </div>
                   </div>
-                  {(licenseStatus === "expired" ||
-                    licenseStatus === "rejected" ||
-                    licenseStatus === "pending" ||
+                  {(licenseStatus === "EXPIRED" ||
+                    licenseStatus === "REJECTED" ||
+                    licenseStatus === "PENDING" ||
                     licenseStatus === "unverified") && (
                     <div className="relative w-full sm:w-auto">
                       <Input
@@ -474,9 +474,9 @@ export default function CustomerProfilePage() {
                       )}
                     </div>
                   </div>
-                  {(validIdStatus === "expired" ||
-                    validIdStatus === "rejected" ||
-                    validIdStatus === "pending" ||
+                  {(validIdStatus === "EXPIRED" ||
+                    validIdStatus === "REJECTED" ||
+                    validIdStatus === "PENDING" ||
                     validIdStatus === "unverified") && (
                     <div className="relative w-full sm:w-auto">
                       <Input

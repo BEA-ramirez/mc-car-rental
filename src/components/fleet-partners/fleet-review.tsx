@@ -40,9 +40,9 @@ function FleetPartnerReview({
             <span
               className={`text-xs px-2 py-0.5 rounded-full capitalize 
                 ${
-                  selectedPartner?.verification_status === "verified"
+                  selectedPartner?.verification_status === "VERIFIED"
                     ? "bg-green-100 text-green-700"
-                    : selectedPartner?.verification_status === "rejected"
+                    : selectedPartner?.verification_status === "REJECTED"
                       ? "bg-red-100 text-red-700"
                       : "bg-yellow-100 text-yellow-700"
                 }`}
@@ -88,7 +88,7 @@ function FleetPartnerReview({
       </div>
 
       {/* 3. Action Buttons (Only show if PENDING) */}
-      {selectedPartner?.verification_status === "pending" ? (
+      {selectedPartner?.verification_status === "PENDING" ? (
         <div className="space-y-3 pt-4 border-t">
           <h4 className="font-medium flex items-center gap-2">
             <AlertCircle className="w-4 h-4" />

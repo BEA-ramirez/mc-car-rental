@@ -275,9 +275,9 @@ const LocationField = ({
 
 // --- MOCK DATA ---
 const PREDEFINED_CHARGES = [
-  { label: "Child Seat", amount: 150 },
-  { label: "Cooler Box", amount: 100 },
-  { label: "Portable WiFi", amount: 200 },
+  { label: "Damage Fee", amount: 200 },
+  { label: "Cleaning Fee", amount: 100 },
+  { label: "Late Fee", amount: 450 },
   { label: "Cleaning Kit", amount: 300 },
 ];
 
@@ -381,8 +381,12 @@ export default function AdminBookingForm({
     w12HourPromo && isPromoEligible ? dailyRate - price12h : 0;
 
   const driverTotal = wWithDriver ? days * (wDriverFee || 0) : 0;
+  // Calculate extras, specifically excluding any accidental deposit duplicates
   const extrasTotal =
-    wExtras?.reduce((acc, curr) => acc + (curr.amount || 0), 0) || 0;
+    wExtras?.reduce((acc, curr) => {
+      if (curr.category === "SECURITY_DEPOSIT") return acc;
+      return acc + (curr.amount || 0);
+    }, 0) || 0;
 
   const subTotal =
     rentTotal +
@@ -442,14 +446,16 @@ export default function AdminBookingForm({
         const extras: any[] = [];
 
         charges?.forEach((c) => {
-          if (c.category === "Driver Fee") {
+          if (c.category === "DRIVER_FEE") {
             driverFee = c.amount / diffDays;
-          } else if (c.category === "Discount") {
+          } else if (c.category === "DISCOUNT") {
             discount = Math.abs(c.amount);
           } else if (
-            c.category !== "Base Rate" &&
-            c.category !== "Delivery Fee" &&
-            c.category !== "PROMO_DISCOUNT" // Ignore promo discount, handled by state
+            c.category !== "BASE_RATE" &&
+            c.category !== "DELIVERY_FEE" &&
+            c.category !== "PICKUP_FEE" &&
+            c.category !== "PROMO_DISCOUNT" &&
+            c.category !== "SECURITY_DEPOSIT" // Ignore promo discount, handled by state
           ) {
             extras.push({
               category: c.category,
@@ -1268,26 +1274,30 @@ export default function AdminBookingForm({
                   )}
 
                   {/* Breakdown of Add-ons */}
-                  {wExtras && wExtras.length > 0 && (
-                    <div className="space-y-1.5 pt-1.5">
-                      <div className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest mb-1">
-                        Add-ons
-                      </div>
-                      {wExtras.map((extra, idx) => (
-                        <div
-                          key={idx}
-                          className="flex justify-between items-center text-[10px] text-foreground"
-                        >
-                          <span className="font-medium truncate pr-2">
-                            • {extra.category || "Unnamed Item"}
-                          </span>
-                          <span className="font-mono font-bold shrink-0">
-                            ₱ {extra.amount?.toLocaleString()}
-                          </span>
+                  {wExtras &&
+                    wExtras.filter((e) => e.category !== "SECURITY_DEPOSIT")
+                      .length > 0 && (
+                      <div className="space-y-1.5 pt-1.5 animate-in slide-in-from-top-1">
+                        <div className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest mb-1">
+                          Add-ons
                         </div>
-                      ))}
-                    </div>
-                  )}
+                        {wExtras
+                          .filter((e) => e.category !== "SECURITY_DEPOSIT")
+                          .map((extra, idx) => (
+                            <div
+                              key={idx}
+                              className="flex justify-between items-center text-[10px] text-foreground"
+                            >
+                              <span className="font-medium truncate pr-2">
+                                • {extra.category || "Unnamed Item"}
+                              </span>
+                              <span className="font-mono font-bold shrink-0">
+                                ₱ {extra.amount?.toLocaleString()}
+                              </span>
+                            </div>
+                          ))}
+                      </div>
+                    )}
 
                   {/* Discount */}
                   <div className="flex justify-between items-center pt-1.5">

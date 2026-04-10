@@ -268,7 +268,7 @@ export default function CustomerBookingPage({
         security_deposit: realFees.security_deposit_default,
         pickup_coords: pickupCoords,
         dropoff_coords: dropoffCoords,
-        booking_status: "confirmed",
+        booking_status: "CONFIRMED",
         payment_status: "Unpaid",
 
         // --- NEW PROMO FIELDS FOR BACKEND TO INTERCEPT ---
@@ -288,8 +288,6 @@ export default function CustomerBookingPage({
       setIsPaymentModalOpen(false);
       setIsSuccess(true);
     } catch (error: any) {
-      console.error("Booking Submission Failed:", error);
-      alert(error.message || "Something went wrong. Please try again.");
     } finally {
       setIsUploading(false);
     }

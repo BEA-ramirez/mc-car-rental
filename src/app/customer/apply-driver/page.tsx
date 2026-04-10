@@ -47,7 +47,7 @@ export default function ApplyDriverPage() {
 
   const documents = profile?.documents || [];
   const latestLicense = documents.find((d: any) => d.category === "license_id");
-  const hasVerifiedLicense = latestLicense?.status === "verified";
+  const hasVerifiedLicense = latestLicense?.status === "VERIFIED";
 
   // --- SUCCESS STATE UI ---
   if (isSuccess) {

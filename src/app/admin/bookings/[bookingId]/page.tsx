@@ -26,6 +26,7 @@ import {
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
 
 // --- EXISTING COMPONENT IMPORTS ---
@@ -138,7 +139,7 @@ export default function AdminBookingDetailsPage() {
 
   const handleContractSigned = async (id: string, signatureDataUrl: string) => {
     try {
-      await signContract.mutateAsync({ id, signatureDataUrl });
+      await signContract({ id, signatureDataUrl });
       setIsContractOpen(false);
       // Contract signed, vehicle released -> Trip is Ongoing!
       await startTrip(bookingId);
@@ -163,7 +164,7 @@ export default function AdminBookingDetailsPage() {
   };
 
   return (
-    <div className="h-screen bg-background text-foreground font-sans overflow-hidden flex flex-col transition-colors duration-300">
+    <div className="min-h-screen bg-background text-foreground font-sans flex flex-col transition-colors duration-300">
       {/* --- TOP HEADER --- */}
       <header className="px-4 py-3 sm:px-6 shrink-0 flex justify-between items-center border-b border-border bg-card">
         <div className="flex items-center gap-4">
@@ -383,48 +384,46 @@ export default function AdminBookingDetailsPage() {
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               {/* Financial Ledger */}
-              <div className="bg-card border border-border rounded-xl p-5 shadow-sm flex flex-col justify-between">
-                <div>
-                  <div className="flex justify-between items-center mb-4 pb-3 border-b border-border">
-                    <h3 className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
-                      <Banknote className="w-3.5 h-3.5" /> Financial Ledger
-                    </h3>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() =>
-                        setFinanceModal({ isOpen: true, action: "none" })
-                      }
-                      className="h-6 text-[9px] font-bold uppercase tracking-widest text-primary hover:bg-primary/10"
-                    >
-                      View Full Ledger
-                    </Button>
-                  </div>
+              <div className="bg-card border border-border rounded-xl p-5 shadow-sm shrink-0">
+                <div className="flex justify-between items-center mb-4 pb-3 border-b border-border">
+                  <h3 className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
+                    <Banknote className="w-3.5 h-3.5" /> Financial Ledger
+                  </h3>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() =>
+                      setFinanceModal({ isOpen: true, action: "none" })
+                    }
+                    className="h-6 text-[9px] font-bold uppercase tracking-widest text-primary hover:bg-primary/10"
+                  >
+                    View Full Ledger
+                  </Button>
+                </div>
 
-                  <div className="space-y-3 text-xs font-medium">
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">
-                        Gross Rental Total
-                      </span>
-                      <span className="font-bold">
-                        ₱{booking.total_price.toLocaleString()}
-                      </span>
-                    </div>
-                    <div className="flex justify-between text-emerald-600 bg-emerald-500/5 px-2 py-1 rounded-sm border border-emerald-500/10">
-                      <span className="flex items-center gap-1">
-                        <CheckCircle2 className="w-3 h-3" /> Reservation Fee
-                        Paid
-                      </span>
-                      <span>- ₱{booking.amount_paid.toLocaleString()}</span>
-                    </div>
-                    <div className="pt-3 border-t border-dashed border-border flex justify-between items-center">
-                      <span className="font-black uppercase tracking-widest text-[10px]">
-                        Remaining Balance Due
-                      </span>
-                      <span className="text-sm font-black text-primary">
-                        ₱{Math.max(0, balance).toLocaleString()}
-                      </span>
-                    </div>
+                <div className="space-y-3 text-xs font-medium">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">
+                      Gross Rental Total
+                    </span>
+                    <span className="font-bold">
+                      ₱{booking.total_price.toLocaleString()}
+                    </span>
+                  </div>
+                  {/* UPDATED LABEL HERE */}
+                  <div className="flex justify-between text-emerald-600 bg-emerald-500/5 px-2 py-1 rounded-sm border border-emerald-500/10">
+                    <span className="flex items-center gap-1">
+                      <CheckCircle2 className="w-3 h-3" /> Total Amount Paid
+                    </span>
+                    <span>- ₱{booking.amount_paid.toLocaleString()}</span>
+                  </div>
+                  <div className="pt-3 border-t border-dashed border-border flex justify-between items-center">
+                    <span className="font-black uppercase tracking-widest text-[10px]">
+                      Remaining Balance Due
+                    </span>
+                    <span className="text-sm font-black text-primary">
+                      ₱{Math.max(0, balance).toLocaleString()}
+                    </span>
                   </div>
                 </div>
 
@@ -586,24 +585,40 @@ export default function AdminBookingDetailsPage() {
             </div>
 
             {/* AUDIT TIMELINE */}
-            <div className="bg-card border border-border rounded-xl p-5 shadow-sm mt-auto">
-              <h3 className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest mb-4">
+            <div className="bg-card border border-border rounded-xl p-5 shadow-sm flex-1 flex flex-col min-h-[300px] overflow-hidden">
+              <h3 className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest mb-4 shrink-0">
                 Audit & Activity Log
               </h3>
-              <div className="relative border-l border-border ml-2 space-y-4">
-                <div className="relative pl-4">
-                  <div className="absolute -left-[5px] top-1 w-2 h-2 rounded-full bg-card border border-border flex items-center justify-center">
-                    <div className="w-1 h-1 rounded-full bg-primary" />
-                  </div>
-                  <div className="flex items-center gap-1.5 mb-0.5 text-[9px] font-medium text-muted-foreground">
-                    <Clock className="w-2.5 h-2.5" /> <span>System Note</span>
-                  </div>
-                  <p className="text-[10px] font-medium leading-tight text-foreground">
-                    Audit logs will be fetched dynamically in the next
-                    iteration.
-                  </p>
+              <ScrollArea className="flex-1 custom-scrollbar pr-3">
+                <div className="relative border-l border-border ml-2 space-y-5 pb-2 mt-1">
+                  {booking.logs?.map((log: any) => (
+                    <div key={log.log_id} className="relative pl-4">
+                      <div className="absolute -left-[5px] top-1 w-2.5 h-2.5 rounded-full bg-card border-2 border-primary" />
+                      <div className="flex items-center gap-1.5 mb-0.5 text-[9px] font-bold uppercase tracking-widest text-muted-foreground flex-wrap">
+                        <Clock className="w-2.5 h-2.5" />
+                        <span>
+                          {format(
+                            new Date(log.created_at + "Z"), // UTC fix applied
+                            "MMM dd • hh:mm a",
+                          )}
+                        </span>
+                        <span className="text-primary ml-1">
+                          {log.action_type.replace(/_/g, " ")}
+                        </span>
+                      </div>
+                      <p className="text-[10px] font-medium leading-relaxed text-foreground mt-1">
+                        {log.message}
+                      </p>
+                    </div>
+                  ))}
+
+                  {(!booking.logs || booking.logs.length === 0) && (
+                    <p className="text-[10px] text-muted-foreground pl-4 font-medium">
+                      No activity recorded yet.
+                    </p>
+                  )}
                 </div>
-              </div>
+              </ScrollArea>
             </div>
           </div>
         </div>

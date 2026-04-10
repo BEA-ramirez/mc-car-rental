@@ -157,9 +157,9 @@ const FleetPartnersDataGrid = forwardRef<
                         <div
                           className={cn(
                             "absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full border-2",
-                            partner.verification_status === "verified"
+                            partner.verification_status === "VERIFIED"
                               ? "bg-emerald-500"
-                              : partner.verification_status === "rejected"
+                              : partner.verification_status === "REJECTED"
                                 ? "bg-red-500"
                                 : "bg-amber-500",
                             isActive ? "border-[#0F172A]" : "border-white",

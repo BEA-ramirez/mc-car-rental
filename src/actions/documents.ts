@@ -96,7 +96,7 @@ export async function getPendingDocuments() {
     const { data, error } = await supabase
       .from("documents")
       .select(`*, users!user_id (full_name, email, phone_number, trust_score)`)
-      .eq("status", "pending")
+      .eq("status", "PENDING")
       .order("created_at", { ascending: true });
 
     if (error) {
@@ -125,7 +125,7 @@ export async function getExpiringDocuments() {
     const { data, error } = await supabase
       .from("documents")
       .select(`*, users!user_id (full_name, email)`)
-      .eq("status", "verified")
+      .eq("status", "VERIFIED")
       .not("expiry_date", "is", null)
       .lte("expiry_date", thirtyDaysFromNow.toISOString())
       .gte("expiry_date", new Date().toISOString())

@@ -130,7 +130,7 @@ export async function checkFleetAvailability(input: {
     const { data: bookings, error: bkgErr } = await supabase
       .from("bookings")
       .select("car_id")
-      .in("booking_status", ["Confirmed", "Ongoing"])
+      .in("booking_status", ["CONFIRMED", "ONGOING"])
       .lte("start_date", endOfDay)
       .gte("end_date", startOfDay);
 

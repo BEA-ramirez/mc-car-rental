@@ -8,7 +8,7 @@ export const carOwnerSchema = z.object({
     .string()
     .min(2, { message: "Business name must be at least 2 characters." }),
 
-  verification_status: z.enum(["pending", "verified", "rejected"]),
+  verification_status: z.enum(["PENDING", "VERIFIED", "REJECTED"]),
   active_status: z.boolean(),
   owner_notes: z.string().max(500).optional().nullable(),
 

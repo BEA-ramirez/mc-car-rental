@@ -167,7 +167,7 @@ export default function ActionCenter() {
       desc: "Requires immediate action",
       icon: Clock,
       theme: "red",
-      href: "/admin/bookings?status=overdue",
+      href: "/admin/bookings?status=OVERDUE",
       count: summary.alerts.overdueReturns,
     },
     {
@@ -176,7 +176,7 @@ export default function ActionCenter() {
       desc: "Customer has not picked up vehicle",
       icon: AlertCircle,
       theme: "orange",
-      href: "/admin/bookings?status=late",
+      href: "/admin/bookings?status=LATE",
       count: summary.alerts.lateArrivals,
     },
     {
@@ -185,7 +185,7 @@ export default function ActionCenter() {
       desc: "Awaiting confirmation",
       icon: Clock,
       theme: "amber",
-      href: "/admin/bookings?status=pending",
+      href: "/admin/bookings?status=PENDING",
       count: summary.alerts.pendingApprovals,
     },
     {
