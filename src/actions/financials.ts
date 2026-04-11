@@ -57,48 +57,83 @@ export async function generateOwnerPayout(
   }
 }
 
-export async function getFinancialDashboardData() {
+export async function getExpenseWidgets() {
   const supabase = await createClient();
 
-  // Fetch KPIs
-  const { data: kpis } = await supabase.rpc("get_financial_kpis");
+  // This RPC should return { totalOutflow, totalOutflowGrowth, pendingLiabilities, ... }
+  const { data: kpis } = await supabase.rpc("get_financial_kpis_v2");
 
-  // Fetch Settlement Queue
   const { data: readyToSettle } = await supabase.rpc(
     "get_unsettled_fleet_revenue",
   );
 
-  // Fetch Payout History
-  const { data: payouts } = await supabase
-    .from("owner_payouts")
-    .select(
-      `
-      payout_id, period_start, period_end, net_payout, status, created_at,
-      car_owner:car_owner_id(users(full_name))
-    `,
-    )
-    .order("created_at", { ascending: false })
-    .limit(50);
-
-  // Fetch Operational Expenses (Exclude Payouts)
-  const { data: operational } = await supabase
-    .from("financial_transactions")
-    .select("*")
-    .eq("transaction_type", "EXPENSE")
-    .neq("category", "OWNER_PAYOUT")
-    .order("transaction_date", { ascending: false })
-    .limit(50);
-
   return {
     kpis: kpis || {
       totalOutflow: 0,
+      totalOutflowGrowth: 0,
       pendingLiabilities: 0,
+      pendingLiabilitiesGrowth: 0,
       maintenanceSpend: 0,
+      maintenanceSpendGrowth: 0,
     },
     readyToSettle: readyToSettle || [],
-    payouts: payouts || [],
-    operational: operational || [],
   };
+}
+
+// 2. DYNAMIC TABLE DATA
+export async function getExpenseTableData(params: {
+  tab: string;
+  page: number;
+  search?: string;
+  sort?: string;
+}) {
+  const supabase = await createClient();
+  const limit = 10;
+  const offset = (params.page - 1) * limit;
+
+  let tableData: any[] = [];
+  let totalPages = 1;
+
+  if (params.tab === "payouts") {
+    let query = supabase.from("owner_payouts").select(
+      `
+        payout_id, period_start, period_end, net_payout, status, created_at,
+        car_owner:car_owner_id(users(full_name))
+      `,
+      { count: "exact" },
+    );
+
+    if (params.search) {
+      query = query.ilike("car_owner.users.full_name", `%${params.search}%`);
+    }
+
+    const { data, count } = await query
+      .order("created_at", { ascending: false })
+      .range(offset, offset + limit - 1);
+
+    tableData = data || [];
+    totalPages = Math.ceil((count || 0) / limit) || 1;
+  } else {
+    // Operational tab
+    let query = supabase
+      .from("financial_transactions")
+      .select("*", { count: "exact" })
+      .eq("transaction_type", "EXPENSE")
+      .neq("category", "OWNER_PAYOUT");
+
+    if (params.search) {
+      query = query.ilike("notes", `%${params.search}%`);
+    }
+
+    const { data, count } = await query
+      .order("transaction_date", { ascending: false })
+      .range(offset, offset + limit - 1);
+
+    tableData = data || [];
+    totalPages = Math.ceil((count || 0) / limit) || 1;
+  }
+
+  return { tableData, totalPages };
 }
 
 export async function logManualExpense(input: {
@@ -108,12 +143,15 @@ export async function logManualExpense(input: {
   car_id?: string;
   booking_id?: string;
   chargeToOwner?: boolean;
-}): Promise<ActionState> {
+}) {
   const supabase = await createClient();
+
+  // FORMATTER: Forces UPPERCASE and replaces spaces with underscores
+  const formattedCategory = input.category.toUpperCase().replace(/\s+/g, "_");
 
   const { error } = await supabase.rpc("log_manual_expense", {
     p_amount: input.amount,
-    p_category: input.category,
+    p_category: formattedCategory,
     p_notes: input.notes,
     p_car_id: input.car_id || null,
     p_booking_id: input.booking_id || null,

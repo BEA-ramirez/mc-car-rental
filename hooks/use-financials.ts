@@ -12,27 +12,16 @@ import {
   generateOwnerPayout,
   logManualExpense,
   markPayoutAsPaid,
-  getFinancialDashboardData,
+  getExpenseTableData,
+  getExpenseWidgets,
   getPayoutBreakdown,
 } from "@/actions/financials";
-
-// Placeholder for your future fetch function when you display the ledger table
-// const fetchFinancialsList = async (page: number, limit: number, type: string) => { ... }
 
 export const useFinancials = () => {
   const queryClient = useQueryClient();
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
   const [filterType, setFilterType] = useState("All"); // e.g., 'INCOME', 'EXPENSE'
-
-  // Placeholder query for when you build the table UI
-  /*
-  const query = useQuery({
-    queryKey: ["financials", page, limit, filterType],
-    queryFn: () => fetchFinancialsList(page, limit, filterType),
-    placeholderData: keepPreviousData,
-  });
-  */
 
   const generatePayoutMutation = useMutation({
     mutationFn: async ({
@@ -58,21 +47,15 @@ export const useFinancials = () => {
     onError: (err) => toast.error(err.message),
   });
 
-  const dashboardQuery = useQuery({
-    queryKey: ["financial-dashboard"],
-    queryFn: async () => {
-      const res = await getFinancialDashboardData();
-      return res;
-    },
-    staleTime: 30 * 1000, // 30 seconds
-  });
-
   const logExpenseMutation = useMutation({
     mutationFn: logManualExpense,
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
       if (data.success) {
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: ["expense-widgets"] }),
+          queryClient.invalidateQueries({ queryKey: ["expense-widgets"] }),
+        ]);
         toast.success(data.message);
-        queryClient.invalidateQueries({ queryKey: ["financial-dashboard"] });
       } else {
         toast.error(data.message);
       }
@@ -82,10 +65,13 @@ export const useFinancials = () => {
 
   const markPaidMutation = useMutation({
     mutationFn: markPayoutAsPaid,
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
       if (data.success) {
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: ["expense-widgets"] }),
+          queryClient.invalidateQueries({ queryKey: ["expense-widgets"] }),
+        ]);
         toast.success(data.message);
-        queryClient.invalidateQueries({ queryKey: ["financial-dashboard"] });
       } else {
         toast.error(data.message);
       }
@@ -103,8 +89,6 @@ export const useFinancials = () => {
     setLimit,
     filterType,
     setFilterType,
-    data: dashboardQuery.data,
-    isLoading: dashboardQuery.isLoading,
     logExpense: logExpenseMutation.mutateAsync,
     isLogging: logExpenseMutation.isPending,
     markAsPaid: markPaidMutation.mutateAsync,
@@ -122,3 +106,25 @@ export const usePayoutDetails = (payoutId: string | null) => {
     staleTime: 60 * 1000,
   });
 };
+
+export function useExpenseWidgets() {
+  return useQuery({
+    queryKey: ["expense-widgets"],
+    queryFn: async () => await getExpenseWidgets(),
+    staleTime: 60 * 1000,
+  });
+}
+
+export function useExpenseTable(params: {
+  tab: string;
+  page: number;
+  search?: string;
+  sort?: string;
+}) {
+  return useQuery({
+    queryKey: ["expense-table", params],
+    queryFn: async () => await getExpenseTableData(params),
+    placeholderData: keepPreviousData,
+    staleTime: 30 * 1000,
+  });
+}
