@@ -1,14 +1,12 @@
 "use client";
 
 import React, { useState } from "react";
+import { useSearchParams } from "next/navigation";
 import {
   ArrowUpRight,
   ArrowDownRight,
   TrendingUp,
   HandCoins,
-  Search,
-  Filter,
-  Download,
   Plus,
   ChevronRight,
   CreditCard,
@@ -24,11 +22,15 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 
+import { TableToolbar } from "../table/table-toolbar";
+import { SortableHead } from "../table/sortable-header";
+import { TablePagination } from "../table-pagination";
+import { useUrlParams } from "../../../hooks/use-url-params";
+
 import BookingIncomeBreakdownModal from "./booking-income-breakdown";
 import LogIncomeModal from "./log-income-modal";
-import { useIncomes } from "../../../hooks/use-incomes";
+import { useIncomeWidgets, useIncomeTable } from "../../../hooks/use-incomes";
 
-// Helper component for Month-over-Month trends
 const TrendIndicator = ({
   value,
   invertColors = false,
@@ -43,15 +45,10 @@ const TrendIndicator = ({
       </span>
     );
   }
-
   const isPositive = value > 0;
-
-  // Standard: Up = Green, Down = Red.
-  // Inverted (for debt): Up = Red, Down = Green.
   let colorClass = isPositive ? "text-emerald-500" : "text-destructive";
-  if (invertColors) {
+  if (invertColors)
     colorClass = isPositive ? "text-destructive" : "text-emerald-500";
-  }
 
   return (
     <div
@@ -74,18 +71,29 @@ const TrendIndicator = ({
 };
 
 export default function IncomesMain() {
-  const [activeTab, setActiveTab] = useState("booking_income");
+  const searchParams = useSearchParams();
+  const { setUrlParams } = useUrlParams();
 
-  const { data, isLoading } = useIncomes();
+  const activeTab = searchParams.get("tab") || "booking_income";
+  const currentPage = Number(searchParams.get("page")) || 1;
+
+  const { data: widgetData, isLoading: isWidgetsLoading } = useIncomeWidgets();
+
+  const { data: tablePayload, isFetching: isTableFetching } = useIncomeTable({
+    tab: activeTab,
+    page: currentPage,
+    search: searchParams.get("search") || "",
+    sort: searchParams.get("sort") || "",
+    method: searchParams.get("method") || "",
+  });
 
   const [folioConfig, setFolioConfig] = useState<{
     id: string;
     action: "none" | "payment" | "charge" | "refund";
   } | null>(null);
-
   const [isLogIncomeOpen, setIsLogIncomeOpen] = useState(false);
 
-  if (isLoading) {
+  if (isWidgetsLoading) {
     return (
       <div className="flex h-full w-full items-center justify-center bg-background transition-colors">
         <div className="flex flex-col items-center gap-2 text-muted-foreground">
@@ -98,20 +106,32 @@ export default function IncomesMain() {
     );
   }
 
-  // Fallbacks now include growth percentages expected from the backend
-  const kpis = data?.kpis || {
+  const kpis = widgetData?.kpis || {
     grossRevenue: 0,
-    grossRevenueGrowth: 0, // e.g. 12.5 or -5.2
+    grossRevenueGrowth: 0,
     outstandingReceivables: 0,
     outstandingReceivablesGrowth: 0,
     ancillaryIncome: 0,
     ancillaryIncomeGrowth: 0,
   };
+  const awaitingPayment = widgetData?.awaitingPayment || [];
 
-  const awaitingPayment = data?.awaitingPayment || [];
-  const recentPayments = data?.recentPayments || [];
-  const deposits = data?.deposits || [];
-  const miscIncome = data?.miscIncome || [];
+  const tableData = tablePayload?.tableData || [];
+  const totalPages = tablePayload?.totalPages || 1;
+
+  const recentPayments = activeTab === "booking_income" ? tableData : [];
+  const deposits = activeTab === "security_deposits" ? tableData : [];
+  const miscIncome = activeTab === "misc_income" ? tableData : [];
+
+  const handleTabChange = (val: string) => {
+    setUrlParams({
+      tab: val,
+      page: "1",
+      search: null,
+      sort: null,
+      method: null,
+    });
+  };
 
   return (
     <div className="flex flex-col h-full bg-background font-sans transition-colors duration-300">
@@ -119,7 +139,6 @@ export default function IncomesMain() {
         <div className="max-w-[1400px] mx-auto pt-0 p-4 md:p-5 space-y-5">
           {/* --- KPI PULSE CARDS --- */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {/* Gross Revenue Card */}
             <div className="bg-card border border-border p-4 rounded-xl shadow-sm flex items-start gap-4 transition-colors">
               <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center shrink-0 transition-colors mt-0.5">
                 <TrendingUp className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
@@ -135,7 +154,6 @@ export default function IncomesMain() {
               </div>
             </div>
 
-            {/* Outstanding Receivables Card */}
             <div className="bg-card border border-border p-4 rounded-xl shadow-sm flex items-start gap-4 transition-colors">
               <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center shrink-0 transition-colors mt-0.5">
                 <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-400" />
@@ -147,7 +165,6 @@ export default function IncomesMain() {
                 <span className="text-2xl font-black text-foreground tracking-tight font-mono leading-none mt-1">
                   ₱ {Number(kpis.outstandingReceivables).toLocaleString()}
                 </span>
-                {/* invertColors is true: an increase in debt is bad (red) */}
                 <TrendIndicator
                   value={kpis.outstandingReceivablesGrowth}
                   invertColors={true}
@@ -155,7 +172,6 @@ export default function IncomesMain() {
               </div>
             </div>
 
-            {/* Ancillary Income Card */}
             <div className="bg-card border border-border p-4 rounded-xl shadow-sm flex items-start justify-between transition-colors">
               <div className="flex items-start gap-4">
                 <div className="w-10 h-10 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center shrink-0 transition-colors mt-0.5">
@@ -186,12 +202,13 @@ export default function IncomesMain() {
           <div className="grid grid-cols-1 xl:grid-cols-3 gap-5">
             {/* LEFT COLUMN: MAIN REGISTRY */}
             <div className="xl:col-span-2 space-y-4">
-              <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden flex flex-col min-h-[500px] transition-colors">
-                {/* Tabs Header */}
-                <div className="border-b border-border bg-secondary/30 px-3 pt-2 flex items-center justify-between transition-colors">
+              {/* NOTE THE HEIGHT FIX HERE: h-[650px] locks the card size */}
+              <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden flex flex-col h-[650px] transition-colors">
+                {/* 1. TABS HEADER (Shrinks to fit) */}
+                <div className="border-b border-border bg-secondary/30 px-3 pt-2 flex items-center justify-between shrink-0 transition-colors">
                   <Tabs
                     value={activeTab}
-                    onValueChange={setActiveTab}
+                    onValueChange={handleTabChange}
                     className="w-full"
                   >
                     <TabsList className="bg-transparent h-9 p-0 flex gap-4 border-b-0 justify-start w-full">
@@ -217,262 +234,363 @@ export default function IncomesMain() {
                   </Tabs>
                 </div>
 
-                {/* Toolbar */}
-                <div className="p-3 border-b border-border flex gap-2 bg-card transition-colors">
-                  <div className="relative flex-1 max-w-sm">
-                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                    <input
-                      type="text"
-                      placeholder="Search records..."
-                      className="w-full h-8 pl-8 pr-3 text-[11px] font-medium bg-secondary border border-border rounded-lg focus:outline-none focus:ring-1 focus:ring-primary text-foreground placeholder:text-muted-foreground transition-colors shadow-none"
+                {/* 2. DYNAMIC TOOLBAR (Shrinks to fit) */}
+                <div className="px-4 border-b border-border bg-card shrink-0 transition-colors">
+                  {activeTab === "booking_income" && (
+                    <TableToolbar
+                      searchPlaceholder="Search Booking ID or Payment ID..."
+                      filterKey="method"
+                      filterOptions={[
+                        { label: "GCash", value: "GCash" },
+                        { label: "Cash", value: "Cash" },
+                        { label: "Bank Transfer", value: "Bank Transfer" },
+                      ]}
                     />
-                  </div>
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="h-8 text-[11px] font-semibold rounded-lg border-border text-foreground bg-card hover:bg-secondary transition-colors"
-                    >
-                      <Filter className="w-3.5 h-3.5 mr-1.5" /> Filter
-                    </Button>
-                  </div>
+                  )}
+                  {activeTab === "security_deposits" && (
+                    <TableToolbar searchPlaceholder="Search Customer or Booking ID..." />
+                  )}
+                  {activeTab === "misc_income" && (
+                    <TableToolbar searchPlaceholder="Search Description..." />
+                  )}
                 </div>
 
-                {/* Table View */}
-                <div className="flex-1 bg-background transition-colors">
+                {/* 3. TABLE VIEW (Fills remaining space securely) */}
+                <div
+                  className={cn(
+                    "flex-1 bg-background flex flex-col overflow-hidden transition-opacity duration-300",
+                    isTableFetching
+                      ? "opacity-50 pointer-events-none"
+                      : "opacity-100",
+                  )}
+                >
                   {/* TAB 1: BOOKING INCOME */}
                   {activeTab === "booking_income" && (
-                    <div className="divide-y divide-border">
-                      <div className="grid grid-cols-[1.5fr_2fr_1.5fr_1fr_1fr] p-2.5 px-4 text-[9px] font-bold text-muted-foreground uppercase tracking-widest bg-secondary/50 transition-colors">
-                        <div>Transaction</div>
+                    <>
+                      {/* Fixed Header Row */}
+                      <div className="grid grid-cols-[1.5fr_2fr_1.5fr_1fr_1fr] p-2.5 px-4 text-[9px] font-bold text-muted-foreground uppercase tracking-widest bg-secondary/50 border-b border-border shrink-0 transition-colors">
+                        <SortableHead label="Transaction" sortKey="paid_at" />
                         <div>Customer / Ref</div>
-                        <div>Status</div>
+                        <SortableHead label="Status" sortKey="status" />
                         <div>Method</div>
-                        <div className="text-right">Amount</div>
+                        <SortableHead
+                          label="Amount"
+                          sortKey="amount"
+                          className="text-right justify-end"
+                        />
                       </div>
-                      {recentPayments.map((inc: any) => (
-                        <div
-                          key={inc.payment_id}
-                          className="grid grid-cols-[1.5fr_2fr_1.5fr_1fr_1fr] p-2.5 px-4 items-center hover:bg-secondary/30 cursor-pointer transition-colors group"
-                          onClick={() =>
-                            setFolioConfig({
-                              id: inc.bookings?.booking_id,
-                              action: "none",
-                            })
-                          }
-                        >
-                          <div className="flex flex-col pr-2">
-                            <span className="text-[10px] font-bold text-foreground font-mono group-hover:text-primary transition-colors truncate">
-                              {inc.payment_id.split("-")[0]}...
-                            </span>
-                            <span className="text-[9px] font-medium text-muted-foreground mt-0.5 uppercase tracking-widest">
-                              {format(new Date(inc.paid_at), "MMM dd, yyyy")}
-                            </span>
-                          </div>
-                          <div className="flex flex-col pr-2">
-                            <span className="text-[11px] font-bold text-foreground truncate">
-                              {inc.bookings?.users?.full_name}
-                            </span>
-                            <span className="text-[9px] font-medium text-muted-foreground font-mono mt-0.5 truncate uppercase tracking-widest">
-                              {inc.bookings?.booking_id.split("-")[0]}
-                            </span>
-                          </div>
-                          <div>
-                            <Badge
-                              variant="outline"
-                              className="text-[8px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border-emerald-500/20 px-1.5 py-0 h-4 rounded uppercase tracking-widest"
+
+                      {/* Scrollable Data Rows */}
+                      <div className="flex-1 overflow-y-auto custom-scrollbar">
+                        <div className="divide-y divide-border">
+                          {recentPayments.map((inc: any) => (
+                            <div
+                              key={inc.payment_id}
+                              className="grid grid-cols-[1.5fr_2fr_1.5fr_1fr_1fr] p-3 px-4 items-center hover:bg-secondary/30 cursor-pointer transition-colors group"
+                              onClick={() =>
+                                setFolioConfig({
+                                  id: inc.bookings?.booking_id,
+                                  action: "none",
+                                })
+                              }
                             >
-                              {inc.status}
-                            </Badge>
-                          </div>
-                          <div>
-                            <span className="text-[10px] font-medium text-muted-foreground flex items-center gap-1.5">
-                              {inc.payment_method === "Cash" ? (
-                                <Banknote className="w-3 h-3" />
-                              ) : (
-                                <CreditCard className="w-3 h-3" />
-                              )}
-                              {inc.payment_method}
-                            </span>
-                          </div>
-                          <div className="text-right text-[11px] font-bold text-emerald-600 dark:text-emerald-400 font-mono">
-                            + ₱ {Number(inc.amount).toLocaleString()}
-                          </div>
+                              <div className="flex flex-col pr-2">
+                                <span className="text-[10px] font-bold text-foreground font-mono group-hover:text-primary transition-colors truncate">
+                                  {inc.payment_id.split("-")[0]}...
+                                </span>
+                                <span className="text-[9px] font-medium text-muted-foreground mt-0.5 uppercase tracking-widest">
+                                  {format(
+                                    new Date(inc.paid_at),
+                                    "MMM dd, yyyy",
+                                  )}
+                                </span>
+                              </div>
+                              <div className="flex flex-col pr-2">
+                                <span className="text-[11px] font-bold text-foreground truncate">
+                                  {inc.bookings?.users?.full_name}
+                                </span>
+                                <span className="text-[9px] font-medium text-muted-foreground font-mono mt-0.5 truncate uppercase tracking-widest">
+                                  {inc.bookings?.booking_id.split("-")[0]}
+                                </span>
+                              </div>
+                              <div>
+                                <Badge
+                                  variant="outline"
+                                  className={cn(
+                                    "text-[8px] font-bold px-1.5 py-0 h-4 rounded uppercase tracking-widest",
+                                    inc.status === "COMPLETED"
+                                      ? "text-emerald-600 bg-emerald-500/10 border-emerald-500/20"
+                                      : "text-destructive bg-destructive/10 border-destructive/20",
+                                  )}
+                                >
+                                  {inc.status}
+                                </Badge>
+                              </div>
+                              <div>
+                                <span className="text-[10px] font-medium text-muted-foreground flex items-center gap-1.5">
+                                  {inc.payment_method === "Cash" ? (
+                                    <Banknote className="w-3 h-3" />
+                                  ) : (
+                                    <CreditCard className="w-3 h-3" />
+                                  )}
+                                  {inc.payment_method}
+                                </span>
+                              </div>
+                              <div
+                                className={cn(
+                                  "text-right text-[11px] font-bold font-mono",
+                                  inc.amount < 0
+                                    ? "text-indigo-600"
+                                    : "text-emerald-600 dark:text-emerald-400",
+                                )}
+                              >
+                                {inc.amount < 0 ? "- ₱ " : "+ ₱ "}{" "}
+                                {Math.abs(Number(inc.amount)).toLocaleString()}
+                              </div>
+                            </div>
+                          ))}
+
+                          {recentPayments.length === 0 && (
+                            <div className="p-8 text-center text-[10px] font-medium text-muted-foreground uppercase tracking-widest">
+                              No recent payments found.
+                            </div>
+                          )}
                         </div>
-                      ))}
-                      {recentPayments.length === 0 && (
-                        <div className="p-8 text-center text-[10px] font-medium text-muted-foreground uppercase tracking-widest">
-                          No recent payments.
-                        </div>
-                      )}
-                    </div>
+                      </div>
+
+                      {/* Pagination Pinned to Bottom */}
+                      <div className="shrink-0 border-t border-border">
+                        <TablePagination
+                          currentPage={currentPage}
+                          totalPages={totalPages}
+                          onPageChange={(page) =>
+                            setUrlParams({ page: page.toString() })
+                          }
+                        />
+                      </div>
+                    </>
                   )}
 
                   {/* TAB 2: SECURITY DEPOSITS */}
                   {activeTab === "security_deposits" && (
-                    <div className="divide-y divide-border">
-                      <div className="grid grid-cols-[1fr_2fr_1fr_1.5fr_1fr] p-2.5 px-4 text-[9px] font-bold text-muted-foreground uppercase tracking-widest bg-secondary/50 transition-colors">
-                        <div>Start Date</div>
+                    <>
+                      {/* Fixed Header Row */}
+                      <div className="grid grid-cols-[1fr_2fr_1fr_1.5fr_1fr] p-2.5 px-4 text-[9px] font-bold text-muted-foreground uppercase tracking-widest bg-secondary/50 border-b border-border shrink-0 transition-colors">
+                        <SortableHead label="Start Date" sortKey="start_date" />
                         <div>Customer / Ref</div>
-                        <div>Booking Status</div>
+                        <SortableHead
+                          label="Booking Status"
+                          sortKey="booking_status"
+                        />
                         <div>Deposit Status</div>
-                        <div className="text-right">Amount</div>
+                        <SortableHead
+                          label="Amount"
+                          sortKey="security_deposit"
+                          className="text-right justify-end"
+                        />
                       </div>
 
-                      {deposits.map((dep: any) => {
-                        const refundCharges =
-                          dep.booking_charges?.filter(
-                            (c: any) => c.category === "DEPOSIT_REFUND",
-                          ) || [];
-                        const totalRefunded = Math.abs(
-                          refundCharges.reduce(
-                            (sum: number, c: any) => sum + Number(c.amount),
-                            0,
-                          ),
-                        );
+                      {/* Scrollable Data Rows */}
+                      <div className="flex-1 overflow-y-auto custom-scrollbar">
+                        <div className="divide-y divide-border">
+                          {deposits.map((dep: any) => {
+                            const refundCharges =
+                              dep.booking_charges?.filter(
+                                (c: any) => c.category === "DEPOSIT_REFUND",
+                              ) || [];
+                            const totalRefunded = Math.abs(
+                              refundCharges.reduce(
+                                (sum: number, c: any) => sum + Number(c.amount),
+                                0,
+                              ),
+                            );
 
-                        let depositStatus = "Held";
-                        let statusColor =
-                          "bg-secondary text-muted-foreground border-border";
+                            let depositStatus = "Held";
+                            let statusColor =
+                              "bg-secondary text-muted-foreground border-border";
 
-                        if (totalRefunded >= Number(dep.security_deposit)) {
-                          depositStatus = "Refunded";
-                          statusColor =
-                            "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20";
-                        } else if (totalRefunded > 0) {
-                          depositStatus = "Partially Refunded";
-                          statusColor =
-                            "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20";
-                        } else if (dep.booking_status === "COMPLETED") {
-                          depositStatus = "Pending Action";
-                          statusColor =
-                            "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20";
-                        }
-
-                        return (
-                          <div
-                            key={dep.booking_id}
-                            className="grid grid-cols-[1fr_2fr_1fr_1.5fr_1fr] p-2.5 px-4 items-center hover:bg-secondary/30 cursor-pointer transition-colors group"
-                            onClick={() =>
-                              setFolioConfig({
-                                id: dep.booking_id,
-                                action: "none",
-                              })
+                            if (totalRefunded >= Number(dep.security_deposit)) {
+                              depositStatus = "Refunded";
+                              statusColor =
+                                "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20";
+                            } else if (totalRefunded > 0) {
+                              depositStatus = "Partially Refunded";
+                              statusColor =
+                                "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20";
+                            } else if (dep.booking_status === "COMPLETED") {
+                              depositStatus = "Pending Action";
+                              statusColor =
+                                "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20";
                             }
-                          >
-                            <div className="flex flex-col">
-                              <span className="text-[10px] font-bold text-foreground">
-                                {format(
-                                  new Date(dep.start_date),
-                                  "MMM dd, yyyy",
-                                )}
-                              </span>
-                            </div>
-                            <div className="flex flex-col pr-4">
-                              <span className="text-[11px] font-bold text-foreground truncate">
-                                {dep.users?.full_name}
-                              </span>
-                              <span className="text-[9px] font-medium text-muted-foreground mt-0.5 font-mono uppercase tracking-widest truncate">
-                                {dep.booking_id.split("-")[0]}
-                              </span>
-                            </div>
-                            <div>
-                              <Badge
-                                variant="outline"
-                                className="text-[8px] font-bold h-4 px-1.5 rounded uppercase tracking-widest bg-secondary text-muted-foreground border-border"
+
+                            return (
+                              <div
+                                key={dep.booking_id}
+                                className="grid grid-cols-[1fr_2fr_1fr_1.5fr_1fr] p-3 px-4 items-center hover:bg-secondary/30 cursor-pointer transition-colors group"
+                                onClick={() =>
+                                  setFolioConfig({
+                                    id: dep.booking_id,
+                                    action: "none",
+                                  })
+                                }
                               >
-                                {dep.booking_status}
-                              </Badge>
+                                <div className="flex flex-col">
+                                  <span className="text-[10px] font-bold text-foreground group-hover:text-primary transition-colors">
+                                    {format(
+                                      new Date(dep.start_date),
+                                      "MMM dd, yyyy",
+                                    )}
+                                  </span>
+                                </div>
+                                <div className="flex flex-col pr-4">
+                                  <span className="text-[11px] font-bold text-foreground truncate">
+                                    {dep.users?.full_name}
+                                  </span>
+                                  <span className="text-[9px] font-medium text-muted-foreground mt-0.5 font-mono uppercase tracking-widest truncate">
+                                    {dep.booking_id.split("-")[0]}
+                                  </span>
+                                </div>
+                                <div>
+                                  <Badge
+                                    variant="outline"
+                                    className="text-[8px] font-bold h-4 px-1.5 rounded uppercase tracking-widest bg-secondary text-muted-foreground border-border"
+                                  >
+                                    {dep.booking_status}
+                                  </Badge>
+                                </div>
+                                <div>
+                                  <Badge
+                                    variant="outline"
+                                    className={cn(
+                                      "text-[8px] font-bold h-4 px-1.5 rounded uppercase tracking-widest",
+                                      statusColor,
+                                    )}
+                                  >
+                                    {depositStatus}
+                                  </Badge>
+                                </div>
+                                <div className="text-right text-[11px] font-bold text-foreground font-mono">
+                                  ₱{" "}
+                                  {Number(
+                                    dep.security_deposit,
+                                  ).toLocaleString()}
+                                </div>
+                              </div>
+                            );
+                          })}
+
+                          {deposits.length === 0 && (
+                            <div className="p-8 text-center text-[10px] font-medium text-muted-foreground uppercase tracking-widest">
+                              No security deposits found.
                             </div>
-                            <div>
-                              <Badge
-                                variant="outline"
-                                className={cn(
-                                  "text-[8px] font-bold h-4 px-1.5 rounded uppercase tracking-widest",
-                                  statusColor,
-                                )}
-                              >
-                                {depositStatus}
-                              </Badge>
-                            </div>
-                            <div className="text-right text-[11px] font-bold text-foreground font-mono">
-                              ₱ {Number(dep.security_deposit).toLocaleString()}
-                            </div>
-                          </div>
-                        );
-                      })}
-                      {deposits.length === 0 && (
-                        <div className="p-8 text-center text-[10px] font-medium text-muted-foreground uppercase tracking-widest">
-                          No active deposits.
+                          )}
                         </div>
-                      )}
-                    </div>
+                      </div>
+
+                      {/* Pagination Pinned to Bottom */}
+                      <div className="shrink-0 border-t border-border">
+                        <TablePagination
+                          currentPage={currentPage}
+                          totalPages={totalPages}
+                          onPageChange={(page) =>
+                            setUrlParams({ page: page.toString() })
+                          }
+                        />
+                      </div>
+                    </>
                   )}
 
                   {/* TAB 3: MISC INCOME */}
                   {activeTab === "misc_income" && (
-                    <div className="divide-y divide-border">
-                      <div className="grid grid-cols-[1fr_1fr_2fr_1fr] p-2.5 px-4 text-[9px] font-bold text-muted-foreground uppercase tracking-widest bg-secondary/50 transition-colors">
-                        <div>Date</div>
-                        <div>Category</div>
+                    <>
+                      {/* Fixed Header Row */}
+                      <div className="grid grid-cols-[1fr_1fr_2fr_1fr] p-2.5 px-4 text-[9px] font-bold text-muted-foreground uppercase tracking-widest bg-secondary/50 border-b border-border shrink-0 transition-colors">
+                        <SortableHead label="Date" sortKey="transaction_date" />
+                        <SortableHead label="Category" sortKey="category" />
                         <div>Description</div>
-                        <div className="text-right">Amount</div>
+                        <SortableHead
+                          label="Amount"
+                          sortKey="amount"
+                          className="text-right justify-end"
+                        />
                       </div>
-                      {miscIncome.map((txn: any) => (
-                        <div
-                          key={txn.transaction_id}
-                          className="grid grid-cols-[1fr_1fr_2fr_1fr] p-2.5 px-4 items-center hover:bg-secondary/30 transition-colors"
-                        >
-                          <div className="flex flex-col">
-                            <span className="text-[10px] font-bold text-foreground">
-                              {format(
-                                new Date(txn.transaction_date),
-                                "MMM dd, yyyy",
-                              )}
-                            </span>
-                            <span className="text-[9px] font-medium text-muted-foreground font-mono mt-0.5 uppercase tracking-widest">
-                              {txn.transaction_id.split("-")[0]}
-                            </span>
-                          </div>
-                          <div>
-                            <Badge
-                              variant="outline"
-                              className="text-[8px] font-bold bg-secondary text-muted-foreground border-border px-1.5 py-0 h-4 rounded uppercase tracking-widest"
+
+                      {/* Scrollable Data Rows */}
+                      <div className="flex-1 overflow-y-auto custom-scrollbar">
+                        <div className="divide-y divide-border">
+                          {miscIncome.map((txn: any) => (
+                            <div
+                              key={txn.transaction_id}
+                              className="grid grid-cols-[1fr_1fr_2fr_1fr] p-3 px-4 items-center hover:bg-secondary/30 transition-colors"
                             >
-                              {txn.category.replace("_", " ")}
-                            </Badge>
-                          </div>
-                          <div className="text-[10px] font-medium text-muted-foreground truncate pr-4">
-                            {txn.notes}
-                          </div>
-                          <div className="text-right text-[11px] font-bold text-emerald-600 dark:text-emerald-400 font-mono">
-                            + ₱ {Number(txn.amount).toLocaleString()}
-                          </div>
+                              <div className="flex flex-col">
+                                <span className="text-[10px] font-bold text-foreground">
+                                  {format(
+                                    new Date(txn.transaction_date),
+                                    "MMM dd, yyyy",
+                                  )}
+                                </span>
+                                <span className="text-[9px] font-medium text-muted-foreground font-mono mt-0.5 uppercase tracking-widest">
+                                  {txn.transaction_id.split("-")[0]}
+                                </span>
+                              </div>
+                              <div>
+                                <Badge
+                                  variant="outline"
+                                  className="text-[8px] font-bold bg-secondary text-muted-foreground border-border px-1.5 py-0 h-4 rounded uppercase tracking-widest"
+                                >
+                                  {txn.category.replace(/_/g, " ")}
+                                </Badge>
+                              </div>
+                              <div className="text-[10px] font-medium text-muted-foreground truncate pr-4">
+                                {txn.notes || "-"}
+                              </div>
+                              <div className="text-right text-[11px] font-bold text-emerald-600 dark:text-emerald-400 font-mono">
+                                + ₱ {Number(txn.amount).toLocaleString()}
+                              </div>
+                            </div>
+                          ))}
+
+                          {miscIncome.length === 0 && (
+                            <div className="p-10 flex flex-col items-center justify-center text-muted-foreground space-y-2">
+                              <Banknote className="w-8 h-8 opacity-20" />
+                              <span className="text-[10px] font-medium uppercase tracking-widest">
+                                No miscellaneous income records.
+                              </span>
+                            </div>
+                          )}
                         </div>
-                      ))}
-                      {miscIncome.length === 0 && (
-                        <div className="p-10 flex flex-col items-center justify-center text-muted-foreground space-y-2">
-                          <Banknote className="w-8 h-8 opacity-20" />
-                          <span className="text-[10px] font-medium uppercase tracking-widest">
-                            No miscellaneous income records.
-                          </span>
-                        </div>
-                      )}
-                    </div>
+                      </div>
+
+                      {/* Pagination Pinned to Bottom */}
+                      <div className="shrink-0 border-t border-border">
+                        <TablePagination
+                          currentPage={currentPage}
+                          totalPages={totalPages}
+                          onPageChange={(page) =>
+                            setUrlParams({ page: page.toString() })
+                          }
+                        />
+                      </div>
+                    </>
                   )}
                 </div>
               </div>
             </div>
 
             {/* RIGHT COLUMN: ACTION QUEUE (Collections) */}
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
+            {/* 1. Added h-[650px] and flex-col to perfectly match the left column's height */}
+            <div className="flex flex-col h-[650px]">
+              {/* Optional Header (If you want the cards to align perfectly at the top, you can remove this div, but we will keep it and let flex-1 handle the math) */}
+              <div className="flex items-center justify-between shrink-0 mb-3">
                 <h2 className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
                   Awaiting Payment
                 </h2>
               </div>
 
-              <div className="bg-card border border-border rounded-xl shadow-sm flex flex-col overflow-hidden transition-colors">
+              {/* 2. Added flex-1 to stretch the card to the bottom of the 650px container */}
+              <div className="bg-card border border-border rounded-xl shadow-sm flex flex-col flex-1 overflow-hidden transition-colors">
+                {/* Card Header (Shrinks to fit) */}
                 <div className="bg-secondary/50 border-b border-border px-4 py-2.5 flex justify-between items-center shrink-0 transition-colors">
                   <span className="text-[10px] font-bold text-foreground uppercase tracking-widest">
                     Collection Queue
@@ -485,88 +603,94 @@ export default function IncomesMain() {
                   </Badge>
                 </div>
 
-                <div className="divide-y divide-border">
-                  {awaitingPayment.map((bkg: any) => (
-                    <div
-                      key={bkg.id}
-                      className={cn(
-                        "p-3 flex flex-col gap-2 hover:bg-secondary/30 transition-colors",
-                        bkg.is_overdue ? "bg-destructive/5" : "",
-                      )}
-                    >
-                      <div className="flex justify-between items-start">
-                        <div className="flex flex-col">
-                          <div className="flex items-center gap-2">
-                            <span className="text-[11px] font-bold text-foreground">
-                              {bkg.customer}
+                {/* 3. The Scrollable List Area */}
+                <div className="flex-1 overflow-y-auto custom-scrollbar">
+                  <div className="divide-y divide-border">
+                    {awaitingPayment.map((bkg: any) => (
+                      <div
+                        key={bkg.id}
+                        className={cn(
+                          "p-3 flex flex-col gap-2 hover:bg-secondary/30 transition-colors",
+                          bkg.is_overdue ? "bg-destructive/5" : "",
+                        )}
+                      >
+                        <div className="flex justify-between items-start">
+                          <div className="flex flex-col">
+                            <div className="flex items-center gap-2">
+                              <span className="text-[11px] font-bold text-foreground">
+                                {bkg.customer}
+                              </span>
+                              {bkg.is_overdue && (
+                                <Badge
+                                  variant="outline"
+                                  className="h-4 px-1 text-[8px] uppercase tracking-widest text-destructive border-destructive/20 bg-destructive/10 font-bold"
+                                >
+                                  Overdue
+                                </Badge>
+                              )}
+                            </div>
+                            <span className="text-[9px] font-medium text-muted-foreground mt-0.5 uppercase tracking-widest">
+                              Ref:{" "}
+                              <span className="font-mono">
+                                {bkg.id.split("-")[0]}
+                              </span>{" "}
+                              • {bkg.car}
                             </span>
-                            {bkg.is_overdue && (
-                              <Badge
-                                variant="outline"
-                                className="h-4 px-1 text-[8px] uppercase tracking-widest text-destructive border-destructive/20 bg-destructive/10 font-bold"
-                              >
-                                Overdue
-                              </Badge>
-                            )}
                           </div>
-                          <span className="text-[9px] font-medium text-muted-foreground mt-0.5 uppercase tracking-widest">
-                            Ref:{" "}
-                            <span className="font-mono">
-                              {bkg.id.split("-")[0]}
-                            </span>{" "}
-                            • {bkg.car}
-                          </span>
                         </div>
-                      </div>
 
-                      <div className="flex items-center justify-between pt-1">
-                        <div className="flex flex-col">
-                          <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">
-                            Balance Due
-                          </span>
-                          <span
-                            className={cn(
-                              "text-[11px] font-bold font-mono",
-                              bkg.is_overdue
-                                ? "text-destructive"
-                                : "text-amber-600 dark:text-amber-400",
-                            )}
-                          >
-                            ₱ {Number(bkg.due).toLocaleString()}
-                          </span>
-                        </div>
-                        <div className="flex gap-1.5">
-                          <Button
-                            variant="outline"
-                            size="icon"
-                            className="h-7 w-7 rounded-lg border-border bg-card text-muted-foreground hover:text-foreground hover:bg-secondary shadow-none transition-colors"
-                            onClick={() =>
-                              setFolioConfig({ id: bkg.id, action: "none" })
-                            }
-                            title="View Folio"
-                          >
-                            <Receipt className="w-3 h-3" />
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="h-7 text-[9px] font-bold uppercase tracking-widest border-border bg-card rounded-lg text-foreground hover:bg-secondary shadow-none transition-colors"
-                            onClick={() =>
-                              setFolioConfig({ id: bkg.id, action: "payment" })
-                            }
-                          >
-                            Collect{" "}
-                            <ChevronRight className="w-3 h-3 ml-1 text-muted-foreground" />
-                          </Button>
+                        <div className="flex items-center justify-between pt-1">
+                          <div className="flex flex-col">
+                            <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">
+                              Balance Due
+                            </span>
+                            <span
+                              className={cn(
+                                "text-[11px] font-bold font-mono",
+                                bkg.is_overdue
+                                  ? "text-destructive"
+                                  : "text-amber-600 dark:text-amber-400",
+                              )}
+                            >
+                              ₱ {Number(bkg.due).toLocaleString()}
+                            </span>
+                          </div>
+                          <div className="flex gap-1.5">
+                            <Button
+                              variant="outline"
+                              size="icon"
+                              className="h-7 w-7 rounded-lg border-border bg-card text-muted-foreground hover:text-foreground hover:bg-secondary shadow-none transition-colors"
+                              onClick={() =>
+                                setFolioConfig({ id: bkg.id, action: "none" })
+                              }
+                              title="View Folio"
+                            >
+                              <Receipt className="w-3 h-3" />
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-7 text-[9px] font-bold uppercase tracking-widest border-border bg-card rounded-lg text-foreground hover:bg-secondary shadow-none transition-colors"
+                              onClick={() =>
+                                setFolioConfig({
+                                  id: bkg.id,
+                                  action: "payment",
+                                })
+                              }
+                            >
+                              Collect{" "}
+                              <ChevronRight className="w-3 h-3 ml-1 text-muted-foreground" />
+                            </Button>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
-                  {awaitingPayment.length === 0 && (
-                    <div className="p-6 text-center text-[10px] font-medium text-muted-foreground uppercase tracking-widest">
-                      No outstanding balances.
-                    </div>
-                  )}
+                    ))}
+                    {awaitingPayment.length === 0 && (
+                      <div className="p-6 text-center text-[10px] font-medium text-muted-foreground uppercase tracking-widest">
+                        No outstanding balances.
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>

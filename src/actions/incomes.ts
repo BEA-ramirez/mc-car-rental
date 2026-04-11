@@ -8,48 +8,11 @@ export type ActionState = {
   message: string;
 };
 
-// --- READ: Dashboard Data ---
-export async function getIncomeDashboardData() {
+export async function getIncomeWidgets() {
   const supabase = await createClient();
 
   const { data: kpis } = await supabase.rpc("get_income_kpis");
   const { data: awaitingPayment } = await supabase.rpc("get_collection_queue");
-
-  // Recent Booking Payments (Joined for context)
-  const { data: recentPayments } = await supabase
-    .from("booking_payments")
-    .select(
-      `
-      payment_id, amount, payment_method, transaction_reference, paid_at, status,
-      bookings(booking_id, users(full_name))
-    `,
-    )
-    .eq("status", "COMPLETED")
-    .order("paid_at", { ascending: false })
-    .limit(20);
-
-  // Security Deposits (Look for bookings with deposits > 0)
-  const { data: deposits } = await supabase
-    .from("bookings")
-    .select(
-      `
-      booking_id, start_date, security_deposit, booking_status,
-      users(full_name),
-      booking_charges(category, amount)
-    `,
-    )
-    .gt("security_deposit", 0)
-    .order("start_date", { ascending: false })
-    .limit(20);
-
-  // Misc Ledger Income
-  const { data: miscIncome } = await supabase
-    .from("financial_transactions")
-    .select("*")
-    .eq("transaction_type", "INCOME")
-    .is("booking_id", null)
-    .order("transaction_date", { ascending: false })
-    .limit(20);
 
   return {
     kpis: kpis || {
@@ -61,10 +24,92 @@ export async function getIncomeDashboardData() {
       ancillaryIncomeGrowth: 0,
     },
     awaitingPayment: awaitingPayment || [],
-    recentPayments: recentPayments || [],
-    deposits: deposits || [],
-    miscIncome: miscIncome || [],
   };
+}
+
+export async function getIncomeTableData(params?: {
+  tab?: string;
+  page?: number;
+  search?: string;
+  sort?: string;
+  method?: string;
+}) {
+  const supabase = await createClient();
+  const activeTab = params?.tab || "booking_income";
+  const page = params?.page || 1;
+  const limit = 10;
+  const offset = (page - 1) * limit;
+
+  // 1. Declare the unified variables that we will return at the end
+  let tableData: any[] = [];
+  let totalPages = 1;
+
+  if (activeTab === "booking_income") {
+    let query = supabase
+      .from("booking_payments")
+      .select(
+        `
+        payment_id, amount, payment_method, transaction_reference, paid_at, status,
+        bookings!inner(booking_id, users(full_name))
+      `,
+        { count: "exact" }, // Ask Supabase for the total count for pagination
+      )
+      .eq("status", "COMPLETED");
+
+    // Apply Search (Matches Payment ID or Booking ID)
+    if (params?.search) {
+      query = query.or(
+        `payment_id.ilike.%${params.search}%,bookings.booking_id.ilike.%${params.search}%`,
+      );
+    }
+
+    // Apply Filter (Payment Method)
+    if (params?.method && params.method !== "ALL") {
+      query = query.eq("payment_method", params.method);
+    }
+
+    // Apply Sorting
+    if (params?.sort) {
+      const [column, direction] = params.sort.split(".");
+      query = query.order(column, { ascending: direction === "asc" });
+    } else {
+      query = query.order("paid_at", { ascending: false }); // Default
+    }
+
+    // Apply Pagination and assign to our unified variables
+    const { data, count } = await query.range(offset, offset + limit - 1);
+    tableData = data || [];
+    totalPages = Math.ceil((count || 0) / limit) || 1;
+  } else if (activeTab === "security_deposits") {
+    // Note: Added { count: "exact" } and .range() so pagination works on this tab too!
+    const { data, count } = await supabase
+      .from("bookings")
+      .select(
+        `booking_id, start_date, security_deposit, booking_status, users(full_name), booking_charges(category, amount)`,
+        { count: "exact" },
+      )
+      .gt("security_deposit", 0)
+      .order("start_date", { ascending: false })
+      .range(offset, offset + limit - 1);
+
+    tableData = data || [];
+    totalPages = Math.ceil((count || 0) / limit) || 1;
+  } else if (activeTab === "misc_income") {
+    // Note: Added { count: "exact" } and .range() so pagination works on this tab too!
+    const { data, count } = await supabase
+      .from("financial_transactions")
+      .select("*", { count: "exact" })
+      .eq("transaction_type", "INCOME")
+      .is("booking_id", null)
+      .order("transaction_date", { ascending: false })
+      .range(offset, offset + limit - 1);
+
+    tableData = data || [];
+    totalPages = Math.ceil((count || 0) / limit) || 1;
+  }
+
+  // 2. Return the unified payload that React Query is expecting
+  return { tableData, totalPages };
 }
 
 // --- READ: Booking Folio Details ---

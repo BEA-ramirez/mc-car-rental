@@ -1,31 +1,34 @@
 "use client";
 
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import {
+  useQuery,
+  useMutation,
+  useQueryClient,
+  keepPreviousData,
+} from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
-  getIncomeDashboardData,
   getBookingFolio,
   recordBookingPayment,
   addBookingCharge,
   logMiscIncome,
-  refundSecurityDeposit,
   removeBookingChargeAction,
   voidBookingPaymentAction,
   issueBookingRefundAction,
+  getIncomeTableData,
+  getIncomeWidgets,
 } from "@/actions/incomes";
 
-export const useIncomes = () => {
-  const queryClient = useQueryClient();
+interface IncomeDashboardParams {
+  tab?: string;
+  page?: number;
+  search?: string;
+  sort?: string;
+  method?: string;
+}
 
-  // Fetch Dashboard Data
-  const dashboardQuery = useQuery({
-    queryKey: ["incomes-dashboard"],
-    queryFn: async () => {
-      const res = await getIncomeDashboardData();
-      return res;
-    },
-    staleTime: 30 * 1000,
-  });
+export const useIncomes = (params?: IncomeDashboardParams) => {
+  const queryClient = useQueryClient();
 
   // Mutation: Record Payment
   const recordPaymentMutation = useMutation({
@@ -134,9 +137,6 @@ export const useIncomes = () => {
   });
 
   return {
-    data: dashboardQuery.data,
-    isLoading: dashboardQuery.isLoading,
-
     recordPayment: recordPaymentMutation.mutateAsync,
     isRecordingPayment: recordPaymentMutation.isPending,
 
@@ -164,3 +164,28 @@ export const useBookingFolio = (bookingId: string | undefined | null) => {
     staleTime: 10 * 1000,
   });
 };
+
+export function useIncomeWidgets() {
+  return useQuery({
+    queryKey: ["incomes-widgets"],
+    queryFn: async () => await getIncomeWidgets(),
+    staleTime: 60 * 1000,
+  });
+}
+
+// 2. Hook for the Table (Fetches when URL params change)
+export function useIncomeTable(params: any) {
+  return useQuery({
+    queryKey: [
+      "incomes-table",
+      params.tab,
+      params.page,
+      params.search,
+      params.sort,
+      params.method,
+    ],
+    queryFn: async () => await getIncomeTableData(params),
+    placeholderData: keepPreviousData,
+    staleTime: 30 * 1000,
+  });
+}
