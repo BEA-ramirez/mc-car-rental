@@ -221,9 +221,17 @@ export async function logMiscIncome(input: {
 }): Promise<ActionState> {
   const supabase = await createClient();
 
+  // 1. Transform the category text here!
+  // "Asset Sale" -> "ASSET_SALE"
+  const formattedCategory = input.category
+    .trim()
+    .toUpperCase()
+    .replace(/\s+/g, "_");
+
+  // 2. Insert into the master ledger
   const { error } = await supabase.from("financial_transactions").insert({
     transaction_type: "INCOME",
-    category: input.category,
+    category: formattedCategory, // <-- Use the formatted string!
     amount: input.amount,
     notes: input.notes,
     reference_type: "MANUAL",
@@ -273,5 +281,97 @@ export async function refundSecurityDeposit(input: {
   } catch (error) {
     console.error("Unexpected error occurred.", error);
     return { success: false, message: "An unexpected error occurred." };
+  }
+}
+
+export async function removeBookingChargeAction(input: { chargeId: string }) {
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
+
+    if (authError || !user) return { success: false, message: "Unauthorized" };
+
+    const { error } = await supabase.rpc("remove_booking_charge", {
+      p_charge_id: input.chargeId,
+      p_admin_id: user.id,
+    });
+
+    if (error) return { success: false, message: error.message };
+
+    revalidatePath("/admin/financials/incomes");
+    return { success: true, message: "Charge removed successfully." };
+  } catch (err: any) {
+    return { success: false, message: "Unexpected error occurred." };
+  }
+}
+
+// --- 4. VOID BOOKING PAYMENT ---
+export async function voidBookingPaymentAction(input: {
+  paymentId: string;
+  reason: string;
+}) {
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
+
+    if (authError || !user) return { success: false, message: "Unauthorized" };
+
+    const { error } = await supabase.rpc("void_booking_payment", {
+      p_payment_id: input.paymentId,
+      p_admin_id: user.id,
+      p_reason: input.reason,
+    });
+
+    if (error) return { success: false, message: error.message };
+
+    revalidatePath("/admin/financials/incomes");
+    return { success: true, message: "Payment voided successfully." };
+  } catch (err: any) {
+    return { success: false, message: "Unexpected error occurred." };
+  }
+}
+
+export async function issueBookingRefundAction(input: {
+  bookingId: string;
+  amount: number;
+  category: string;
+  description: string;
+  method: string;
+  reference?: string;
+  deductFromInvoice: boolean; // <-- Catch it from the UI
+}) {
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
+
+    if (authError || !user) return { success: false, message: "Unauthorized" };
+
+    const { error } = await supabase.rpc("issue_booking_refund", {
+      p_booking_id: input.bookingId,
+      p_admin_id: user.id,
+      p_amount: input.amount,
+      p_category: input.category,
+      p_description: input.description,
+      p_method: input.method,
+      p_reference: input.reference || null,
+      p_deduct_from_invoice: input.deductFromInvoice, // <-- Pass it to the DB
+    });
+
+    if (error) return { success: false, message: error.message };
+
+    revalidatePath("/admin/financials/incomes");
+    revalidatePath(`/admin/bookings/${input.bookingId}`);
+    return { success: true, message: "Refund issued successfully." };
+  } catch (err: any) {
+    return { success: false, message: "Unexpected error occurred." };
   }
 }

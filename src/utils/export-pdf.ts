@@ -410,7 +410,6 @@ export const generateInvoicePDF = (folio: any) => {
       const amount = Number(c.amount);
       grandTotalCharges += amount;
 
-      // Formatting logic to match the UI
       let description = c.category.replace(/_/g, " ");
       let qty = "1";
       let unitPrice = `P ${Math.abs(amount).toLocaleString()}`;
@@ -459,16 +458,16 @@ export const generateInvoicePDF = (folio: any) => {
 
   if (folio.payments && folio.payments.length > 0) {
     folio.payments.forEach((p: any) => {
+      // CRITICAL FIX: Ignore voided payments from the printed receipt
+      if (p.status !== "COMPLETED") return;
+
       const amount = Number(p.amount);
       totalPaid += amount;
 
       const methodAndRef = `${p.payment_method} ${p.transaction_reference ? `(${p.transaction_reference})` : ""}`;
 
       paymentRows.push([
-        format(
-          new Date(p.paid_at || p.created_at), // UTC fix applied here!
-          "MMM dd, yyyy",
-        ),
+        format(new Date(p.paid_at || p.created_at), "MMM dd, yyyy"),
         p.title || "Payment",
         methodAndRef,
         `${amount < 0 ? "-" : ""} P ${Math.abs(amount).toLocaleString()}`,
@@ -501,40 +500,64 @@ export const generateInvoicePDF = (folio: any) => {
 
   currentY = (doc as any).lastAutoTable.finalY + 15;
 
-  // --- 5. TOTALS & BALANCE DUE ---
+  // --- 5. TOTALS, VAT & BALANCE DUE ---
+  // VAT Calculation (Assuming 12% standard rate)
+  const vatRate = 0.12;
+  const vatableSales = grandTotalCharges / (1 + vatRate);
+  const vatAmount = grandTotalCharges - vatableSales;
   const balanceDue = grandTotalCharges - totalPaid;
 
-  doc.setFontSize(10);
+  doc.setFontSize(9);
   doc.setFont("helvetica", "normal");
-  doc.setTextColor(15, 23, 42);
+  doc.setTextColor(100, 116, 139);
 
-  // Layout the totals
-  doc.text("Total Charges:", 130, currentY);
-  doc.text(`P ${grandTotalCharges.toLocaleString()}`, 195, currentY, {
+  // VAT Breakdown
+  doc.text("VATable Sales:", 130, currentY);
+  doc.text(
+    `P ${vatableSales.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+    195,
+    currentY,
+    { align: "right" },
+  );
+
+  doc.text("VAT (12%):", 130, currentY + 6);
+  doc.text(
+    `P ${vatAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+    195,
+    currentY + 6,
+    { align: "right" },
+  );
+
+  // Main Totals
+  doc.setFontSize(10);
+  doc.setTextColor(15, 23, 42);
+  doc.text("Total Charges:", 130, currentY + 14);
+  doc.text(`P ${grandTotalCharges.toLocaleString()}`, 195, currentY + 14, {
     align: "right",
   });
 
-  doc.text("Total Paid:", 130, currentY + 7);
-  doc.text(`- P ${totalPaid.toLocaleString()}`, 195, currentY + 7, {
+  doc.text("Total Paid:", 130, currentY + 20);
+  doc.text(`- P ${totalPaid.toLocaleString()}`, 195, currentY + 20, {
     align: "right",
   });
 
   doc.setDrawColor(15, 23, 42);
   doc.setLineWidth(0.5);
-  doc.line(130, currentY + 11, 195, currentY + 11);
+  doc.line(130, currentY + 24, 195, currentY + 24);
 
+  // Balance Due / Settled
   doc.setFont("helvetica", "bold");
   doc.setFontSize(12);
   if (balanceDue <= 0) {
     doc.setTextColor(16, 185, 129); // Green if paid
-    doc.text("NET SETTLED:", 130, currentY + 18);
-    doc.text(`P ${Math.abs(balanceDue).toLocaleString()}`, 195, currentY + 18, {
+    doc.text("NET SETTLED:", 130, currentY + 31);
+    doc.text(`P ${Math.abs(balanceDue).toLocaleString()}`, 195, currentY + 31, {
       align: "right",
     });
   } else {
     doc.setTextColor(220, 38, 38); // Red if balance due
-    doc.text("BALANCE DUE:", 130, currentY + 18);
-    doc.text(`P ${balanceDue.toLocaleString()}`, 195, currentY + 18, {
+    doc.text("BALANCE DUE:", 130, currentY + 31);
+    doc.text(`P ${balanceDue.toLocaleString()}`, 195, currentY + 31, {
       align: "right",
     });
   }
@@ -543,6 +566,9 @@ export const generateInvoicePDF = (folio: any) => {
   doc.setFont("helvetica", "italic");
   doc.setFontSize(9);
   doc.setTextColor(148, 163, 184);
+  doc.text("This document is not valid for claiming input taxes.", 105, 275, {
+    align: "center",
+  });
   doc.text("Thank you for your business!", 105, 280, { align: "center" });
 
   doc.save(`Invoice_${shortId}.pdf`);

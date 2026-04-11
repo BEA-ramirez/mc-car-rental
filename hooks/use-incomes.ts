@@ -9,6 +9,9 @@ import {
   addBookingCharge,
   logMiscIncome,
   refundSecurityDeposit,
+  removeBookingChargeAction,
+  voidBookingPaymentAction,
+  issueBookingRefundAction,
 } from "@/actions/incomes";
 
 export const useIncomes = () => {
@@ -29,12 +32,12 @@ export const useIncomes = () => {
     mutationFn: recordBookingPayment,
     onSuccess: (data) => {
       if (data.success) {
-        toast.success(data.message);
         queryClient.invalidateQueries({
           queryKey: ["incomes-dashboard"],
         });
         queryClient.invalidateQueries({ queryKey: ["booking-folio"] });
         queryClient.invalidateQueries({ queryKey: ["booking-details"] });
+        toast.success(data.message);
       } else {
         toast.error(data.message);
       }
@@ -47,12 +50,12 @@ export const useIncomes = () => {
     mutationFn: addBookingCharge,
     onSuccess: (data) => {
       if (data.success) {
-        toast.success(data.message);
         queryClient.invalidateQueries({
           queryKey: ["incomes-dashboard"],
         });
         queryClient.invalidateQueries({ queryKey: ["booking-folio"] });
         queryClient.invalidateQueries({ queryKey: ["booking-details"] });
+        toast.success(data.message);
       } else {
         toast.error(data.message);
       }
@@ -65,8 +68,8 @@ export const useIncomes = () => {
     mutationFn: logMiscIncome,
     onSuccess: (data) => {
       if (data.success) {
-        toast.success(data.message);
         queryClient.invalidateQueries({ queryKey: ["incomes-dashboard"] });
+        toast.success(data.message);
       } else {
         toast.error(data.message);
       }
@@ -75,17 +78,17 @@ export const useIncomes = () => {
   });
 
   const refundMutation = useMutation({
-    mutationFn: refundSecurityDeposit,
-    onSuccess: (data) => {
+    mutationFn: issueBookingRefundAction,
+    onSuccess: async (data) => {
       if (data.success) {
-        toast.success(data.message);
         // Return Promise.all so the mutation waits for the refetches to finish
-        return Promise.all([
+        await Promise.all([
           queryClient.invalidateQueries({ queryKey: ["incomes-dashboard"] }),
           queryClient.invalidateQueries({ queryKey: ["booking-folio"] }),
           queryClient.invalidateQueries({ queryKey: ["master-ledger"] }),
-          queryClient.invalidateQueries({ queryKey: ["booking-details"] }), // Separated!
+          queryClient.invalidateQueries({ queryKey: ["booking-details"] }),
         ]);
+        toast.success(data.message);
       } else {
         toast.error(data.message);
       }
@@ -93,7 +96,43 @@ export const useIncomes = () => {
     onError: (err) => toast.error("Failed to refund deposit: " + err.message),
   });
 
-  console.log("kpi data", dashboardQuery.data);
+  const removeCharge = useMutation({
+    mutationFn: removeBookingChargeAction,
+    onSuccess: async (data) => {
+      if (data.success) {
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: ["incomes-dashboard"] }),
+          queryClient.invalidateQueries({ queryKey: ["booking-folio"] }),
+          queryClient.invalidateQueries({ queryKey: ["master-ledger"] }),
+          queryClient.invalidateQueries({ queryKey: ["booking-details"] }),
+        ]);
+        toast.success(data.message);
+      } else {
+        toast.error(data.message);
+      }
+    },
+    onError: (err) => toast.error(`Failed to remove charge: ${err.message}`),
+  });
+
+  // 5. Void Payment
+  const voidPayment = useMutation({
+    mutationFn: voidBookingPaymentAction,
+    onSuccess: async (data) => {
+      if (data.success) {
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: ["incomes-dashboard"] }),
+          queryClient.invalidateQueries({ queryKey: ["booking-folio"] }),
+          queryClient.invalidateQueries({ queryKey: ["master-ledger"] }),
+          queryClient.invalidateQueries({ queryKey: ["booking-details"] }),
+        ]);
+        toast.success(data.message);
+      } else {
+        toast.error(data.message);
+      }
+    },
+    onError: (err) => toast.error(`Failed to void payment: ${err.message}`),
+  });
+
   return {
     data: dashboardQuery.data,
     isLoading: dashboardQuery.isLoading,
@@ -107,8 +146,12 @@ export const useIncomes = () => {
     logMisc: logMiscMutation.mutateAsync,
     isLoggingMisc: logMiscMutation.isPending,
 
-    refundDeposit: refundMutation.mutateAsync,
+    refundBooking: refundMutation.mutateAsync,
     isRefunding: refundMutation.isPending,
+
+    removeCharge: removeCharge.mutateAsync,
+    voidPayment: voidPayment.mutateAsync,
+    isProcessing: removeCharge.isPending || voidPayment.isPending,
   };
 };
 
