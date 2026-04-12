@@ -67,7 +67,7 @@ export default function TaxSettingsForm() {
 
   if (isLoading)
     return (
-      <div className="p-8 text-center text-slate-500 text-sm font-bold animate-pulse">
+      <div className="p-8 text-center text-muted-foreground text-[10px] font-bold uppercase tracking-widest animate-pulse">
         Loading Tax Configuration...
       </div>
     );
@@ -83,13 +83,13 @@ export default function TaxSettingsForm() {
       type="button"
       onClick={onClick}
       className={cn(
-        "relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full transition-colors duration-200 ease-in-out outline-none ring-offset-2 focus-visible:ring-2 focus-visible:ring-blue-600",
-        enabled ? "bg-emerald-500" : "bg-slate-200",
+        "relative inline-flex h-4 w-8 shrink-0 cursor-pointer items-center justify-center rounded-full transition-colors duration-200 ease-in-out outline-none focus-visible:ring-1 focus-visible:ring-primary",
+        enabled ? "bg-primary" : "bg-secondary border border-border",
       )}
     >
       <span
         className={cn(
-          "pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out",
+          "pointer-events-none inline-block h-3 w-3 transform rounded-full bg-background shadow-sm ring-0 transition duration-200 ease-in-out",
           enabled ? "translate-x-2" : "-translate-x-2",
         )}
       />
@@ -97,35 +97,39 @@ export default function TaxSettingsForm() {
   );
 
   return (
-    <div className="bg-white border border-slate-200 rounded-sm shadow-sm overflow-hidden flex flex-col max-w-3xl">
+    <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden flex flex-col max-w-3xl transition-colors">
       {/* Header */}
-      <div className="px-5 py-4 border-b border-slate-100 bg-slate-50 flex justify-between items-center shrink-0">
-        <div>
-          <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-            <ReceiptCent className="w-4 h-4 text-emerald-600" />
-            Tax Configuration
-          </h2>
-          <p className="text-[11px] text-slate-500 mt-0.5">
-            Manage Value-Added Tax (VAT) and how it applies to your base prices.
-          </p>
+      <div className="px-4 py-3 border-b border-border bg-secondary/30 flex justify-between items-center shrink-0 transition-colors">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center shadow-sm">
+            <ReceiptCent className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+          </div>
+          <div className="flex flex-col text-left">
+            <h2 className="text-sm font-bold text-foreground tracking-tight leading-none mb-1 uppercase">
+              Tax Configuration
+            </h2>
+            <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-widest leading-none">
+              Manage Value-Added Tax (VAT) application
+            </p>
+          </div>
         </div>
       </div>
 
-      <div className="p-6 space-y-6 bg-white">
+      <div className="p-4 space-y-5 bg-background transition-colors">
         {/* Master Toggle */}
         <div
           className={cn(
-            "p-4 border rounded-sm flex items-center justify-between transition-colors",
+            "p-3 border rounded-xl flex items-center justify-between transition-colors shadow-sm",
             tax.enabled
-              ? "border-emerald-200 bg-emerald-50/30"
-              : "border-slate-200 bg-slate-50",
+              ? "border-emerald-500/30 bg-emerald-500/5"
+              : "border-border bg-secondary/30",
           )}
         >
-          <div>
-            <h3 className="text-sm font-bold text-slate-800">
+          <div className="flex flex-col">
+            <h3 className="text-[11px] font-bold text-foreground uppercase tracking-wider">
               Enable Taxation
             </h3>
-            <p className="text-[10px] font-medium text-slate-500">
+            <p className="text-[9px] font-medium text-muted-foreground mt-0.5">
               Apply tax calculations to customer invoices and receipts.
             </p>
           </div>
@@ -137,22 +141,22 @@ export default function TaxSettingsForm() {
 
         {/* Configuration Fields (Hidden if disabled) */}
         {tax.enabled && (
-          <div className="animate-in fade-in slide-in-from-top-2 space-y-6 border-t border-slate-100 pt-6">
+          <div className="animate-in fade-in slide-in-from-top-2 space-y-5 border-t border-border pt-5 transition-colors">
             {/* Row 1: Tax Name & Percentage */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1.5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <label className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-1.5">
                   <FileDigit className="w-3 h-3" /> Tax Identification Name
                 </label>
                 <Input
                   placeholder="e.g., VAT, GST, Sales Tax"
                   value={tax.tax_name}
                   onChange={(e) => handleChange("tax_name", e.target.value)}
-                  className="h-9 text-xs border-slate-200 bg-white"
+                  className="h-8 text-[11px] font-semibold bg-secondary border-border rounded-lg shadow-none focus-visible:ring-1 focus-visible:ring-primary transition-colors text-foreground"
                 />
               </div>
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1.5">
+              <div className="space-y-1">
+                <label className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-1.5">
                   <Percent className="w-3 h-3" /> Tax Percentage
                 </label>
                 <div className="relative">
@@ -168,18 +172,20 @@ export default function TaxSettingsForm() {
                         parseFloat(e.target.value) || 0,
                       )
                     }
-                    className="h-9 text-xs border-slate-200 bg-white pr-8 font-mono"
+                    className="h-8 text-[11px] font-semibold bg-secondary border-border rounded-lg shadow-none focus-visible:ring-1 focus-visible:ring-primary pr-8 font-mono transition-colors text-foreground"
                   />
                   <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-                    <span className="text-xs font-bold text-slate-400">%</span>
+                    <span className="text-[11px] font-bold text-muted-foreground">
+                      %
+                    </span>
                   </div>
                 </div>
               </div>
             </div>
 
             {/* Row 2: Registration Number */}
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1.5">
+            <div className="space-y-1">
+              <label className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-1.5">
                 <Calculator className="w-3 h-3" /> BIR / Tax Registration Number
                 (TIN)
               </label>
@@ -189,27 +195,27 @@ export default function TaxSettingsForm() {
                 onChange={(e) =>
                   handleChange("registration_number", e.target.value)
                 }
-                className="h-9 text-xs border-slate-200 bg-white font-mono max-w-md"
+                className="h-8 text-[11px] font-semibold bg-secondary border-border rounded-lg shadow-none focus-visible:ring-1 focus-visible:ring-primary font-mono max-w-md transition-colors text-foreground"
               />
-              <p className="text-[9px] text-slate-400 mt-1">
+              <p className="text-[9px] font-medium text-muted-foreground/70 mt-1 uppercase tracking-widest">
                 This will be printed on official receipts.
               </p>
             </div>
 
             {/* Row 3: Inclusive vs Exclusive Toggle */}
-            <div className="space-y-2 pt-2 border-t border-slate-100">
-              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
+            <div className="space-y-1.5 pt-1">
+              <label className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">
                 Pricing Calculation Model
               </label>
-              <div className="flex bg-slate-100 p-1 rounded-sm border border-slate-200 max-w-md">
+              <div className="flex bg-secondary p-1 rounded-lg border border-border max-w-md transition-colors">
                 <button
                   type="button"
                   onClick={() => handleChange("is_inclusive", true)}
                   className={cn(
-                    "flex-1 text-xs font-bold py-1.5 rounded-sm transition-all",
+                    "flex-1 text-[10px] font-bold uppercase tracking-widest py-1.5 rounded-md transition-all",
                     tax.is_inclusive
-                      ? "bg-white text-slate-900 shadow-sm border border-slate-200/50"
-                      : "text-slate-500 hover:text-slate-700",
+                      ? "bg-background text-foreground shadow-sm border border-border/50"
+                      : "text-muted-foreground hover:text-foreground hover:bg-background/50",
                   )}
                 >
                   Inclusive
@@ -218,16 +224,16 @@ export default function TaxSettingsForm() {
                   type="button"
                   onClick={() => handleChange("is_inclusive", false)}
                   className={cn(
-                    "flex-1 text-xs font-bold py-1.5 rounded-sm transition-all",
+                    "flex-1 text-[10px] font-bold uppercase tracking-widest py-1.5 rounded-md transition-all",
                     !tax.is_inclusive
-                      ? "bg-white text-slate-900 shadow-sm border border-slate-200/50"
-                      : "text-slate-500 hover:text-slate-700",
+                      ? "bg-background text-foreground shadow-sm border border-border/50"
+                      : "text-muted-foreground hover:text-foreground hover:bg-background/50",
                   )}
                 >
                   Exclusive
                 </button>
               </div>
-              <p className="text-[9px] text-slate-500 leading-relaxed max-w-md">
+              <p className="text-[9px] font-medium text-muted-foreground/70 leading-relaxed max-w-md mt-1.5">
                 {tax.is_inclusive
                   ? "Tax is already included in your listing prices. The system will extract the tax amount from the total for receipts."
                   : "Tax will be added on top of your listing prices at checkout."}
@@ -238,9 +244,9 @@ export default function TaxSettingsForm() {
       </div>
 
       {/* Footer Actions */}
-      <div className="bg-slate-50 border-t border-slate-200 p-4 shrink-0 flex justify-end">
+      <div className="bg-card border-t border-border p-3 shrink-0 flex justify-end transition-colors">
         <Button
-          className="h-9 px-6 text-xs font-bold bg-slate-900 hover:bg-slate-800 text-white rounded-sm shadow-sm"
+          className="h-8 px-5 text-[10px] font-bold uppercase tracking-widest bg-primary hover:opacity-90 text-primary-foreground rounded-lg shadow-sm transition-opacity"
           onClick={handleSave}
           disabled={isSaving}
         >
@@ -249,7 +255,7 @@ export default function TaxSettingsForm() {
           ) : (
             <Save className="w-3.5 h-3.5 mr-2" />
           )}
-          Save Tax Settings
+          Save Settings
         </Button>
       </div>
     </div>

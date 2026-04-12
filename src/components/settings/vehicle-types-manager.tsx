@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { getSystemSettings, updateSystemSetting } from "@/actions/settings";
+import { cn } from "@/lib/utils";
 
 // Helper to generate quick unique IDs
 const generateId = () => Math.random().toString(36).substring(2, 9);
@@ -94,27 +95,30 @@ export default function VehicleTypesManager() {
 
   if (isLoading)
     return (
-      <div className="p-8 text-center text-slate-500 text-sm font-bold animate-pulse">
+      <div className="p-8 text-center text-muted-foreground text-[10px] font-bold uppercase tracking-widest animate-pulse">
         Loading Vehicle Types...
       </div>
     );
 
   return (
-    <div className="bg-white border border-slate-200 rounded-sm shadow-sm overflow-hidden flex flex-col max-w-3xl">
+    <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden flex flex-col max-w-3xl transition-colors">
       {/* Header */}
-      <div className="px-5 py-4 border-b border-slate-100 bg-slate-50 flex justify-between items-center shrink-0">
-        <div>
-          <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-            <CarFront className="w-4 h-4 text-blue-600" />
-            Vehicle Classifications
-          </h2>
-          <p className="text-[11px] text-slate-500 mt-0.5 max-w-md">
-            Define the categories used for filtering cars on the customer
-            storefront and organizing your fleet.
-          </p>
+      <div className="px-4 py-3 border-b border-border bg-secondary/30 flex justify-between items-center shrink-0 transition-colors">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center shadow-sm">
+            <CarFront className="w-4 h-4 text-primary" />
+          </div>
+          <div className="flex flex-col text-left">
+            <h2 className="text-sm font-bold text-foreground tracking-tight leading-none mb-1 uppercase">
+              Vehicle Classifications
+            </h2>
+            <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-widest leading-none">
+              Define the categories used for filtering cars
+            </p>
+          </div>
         </div>
         <Button
-          className="h-8 text-xs font-bold bg-slate-900 text-white hover:bg-slate-800 rounded-sm shadow-sm"
+          className="h-8 px-4 text-[10px] font-bold uppercase tracking-widest bg-primary hover:opacity-90 text-primary-foreground rounded-lg shadow-sm transition-opacity"
           onClick={handleSave}
           disabled={isSaving}
         >
@@ -128,57 +132,58 @@ export default function VehicleTypesManager() {
       </div>
 
       {/* Builder Body */}
-      <div className="p-5 space-y-3 bg-slate-50/50">
+      <div className="p-4 space-y-3 bg-background transition-colors">
         {/* Table Headers */}
-        <div className="flex items-center px-4 py-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest border-b border-slate-200">
-          <div className="w-6"></div> {/* Spacer for drag handle */}
+        <div className="flex items-center px-4 py-1 text-[9px] font-bold text-muted-foreground uppercase tracking-widest border-b border-border pb-2 transition-colors">
+          <div className="w-5"></div> {/* Spacer for drag handle */}
           <div className="flex-1">Category Name</div>
-          <div className="w-24 text-center">Active Status</div>
-          <div className="w-10"></div> {/* Spacer for delete button */}
+          <div className="w-20 text-center">Status</div>
+          <div className="w-8"></div> {/* Spacer for delete button */}
         </div>
 
         {/* List Items */}
         {types.map((type) => (
           <div
             key={type.id}
-            className="flex items-center gap-4 bg-white border border-slate-200 rounded-sm shadow-sm p-3 animate-in fade-in slide-in-from-bottom-2 duration-300"
+            className="flex items-center gap-3 bg-card border border-border rounded-lg shadow-sm p-2 animate-in fade-in slide-in-from-bottom-2 duration-300 transition-colors"
           >
-            <GripVertical className="w-4 h-4 text-slate-300 cursor-grab active:cursor-grabbing shrink-0" />
+            <GripVertical className="w-3.5 h-3.5 text-muted-foreground cursor-grab active:cursor-grabbing shrink-0" />
 
             <Input
               placeholder="e.g., Sedan, SUV, Luxury"
               value={type.label}
               onChange={(e) => updateTypeLabel(type.id, e.target.value)}
-              className="h-9 text-sm font-bold bg-slate-50 border-slate-200 focus-visible:ring-blue-500 flex-1"
+              className="h-8 text-[11px] font-bold bg-secondary border-border focus-visible:ring-primary flex-1 shadow-none rounded-md transition-colors text-foreground"
             />
 
-            <div className="w-24 flex justify-center shrink-0">
+            <div className="w-20 flex justify-center shrink-0">
               <Switch
                 checked={type.isActive}
                 onCheckedChange={(checked) =>
                   toggleTypeStatus(type.id, checked)
                 }
+                className="scale-90" // Slightly smaller switch to fit density
               />
             </div>
 
             <Button
               variant="ghost"
               size="icon"
-              className="h-9 w-9 text-slate-400 hover:text-red-600 hover:bg-red-50 shrink-0"
+              className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 shrink-0 rounded-md transition-colors"
               onClick={() => deleteType(type.id)}
             >
-              <Trash2 className="w-4 h-4" />
+              <Trash2 className="w-3.5 h-3.5" />
             </Button>
           </div>
         ))}
 
-        <div className="pt-3">
+        <div className="pt-2">
           <Button
             variant="outline"
-            className="w-full border-dashed border-2 border-slate-300 text-slate-500 hover:text-slate-900 hover:border-slate-400 hover:bg-white h-12 text-sm font-bold"
+            className="w-full border-dashed border-2 border-border text-muted-foreground hover:text-foreground hover:border-primary/50 hover:bg-secondary h-10 text-[10px] font-bold uppercase tracking-widest rounded-lg transition-colors shadow-none"
             onClick={addType}
           >
-            <Plus className="w-4 h-4 mr-2" /> Add Vehicle Category
+            <Plus className="w-3.5 h-3.5 mr-2" /> Add Vehicle Category
           </Button>
         </div>
       </div>

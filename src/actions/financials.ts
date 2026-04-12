@@ -216,3 +216,89 @@ export async function voidOwnerPayoutAction(payoutId: string) {
   revalidatePath("/admin/financials/expenses");
   return { success: true, message: "Payout successfully voided and reversed." };
 }
+
+export async function getMasterLedgerWidgets() {
+  const supabase = await createClient();
+  const { data } = await supabase.rpc("get_master_ledger_kpis");
+
+  return (
+    data || {
+      totalIncome: 0,
+      totalExpense: 0,
+      netCashFlow: 0,
+    }
+  );
+}
+
+// 2. Fetch Table Data with Filters
+export async function getMasterLedgerTable(params: {
+  page: number;
+  search?: string;
+  type?: string; // "ALL", "INCOME", "EXPENSE"
+  period?: string; // "ALL", "TODAY", "MONTH", "3MONTHS"
+}) {
+  const supabase = await createClient();
+  const limit = 10;
+  const offset = (params.page - 1) * limit;
+
+  let query = supabase
+    .from("financial_transactions")
+    .select(
+      `
+      *,
+      car:car_id(plate_number),
+      booking:booking_id(users(full_name))
+    `,
+      { count: "exact" },
+    )
+    .eq("status", "COMPLETED");
+
+  // Apply Type Filter
+  if (params.type && params.type !== "ALL") {
+    query = query.eq("transaction_type", params.type);
+  }
+
+  // Apply Search Filter (searches notes or category)
+  if (params.search) {
+    query = query.or(
+      `notes.ilike.%${params.search}%,category.ilike.%${params.search}%`,
+    );
+  }
+
+  // Apply Date Filter
+  if (params.period && params.period !== "ALL") {
+    const now = new Date();
+    if (params.period === "TODAY") {
+      const startOfDay = new Date(now.setHours(0, 0, 0, 0)).toISOString();
+      query = query.gte("transaction_date", startOfDay);
+    } else if (params.period === "MONTH") {
+      const startOfMonth = new Date(
+        now.getFullYear(),
+        now.getMonth(),
+        1,
+      ).toISOString();
+      query = query.gte("transaction_date", startOfMonth);
+    } else if (params.period === "3MONTHS") {
+      const startOf3Months = new Date(
+        now.getFullYear(),
+        now.getMonth() - 3,
+        1,
+      ).toISOString();
+      query = query.gte("transaction_date", startOf3Months);
+    }
+  }
+
+  const { data, count, error } = await query
+    .order("transaction_date", { ascending: false })
+    .range(offset, offset + limit - 1);
+
+  if (error) {
+    console.error("Ledger fetch error:", error);
+    return { transactions: [], totalPages: 1 };
+  }
+
+  return {
+    transactions: data || [],
+    totalPages: Math.ceil((count || 0) / limit) || 1,
+  };
+}

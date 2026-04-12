@@ -79,7 +79,7 @@ export default function PaymentMethodsForm() {
 
   if (isLoading)
     return (
-      <div className="p-8 text-center text-slate-500 text-sm font-bold animate-pulse">
+      <div className="p-8 text-center text-muted-foreground text-[10px] font-bold uppercase tracking-widest animate-pulse">
         Loading Payment Settings...
       </div>
     );
@@ -96,13 +96,13 @@ export default function PaymentMethodsForm() {
       type="button"
       onClick={onClick}
       className={cn(
-        "relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full transition-colors duration-200 ease-in-out outline-none ring-offset-2 focus-visible:ring-2 focus-visible:ring-blue-600",
-        enabled ? "bg-emerald-500" : "bg-slate-200",
+        "relative inline-flex h-4 w-8 shrink-0 cursor-pointer items-center justify-center rounded-full transition-colors duration-200 ease-in-out outline-none focus-visible:ring-1 focus-visible:ring-primary",
+        enabled ? "bg-primary" : "bg-secondary border border-border",
       )}
     >
       <span
         className={cn(
-          "pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out",
+          "pointer-events-none inline-block h-3 w-3 transform rounded-full bg-background shadow-sm ring-0 transition duration-200 ease-in-out",
           enabled ? "translate-x-2" : "-translate-x-2",
         )}
       />
@@ -110,48 +110,52 @@ export default function PaymentMethodsForm() {
   );
 
   return (
-    <div className="bg-white border border-slate-200 rounded-sm shadow-sm overflow-hidden flex flex-col max-w-3xl">
+    <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden flex flex-col max-w-3xl transition-colors">
       {/* Header */}
-      <div className="px-5 py-4 border-b border-slate-100 bg-slate-50 flex justify-between items-center shrink-0">
-        <div>
-          <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-            <Wallet className="w-4 h-4 text-emerald-600" />
-            Payment & Receiving Accounts
-          </h2>
-          <p className="text-[11px] text-slate-500 mt-0.5">
-            Configure the active payment channels available to your customers.
-          </p>
+      <div className="px-4 py-3 border-b border-border bg-secondary/30 flex justify-between items-center shrink-0 transition-colors">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center shadow-sm">
+            <Wallet className="w-4 h-4 text-primary" />
+          </div>
+          <div className="flex flex-col text-left">
+            <h2 className="text-sm font-bold text-foreground tracking-tight leading-none mb-1 uppercase">
+              Payment & Receiving Accounts
+            </h2>
+            <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-widest leading-none">
+              Configure active payment channels for your customers
+            </p>
+          </div>
         </div>
       </div>
 
       {/* Form Body */}
-      <div className="p-6 space-y-4 bg-white">
+      <div className="p-4 space-y-3 bg-background transition-colors">
         {/* GCASH CARD */}
         <div
           className={cn(
-            "border rounded-sm transition-all duration-200",
+            "border rounded-xl transition-all duration-200",
             methods.gcash.enabled
-              ? "border-blue-200 bg-blue-50/10 shadow-sm"
-              : "border-slate-200 bg-slate-50/50",
+              ? "border-primary/30 bg-primary/5 shadow-sm"
+              : "border-border bg-secondary/30",
           )}
         >
-          <div className="p-4 flex items-center justify-between border-b border-transparent">
+          <div className="p-3 flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div
                 className={cn(
-                  "w-10 h-10 rounded-sm flex items-center justify-center",
+                  "w-8 h-8 rounded-lg flex items-center justify-center transition-colors",
                   methods.gcash.enabled
-                    ? "bg-blue-100 text-blue-600"
-                    : "bg-slate-200 text-slate-400",
+                    ? "bg-primary/20 text-primary"
+                    : "bg-secondary text-muted-foreground",
                 )}
               >
-                <Smartphone className="w-5 h-5" />
+                <Smartphone className="w-4 h-4" />
               </div>
-              <div>
-                <h3 className="text-sm font-bold text-slate-800">
+              <div className="flex flex-col">
+                <h3 className="text-[11px] font-bold text-foreground uppercase tracking-wider">
                   GCash Mobile Wallet
                 </h3>
-                <p className="text-[10px] font-medium text-slate-500">
+                <p className="text-[9px] font-medium text-muted-foreground mt-0.5">
                   Accept direct payments via GCash.
                 </p>
               </div>
@@ -163,9 +167,9 @@ export default function PaymentMethodsForm() {
           </div>
 
           {methods.gcash.enabled && (
-            <div className="px-4 pb-4 pt-1 grid grid-cols-1 sm:grid-cols-2 gap-4 animate-in fade-in slide-in-from-top-2">
-              <div className="space-y-1.5">
-                <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest">
+            <div className="px-3 pb-3 pt-1 grid grid-cols-1 sm:grid-cols-2 gap-3 animate-in fade-in slide-in-from-top-2">
+              <div className="space-y-1">
+                <label className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">
                   Account Name
                 </label>
                 <Input
@@ -174,11 +178,11 @@ export default function PaymentMethodsForm() {
                   onChange={(e) =>
                     handleChange("gcash", "account_name", e.target.value)
                   }
-                  className="h-8 text-xs border-slate-200 bg-white"
+                  className="h-8 text-[11px] font-semibold bg-background border-border shadow-none rounded-lg focus-visible:ring-1 focus-visible:ring-primary transition-colors text-foreground"
                 />
               </div>
-              <div className="space-y-1.5">
-                <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest">
+              <div className="space-y-1">
+                <label className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">
                   GCash Number
                 </label>
                 <Input
@@ -187,7 +191,7 @@ export default function PaymentMethodsForm() {
                   onChange={(e) =>
                     handleChange("gcash", "account_number", e.target.value)
                   }
-                  className="h-8 text-xs border-slate-200 bg-white font-mono"
+                  className="h-8 text-[11px] font-semibold bg-background border-border shadow-none rounded-lg focus-visible:ring-1 focus-visible:ring-primary font-mono transition-colors text-foreground"
                 />
               </div>
             </div>
@@ -197,29 +201,29 @@ export default function PaymentMethodsForm() {
         {/* BDO BANK TRANSFER CARD */}
         <div
           className={cn(
-            "border rounded-sm transition-all duration-200",
+            "border rounded-xl transition-all duration-200",
             methods.bdo.enabled
-              ? "border-indigo-200 bg-indigo-50/10 shadow-sm"
-              : "border-slate-200 bg-slate-50/50",
+              ? "border-primary/30 bg-primary/5 shadow-sm"
+              : "border-border bg-secondary/30",
           )}
         >
-          <div className="p-4 flex items-center justify-between border-b border-transparent">
+          <div className="p-3 flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div
                 className={cn(
-                  "w-10 h-10 rounded-sm flex items-center justify-center",
+                  "w-8 h-8 rounded-lg flex items-center justify-center transition-colors",
                   methods.bdo.enabled
-                    ? "bg-indigo-100 text-indigo-600"
-                    : "bg-slate-200 text-slate-400",
+                    ? "bg-primary/20 text-primary"
+                    : "bg-secondary text-muted-foreground",
                 )}
               >
-                <Landmark className="w-5 h-5" />
+                <Landmark className="w-4 h-4" />
               </div>
-              <div>
-                <h3 className="text-sm font-bold text-slate-800">
-                  BDO Bank Transfer
+              <div className="flex flex-col">
+                <h3 className="text-[11px] font-bold text-foreground uppercase tracking-wider">
+                  Bank Transfer
                 </h3>
-                <p className="text-[10px] font-medium text-slate-500">
+                <p className="text-[9px] font-medium text-muted-foreground mt-0.5">
                   Accept corporate or personal bank deposits.
                 </p>
               </div>
@@ -231,9 +235,9 @@ export default function PaymentMethodsForm() {
           </div>
 
           {methods.bdo.enabled && (
-            <div className="px-4 pb-4 pt-1 grid grid-cols-1 sm:grid-cols-2 gap-4 animate-in fade-in slide-in-from-top-2">
-              <div className="space-y-1.5">
-                <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest">
+            <div className="px-3 pb-3 pt-1 grid grid-cols-1 sm:grid-cols-2 gap-3 animate-in fade-in slide-in-from-top-2">
+              <div className="space-y-1">
+                <label className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">
                   Account Name
                 </label>
                 <Input
@@ -242,11 +246,11 @@ export default function PaymentMethodsForm() {
                   onChange={(e) =>
                     handleChange("bdo", "account_name", e.target.value)
                   }
-                  className="h-8 text-xs border-slate-200 bg-white"
+                  className="h-8 text-[11px] font-semibold bg-background border-border shadow-none rounded-lg focus-visible:ring-1 focus-visible:ring-primary transition-colors text-foreground"
                 />
               </div>
-              <div className="space-y-1.5">
-                <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest">
+              <div className="space-y-1">
+                <label className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">
                   Account Number
                 </label>
                 <Input
@@ -255,7 +259,7 @@ export default function PaymentMethodsForm() {
                   onChange={(e) =>
                     handleChange("bdo", "account_number", e.target.value)
                   }
-                  className="h-8 text-xs border-slate-200 bg-white font-mono"
+                  className="h-8 text-[11px] font-semibold bg-background border-border shadow-none rounded-lg focus-visible:ring-1 focus-visible:ring-primary font-mono transition-colors text-foreground"
                 />
               </div>
             </div>
@@ -265,29 +269,29 @@ export default function PaymentMethodsForm() {
         {/* CASH CARD */}
         <div
           className={cn(
-            "border rounded-sm transition-all duration-200",
+            "border rounded-xl transition-all duration-200",
             methods.cash.enabled
-              ? "border-emerald-200 bg-emerald-50/10 shadow-sm"
-              : "border-slate-200 bg-slate-50/50",
+              ? "border-emerald-500/30 bg-emerald-500/5 shadow-sm"
+              : "border-border bg-secondary/30",
           )}
         >
-          <div className="p-4 flex items-center justify-between">
+          <div className="p-3 flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div
                 className={cn(
-                  "w-10 h-10 rounded-sm flex items-center justify-center",
+                  "w-8 h-8 rounded-lg flex items-center justify-center transition-colors",
                   methods.cash.enabled
-                    ? "bg-emerald-100 text-emerald-600"
-                    : "bg-slate-200 text-slate-400",
+                    ? "bg-emerald-500/20 text-emerald-600 dark:text-emerald-400"
+                    : "bg-secondary text-muted-foreground",
                 )}
               >
-                <Banknote className="w-5 h-5" />
+                <Banknote className="w-4 h-4" />
               </div>
-              <div>
-                <h3 className="text-sm font-bold text-slate-800">
+              <div className="flex flex-col">
+                <h3 className="text-[11px] font-bold text-foreground uppercase tracking-wider">
                   Over-the-Counter Cash
                 </h3>
-                <p className="text-[10px] font-medium text-slate-500">
+                <p className="text-[9px] font-medium text-muted-foreground mt-0.5">
                   Allow payments upon vehicle pickup or at your hub.
                 </p>
               </div>
@@ -301,9 +305,9 @@ export default function PaymentMethodsForm() {
       </div>
 
       {/* Footer Actions */}
-      <div className="bg-slate-50 border-t border-slate-200 p-4 shrink-0 flex justify-end">
+      <div className="bg-card border-t border-border p-3 shrink-0 flex justify-end transition-colors">
         <Button
-          className="h-9 px-6 text-xs font-bold bg-slate-900 hover:bg-slate-800 text-white rounded-sm shadow-sm"
+          className="h-8 px-5 text-[10px] font-bold uppercase tracking-widest bg-primary hover:opacity-90 text-primary-foreground rounded-lg shadow-sm transition-opacity"
           onClick={handleSave}
           disabled={isSaving}
         >
@@ -312,7 +316,7 @@ export default function PaymentMethodsForm() {
           ) : (
             <Save className="w-3.5 h-3.5 mr-2" />
           )}
-          Save Payment Configurations
+          Save Configurations
         </Button>
       </div>
     </div>

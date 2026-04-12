@@ -17,6 +17,7 @@ import {
   saveInspectionTemplate,
   InspectionCategory,
 } from "@/actions/settings";
+import { cn } from "@/lib/utils";
 
 // Helper to generate quick unique IDs
 const generateId = () => Math.random().toString(36).substring(2, 9);
@@ -138,27 +139,30 @@ export default function InspectionTemplateBuilder() {
 
   if (isLoading)
     return (
-      <div className="p-8 text-center text-slate-500 text-sm font-bold animate-pulse">
+      <div className="p-8 text-center text-muted-foreground text-[10px] font-bold uppercase tracking-widest animate-pulse">
         Loading Template Builder...
       </div>
     );
 
   return (
-    <div className="bg-white border border-slate-200 rounded-sm shadow-sm overflow-hidden flex flex-col max-w-3xl">
+    <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden flex flex-col max-w-3xl transition-colors">
       {/* Header */}
-      <div className="px-5 py-4 border-b border-slate-100 bg-slate-50 flex justify-between items-center shrink-0">
-        <div>
-          <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-            <ListChecks className="w-4 h-4 text-blue-600" />
-            Master Inspection Template
-          </h2>
-          <p className="text-[11px] text-slate-500 mt-0.5">
-            Define the standard checklist used by staff during pre-trip and
-            post-trip inspections.
-          </p>
+      <div className="px-4 py-3 border-b border-border bg-secondary/30 flex justify-between items-center shrink-0 transition-colors">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center shadow-sm">
+            <ListChecks className="w-4 h-4 text-primary" />
+          </div>
+          <div className="flex flex-col text-left">
+            <h2 className="text-sm font-bold text-foreground tracking-tight leading-none mb-1 uppercase">
+              Master Inspection Template
+            </h2>
+            <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-widest leading-none">
+              Define the standard checklist for pre & post-trip inspections
+            </p>
+          </div>
         </div>
         <Button
-          className="h-8 text-xs font-bold bg-slate-900 text-white hover:bg-slate-800 rounded-sm shadow-sm"
+          className="h-8 px-4 text-[10px] font-bold uppercase tracking-widest bg-primary hover:opacity-90 text-primary-foreground rounded-lg shadow-sm transition-opacity"
           onClick={handleSave}
           disabled={isSaving}
         >
@@ -172,51 +176,51 @@ export default function InspectionTemplateBuilder() {
       </div>
 
       {/* Builder Body */}
-      <div className="p-5 space-y-6 bg-slate-50/50">
+      <div className="p-4 space-y-4 bg-background transition-colors">
         {categories.map((category) => (
           <div
             key={category.id}
-            className="bg-white border border-slate-200 rounded-sm shadow-sm p-4 animate-in fade-in slide-in-from-bottom-2 duration-300"
+            className="bg-card border border-border rounded-xl shadow-sm p-3 animate-in fade-in slide-in-from-bottom-2 duration-300 transition-colors"
           >
             {/* Category Header */}
-            <div className="flex items-center gap-2 mb-4">
-              <GripVertical className="w-4 h-4 text-slate-300 cursor-grab active:cursor-grabbing" />
+            <div className="flex items-center gap-2 mb-3">
+              <GripVertical className="w-4 h-4 text-muted-foreground/50 cursor-grab active:cursor-grabbing" />
               <Input
                 placeholder="Category Name (e.g., Exterior, Engine)"
                 value={category.name}
                 onChange={(e) =>
                   updateCategoryName(category.id, e.target.value)
                 }
-                className="h-9 text-sm font-bold bg-slate-50 border-slate-200 focus-visible:ring-blue-500"
+                className="h-8 text-[11px] font-bold bg-secondary border-border focus-visible:ring-1 focus-visible:ring-primary rounded-lg transition-colors text-foreground shadow-none"
               />
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-9 w-9 text-slate-400 hover:text-red-600 hover:bg-red-50 shrink-0"
+                className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 shrink-0 rounded-lg transition-colors"
                 onClick={() => deleteCategory(category.id)}
               >
-                <Trash2 className="w-4 h-4" />
+                <Trash2 className="w-3.5 h-3.5" />
               </Button>
             </div>
 
             {/* Checklist Items */}
-            <div className="pl-6 space-y-2">
+            <div className="pl-6 space-y-1.5">
               {category.items.map((item) => (
                 <div key={item.id} className="flex items-center gap-2 group">
-                  <div className="w-3 h-3 border border-slate-300 rounded-sm shrink-0 mt-0.5" />{" "}
+                  <div className="w-3 h-3 border border-muted-foreground/30 rounded-sm shrink-0" />{" "}
                   {/* Fake checkbox for visuals */}
                   <Input
-                    placeholder="Checklist Item (e.g., Front Bumper, Headlights)"
+                    placeholder="Checklist Item (e.g., Front Bumper)"
                     value={item.label}
                     onChange={(e) =>
                       updateItemLabel(category.id, item.id, e.target.value)
                     }
-                    className="h-8 text-xs border-transparent hover:border-slate-200 focus-visible:border-blue-500 focus-visible:ring-0 bg-transparent hover:bg-slate-50 transition-colors"
+                    className="h-7 text-[11px] font-medium border-transparent hover:border-border focus-visible:border-border focus-visible:ring-1 focus-visible:ring-primary bg-transparent hover:bg-secondary transition-colors text-foreground shadow-none px-2 rounded-md"
                   />
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-8 w-8 text-slate-300 opacity-0 group-hover:opacity-100 hover:text-red-600 hover:bg-red-50 shrink-0 transition-opacity"
+                    className="h-7 w-7 text-muted-foreground/50 opacity-0 group-hover:opacity-100 hover:text-destructive hover:bg-destructive/10 shrink-0 transition-all rounded-md"
                     onClick={() => deleteItem(category.id, item.id)}
                   >
                     <X className="w-3.5 h-3.5" />
@@ -227,10 +231,10 @@ export default function InspectionTemplateBuilder() {
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-8 text-xs font-semibold text-blue-600 hover:text-blue-700 hover:bg-blue-50 mt-2"
+                className="h-7 px-2 text-[10px] font-bold uppercase tracking-widest text-primary hover:text-primary hover:bg-primary/10 mt-1 rounded-md transition-colors"
                 onClick={() => addItem(category.id)}
               >
-                <Plus className="w-3.5 h-3.5 mr-1" /> Add Item
+                <Plus className="w-3 h-3 mr-1" /> Add Item
               </Button>
             </div>
           </div>
@@ -238,10 +242,10 @@ export default function InspectionTemplateBuilder() {
 
         <Button
           variant="outline"
-          className="w-full border-dashed border-2 border-slate-300 text-slate-500 hover:text-slate-900 hover:border-slate-400 hover:bg-white h-12 text-sm font-bold"
+          className="w-full border-dashed border-2 border-border text-muted-foreground hover:text-foreground hover:border-primary/50 hover:bg-secondary h-10 text-[10px] font-bold uppercase tracking-widest rounded-xl transition-colors shadow-none"
           onClick={addCategory}
         >
-          <Plus className="w-4 h-4 mr-2" /> Add New Category
+          <Plus className="w-3.5 h-3.5 mr-2" /> Add New Category
         </Button>
       </div>
     </div>

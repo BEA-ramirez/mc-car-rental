@@ -6,6 +6,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Save, Loader2, FileText, Code, Eye, Braces } from "lucide-react";
 import { toast } from "sonner";
 import { getContractTemplate, saveContractTemplate } from "@/actions/settings";
+import { cn } from "@/lib/utils";
 
 // --- EXPANDED VARIABLES TO MATCH THE CLIENT'S DOCX ---
 const VARIABLES = [
@@ -194,27 +195,30 @@ export default function ContractTemplateBuilder() {
 
   if (isLoading)
     return (
-      <div className="p-8 text-center text-slate-500 text-sm font-bold animate-pulse">
+      <div className="p-8 text-center text-muted-foreground text-[10px] font-bold uppercase tracking-widest animate-pulse">
         Loading Contract Builder...
       </div>
     );
 
   return (
-    <div className="bg-white border border-slate-200 rounded-sm shadow-sm overflow-hidden flex flex-col max-w-4xl">
+    <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden flex flex-col max-w-4xl transition-colors">
       {/* Header */}
-      <div className="px-5 py-4 border-b border-slate-100 bg-slate-50 flex justify-between items-center shrink-0">
-        <div>
-          <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-            <FileText className="w-4 h-4 text-emerald-600" />
-            Master Rental Agreement
-          </h2>
-          <p className="text-[11px] text-slate-500 mt-0.5">
-            Define the legal contract template. Use variables to inject dynamic
-            booking data.
-          </p>
+      <div className="px-4 py-3 border-b border-border bg-secondary/30 flex justify-between items-center shrink-0 transition-colors">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center shadow-sm">
+            <FileText className="w-4 h-4 text-primary" />
+          </div>
+          <div className="flex flex-col text-left">
+            <h2 className="text-sm font-bold text-foreground tracking-tight leading-none mb-1 uppercase">
+              Master Rental Agreement
+            </h2>
+            <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-widest leading-none">
+              Define the legal contract template using dynamic variables
+            </p>
+          </div>
         </div>
         <Button
-          className="h-8 text-xs font-bold bg-slate-900 text-white hover:bg-slate-800 rounded-sm shadow-sm"
+          className="h-8 px-4 text-[10px] font-bold uppercase tracking-widest bg-primary hover:opacity-90 text-primary-foreground rounded-lg shadow-sm transition-opacity"
           onClick={handleSave}
           disabled={isSaving}
         >
@@ -233,17 +237,17 @@ export default function ContractTemplateBuilder() {
         className="w-full flex flex-col"
       >
         {/* Toolbar & Tabs */}
-        <div className="border-b border-slate-200 bg-white px-2 pt-2 flex items-center justify-between">
+        <div className="border-b border-border bg-secondary/30 px-3 pt-2 flex items-center justify-between transition-colors">
           <TabsList className="bg-transparent h-9 p-0 flex gap-4 border-b-0 justify-start">
             <TabsTrigger
               value="editor"
-              className="rounded-none border-b-2 border-transparent data-[state=active]:border-emerald-600 data-[state=active]:bg-transparent data-[state=active]:shadow-none px-3 py-1.5 text-xs font-bold text-slate-500 data-[state=active]:text-slate-900 transition-none flex items-center gap-1.5"
+              className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-2 py-1.5 text-[10px] font-bold uppercase tracking-widest text-muted-foreground data-[state=active]:text-foreground transition-all flex items-center gap-1.5"
             >
               <Code className="w-3.5 h-3.5" /> HTML Editor
             </TabsTrigger>
             <TabsTrigger
               value="preview"
-              className="rounded-none border-b-2 border-transparent data-[state=active]:border-emerald-600 data-[state=active]:bg-transparent data-[state=active]:shadow-none px-3 py-1.5 text-xs font-bold text-slate-500 data-[state=active]:text-slate-900 transition-none flex items-center gap-1.5"
+              className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-2 py-1.5 text-[10px] font-bold uppercase tracking-widest text-muted-foreground data-[state=active]:text-foreground transition-all flex items-center gap-1.5"
             >
               <Eye className="w-3.5 h-3.5" /> Live Preview
             </TabsTrigger>
@@ -252,29 +256,29 @@ export default function ContractTemplateBuilder() {
 
         <TabsContent
           value="editor"
-          className="m-0 flex flex-col md:flex-row border-none outline-none"
+          className="m-0 flex flex-col md:flex-row border-none outline-none bg-background transition-colors"
         >
           {/* Editor Area */}
-          <div className="flex-1 p-0 border-r border-slate-100">
+          <div className="flex-1 p-0 border-r border-border transition-colors">
             <textarea
               ref={textareaRef}
               value={content}
               onChange={(e) => setContent(e.target.value)}
-              className="w-full h-[600px] p-5 text-[13px] font-mono leading-relaxed text-slate-800 bg-slate-50/30 border-none resize-none focus:outline-none focus:ring-0 custom-scrollbar"
+              className="w-full h-[500px] p-5 text-[12px] font-mono leading-relaxed text-foreground bg-background border-none resize-none focus:outline-none focus:ring-0 custom-scrollbar"
               spellCheck={false}
               placeholder="Type your HTML contract here..."
             />
           </div>
 
           {/* Variables Sidebar */}
-          <div className="w-full md:w-64 bg-slate-50 p-4 shrink-0 flex flex-col gap-3 h-[600px] overflow-y-auto custom-scrollbar">
+          <div className="w-full md:w-60 bg-secondary/30 p-4 shrink-0 flex flex-col gap-3 h-[500px] overflow-y-auto custom-scrollbar transition-colors border-l border-border">
             <div className="flex items-center gap-1.5 mb-1">
-              <Braces className="w-3.5 h-3.5 text-slate-400" />
-              <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
+              <Braces className="w-3.5 h-3.5 text-muted-foreground" />
+              <h3 className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">
                 Dynamic Variables
               </h3>
             </div>
-            <p className="text-[10px] text-slate-500 leading-tight mb-2">
+            <p className="text-[9px] font-medium text-muted-foreground/70 leading-tight mb-2">
               Click a variable to insert it at your cursor position.
             </p>
 
@@ -283,7 +287,7 @@ export default function ContractTemplateBuilder() {
                 <Button
                   key={v.tag}
                   variant="outline"
-                  className="h-8 justify-start text-[11px] font-mono font-medium text-blue-700 bg-blue-50/50 border-blue-200 hover:bg-blue-100 hover:text-blue-800 rounded-sm"
+                  className="h-8 justify-start text-[10px] font-mono font-bold text-foreground bg-secondary/50 border-border hover:bg-secondary rounded-md shadow-none transition-colors"
                   onClick={() => insertVariable(v.tag)}
                 >
                   {v.tag}
@@ -295,12 +299,12 @@ export default function ContractTemplateBuilder() {
 
         <TabsContent
           value="preview"
-          className="m-0 border-none outline-none p-8 bg-slate-100 flex justify-center h-[600px] overflow-y-auto custom-scrollbar"
+          className="m-0 border-none outline-none p-6 bg-secondary/50 flex justify-center h-[500px] overflow-y-auto custom-scrollbar transition-colors"
         >
           {/* Simulated PDF Paper */}
-          <div className="bg-white border border-slate-200 shadow-sm max-w-3xl w-full p-12 min-h-full">
+          <div className="bg-card border border-border shadow-sm max-w-3xl w-full p-10 min-h-full transition-colors text-foreground">
             <div
-              className="prose prose-sm prose-slate max-w-none prose-p:my-2 prose-li:my-0.5"
+              className="prose prose-sm dark:prose-invert max-w-none prose-p:my-2 prose-li:my-0.5"
               dangerouslySetInnerHTML={{ __html: generatePreview() }}
             />
           </div>

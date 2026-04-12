@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react"; // <-- Added useState
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import { Bell, Settings, UserCircle, CarFront, Search } from "lucide-react";
@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/breadcrumb";
 import CarCatalogueModal from "@/components/dashboard/car-catalogue";
 import NotificationsPopover from "@/components/topbar/notifications-popover";
-import Link from "next/link";
+import SettingsDialog from "@/components/settings/settings-dialog"; // <-- Make sure path is correct
 import { cn } from "@/lib/utils";
 
 export default function AdminLayout({
@@ -25,6 +25,9 @@ export default function AdminLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+
+  // State to manage the Settings Takeover Modal
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   const breadcrumbs = useMemo(() => {
     const segments = pathname.split("/").filter((segment) => segment !== "");
@@ -89,16 +92,15 @@ export default function AdminLayout({
             {/* Notifications */}
             <NotificationsPopover />
 
-            {/* Settings */}
-            <Link href={"/admin/settings"}>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 rounded-sm text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
-              >
-                <Settings className="w-4 h-4" />
-              </Button>
-            </Link>
+            {/* Settings (Converted from Link to Button Trigger) */}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 rounded-sm text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+              onClick={() => setIsSettingsOpen(true)}
+            >
+              <Settings className="w-4 h-4" />
+            </Button>
 
             {/* User Profile */}
             <Button
@@ -115,6 +117,12 @@ export default function AdminLayout({
         <main className="flex-1 overflow-y-auto bg-transparent custom-scrollbar">
           {children}
         </main>
+
+        {/* --- GLOBAL MODALS --- */}
+        <SettingsDialog
+          isOpen={isSettingsOpen}
+          onClose={() => setIsSettingsOpen(false)}
+        />
       </SidebarInset>
     </SidebarProvider>
   );

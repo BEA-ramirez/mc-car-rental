@@ -96,7 +96,7 @@ export default function BusinessHubsManager() {
 
   if (isLoading)
     return (
-      <div className="p-8 text-center text-slate-500 text-sm font-bold animate-pulse">
+      <div className="p-8 text-center text-muted-foreground text-[10px] font-bold uppercase tracking-widest animate-pulse">
         Loading Hub Locations...
       </div>
     );
@@ -112,13 +112,13 @@ export default function BusinessHubsManager() {
       type="button"
       onClick={onClick}
       className={cn(
-        "relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full transition-colors duration-200 ease-in-out outline-none ring-offset-2 focus-visible:ring-2 focus-visible:ring-blue-600",
-        enabled ? "bg-emerald-500" : "bg-slate-200",
+        "relative inline-flex h-4 w-8 shrink-0 cursor-pointer items-center justify-center rounded-full transition-colors duration-200 ease-in-out outline-none focus-visible:ring-1 focus-visible:ring-primary",
+        enabled ? "bg-primary" : "bg-secondary border border-border",
       )}
     >
       <span
         className={cn(
-          "pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out",
+          "pointer-events-none inline-block h-3 w-3 transform rounded-full bg-background shadow-sm ring-0 transition duration-200 ease-in-out",
           enabled ? "translate-x-2" : "-translate-x-2",
         )}
       />
@@ -126,40 +126,43 @@ export default function BusinessHubsManager() {
   );
 
   return (
-    <div className="bg-white border border-slate-200 rounded-sm shadow-sm overflow-hidden flex flex-col max-w-4xl">
+    <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden flex flex-col max-w-4xl transition-colors">
       {/* Header */}
-      <div className="px-5 py-4 border-b border-slate-100 bg-slate-50 flex justify-between items-center shrink-0">
-        <div>
-          <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-            <MapPin className="w-4 h-4 text-blue-600" />
-            Physical Business Hubs
-          </h2>
-          <p className="text-[11px] text-slate-500 mt-0.5">
-            Manage your official garages, airport booths, and physical pickup
-            locations.
-          </p>
+      <div className="px-4 py-3 border-b border-border bg-secondary/30 flex justify-between items-center shrink-0 transition-colors">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center shadow-sm">
+            <MapPin className="w-4 h-4 text-primary" />
+          </div>
+          <div className="flex flex-col text-left">
+            <h2 className="text-sm font-bold text-foreground tracking-tight leading-none mb-1 uppercase">
+              Physical Business Hubs
+            </h2>
+            <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-widest leading-none">
+              Manage your official garages & pickup kiosks
+            </p>
+          </div>
         </div>
         <Button
           size="sm"
-          className="h-8 text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white rounded-sm shadow-sm"
+          className="h-8 px-4 text-[10px] font-bold uppercase tracking-widest bg-primary hover:opacity-90 text-primary-foreground rounded-lg shadow-sm transition-opacity"
           onClick={handleAddHub}
         >
           <Plus className="w-3.5 h-3.5 mr-1.5" /> Add Location
         </Button>
       </div>
 
-      <div className="p-6 space-y-6 bg-slate-50/50">
+      <div className="p-4 space-y-4 bg-background transition-colors">
         {/* INTERACTIVE MAP SECTION */}
         <div className="space-y-2">
-          <div className="flex items-center gap-2 bg-blue-50 border border-blue-100 px-4 py-2.5 rounded-sm">
-            <MousePointerClick className="w-4 h-4 text-blue-500" />
-            <p className="text-xs font-medium text-blue-800">
+          <div className="flex items-center gap-2 bg-primary/10 border border-primary/20 px-3 py-2 rounded-lg transition-colors shadow-sm">
+            <MousePointerClick className="w-3.5 h-3.5 text-primary shrink-0" />
+            <p className="text-[10px] font-bold uppercase tracking-widest text-primary/90">
               Drag and drop the numbered pins on the map to automatically update
               their coordinates.
             </p>
           </div>
 
-          <div className="h-[350px] w-full border border-slate-200 rounded-sm overflow-hidden relative shadow-inner bg-slate-100">
+          <div className="h-[300px] w-full border border-border rounded-xl overflow-hidden relative shadow-inner bg-secondary transition-colors">
             <APIProvider
               apiKey={process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY as string}
             >
@@ -194,10 +197,10 @@ export default function BusinessHubsManager() {
                     {/* Custom HTML Marker to match the list indexes */}
                     <div
                       className={cn(
-                        "w-8 h-8 rounded-full border-2 flex items-center justify-center font-bold text-xs shadow-md transition-transform hover:scale-110",
+                        "w-7 h-7 rounded-full border-2 flex items-center justify-center font-bold text-[10px] shadow-md transition-transform hover:scale-110",
                         hub.is_active
-                          ? "bg-slate-900 border-white text-white"
-                          : "bg-slate-400 border-white text-white opacity-80",
+                          ? "bg-foreground border-background text-background"
+                          : "bg-muted-foreground border-background text-background opacity-80",
                       )}
                     >
                       {index + 1}
@@ -210,14 +213,14 @@ export default function BusinessHubsManager() {
         </div>
 
         {/* LIST SECTION */}
-        <div className="space-y-4">
+        <div className="space-y-3">
           {hubs.length === 0 ? (
-            <div className="text-center py-10 bg-white border border-slate-200 border-dashed rounded-sm">
-              <Building className="w-8 h-8 text-slate-300 mx-auto mb-2" />
-              <p className="text-xs font-bold text-slate-500">
+            <div className="text-center py-8 bg-card border border-border border-dashed rounded-xl transition-colors">
+              <Building className="w-8 h-8 text-muted-foreground/30 mx-auto mb-2" />
+              <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest">
                 No physical hubs defined.
               </p>
-              <p className="text-[10px] text-slate-400 mt-1">
+              <p className="text-[10px] text-muted-foreground/70 mt-1">
                 Click 'Add Location' to drop your first pin on the map.
               </p>
             </div>
@@ -226,30 +229,32 @@ export default function BusinessHubsManager() {
               <div
                 key={hub.id}
                 className={cn(
-                  "bg-white border rounded-sm overflow-hidden transition-all duration-200",
+                  "bg-card border rounded-xl overflow-hidden transition-all duration-200",
                   hub.is_active
-                    ? "border-slate-200 shadow-sm"
-                    : "border-slate-200 opacity-60 bg-slate-50",
+                    ? "border-border shadow-sm"
+                    : "border-border opacity-60 bg-secondary/30",
                 )}
               >
                 {/* Hub Header */}
-                <div className="px-4 py-3 border-b border-slate-100 bg-slate-50/80 flex items-center justify-between">
-                  <div className="flex items-center gap-3">
+                <div className="px-3 py-2.5 border-b border-border bg-secondary/50 flex items-center justify-between transition-colors">
+                  <div className="flex items-center gap-2.5">
                     <div
                       className={cn(
-                        "w-6 h-6 rounded-sm flex items-center justify-center font-mono text-[10px] font-bold text-white",
-                        hub.is_active ? "bg-slate-900" : "bg-slate-400",
+                        "w-5 h-5 rounded flex items-center justify-center font-mono text-[9px] font-bold transition-colors",
+                        hub.is_active
+                          ? "bg-foreground text-background"
+                          : "bg-muted-foreground text-background",
                       )}
                     >
                       {index + 1}
                     </div>
-                    <span className="text-xs font-bold text-slate-800 uppercase tracking-wider">
+                    <span className="text-[11px] font-bold text-foreground uppercase tracking-widest">
                       {hub.name || "Unnamed Hub"}
                     </span>
                   </div>
-                  <div className="flex items-center gap-4">
-                    <div className="flex items-center gap-2">
-                      <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
+                  <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">
                         Active
                       </span>
                       <CustomToggle
@@ -259,24 +264,24 @@ export default function BusinessHubsManager() {
                         }
                       />
                     </div>
-                    <div className="w-px h-4 bg-slate-300" />
+                    <div className="w-px h-4 bg-border" />
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-7 w-7 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-sm"
+                      className="h-6 w-6 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-md transition-colors"
                       onClick={() => handleRemoveHub(hub.id)}
                     >
-                      <Trash2 className="w-3.5 h-3.5" />
+                      <Trash2 className="w-3 h-3" />
                     </Button>
                   </div>
                 </div>
 
                 {/* Hub Form Body */}
-                <div className="p-4 grid grid-cols-1 md:grid-cols-12 gap-5">
+                <div className="p-3 grid grid-cols-1 md:grid-cols-12 gap-4">
                   {/* Name & Address */}
-                  <div className="md:col-span-7 space-y-4">
-                    <div className="space-y-1.5">
-                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
+                  <div className="md:col-span-7 space-y-3">
+                    <div className="space-y-1">
+                      <label className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">
                         Hub Name
                       </label>
                       <Input
@@ -285,11 +290,11 @@ export default function BusinessHubsManager() {
                         onChange={(e) =>
                           handleUpdateHub(hub.id, "name", e.target.value)
                         }
-                        className="h-8 text-xs border-slate-200 rounded-sm shadow-none font-bold"
+                        className="h-8 text-[11px] bg-secondary border-border shadow-none rounded-lg focus-visible:ring-1 focus-visible:ring-primary font-semibold transition-colors"
                       />
                     </div>
-                    <div className="space-y-1.5">
-                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
+                    <div className="space-y-1">
+                      <label className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">
                         Complete Address
                       </label>
                       <Input
@@ -298,17 +303,16 @@ export default function BusinessHubsManager() {
                         onChange={(e) =>
                           handleUpdateHub(hub.id, "address", e.target.value)
                         }
-                        className="h-8 text-xs border-slate-200 rounded-sm shadow-none"
+                        className="h-8 text-[11px] bg-secondary border-border shadow-none rounded-lg focus-visible:ring-1 focus-visible:ring-primary font-medium transition-colors"
                       />
                     </div>
                   </div>
 
                   {/* Coordinates (Synced with Map) */}
-                  <div className="md:col-span-5 space-y-4 border-l border-slate-100 pl-5">
-                    <div className="space-y-1.5">
-                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1.5">
-                        <Navigation className="w-3 h-3 text-blue-500" />{" "}
-                        Latitude
+                  <div className="md:col-span-5 space-y-3 border-l border-border pl-4 transition-colors">
+                    <div className="space-y-1">
+                      <label className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-1.5">
+                        <Navigation className="w-3 h-3 text-primary" /> Latitude
                       </label>
                       <Input
                         type="number"
@@ -322,12 +326,12 @@ export default function BusinessHubsManager() {
                             parseFloat(e.target.value) || 0,
                           )
                         }
-                        className="h-8 text-xs border-slate-200 rounded-sm shadow-none font-mono bg-slate-50 text-slate-600 focus:bg-white"
+                        className="h-8 text-[11px] border-border rounded-lg shadow-none font-mono bg-secondary text-muted-foreground focus:bg-background focus:text-foreground transition-colors"
                       />
                     </div>
-                    <div className="space-y-1.5">
-                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1.5">
-                        <Navigation className="w-3 h-3 text-blue-500" />{" "}
+                    <div className="space-y-1">
+                      <label className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-1.5">
+                        <Navigation className="w-3 h-3 text-primary" />{" "}
                         Longitude
                       </label>
                       <Input
@@ -342,7 +346,7 @@ export default function BusinessHubsManager() {
                             parseFloat(e.target.value) || 0,
                           )
                         }
-                        className="h-8 text-xs border-slate-200 rounded-sm shadow-none font-mono bg-slate-50 text-slate-600 focus:bg-white"
+                        className="h-8 text-[11px] border-border rounded-lg shadow-none font-mono bg-secondary text-muted-foreground focus:bg-background focus:text-foreground transition-colors"
                       />
                     </div>
                   </div>
@@ -354,9 +358,9 @@ export default function BusinessHubsManager() {
       </div>
 
       {/* Footer Actions */}
-      <div className="bg-slate-50 border-t border-slate-200 p-4 shrink-0 flex justify-end">
+      <div className="bg-card border-t border-border p-3 shrink-0 flex justify-end transition-colors">
         <Button
-          className="h-9 px-6 text-xs font-bold bg-slate-900 hover:bg-slate-800 text-white rounded-sm shadow-sm"
+          className="h-8 px-5 text-[10px] font-bold uppercase tracking-widest bg-primary hover:opacity-90 text-primary-foreground rounded-lg shadow-sm transition-opacity"
           onClick={handleSave}
           disabled={isSaving}
         >

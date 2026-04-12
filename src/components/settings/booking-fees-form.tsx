@@ -18,6 +18,7 @@ import {
   saveBookingFees,
   BookingFees,
 } from "@/actions/settings";
+import { cn } from "@/lib/utils";
 
 const DEFAULT_FEES: BookingFees = {
   rush_fee: 200,
@@ -65,7 +66,7 @@ export default function BookingFeesForm() {
 
   if (isLoading)
     return (
-      <div className="p-8 text-center text-slate-500 text-sm font-bold animate-pulse">
+      <div className="p-8 text-center text-muted-foreground text-[10px] font-bold uppercase tracking-widest animate-pulse">
         Loading Fee Settings...
       </div>
     );
@@ -80,7 +81,7 @@ export default function BookingFeesForm() {
   }) => (
     <div className="relative">
       <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-        <span className="text-xs font-bold text-slate-400">₱</span>
+        <span className="text-[11px] font-bold text-muted-foreground">₱</span>
       </div>
       <Input
         type="number"
@@ -88,40 +89,43 @@ export default function BookingFeesForm() {
         step="10"
         value={value || ""}
         onChange={(e) => onChange(e.target.value)}
-        className="h-9 pl-7 text-xs border-slate-200 focus-visible:ring-blue-500 rounded-sm shadow-sm font-mono font-medium"
+        className="h-8 pl-7 text-[11px] font-bold text-foreground bg-secondary border-border shadow-none rounded-lg focus-visible:ring-1 focus-visible:ring-primary font-mono transition-colors"
       />
     </div>
   );
 
   return (
-    <div className="bg-white border border-slate-200 rounded-sm shadow-sm overflow-hidden flex flex-col max-w-3xl">
+    <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden flex flex-col max-w-3xl transition-colors">
       {/* Header */}
-      <div className="px-5 py-4 border-b border-slate-100 bg-slate-50 flex justify-between items-center shrink-0">
-        <div>
-          <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-            <Banknote className="w-4 h-4 text-emerald-600" />
-            Standard Fees & Deposits
-          </h2>
-          <p className="text-[11px] text-slate-500 mt-0.5">
-            Configure default logistics surcharges, driver rates, and security
-            deposits.
-          </p>
+      <div className="px-4 py-3 border-b border-border bg-secondary/30 flex justify-between items-center shrink-0 transition-colors">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center shadow-sm">
+            <Banknote className="w-4 h-4 text-primary" />
+          </div>
+          <div className="flex flex-col text-left">
+            <h2 className="text-sm font-bold text-foreground tracking-tight leading-none mb-1 uppercase">
+              Standard Fees & Deposits
+            </h2>
+            <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-widest leading-none">
+              Configure default logistics surcharges, driver rates, and security
+              deposits.
+            </p>
+          </div>
         </div>
       </div>
 
-      <div className="p-6 space-y-8 bg-white">
+      <div className="p-4 space-y-6 bg-background transition-colors">
         {/* Section 1: Logistics & Delivery */}
         <div>
-          <h3 className="text-[10px] font-black text-slate-800 uppercase tracking-widest mb-4 flex items-center gap-1.5 border-b border-slate-100 pb-2">
-            <Truck className="w-3.5 h-3.5 text-slate-400" /> Logistics &
-            Delivery
+          <h3 className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest mb-3 flex items-center gap-1.5 border-b border-border pb-1.5">
+            <Truck className="w-3.5 h-3.5" /> Logistics & Delivery
           </h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center justify-between">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="space-y-1">
+              <label className="text-[9px] font-bold text-foreground uppercase tracking-widest flex items-center justify-between">
                 Custom Pickup
               </label>
-              <p className="text-[9px] text-slate-400 leading-tight mb-1">
+              <p className="text-[9px] text-muted-foreground/70 leading-tight mb-1.5">
                 Base fee for delivering the car outside a standard hub.
               </p>
               <CurrencyInput
@@ -130,11 +134,11 @@ export default function BookingFeesForm() {
               />
             </div>
 
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center justify-between">
+            <div className="space-y-1">
+              <label className="text-[9px] font-bold text-foreground uppercase tracking-widest flex items-center justify-between">
                 Custom Dropoff
               </label>
-              <p className="text-[9px] text-slate-400 leading-tight mb-1">
+              <p className="text-[9px] text-muted-foreground/70 leading-tight mb-1.5">
                 Base fee for retrieving the car outside a standard hub.
               </p>
               <CurrencyInput
@@ -143,13 +147,13 @@ export default function BookingFeesForm() {
               />
             </div>
 
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center justify-between">
+            <div className="space-y-1">
+              <label className="text-[9px] font-bold text-foreground uppercase tracking-widest flex items-center justify-between">
                 <span className="flex items-center gap-1">
                   <Clock className="w-3 h-3 text-amber-500" /> Rush Surcharge
                 </span>
               </label>
-              <p className="text-[9px] text-slate-400 leading-tight mb-1">
+              <p className="text-[9px] text-muted-foreground/70 leading-tight mb-1.5">
                 Extra fee applied to bookings made within 24 hours.
               </p>
               <CurrencyInput
@@ -162,18 +166,17 @@ export default function BookingFeesForm() {
 
         {/* Section 2: Add-ons & Security */}
         <div>
-          <h3 className="text-[10px] font-black text-slate-800 uppercase tracking-widest mb-4 flex items-center gap-1.5 border-b border-slate-100 pb-2">
-            <ShieldAlert className="w-3.5 h-3.5 text-slate-400" /> Add-ons &
-            Security
+          <h3 className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest mb-3 flex items-center gap-1.5 border-b border-border pb-1.5">
+            <ShieldAlert className="w-3.5 h-3.5" /> Add-ons & Security
           </h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5 max-w-xl">
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center justify-between">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-xl">
+            <div className="space-y-1">
+              <label className="text-[9px] font-bold text-foreground uppercase tracking-widest flex items-center justify-between">
                 <span className="flex items-center gap-1">
                   <UserCircle className="w-3 h-3" /> Daily Driver Rate
                 </span>
               </label>
-              <p className="text-[9px] text-slate-400 leading-tight mb-1">
+              <p className="text-[9px] text-muted-foreground/70 leading-tight mb-1.5">
                 Standard 10-hour daily rate for chauffeur services.
               </p>
               <CurrencyInput
@@ -182,11 +185,11 @@ export default function BookingFeesForm() {
               />
             </div>
 
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center justify-between">
+            <div className="space-y-1">
+              <label className="text-[9px] font-bold text-foreground uppercase tracking-widest flex items-center justify-between">
                 Default Security Deposit
               </label>
-              <p className="text-[9px] text-slate-400 leading-tight mb-1">
+              <p className="text-[9px] text-muted-foreground/70 leading-tight mb-1.5">
                 Standard refundable deposit applied to self-drive rentals.
               </p>
               <CurrencyInput
@@ -201,9 +204,9 @@ export default function BookingFeesForm() {
       </div>
 
       {/* Footer Actions */}
-      <div className="bg-slate-50 border-t border-slate-200 p-4 shrink-0 flex justify-end">
+      <div className="bg-card border-t border-border p-3 shrink-0 flex justify-end transition-colors">
         <Button
-          className="h-9 px-6 text-xs font-bold bg-slate-900 hover:bg-slate-800 text-white rounded-sm shadow-sm"
+          className="h-8 px-5 text-[10px] font-bold uppercase tracking-widest bg-primary hover:opacity-90 text-primary-foreground rounded-lg shadow-sm transition-opacity"
           onClick={handleSave}
           disabled={isSaving}
         >

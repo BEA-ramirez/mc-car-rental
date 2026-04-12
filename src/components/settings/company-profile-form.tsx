@@ -18,6 +18,7 @@ import {
   saveCompanyProfile,
   CompanyProfile,
 } from "@/actions/settings";
+import { cn } from "@/lib/utils";
 
 const DEFAULT_PROFILE: CompanyProfile = {
   name: "",
@@ -69,44 +70,47 @@ export default function CompanyProfileForm() {
 
   if (isLoading)
     return (
-      <div className="p-8 text-center text-slate-500 text-sm font-bold animate-pulse">
+      <div className="p-8 text-center text-muted-foreground text-[10px] font-bold uppercase tracking-widest animate-pulse">
         Loading Profile...
       </div>
     );
 
   return (
-    <div className="bg-white border border-slate-200 rounded-sm shadow-sm overflow-hidden flex flex-col max-w-3xl">
+    <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden flex flex-col max-w-3xl transition-colors">
       {/* Header */}
-      <div className="px-5 py-4 border-b border-slate-100 bg-slate-50 flex justify-between items-center shrink-0">
-        <div>
-          <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-            <Building2 className="w-4 h-4 text-blue-600" />
-            Company Identity
-          </h2>
-          <p className="text-[11px] text-slate-500 mt-0.5">
-            Primary business details used in contracts, invoices, and automated
-            emails.
-          </p>
+      <div className="px-4 py-3 border-b border-border bg-secondary/30 flex justify-between items-center shrink-0 transition-colors">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center shadow-sm">
+            <Building2 className="w-4 h-4 text-primary" />
+          </div>
+          <div className="flex flex-col text-left">
+            <h2 className="text-sm font-bold text-foreground tracking-tight leading-none mb-1 uppercase">
+              Company Identity
+            </h2>
+            <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-widest leading-none">
+              Primary business details for contracts & invoices
+            </p>
+          </div>
         </div>
       </div>
 
       {/* Form Body */}
-      <div className="p-6 space-y-6 bg-white">
+      <div className="p-4 space-y-4 bg-background transition-colors">
         {/* Row 1: Name & Email */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-1.5">
-            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1.5">
+            <label className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-1.5">
               <Building2 className="w-3 h-3" /> Registered Business Name
             </label>
             <Input
               placeholder="e.g., MC Car Rental Services"
               value={profile.name}
               onChange={(e) => handleChange("name", e.target.value)}
-              className="h-9 text-xs border-slate-200 focus-visible:ring-blue-500 rounded-sm shadow-sm font-medium"
+              className="h-8 text-[11px] font-normal bg-secondary border-border shadow-none rounded-lg focus-visible:ring-1 focus-visible:ring-primary transition-colors text-foreground"
             />
           </div>
           <div className="space-y-1.5">
-            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1.5">
+            <label className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-1.5">
               <Mail className="w-3 h-3" /> Official Email Address
             </label>
             <Input
@@ -114,55 +118,55 @@ export default function CompanyProfileForm() {
               placeholder="admin@rentalcompany.com"
               value={profile.email}
               onChange={(e) => handleChange("email", e.target.value)}
-              className="h-9 text-xs border-slate-200 focus-visible:ring-blue-500 rounded-sm shadow-sm font-medium"
+              className="h-8 text-[11px] font-normal bg-secondary border-border shadow-none rounded-lg focus-visible:ring-1 focus-visible:ring-primary transition-colors text-foreground"
             />
           </div>
         </div>
 
         {/* Row 2: Phone & Website */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-1.5">
-            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1.5">
+            <label className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-1.5">
               <Phone className="w-3 h-3" /> Contact Number
             </label>
             <Input
               placeholder="+63 917 123 4567"
               value={profile.contact_number}
               onChange={(e) => handleChange("contact_number", e.target.value)}
-              className="h-9 text-xs border-slate-200 focus-visible:ring-blue-500 rounded-sm shadow-sm font-medium"
+              className="h-8 text-[11px] font-normal bg-secondary border-border shadow-none rounded-lg focus-visible:ring-1 focus-visible:ring-primary transition-colors text-foreground"
             />
           </div>
           <div className="space-y-1.5">
-            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1.5">
+            <label className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-1.5">
               <Globe className="w-3 h-3" /> Website URL
             </label>
             <Input
               placeholder="www.rentalcompany.com"
               value={profile.website}
               onChange={(e) => handleChange("website", e.target.value)}
-              className="h-9 text-xs border-slate-200 focus-visible:ring-blue-500 rounded-sm shadow-sm font-medium"
+              className="h-8 text-[11px] font-normal bg-secondary border-border shadow-none rounded-lg focus-visible:ring-1 focus-visible:ring-primary transition-colors text-foreground"
             />
           </div>
         </div>
 
         {/* Row 3: Address (Full Width) */}
-        <div className="space-y-1.5 border-t border-slate-100 pt-5 mt-2">
-          <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1.5">
+        <div className="space-y-1.5 border-t border-border pt-4 mt-1 transition-colors">
+          <label className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-1.5">
             <MapPin className="w-3 h-3" /> Headquarters Address
           </label>
           <Input
             placeholder="Complete street address, city, and province..."
             value={profile.address}
             onChange={(e) => handleChange("address", e.target.value)}
-            className="h-9 text-xs border-slate-200 focus-visible:ring-blue-500 rounded-sm shadow-sm font-medium"
+            className="h-8 text-[11px] font-normal bg-secondary border-border shadow-none rounded-lg focus-visible:ring-1 focus-visible:ring-primary transition-colors text-foreground"
           />
         </div>
       </div>
 
       {/* Footer Actions */}
-      <div className="bg-slate-50 border-t border-slate-200 p-4 shrink-0 flex justify-end">
+      <div className="bg-card border-t border-border p-3 shrink-0 flex justify-end transition-colors">
         <Button
-          className="h-9 px-6 text-xs font-bold bg-slate-900 hover:bg-slate-800 text-white rounded-sm shadow-sm"
+          className="h-8 px-5 text-[10px] font-bold uppercase tracking-widest bg-primary hover:opacity-90 text-primary-foreground rounded-lg shadow-sm transition-opacity"
           onClick={handleSave}
           disabled={isSaving}
         >
@@ -171,7 +175,7 @@ export default function CompanyProfileForm() {
           ) : (
             <Save className="w-3.5 h-3.5 mr-2" />
           )}
-          Save Profile Changes
+          Save Profile
         </Button>
       </div>
     </div>

@@ -274,20 +274,20 @@ export default function ReportsMain() {
   };
 
   return (
-    <div className="flex flex-col h-[calc(100vh-80px)] bg-slate-50 font-sans relative">
+    <div className="flex flex-col h-full bg-background font-sans relative transition-colors duration-300">
       {/* --- UNINTERRUPTIBLE LOADING OVERLAY --- */}
       {exportState !== "idle" && (
-        <div className="absolute inset-0 z-50 flex items-center justify-center bg-slate-900/30 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white p-8 rounded-md shadow-2xl flex flex-col items-center max-w-sm w-full border border-slate-200 animate-in zoom-in-95 duration-300">
-            <div className="w-14 h-14 rounded-full bg-slate-50 flex items-center justify-center mb-5 border border-slate-100 shadow-inner">
-              <Loader2 className="w-7 h-7 animate-spin text-slate-900" />
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-card p-6 rounded-2xl shadow-2xl flex flex-col items-center max-w-sm w-full border border-border animate-in zoom-in-95 duration-300">
+            <div className="w-12 h-12 rounded-xl bg-secondary flex items-center justify-center mb-4 border border-border shadow-sm">
+              <Loader2 className="w-6 h-6 animate-spin text-primary" />
             </div>
-            <h3 className="text-base font-black text-slate-900 mb-2 tracking-tight uppercase">
+            <h3 className="text-sm font-bold text-foreground mb-1.5 uppercase tracking-wider">
               {exportState === "pdf"
                 ? "Drawing PDF Report"
                 : "Compiling Excel Data"}
             </h3>
-            <p className="text-[11px] font-medium text-slate-500 text-center leading-relaxed">
+            <p className="text-[10px] font-medium text-muted-foreground text-center leading-relaxed">
               {exportState === "pdf"
                 ? "Aggregating financial data and rendering document structures. Please do not close this window."
                 : "Extracting ledgers, mapping multi-sheet unit economics, and formatting columns. Please hold on."}
@@ -297,73 +297,63 @@ export default function ReportsMain() {
       )}
 
       {/* --- FORMAL HEADER & EXPORT ENGINE --- */}
-      <div className="flex items-center justify-between px-6 py-4 bg-white border-b border-slate-200 shrink-0 sticky top-0 z-20 shadow-sm">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-sm bg-slate-900 flex items-center justify-center shadow-sm">
-            <PieChart className="w-4 h-4 text-white" />
-          </div>
-          <div>
-            <h1 className="text-base font-bold text-slate-900 tracking-tight leading-none mb-1">
-              Intelligence & Reporting
-            </h1>
-            <p className="text-[11px] font-medium text-slate-500 leading-none">
-              Financial aggregates, unit economics, and operational analytics.
-            </p>
-          </div>
-        </div>
+      <div className="flex items-center justify-between px-5 pt-4 shrink-0 ">
+        <div className="flex items-center gap-3"></div>
         <div className="flex items-center gap-2">
           <Button
             variant="outline"
             size="sm"
             onClick={handleExportPDF}
             disabled={exportState !== "idle" || isLoading || !reportData}
-            className="h-8 text-xs font-bold border-slate-300 text-slate-700 bg-white rounded-sm shadow-sm hover:bg-slate-50 disabled:opacity-50"
+            className="h-8 text-[10px] font-bold uppercase tracking-widest border-destructive/30 text-destructive bg-card rounded-lg shadow-none hover:bg-destructive/10 disabled:opacity-50 transition-colors"
           >
-            <Download className="w-3.5 h-3.5 mr-1.5 text-red-600" /> Export PDF
+            <Download className="w-3.5 h-3.5 mr-1.5" /> PDF
           </Button>
           <Button
             size="sm"
             onClick={handleExportExcel}
             disabled={exportState !== "idle" || isLoading || !reportData}
-            className="h-8 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white rounded-sm shadow-sm disabled:opacity-50"
+            className="h-8 text-[10px] font-bold uppercase tracking-widest bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg shadow-sm disabled:opacity-50 transition-colors"
           >
-            <FileSpreadsheet className="w-3.5 h-3.5 mr-1.5" /> Export Excel
-            (.xlsx)
+            <FileSpreadsheet className="w-3.5 h-3.5 mr-1.5" /> Excel (.xlsx)
           </Button>
         </div>
       </div>
 
-      <ScrollArea className="flex-1">
-        <div className="max-w-[1400px] mx-auto p-6 space-y-6">
+      <ScrollArea className="flex-1 custom-scrollbar">
+        <div className="max-w-[1400px] mx-auto p-4 md:p-5 space-y-5">
           {/* --- THE COMMAND BAR --- */}
-          <div className="bg-white border border-slate-200 rounded-sm p-2 flex items-center justify-between shadow-sm">
-            <div className="flex items-center gap-2">
+          <div className="bg-card border border-border rounded-xl p-2 flex flex-col md:flex-row md:items-center justify-between shadow-sm transition-colors gap-2 md:gap-0">
+            <div className="flex items-center gap-2 w-full md:w-auto">
               <Popover>
                 <PopoverTrigger asChild>
                   <Button
                     id="date"
                     variant={"outline"}
                     className={cn(
-                      "w-[260px] justify-start text-left font-bold text-xs h-8 rounded-sm border-slate-200 shadow-none",
-                      !date && "text-slate-500",
+                      "w-[240px] justify-start text-left font-semibold text-[11px] h-8 rounded-lg border-border bg-secondary shadow-none hover:bg-background focus:ring-1 focus:ring-primary transition-colors",
+                      !date && "text-muted-foreground",
                     )}
                   >
-                    <CalendarIcon className="mr-2 h-3.5 w-3.5 text-slate-400" />
+                    <CalendarIcon className="mr-2 h-3.5 w-3.5 text-muted-foreground" />
                     {date?.from ? (
                       date.to ? (
                         <>
-                          {format(date.from, "LLL dd, y")} -{" "}
-                          {format(date.to, "LLL dd, y")}
+                          {format(date.from, "MMM dd, y")} -{" "}
+                          {format(date.to, "MMM dd, y")}
                         </>
                       ) : (
-                        format(date.from, "LLL dd, y")
+                        format(date.from, "MMM dd, y")
                       )
                     ) : (
                       <span>Pick a date range</span>
                     )}
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-auto p-0 rounded-sm" align="start">
+                <PopoverContent
+                  className="w-auto p-0 rounded-xl border-border bg-popover shadow-xl"
+                  align="start"
+                >
                   <Calendar
                     initialFocus
                     mode="range"
@@ -371,31 +361,34 @@ export default function ReportsMain() {
                     selected={date}
                     onSelect={setDate}
                     numberOfMonths={2}
-                    className="rounded-sm"
+                    className="rounded-xl"
                   />
                 </PopoverContent>
               </Popover>
 
-              <div className="w-px h-5 bg-slate-200 mx-1" />
+              <div className="hidden md:block w-px h-5 bg-border mx-1" />
 
               <Select value={partnerFilter} onValueChange={setPartnerFilter}>
-                <SelectTrigger className="w-[180px] h-8 text-xs font-bold border-slate-200 rounded-sm shadow-none">
+                <SelectTrigger className="w-[180px] h-8 text-[11px] font-semibold bg-secondary border-border rounded-lg shadow-none focus:ring-primary transition-colors">
                   <SelectValue placeholder="All Fleet Partners" />
                 </SelectTrigger>
-                <SelectContent className="rounded-sm">
-                  <SelectItem value="all" className="text-xs font-medium">
+                <SelectContent className="rounded-xl border-border bg-popover shadow-xl">
+                  <SelectItem
+                    value="all"
+                    className="text-[11px] font-medium transition-colors focus:bg-secondary"
+                  >
                     All Fleet Partners
                   </SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
-            <div className="flex items-center gap-2">
-              <div className="relative w-[280px]">
-                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+            <div className="flex items-center gap-2 w-full md:w-auto">
+              <div className="relative flex-1 md:w-[240px]">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
                 <Input
                   placeholder="Search records..."
-                  className="h-8 pl-8 text-xs rounded-sm border-slate-200 shadow-none focus-visible:ring-1 focus-visible:ring-slate-300 font-medium"
+                  className="h-8 pl-8 pr-3 text-[11px] rounded-lg border-border bg-secondary shadow-none focus-visible:ring-1 focus-visible:ring-primary font-medium transition-colors"
                 />
               </div>
 
@@ -403,52 +396,55 @@ export default function ReportsMain() {
                 <SheetTrigger asChild>
                   <Button
                     variant="outline"
-                    className="h-8 px-3 text-xs font-bold border-slate-200 text-slate-700 rounded-sm shadow-none hover:bg-slate-50"
+                    className="h-8 px-3 text-[11px] font-semibold border-border text-foreground bg-card rounded-lg shadow-none hover:bg-secondary transition-colors shrink-0"
                   >
                     <Filter className="w-3.5 h-3.5 mr-1.5" /> Filters
                   </Button>
                 </SheetTrigger>
-                <SheetContent className="w-[400px] sm:w-[540px] bg-slate-50 p-0 flex flex-col border-l-slate-200 z-[100]">
-                  <SheetHeader className="p-6 bg-white border-b border-slate-200">
-                    <SheetTitle className="text-sm font-bold flex items-center gap-2">
-                      <Settings2 className="w-4 h-4 text-slate-500" /> Advanced
-                      Filters
+                <SheetContent className="w-[400px] sm:w-[500px] bg-background p-0 flex flex-col border-l-border z-[100] transition-colors">
+                  <SheetHeader className="p-5 bg-card border-b border-border transition-colors">
+                    <SheetTitle className="text-sm font-bold flex items-center gap-2 uppercase tracking-wider">
+                      <Settings2 className="w-4 h-4 text-muted-foreground" />{" "}
+                      Advanced Filters
                     </SheetTitle>
                   </SheetHeader>
-                  <div className="flex-1 p-6 space-y-6 overflow-y-auto">
+                  <div className="flex-1 p-5 space-y-6 overflow-y-auto custom-scrollbar">
                     <div className="space-y-3">
-                      <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                      <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">
                         Transaction Status
                       </span>
                       <div className="grid grid-cols-2 gap-2">
-                        <label className="flex items-center gap-2 p-2.5 border border-slate-200 bg-white rounded-sm cursor-pointer hover:border-slate-300">
+                        <label className="flex items-center gap-2 p-2.5 border border-border bg-card rounded-xl cursor-pointer hover:border-primary transition-colors">
                           <input
                             type="checkbox"
                             defaultChecked
-                            className="rounded border-slate-300 text-slate-900"
+                            className="rounded border-muted-foreground text-primary focus:ring-primary"
                           />{" "}
-                          <span className="text-xs font-bold text-slate-700">
+                          <span className="text-[11px] font-bold text-foreground">
                             Completed
                           </span>
                         </label>
-                        <label className="flex items-center gap-2 p-2.5 border border-slate-200 bg-white rounded-sm cursor-pointer hover:border-slate-300">
+                        <label className="flex items-center gap-2 p-2.5 border border-border bg-card rounded-xl cursor-pointer hover:border-primary transition-colors">
                           <input
                             type="checkbox"
                             defaultChecked
-                            className="rounded border-slate-300 text-slate-900"
+                            className="rounded border-muted-foreground text-primary focus:ring-primary"
                           />{" "}
-                          <span className="text-xs font-bold text-slate-700">
+                          <span className="text-[11px] font-bold text-foreground">
                             Pending
                           </span>
                         </label>
                       </div>
                     </div>
                   </div>
-                  <div className="p-4 bg-white border-t border-slate-200 flex justify-end gap-2">
-                    <Button variant="ghost" className="text-xs font-bold h-9">
+                  <div className="p-4 bg-card border-t border-border flex justify-end gap-2 transition-colors">
+                    <Button
+                      variant="ghost"
+                      className="text-[10px] font-bold h-8 uppercase tracking-widest rounded-lg hover:bg-secondary"
+                    >
                       Reset
                     </Button>
-                    <Button className="text-xs font-bold h-9 bg-slate-900 text-white hover:bg-slate-800 rounded-sm">
+                    <Button className="text-[10px] font-bold h-8 uppercase tracking-widest bg-primary hover:opacity-90 text-primary-foreground rounded-lg shadow-sm">
                       Apply Filters
                     </Button>
                   </div>
@@ -460,8 +456,8 @@ export default function ReportsMain() {
           {/* --- LOADING SKELETON --- */}
           {isLoading && (
             <div className="flex flex-col items-center justify-center py-20 space-y-4">
-              <Loader2 className="w-8 h-8 animate-spin text-slate-300" />
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">
+              <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+              <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
                 Aggregating Financial Data...
               </p>
             </div>
@@ -472,67 +468,70 @@ export default function ReportsMain() {
             <>
               {/* --- EXECUTIVE SUMMARY (KPIs) --- */}
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div className="bg-white border border-slate-200 p-5 rounded-sm shadow-sm flex flex-col justify-between relative overflow-hidden">
-                  <div className="absolute top-0 right-0 p-4 opacity-10">
-                    <Activity className="w-16 h-16" />
+                <div className="bg-card border border-border p-4 rounded-xl shadow-sm flex flex-col justify-between relative overflow-hidden transition-colors">
+                  <div className="absolute top-0 right-0 p-4 opacity-5">
+                    <Activity className="w-16 h-16 text-foreground" />
                   </div>
-                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1 z-10">
+                  <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest mb-1 z-10">
                     Gross Fleet Revenue
                   </span>
-                  <span className="text-2xl font-black text-slate-900 tracking-tight font-mono z-10">
+                  <span className="text-xl font-black text-foreground tracking-tight font-mono z-10">
                     ₱ {(reportData.kpis?.gross_revenue || 0).toLocaleString()}
                   </span>
-                  <div className="mt-3 flex items-center gap-1.5 z-10">
-                    <span className="text-[10px] font-medium text-slate-500">
+                  <div className="mt-2 flex items-center gap-1.5 z-10">
+                    <span className="text-[9px] font-medium text-muted-foreground uppercase tracking-widest">
                       {reportData.kpis?.total_trips || 0} Completed Trips
                     </span>
                   </div>
                 </div>
-                <div className="bg-white border border-slate-200 p-5 rounded-sm shadow-sm flex flex-col justify-between relative overflow-hidden">
-                  <div className="absolute top-0 right-0 p-4 opacity-10">
-                    <TrendingUp className="w-16 h-16" />
+
+                <div className="bg-emerald-500/5 border border-emerald-500/20 p-4 rounded-xl shadow-sm flex flex-col justify-between relative overflow-hidden transition-colors">
+                  <div className="absolute top-0 right-0 p-4 opacity-5">
+                    <TrendingUp className="w-16 h-16 text-emerald-500" />
                   </div>
-                  <span className="text-[10px] font-bold text-emerald-700 uppercase tracking-widest mb-1 z-10">
+                  <span className="text-[9px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-widest mb-1 z-10">
                     Net Platform Profit
                   </span>
-                  <span className="text-2xl font-black text-emerald-700 tracking-tight font-mono z-10">
+                  <span className="text-xl font-black text-emerald-600 dark:text-emerald-400 tracking-tight font-mono z-10">
                     ₱ {(reportData.kpis?.platform_profit || 0).toLocaleString()}
                   </span>
-                  <div className="mt-3 flex items-center gap-1.5 z-10">
-                    <span className="text-[10px] font-medium text-slate-500">
+                  <div className="mt-2 flex items-center gap-1.5 z-10">
+                    <span className="text-[9px] font-medium text-emerald-600/80 dark:text-emerald-400/80 uppercase tracking-widest">
                       Based on configured shares
                     </span>
                   </div>
                 </div>
-                <div className="bg-white border border-slate-200 p-5 rounded-sm shadow-sm flex flex-col justify-between relative overflow-hidden">
-                  <div className="absolute top-0 right-0 p-4 opacity-10">
-                    <AlertTriangle className="w-16 h-16" />
+
+                <div className="bg-destructive/5 border border-destructive/20 p-4 rounded-xl shadow-sm flex flex-col justify-between relative overflow-hidden transition-colors">
+                  <div className="absolute top-0 right-0 p-4 opacity-5">
+                    <AlertTriangle className="w-16 h-16 text-destructive" />
                   </div>
-                  <span className="text-[10px] font-bold text-red-700 uppercase tracking-widest mb-1 z-10">
+                  <span className="text-[9px] font-bold text-destructive uppercase tracking-widest mb-1 z-10">
                     Maintenance Costs
                   </span>
-                  <span className="text-2xl font-black text-red-700 tracking-tight font-mono z-10">
+                  <span className="text-xl font-black text-destructive tracking-tight font-mono z-10">
                     - ₱{" "}
                     {(reportData.kpis?.maintenance_costs || 0).toLocaleString()}
                   </span>
-                  <div className="mt-3 flex items-center gap-1.5 z-10">
-                    <span className="text-[10px] font-medium text-slate-500">
+                  <div className="mt-2 flex items-center gap-1.5 z-10">
+                    <span className="text-[9px] font-medium text-destructive/80 uppercase tracking-widest">
                       Total operational repairs
                     </span>
                   </div>
                 </div>
-                <div className="bg-white border border-slate-200 p-5 rounded-sm shadow-sm flex flex-col justify-between relative overflow-hidden">
-                  <div className="absolute top-0 right-0 p-4 opacity-10">
-                    <User className="w-16 h-16" />
+
+                <div className="bg-blue-500/5 border border-blue-500/20 p-4 rounded-xl shadow-sm flex flex-col justify-between relative overflow-hidden transition-colors">
+                  <div className="absolute top-0 right-0 p-4 opacity-5">
+                    <User className="w-16 h-16 text-blue-500" />
                   </div>
-                  <span className="text-[10px] font-bold text-blue-700 uppercase tracking-widest mb-1 z-10">
+                  <span className="text-[9px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-widest mb-1 z-10">
                     Total Owner Payouts
                   </span>
-                  <span className="text-2xl font-black text-blue-700 tracking-tight font-mono z-10">
+                  <span className="text-xl font-black text-blue-600 dark:text-blue-400 tracking-tight font-mono z-10">
                     ₱ {(reportData.kpis?.owner_payouts || 0).toLocaleString()}
                   </span>
-                  <div className="mt-3 flex items-center gap-1.5 z-10">
-                    <span className="text-[10px] font-medium text-slate-500">
+                  <div className="mt-2 flex items-center gap-1.5 z-10">
+                    <span className="text-[9px] font-medium text-blue-600/80 dark:text-blue-400/80 uppercase tracking-widest">
                       Pending settlement
                     </span>
                   </div>
@@ -540,47 +539,47 @@ export default function ReportsMain() {
               </div>
 
               {/* --- THE DATA GRIDS (TABS) --- */}
-              <div className="bg-white border border-slate-200 rounded-sm shadow-sm flex flex-col overflow-hidden min-h-[500px]">
-                <div className="border-b border-slate-200 bg-slate-50/50 px-3 pt-3 flex items-center justify-between">
+              <div className="bg-card border border-border rounded-xl shadow-sm flex flex-col overflow-hidden min-h-[500px] transition-colors">
+                <div className="border-b border-border bg-secondary/30 px-3 pt-2 flex items-center justify-between transition-colors">
                   <Tabs
                     value={activeTab}
                     onValueChange={handleTabChange}
                     className="w-full"
                   >
-                    <TabsList className="bg-transparent h-9 p-0 flex gap-5 border-b-0 justify-start w-full overflow-x-auto hide-scrollbar">
+                    <TabsList className="bg-transparent h-9 p-0 flex gap-5 border-b-0 justify-start w-full overflow-x-auto custom-scrollbar">
                       <TabsTrigger
                         value="unit_economics"
-                        className="rounded-none border-b-2 border-transparent data-[state=active]:border-slate-900 data-[state=active]:bg-transparent data-[state=active]:shadow-none px-1 py-1.5 text-[11px] font-bold text-slate-500 data-[state=active]:text-slate-900 transition-none uppercase tracking-wider whitespace-nowrap"
+                        className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-1 py-1.5 text-[10px] font-bold text-muted-foreground data-[state=active]:text-foreground transition-all uppercase tracking-widest whitespace-nowrap"
                       >
                         Unit Economics
                       </TabsTrigger>
                       <TabsTrigger
                         value="partners"
-                        className="rounded-none border-b-2 border-transparent data-[state=active]:border-slate-900 data-[state=active]:bg-transparent data-[state=active]:shadow-none px-1 py-1.5 text-[11px] font-bold text-slate-500 data-[state=active]:text-slate-900 transition-none uppercase tracking-wider whitespace-nowrap"
+                        className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-1 py-1.5 text-[10px] font-bold text-muted-foreground data-[state=active]:text-foreground transition-all uppercase tracking-widest whitespace-nowrap"
                       >
                         Partner Settlements
                       </TabsTrigger>
                       <TabsTrigger
                         value="master_ledger"
-                        className="rounded-none border-b-2 border-transparent data-[state=active]:border-slate-900 data-[state=active]:bg-transparent data-[state=active]:shadow-none px-1 py-1.5 text-[11px] font-bold text-slate-500 data-[state=active]:text-slate-900 transition-none uppercase tracking-wider whitespace-nowrap"
+                        className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-1 py-1.5 text-[10px] font-bold text-muted-foreground data-[state=active]:text-foreground transition-all uppercase tracking-widest whitespace-nowrap"
                       >
                         Master Ledger
                       </TabsTrigger>
                       <TabsTrigger
                         value="bookings"
-                        className="rounded-none border-b-2 border-transparent data-[state=active]:border-slate-900 data-[state=active]:bg-transparent data-[state=active]:shadow-none px-1 py-1.5 text-[11px] font-bold text-slate-500 data-[state=active]:text-slate-900 transition-none uppercase tracking-wider whitespace-nowrap"
+                        className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-1 py-1.5 text-[10px] font-bold text-muted-foreground data-[state=active]:text-foreground transition-all uppercase tracking-widest whitespace-nowrap"
                       >
                         Booking Volume
                       </TabsTrigger>
                       <TabsTrigger
                         value="customers"
-                        className="rounded-none border-b-2 border-transparent data-[state=active]:border-slate-900 data-[state=active]:bg-transparent data-[state=active]:shadow-none px-1 py-1.5 text-[11px] font-bold text-slate-500 data-[state=active]:text-slate-900 transition-none uppercase tracking-wider whitespace-nowrap"
+                        className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-1 py-1.5 text-[10px] font-bold text-muted-foreground data-[state=active]:text-foreground transition-all uppercase tracking-widest whitespace-nowrap"
                       >
                         Customer Insights
                       </TabsTrigger>
                       <TabsTrigger
                         value="drivers"
-                        className="rounded-none border-b-2 border-transparent data-[state=active]:border-slate-900 data-[state=active]:bg-transparent data-[state=active]:shadow-none px-1 py-1.5 text-[11px] font-bold text-slate-500 data-[state=active]:text-slate-900 transition-none uppercase tracking-wider whitespace-nowrap"
+                        className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-1 py-1.5 text-[10px] font-bold text-muted-foreground data-[state=active]:text-foreground transition-all uppercase tracking-widest whitespace-nowrap"
                       >
                         Driver Performance
                       </TabsTrigger>
@@ -590,8 +589,8 @@ export default function ReportsMain() {
 
                 {/* TAB 1: UNIT ECONOMICS */}
                 {activeTab === "unit_economics" && (
-                  <div className="flex-1 bg-white">
-                    <div className="grid grid-cols-[2fr_1.5fr_0.5fr_1fr_1fr_1fr_0.3fr] p-3 px-5 border-b border-slate-100 bg-slate-50 text-[9px] font-bold text-slate-500 uppercase tracking-widest">
+                  <div className="flex-1 bg-background transition-colors">
+                    <div className="grid grid-cols-[2fr_1.5fr_0.5fr_1fr_1fr_1fr_0.3fr] p-2.5 px-4 border-b border-border bg-secondary/50 text-[9px] font-bold text-muted-foreground uppercase tracking-widest transition-colors">
                       <div>Asset / Plate No.</div>
                       <div>Fleet Partner</div>
                       <div className="text-center">Trips</div>
@@ -600,7 +599,7 @@ export default function ReportsMain() {
                       <div className="text-right">Net Yield</div>
                       <div></div>
                     </div>
-                    <div className="divide-y divide-slate-100">
+                    <div className="divide-y divide-border">
                       {reportData.unit_economics?.length > 0 ? (
                         reportData.unit_economics.map((car: any) => (
                           <Collapsible
@@ -614,33 +613,34 @@ export default function ReportsMain() {
                             <CollapsibleTrigger asChild>
                               <div
                                 className={cn(
-                                  "grid grid-cols-[2fr_1.5fr_0.5fr_1fr_1fr_1fr_0.3fr] p-3 px-5 items-center cursor-pointer transition-colors hover:bg-slate-50",
-                                  expandedRow === car.car_id && "bg-slate-50",
+                                  "grid grid-cols-[2fr_1.5fr_0.5fr_1fr_1fr_1fr_0.3fr] p-2.5 px-4 items-center cursor-pointer transition-colors hover:bg-secondary/30",
+                                  expandedRow === car.car_id &&
+                                    "bg-secondary/30",
                                 )}
                               >
                                 <div className="flex flex-col pr-4">
-                                  <span className="text-xs font-bold text-slate-800 truncate">
+                                  <span className="text-[11px] font-bold text-foreground truncate">
                                     {car.vehicle}
                                   </span>
-                                  <span className="text-[10px] font-mono text-slate-500 mt-0.5">
+                                  <span className="text-[9px] font-medium uppercase tracking-widest text-muted-foreground mt-0.5">
                                     {car.plate}
                                   </span>
                                 </div>
                                 <div className="flex flex-col pr-4">
-                                  <span className="text-xs font-bold text-slate-800 truncate">
+                                  <span className="text-[11px] font-bold text-foreground truncate">
                                     {car.owner}
                                   </span>
-                                  <span className="text-[10px] font-medium text-slate-500 mt-0.5">
+                                  <span className="text-[9px] font-medium uppercase tracking-widest text-muted-foreground mt-0.5">
                                     {car.share}% Share
                                   </span>
                                 </div>
-                                <div className="text-center text-xs font-bold text-slate-700">
+                                <div className="text-center text-[11px] font-bold text-foreground">
                                   {car.trips}
                                 </div>
-                                <div className="text-right text-xs font-bold text-slate-800 font-mono">
+                                <div className="text-right text-[11px] font-bold text-foreground font-mono">
                                   ₱ {car.gross.toLocaleString()}
                                 </div>
-                                <div className="text-right text-xs font-bold text-red-600 font-mono">
+                                <div className="text-right text-[11px] font-bold text-destructive font-mono">
                                   {car.maint < 0
                                     ? `- ₱ ${Math.abs(car.maint).toLocaleString()}`
                                     : "₱ 0"}
@@ -648,10 +648,10 @@ export default function ReportsMain() {
                                 <div className="text-right flex flex-col items-end justify-center">
                                   <span
                                     className={cn(
-                                      "text-xs font-bold font-mono",
+                                      "text-[11px] font-bold font-mono",
                                       car.net < 0
-                                        ? "text-red-600"
-                                        : "text-slate-900",
+                                        ? "text-destructive"
+                                        : "text-foreground",
                                     )}
                                   >
                                     ₱ {car.net.toLocaleString()}
@@ -659,13 +659,13 @@ export default function ReportsMain() {
                                   {car.status === "Loss" && (
                                     <Badge
                                       variant="outline"
-                                      className="text-[8px] h-4 px-1 mt-1 bg-red-50 text-red-700 border-red-200"
+                                      className="text-[8px] h-4 px-1 mt-1 bg-destructive/10 text-destructive border-destructive/20 uppercase tracking-widest"
                                     >
                                       LOSS
                                     </Badge>
                                   )}
                                 </div>
-                                <div className="flex justify-end pr-2 text-slate-400">
+                                <div className="flex justify-end pr-2 text-muted-foreground">
                                   {expandedRow === car.car_id ? (
                                     <ChevronDown className="w-4 h-4" />
                                   ) : (
@@ -674,29 +674,29 @@ export default function ReportsMain() {
                                 </div>
                               </div>
                             </CollapsibleTrigger>
-                            <CollapsibleContent className="bg-slate-50/80 border-t border-slate-100">
-                              <div className="p-4 px-10">
-                                <h5 className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-3 border-b border-slate-200 pb-1 w-max">
+                            <CollapsibleContent className="bg-secondary/30 border-t border-border transition-colors">
+                              <div className="p-3 px-8">
+                                <h5 className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest mb-2.5 border-b border-border pb-1 w-max">
                                   Income Breakdown (Trips)
                                 </h5>
                                 {car.breakdown && car.breakdown.length > 0 ? (
-                                  <div className="grid grid-cols-[1fr_2fr_1fr] gap-2 max-w-lg text-[11px]">
+                                  <div className="grid grid-cols-[1fr_2fr_1fr] gap-2 max-w-lg text-[10px]">
                                     {car.breakdown.map((trip: any) => (
                                       <React.Fragment key={trip.id}>
-                                        <span className="font-mono font-bold text-slate-700">
+                                        <span className="font-mono font-bold text-foreground">
                                           {trip.id}
                                         </span>
-                                        <span className="text-slate-600">
+                                        <span className="text-muted-foreground font-medium uppercase tracking-widest">
                                           {trip.dates}
                                         </span>
-                                        <span className="text-right font-mono font-bold text-emerald-700">
+                                        <span className="text-right font-mono font-bold text-emerald-600 dark:text-emerald-400">
                                           + ₱ {trip.amount.toLocaleString()}
                                         </span>
                                       </React.Fragment>
                                     ))}
                                   </div>
                                 ) : (
-                                  <span className="text-xs text-slate-400 italic">
+                                  <span className="text-[10px] text-muted-foreground italic">
                                     Detailed breakdown unavailable.
                                   </span>
                                 )}
@@ -705,9 +705,9 @@ export default function ReportsMain() {
                           </Collapsible>
                         ))
                       ) : (
-                        <div className="p-10 flex flex-col items-center justify-center text-slate-400">
-                          <FolderOpen className="w-10 h-10 mb-2 opacity-20" />
-                          <p className="text-xs font-bold">
+                        <div className="p-10 flex flex-col items-center justify-center text-muted-foreground">
+                          <FolderOpen className="w-8 h-8 mb-2 opacity-20" />
+                          <p className="text-[10px] font-bold uppercase tracking-widest">
                             No active vehicles found in this date range.
                           </p>
                         </div>
@@ -718,8 +718,8 @@ export default function ReportsMain() {
 
                 {/* TAB 2: PARTNER SETTLEMENTS */}
                 {activeTab === "partners" && (
-                  <div className="flex-1 bg-white">
-                    <div className="grid grid-cols-[1.5fr_1fr_1fr_1fr_1fr_1fr_0.3fr] p-3 px-5 border-b border-slate-100 bg-slate-50 text-[9px] font-bold text-slate-500 uppercase tracking-widest">
+                  <div className="flex-1 bg-background transition-colors">
+                    <div className="grid grid-cols-[1.5fr_1fr_1fr_1fr_1fr_1fr_0.3fr] p-2.5 px-4 border-b border-border bg-secondary/50 text-[9px] font-bold text-muted-foreground uppercase tracking-widest transition-colors">
                       <div>Fleet Partner Info</div>
                       <div>Active Fleet / Trips</div>
                       <div className="text-right">Gross Fleet Rev</div>
@@ -728,7 +728,7 @@ export default function ReportsMain() {
                       <div className="text-right">Net Payout</div>
                       <div></div>
                     </div>
-                    <div className="divide-y divide-slate-100">
+                    <div className="divide-y divide-border">
                       {reportData.partners?.length > 0 ? (
                         reportData.partners.map((prt: any) => (
                           <Collapsible
@@ -742,35 +742,35 @@ export default function ReportsMain() {
                             <CollapsibleTrigger asChild>
                               <div
                                 className={cn(
-                                  "grid grid-cols-[1.5fr_1fr_1fr_1fr_1fr_1fr_0.3fr] p-3 px-5 items-center cursor-pointer transition-colors hover:bg-slate-50",
-                                  expandedRow === prt.id && "bg-slate-50",
+                                  "grid grid-cols-[1.5fr_1fr_1fr_1fr_1fr_1fr_0.3fr] p-2.5 px-4 items-center cursor-pointer transition-colors hover:bg-secondary/30",
+                                  expandedRow === prt.id && "bg-secondary/30",
                                 )}
                               >
                                 <div className="flex flex-col pr-4">
-                                  <span className="text-xs font-bold text-slate-800 truncate flex items-center gap-1.5">
-                                    <Briefcase className="w-3.5 h-3.5 text-slate-400" />{" "}
+                                  <span className="text-[11px] font-bold text-foreground truncate flex items-center gap-1.5">
+                                    <Briefcase className="w-3.5 h-3.5 text-muted-foreground" />{" "}
                                     {prt.business}
                                   </span>
-                                  <span className="text-[10px] text-slate-500 mt-0.5">
+                                  <span className="text-[9px] font-medium text-muted-foreground mt-0.5 uppercase tracking-widest">
                                     {prt.name}
                                   </span>
                                 </div>
                                 <div className="flex flex-col">
-                                  <span className="text-xs font-bold text-slate-800">
+                                  <span className="text-[11px] font-bold text-foreground">
                                     {prt.active_cars} Cars
                                   </span>
-                                  <span className="text-[10px] text-slate-500 mt-0.5">
+                                  <span className="text-[9px] font-medium text-muted-foreground mt-0.5 uppercase tracking-widest">
                                     {prt.total_trips} Bookings
                                   </span>
                                 </div>
-                                <div className="text-right text-xs font-bold text-slate-800 font-mono">
+                                <div className="text-right text-[11px] font-bold text-foreground font-mono">
                                   ₱ {prt.gross.toLocaleString()}
                                 </div>
-                                <div className="text-right text-xs font-bold text-red-600 font-mono">
+                                <div className="text-right text-[11px] font-bold text-destructive font-mono">
                                   - ₱{" "}
                                   {Math.abs(prt.platform_cut).toLocaleString()}
                                 </div>
-                                <div className="text-right text-xs font-bold text-red-600 font-mono">
+                                <div className="text-right text-[11px] font-bold text-destructive font-mono">
                                   {prt.maint < 0
                                     ? `- ₱ ${Math.abs(prt.maint).toLocaleString()}`
                                     : "₱ 0"}
@@ -778,10 +778,10 @@ export default function ReportsMain() {
                                 <div className="text-right flex flex-col items-end justify-center">
                                   <span
                                     className={cn(
-                                      "text-xs font-bold font-mono",
+                                      "text-[11px] font-bold font-mono",
                                       prt.net_payout < 0
-                                        ? "text-red-600"
-                                        : "text-blue-700",
+                                        ? "text-destructive"
+                                        : "text-blue-600 dark:text-blue-400",
                                     )}
                                   >
                                     ₱ {prt.net_payout.toLocaleString()}
@@ -789,16 +789,16 @@ export default function ReportsMain() {
                                   <Badge
                                     variant="outline"
                                     className={cn(
-                                      "text-[8px] h-4 px-1 mt-1",
+                                      "text-[8px] h-4 px-1.5 mt-1 uppercase tracking-widest border",
                                       prt.status === "Settled"
-                                        ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                                        : "bg-amber-50 text-amber-700 border-amber-200",
+                                        ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
+                                        : "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20",
                                     )}
                                   >
                                     {prt.status}
                                   </Badge>
                                 </div>
-                                <div className="flex justify-end pr-2 text-slate-400">
+                                <div className="flex justify-end pr-2 text-muted-foreground">
                                   {expandedRow === prt.id ? (
                                     <ChevronDown className="w-4 h-4" />
                                   ) : (
@@ -807,56 +807,57 @@ export default function ReportsMain() {
                                 </div>
                               </div>
                             </CollapsibleTrigger>
-                            <CollapsibleContent className="bg-slate-50/80 border-t border-slate-100">
-                              <div className="p-4 px-10">
-                                <h5 className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-3 border-b border-slate-200 pb-1 w-max">
+                            <CollapsibleContent className="bg-secondary/30 border-t border-border transition-colors">
+                              <div className="p-3 px-8">
+                                <h5 className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest mb-2.5 border-b border-border pb-1 w-max">
                                   Partner Itemized Ledger
                                 </h5>
                                 {prt.breakdown && prt.breakdown.length > 0 ? (
-                                  <div className="grid grid-cols-[0.8fr_1.5fr_1.2fr_1fr_1fr_1fr_1fr] gap-x-4 gap-y-2 max-w-5xl text-[11px]">
-                                    <div className="font-bold text-slate-400 uppercase text-[9px] tracking-widest">
+                                  <div className="grid grid-cols-[0.8fr_1.5fr_1.2fr_1fr_1fr_1fr_1fr] gap-x-4 gap-y-2 max-w-5xl text-[10px]">
+                                    <div className="font-bold text-muted-foreground uppercase text-[9px] tracking-widest">
                                       Ref
                                     </div>
-                                    <div className="font-bold text-slate-400 uppercase text-[9px] tracking-widest">
+                                    <div className="font-bold text-muted-foreground uppercase text-[9px] tracking-widest">
                                       Vehicle
                                     </div>
-                                    <div className="font-bold text-slate-400 uppercase text-[9px] tracking-widest">
+                                    <div className="font-bold text-muted-foreground uppercase text-[9px] tracking-widest">
                                       Dates / Note
                                     </div>
-                                    <div className="font-bold text-slate-400 uppercase text-[9px] tracking-widest text-right">
+                                    <div className="font-bold text-muted-foreground uppercase text-[9px] tracking-widest text-right">
                                       Gross
                                     </div>
-                                    <div className="font-bold text-slate-400 uppercase text-[9px] tracking-widest text-right">
+                                    <div className="font-bold text-muted-foreground uppercase text-[9px] tracking-widest text-right">
                                       Comm.
                                     </div>
-                                    <div className="font-bold text-slate-400 uppercase text-[9px] tracking-widest text-right">
+                                    <div className="font-bold text-muted-foreground uppercase text-[9px] tracking-widest text-right">
                                       Maint.
                                     </div>
-                                    <div className="font-bold text-slate-400 uppercase text-[9px] tracking-widest text-right">
+                                    <div className="font-bold text-muted-foreground uppercase text-[9px] tracking-widest text-right">
                                       Net
                                     </div>
+
                                     {prt.breakdown.map((tx: any, i: number) => (
                                       <React.Fragment key={i}>
-                                        <span className="font-mono font-bold text-slate-700">
+                                        <span className="font-mono font-bold text-foreground">
                                           {tx.id}
                                         </span>
-                                        <span className="text-slate-800 font-medium truncate">
+                                        <span className="text-foreground font-medium truncate">
                                           {tx.vehicle}
                                         </span>
-                                        <span className="text-slate-500">
+                                        <span className="text-muted-foreground uppercase tracking-widest text-[9px]">
                                           {tx.dates}
                                         </span>
-                                        <span className="text-right font-mono text-slate-700">
+                                        <span className="text-right font-mono text-foreground">
                                           {tx.gross > 0
                                             ? `₱ ${tx.gross.toLocaleString()}`
                                             : "-"}
                                         </span>
-                                        <span className="text-right font-mono text-red-600">
+                                        <span className="text-right font-mono text-destructive">
                                           {tx.comm < 0
                                             ? `-₱ ${Math.abs(tx.comm).toLocaleString()}`
                                             : "-"}
                                         </span>
-                                        <span className="text-right font-mono text-red-600">
+                                        <span className="text-right font-mono text-destructive">
                                           {tx.maint < 0
                                             ? `-₱ ${Math.abs(tx.maint).toLocaleString()}`
                                             : "-"}
@@ -865,8 +866,8 @@ export default function ReportsMain() {
                                           className={cn(
                                             "text-right font-mono font-bold",
                                             tx.net < 0
-                                              ? "text-red-700"
-                                              : "text-slate-900",
+                                              ? "text-destructive"
+                                              : "text-foreground",
                                           )}
                                         >
                                           {tx.net < 0 ? "-" : ""}₱{" "}
@@ -876,8 +877,8 @@ export default function ReportsMain() {
                                     ))}
                                   </div>
                                 ) : (
-                                  <span className="text-xs text-slate-400 italic">
-                                    No ledger details available.
+                                  <span className="text-[10px] text-muted-foreground italic">
+                                    No transactions found for this period.
                                   </span>
                                 )}
                               </div>
@@ -885,9 +886,9 @@ export default function ReportsMain() {
                           </Collapsible>
                         ))
                       ) : (
-                        <div className="p-10 flex flex-col items-center justify-center text-slate-400">
-                          <FolderOpen className="w-10 h-10 mb-2 opacity-20" />
-                          <p className="text-xs font-bold">
+                        <div className="p-10 flex flex-col items-center justify-center text-muted-foreground">
+                          <FolderOpen className="w-8 h-8 mb-2 opacity-20" />
+                          <p className="text-[10px] font-bold uppercase tracking-widest">
                             No partner activity found in this date range.
                           </p>
                         </div>
@@ -898,50 +899,55 @@ export default function ReportsMain() {
 
                 {/* TAB 3: MASTER LEDGER */}
                 {activeTab === "master_ledger" && (
-                  <div className="flex-1 bg-white">
-                    <div className="grid grid-cols-[1.5fr_1.5fr_1fr_1fr_1fr] p-3 px-5 border-b border-slate-100 bg-slate-50 text-[9px] font-bold text-slate-500 uppercase tracking-widest">
+                  <div className="flex-1 bg-background transition-colors">
+                    <div className="grid grid-cols-[1.5fr_1.5fr_1fr_1fr_1fr] p-2.5 px-4 border-b border-border bg-secondary/50 text-[9px] font-bold text-muted-foreground uppercase tracking-widest transition-colors">
                       <div>Date & Time</div>
                       <div>Reference</div>
                       <div>Category</div>
                       <div>Method</div>
                       <div className="text-right">Amount</div>
                     </div>
-                    <div className="divide-y divide-slate-100">
+                    <div className="divide-y divide-border">
                       {reportData.master_ledger?.length > 0 ? (
                         reportData.master_ledger.map((txn: any) => (
                           <div
                             key={txn.id}
-                            className="grid grid-cols-[1.5fr_1.5fr_1fr_1fr_1fr] p-3 px-5 items-center hover:bg-slate-50 transition-colors"
+                            className="grid grid-cols-[1.5fr_1.5fr_1fr_1fr_1fr] p-2.5 px-4 items-center hover:bg-secondary/30 transition-colors"
                           >
                             <div className="flex flex-col">
-                              <span className="text-[11px] font-bold text-slate-800">
+                              <span className="text-[11px] font-bold text-foreground">
                                 {format(new Date(txn.date), "MMM dd, yyyy")}
                               </span>
-                              <span className="text-[10px] text-slate-500">
+                              <span className="text-[9px] text-muted-foreground uppercase tracking-widest">
                                 {format(new Date(txn.date), "hh:mm a")}
                               </span>
                             </div>
                             <div className="flex flex-col">
-                              <span className="text-[11px] font-bold text-slate-800 font-mono">
+                              <span className="text-[11px] font-bold text-foreground font-mono">
                                 {txn.id}
                               </span>
-                              <span className="text-[10px] text-slate-500 truncate">
+                              <span className="text-[10px] font-medium text-muted-foreground truncate uppercase tracking-widest mt-0.5">
                                 {txn.ref}
                               </span>
                             </div>
-                            <div className="text-[10px] font-bold text-slate-600 uppercase tracking-wider">
-                              {txn.category.replace(/_/g, " ")}
+                            <div>
+                              <Badge
+                                variant="outline"
+                                className="text-[8px] font-bold uppercase tracking-widest bg-secondary text-muted-foreground border-border px-1.5 py-0 h-4 rounded"
+                              >
+                                {txn.category.replace(/_/g, " ")}
+                              </Badge>
                             </div>
-                            <div className="flex items-center gap-1.5 text-xs text-slate-600">
-                              <CreditCard className="w-3.5 h-3.5" />
+                            <div className="flex items-center gap-1.5 text-[10px] font-medium text-muted-foreground uppercase tracking-widest">
+                              <CreditCard className="w-3 h-3" />
                               {txn.method}
                             </div>
                             <div
                               className={cn(
-                                "text-right text-xs font-bold font-mono",
+                                "text-right text-[11px] font-bold font-mono",
                                 txn.amount < 0
-                                  ? "text-red-600"
-                                  : "text-emerald-700",
+                                  ? "text-destructive"
+                                  : "text-emerald-600 dark:text-emerald-400",
                               )}
                             >
                               {txn.amount > 0 ? "+" : ""} ₱{" "}
@@ -950,9 +956,9 @@ export default function ReportsMain() {
                           </div>
                         ))
                       ) : (
-                        <div className="p-10 flex flex-col items-center justify-center text-slate-400">
-                          <FolderOpen className="w-10 h-10 mb-2 opacity-20" />
-                          <p className="text-xs font-bold">
+                        <div className="p-10 flex flex-col items-center justify-center text-muted-foreground">
+                          <FolderOpen className="w-8 h-8 mb-2 opacity-20" />
+                          <p className="text-[10px] font-bold uppercase tracking-widest">
                             No financial transactions recorded in this period.
                           </p>
                         </div>
@@ -963,8 +969,8 @@ export default function ReportsMain() {
 
                 {/* TAB 4: BOOKING VOLUME */}
                 {activeTab === "bookings" && (
-                  <div className="flex-1 bg-white">
-                    <div className="grid grid-cols-[1fr_1.5fr_1.5fr_1fr_1fr_1fr] p-3 px-5 border-b border-slate-100 bg-slate-50 text-[9px] font-bold text-slate-500 uppercase tracking-widest">
+                  <div className="flex-1 bg-background transition-colors">
+                    <div className="grid grid-cols-[1fr_1.5fr_1.5fr_1fr_1fr_1fr] p-2.5 px-4 border-b border-border bg-secondary/50 text-[9px] font-bold text-muted-foreground uppercase tracking-widest transition-colors">
                       <div>Booking Ref</div>
                       <div>Customer</div>
                       <div>Asset & Dates</div>
@@ -972,44 +978,44 @@ export default function ReportsMain() {
                       <div className="text-right">Total Billed</div>
                       <div className="text-right">Balance Due</div>
                     </div>
-                    <div className="divide-y divide-slate-100">
+                    <div className="divide-y divide-border">
                       {reportData.bookings?.length > 0 ? (
                         reportData.bookings.map((bkg: any) => (
                           <div
                             key={bkg.id}
-                            className="grid grid-cols-[1fr_1.5fr_1.5fr_1fr_1fr_1fr] p-3 px-5 items-center hover:bg-slate-50 transition-colors"
+                            className="grid grid-cols-[1fr_1.5fr_1.5fr_1fr_1fr_1fr] p-2.5 px-4 items-center hover:bg-secondary/30 transition-colors"
                           >
-                            <span className="text-[11px] font-bold text-slate-800 font-mono">
+                            <span className="text-[11px] font-bold text-foreground font-mono">
                               {bkg.id}
                             </span>
-                            <span className="text-xs font-bold text-slate-800">
+                            <span className="text-[11px] font-bold text-foreground">
                               {bkg.customer}
                             </span>
                             <div className="flex flex-col">
-                              <span className="text-[11px] font-bold text-slate-800 truncate">
+                              <span className="text-[11px] font-bold text-foreground truncate">
                                 {bkg.vehicle}
                               </span>
-                              <span className="text-[10px] text-slate-500">
+                              <span className="text-[9px] font-medium uppercase tracking-widest text-muted-foreground mt-0.5">
                                 {bkg.dates}
                               </span>
                             </div>
                             <div>
                               <Badge
                                 variant="outline"
-                                className="text-[9px] font-bold h-5 px-2 uppercase tracking-widest bg-slate-100 text-slate-600 border-slate-200"
+                                className="text-[8px] font-bold h-4 px-1.5 uppercase tracking-widest bg-secondary text-muted-foreground border-border rounded"
                               >
                                 {bkg.status}
                               </Badge>
                             </div>
-                            <span className="text-right text-xs font-bold text-slate-900 font-mono">
+                            <span className="text-right text-[11px] font-bold text-foreground font-mono">
                               ₱ {bkg.total.toLocaleString()}
                             </span>
                             <span
                               className={cn(
-                                "text-right text-xs font-bold font-mono",
+                                "text-right text-[11px] font-bold font-mono",
                                 bkg.due > 0
-                                  ? "text-amber-600"
-                                  : "text-emerald-600",
+                                  ? "text-amber-600 dark:text-amber-400"
+                                  : "text-emerald-600 dark:text-emerald-400",
                               )}
                             >
                               ₱ {bkg.due.toLocaleString()}
@@ -1017,9 +1023,9 @@ export default function ReportsMain() {
                           </div>
                         ))
                       ) : (
-                        <div className="p-10 flex flex-col items-center justify-center text-slate-400">
-                          <FolderOpen className="w-10 h-10 mb-2 opacity-20" />
-                          <p className="text-xs font-bold">
+                        <div className="p-10 flex flex-col items-center justify-center text-muted-foreground">
+                          <FolderOpen className="w-8 h-8 mb-2 opacity-20" />
+                          <p className="text-[10px] font-bold uppercase tracking-widest">
                             No bookings created in this date range.
                           </p>
                         </div>
@@ -1030,8 +1036,8 @@ export default function ReportsMain() {
 
                 {/* TAB 5: CUSTOMER INSIGHTS */}
                 {activeTab === "customers" && (
-                  <div className="flex-1 bg-white">
-                    <div className="grid grid-cols-[1.5fr_1fr_1fr_1.5fr_1.5fr_0.3fr] p-3 px-5 border-b border-slate-100 bg-slate-50 text-[9px] font-bold text-slate-500 uppercase tracking-widest">
+                  <div className="flex-1 bg-background transition-colors">
+                    <div className="grid grid-cols-[1.5fr_1fr_1fr_1.5fr_1.5fr_0.3fr] p-2.5 px-4 border-b border-border bg-secondary/50 text-[9px] font-bold text-muted-foreground uppercase tracking-widest transition-colors">
                       <div>Customer Name</div>
                       <div className="text-center">Total Bookings</div>
                       <div className="text-right">Lifetime Value</div>
@@ -1039,7 +1045,7 @@ export default function ReportsMain() {
                       <div>Account Flags</div>
                       <div></div>
                     </div>
-                    <div className="divide-y divide-slate-100">
+                    <div className="divide-y divide-border">
                       {reportData.customers?.length > 0 ? (
                         reportData.customers.map((cus: any) => (
                           <Collapsible
@@ -1053,25 +1059,25 @@ export default function ReportsMain() {
                             <CollapsibleTrigger asChild>
                               <div
                                 className={cn(
-                                  "grid grid-cols-[1.5fr_1fr_1fr_1.5fr_1.5fr_0.3fr] p-3 px-5 items-center cursor-pointer transition-colors hover:bg-slate-50",
-                                  expandedRow === cus.id && "bg-slate-50",
+                                  "grid grid-cols-[1.5fr_1fr_1fr_1.5fr_1.5fr_0.3fr] p-2.5 px-4 items-center cursor-pointer transition-colors hover:bg-secondary/30",
+                                  expandedRow === cus.id && "bg-secondary/30",
                                 )}
                               >
                                 <div className="flex flex-col">
-                                  <span className="text-xs font-bold text-slate-800">
+                                  <span className="text-[11px] font-bold text-foreground">
                                     {cus.name}
                                   </span>
-                                  <span className="text-[10px] font-mono text-slate-500">
+                                  <span className="text-[9px] font-mono text-muted-foreground mt-0.5">
                                     {split_part_mock(cus.id)}
                                   </span>
                                 </div>
-                                <div className="text-center text-xs font-bold text-slate-700">
+                                <div className="text-center text-[11px] font-bold text-foreground">
                                   {cus.bookings}
                                 </div>
-                                <div className="text-right text-xs font-bold text-emerald-700 font-mono">
+                                <div className="text-right text-[11px] font-bold text-emerald-600 dark:text-emerald-400 font-mono">
                                   ₱ {cus.ltv.toLocaleString()}
                                 </div>
-                                <div className="text-xs text-slate-600 font-medium pl-6">
+                                <div className="text-[11px] font-medium text-foreground pl-6">
                                   {cus.avg_dur}
                                 </div>
                                 <div className="flex gap-1 flex-wrap">
@@ -1080,18 +1086,18 @@ export default function ReportsMain() {
                                       <Badge
                                         key={f}
                                         variant="outline"
-                                        className="text-[9px] h-5 bg-red-50 text-red-700 border-red-200"
+                                        className="text-[8px] h-4 px-1.5 uppercase tracking-widest bg-destructive/10 text-destructive border-destructive/20 rounded"
                                       >
                                         {f}
                                       </Badge>
                                     ))
                                   ) : (
-                                    <span className="text-[10px] text-slate-400 italic">
+                                    <span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">
                                       Clean Record
                                     </span>
                                   )}
                                 </div>
-                                <div className="flex justify-end pr-2 text-slate-400">
+                                <div className="flex justify-end pr-2 text-muted-foreground">
                                   {expandedRow === cus.id ? (
                                     <ChevronDown className="w-4 h-4" />
                                   ) : (
@@ -1100,38 +1106,38 @@ export default function ReportsMain() {
                                 </div>
                               </div>
                             </CollapsibleTrigger>
-                            <CollapsibleContent className="bg-slate-50/80 border-t border-slate-100">
-                              <div className="p-4 px-10">
-                                <h5 className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-3 border-b border-slate-200 pb-1 w-max">
+                            <CollapsibleContent className="bg-secondary/30 border-t border-border transition-colors">
+                              <div className="p-3 px-8">
+                                <h5 className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest mb-2.5 border-b border-border pb-1 w-max">
                                   Transaction Ledger (Selected Period)
                                 </h5>
                                 {cus.breakdown && cus.breakdown.length > 0 ? (
-                                  <div className="grid grid-cols-[1fr_1.5fr_1.5fr_1fr_1fr_0.5fr] gap-x-4 gap-y-2 max-w-4xl text-[11px]">
+                                  <div className="grid grid-cols-[0.8fr_1.5fr_1.5fr_1fr_1fr_0.5fr] gap-x-4 gap-y-2 max-w-4xl text-[10px]">
                                     {cus.breakdown.map((tx: any) => (
                                       <React.Fragment key={tx.id}>
-                                        <span className="font-mono font-bold text-slate-700">
+                                        <span className="font-mono font-bold text-foreground">
                                           {tx.id}
                                         </span>
-                                        <span className="text-slate-600">
+                                        <span className="text-muted-foreground font-medium uppercase tracking-widest text-[9px]">
                                           {tx.dates}
                                         </span>
-                                        <span className="text-slate-800 font-medium">
+                                        <span className="text-foreground font-bold">
                                           {tx.vehicle}
                                         </span>
-                                        <span className="text-slate-500">
+                                        <span className="text-muted-foreground font-medium uppercase tracking-widest text-[9px]">
                                           {tx.type}
                                         </span>
-                                        <span className="text-right font-mono font-bold text-slate-900">
+                                        <span className="text-right font-mono font-bold text-foreground">
                                           ₱ {tx.amount.toLocaleString()}
                                         </span>
                                         <span
                                           className={cn(
-                                            "text-right font-bold uppercase text-[9px]",
+                                            "text-right font-bold uppercase tracking-widest text-[8px]",
                                             tx.status === "Paid"
-                                              ? "text-emerald-600"
+                                              ? "text-emerald-600 dark:text-emerald-400"
                                               : tx.status === "Unpaid"
-                                                ? "text-red-600"
-                                                : "text-amber-600",
+                                                ? "text-destructive"
+                                                : "text-amber-600 dark:text-amber-400",
                                           )}
                                         >
                                           {tx.status}
@@ -1140,7 +1146,7 @@ export default function ReportsMain() {
                                     ))}
                                   </div>
                                 ) : (
-                                  <span className="text-xs text-slate-400 italic">
+                                  <span className="text-[10px] text-muted-foreground italic">
                                     No transactions found for this period.
                                   </span>
                                 )}
@@ -1149,9 +1155,9 @@ export default function ReportsMain() {
                           </Collapsible>
                         ))
                       ) : (
-                        <div className="p-10 flex flex-col items-center justify-center text-slate-400">
-                          <FolderOpen className="w-10 h-10 mb-2 opacity-20" />
-                          <p className="text-xs font-bold">
+                        <div className="p-10 flex flex-col items-center justify-center text-muted-foreground">
+                          <FolderOpen className="w-8 h-8 mb-2 opacity-20" />
+                          <p className="text-[10px] font-bold uppercase tracking-widest">
                             No customer activity found in this date range.
                           </p>
                         </div>
@@ -1162,8 +1168,8 @@ export default function ReportsMain() {
 
                 {/* TAB 6: DRIVER PERFORMANCE */}
                 {activeTab === "drivers" && (
-                  <div className="flex-1 bg-white">
-                    <div className="grid grid-cols-[1.5fr_1fr_1fr_1.5fr_1fr_0.3fr] p-3 px-5 border-b border-slate-100 bg-slate-50 text-[9px] font-bold text-slate-500 uppercase tracking-widest">
+                  <div className="flex-1 bg-background transition-colors">
+                    <div className="grid grid-cols-[1.5fr_1fr_1fr_1.5fr_1fr_0.3fr] p-2.5 px-4 border-b border-border bg-secondary/50 text-[9px] font-bold text-muted-foreground uppercase tracking-widest transition-colors">
                       <div>Driver Identity</div>
                       <div className="text-center">Deployed Shifts</div>
                       <div>Current Status</div>
@@ -1171,7 +1177,7 @@ export default function ReportsMain() {
                       <div className="text-right">Est. Income / Fee</div>
                       <div></div>
                     </div>
-                    <div className="divide-y divide-slate-100">
+                    <div className="divide-y divide-border">
                       {reportData.drivers?.length > 0 ? (
                         reportData.drivers.map((drv: any) => (
                           <Collapsible
@@ -1185,42 +1191,42 @@ export default function ReportsMain() {
                             <CollapsibleTrigger asChild>
                               <div
                                 className={cn(
-                                  "grid grid-cols-[1.5fr_1fr_1fr_1.5fr_1fr_0.3fr] p-3 px-5 items-center cursor-pointer transition-colors hover:bg-slate-50",
-                                  expandedRow === drv.id && "bg-slate-50",
+                                  "grid grid-cols-[1.5fr_1fr_1fr_1.5fr_1fr_0.3fr] p-2.5 px-4 items-center cursor-pointer transition-colors hover:bg-secondary/30",
+                                  expandedRow === drv.id && "bg-secondary/30",
                                 )}
                               >
                                 <div className="flex flex-col">
-                                  <span className="text-xs font-bold text-slate-800">
+                                  <span className="text-[11px] font-bold text-foreground">
                                     {drv.name}
                                   </span>
-                                  <span className="text-[10px] font-mono text-slate-500">
+                                  <span className="text-[9px] font-mono text-muted-foreground mt-0.5">
                                     {split_part_mock(drv.id)}
                                   </span>
                                 </div>
-                                <div className="text-center text-xs font-bold text-slate-700">
+                                <div className="text-center text-[11px] font-bold text-foreground">
                                   {drv.shifts}
                                 </div>
                                 <div>
                                   <Badge
                                     variant="outline"
                                     className={cn(
-                                      "text-[9px] font-bold h-5 px-2 uppercase tracking-widest",
+                                      "text-[8px] font-bold h-4 px-1.5 uppercase tracking-widest rounded border",
                                       drv.status === "Available"
-                                        ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                                        : "bg-blue-50 text-blue-700 border-blue-200",
+                                        ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
+                                        : "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20",
                                     )}
                                   >
                                     {drv.status}
                                   </Badge>
                                 </div>
-                                <div className="text-[11px] font-medium text-slate-700 flex items-center gap-2">
-                                  <Car className="w-3.5 h-3.5 text-slate-400" />{" "}
+                                <div className="text-[11px] font-bold text-foreground flex items-center gap-1.5">
+                                  <Car className="w-3 h-3 text-muted-foreground" />{" "}
                                   {drv.vehicle}
                                 </div>
-                                <div className="text-right text-xs font-bold text-emerald-700 font-mono">
+                                <div className="text-right text-[11px] font-bold text-emerald-600 dark:text-emerald-400 font-mono">
                                   ₱ {drv.income.toLocaleString()}
                                 </div>
-                                <div className="flex justify-end pr-2 text-slate-400">
+                                <div className="flex justify-end pr-2 text-muted-foreground">
                                   {expandedRow === drv.id ? (
                                     <ChevronDown className="w-4 h-4" />
                                   ) : (
@@ -1229,29 +1235,29 @@ export default function ReportsMain() {
                                 </div>
                               </div>
                             </CollapsibleTrigger>
-                            <CollapsibleContent className="bg-slate-50/80 border-t border-slate-100">
-                              <div className="p-4 px-10">
-                                <h5 className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-3 border-b border-slate-200 pb-1 w-max">
+                            <CollapsibleContent className="bg-secondary/30 border-t border-border transition-colors">
+                              <div className="p-3 px-8">
+                                <h5 className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest mb-2.5 border-b border-border pb-1 w-max">
                                   Shift Ledger & Assignments
                                 </h5>
                                 {drv.breakdown && drv.breakdown.length > 0 ? (
-                                  <div className="grid grid-cols-[1fr_2fr_1fr_1.5fr_1fr] gap-x-4 gap-y-2 max-w-4xl text-[11px]">
+                                  <div className="grid grid-cols-[1fr_2fr_1fr_1.5fr_1fr] gap-x-4 gap-y-2 max-w-4xl text-[10px]">
                                     {drv.breakdown.map(
                                       (shift: any, i: number) => (
                                         <React.Fragment key={i}>
-                                          <span className="font-bold text-slate-700">
+                                          <span className="font-bold text-foreground">
                                             {shift.shift}
                                           </span>
-                                          <span className="text-slate-600">
+                                          <span className="text-muted-foreground uppercase tracking-widest text-[9px] font-medium">
                                             {shift.date}
                                           </span>
-                                          <span className="font-mono text-slate-500">
+                                          <span className="font-mono text-muted-foreground uppercase tracking-widest text-[9px]">
                                             {shift.ref}
                                           </span>
-                                          <span className="text-slate-800 font-medium">
+                                          <span className="text-foreground font-bold">
                                             {shift.vehicle}
                                           </span>
-                                          <span className="text-right font-mono font-bold text-slate-900">
+                                          <span className="text-right font-mono font-bold text-foreground">
                                             + ₱ {shift.fee.toLocaleString()}
                                           </span>
                                         </React.Fragment>
@@ -1259,7 +1265,7 @@ export default function ReportsMain() {
                                     )}
                                   </div>
                                 ) : (
-                                  <span className="text-xs text-slate-400 italic">
+                                  <span className="text-[10px] text-muted-foreground italic">
                                     No assigned shifts for this period.
                                   </span>
                                 )}
@@ -1268,9 +1274,9 @@ export default function ReportsMain() {
                           </Collapsible>
                         ))
                       ) : (
-                        <div className="p-10 flex flex-col items-center justify-center text-slate-400">
-                          <FolderOpen className="w-10 h-10 mb-2 opacity-20" />
-                          <p className="text-xs font-bold">
+                        <div className="p-10 flex flex-col items-center justify-center text-muted-foreground">
+                          <FolderOpen className="w-8 h-8 mb-2 opacity-20" />
+                          <p className="text-[10px] font-bold uppercase tracking-widest">
                             No driver shifts recorded in this date range.
                           </p>
                         </div>
