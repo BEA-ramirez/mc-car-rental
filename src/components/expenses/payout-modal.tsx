@@ -10,12 +10,18 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
 import {
   Calculator,
   X,
@@ -24,6 +30,8 @@ import {
   AlertCircle,
   CheckCircle,
   Loader2,
+  ChevronsUpDown,
+  Check,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useFinancials } from "../../../hooks/use-financials";
@@ -43,6 +51,7 @@ export default function GeneratePayoutModal({
   const { generatePayout, isGeneratingPayout } = useFinancials();
   const { data: fleetPartners } = useFleetPartners();
 
+  const [openOwner, setOpenOwner] = useState(false);
   const [selectedOwner, setSelectedOwner] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
@@ -53,6 +62,15 @@ export default function GeneratePayoutModal({
     }
   }, [prefilledOwnerId, isOpen]);
 
+  // Reset local state when modal closes
+  useEffect(() => {
+    if (!isOpen && !prefilledOwnerId) {
+      setSelectedOwner("");
+      setStartDate("");
+      setEndDate("");
+    }
+  }, [isOpen, prefilledOwnerId]);
+
   const handleGenerate = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
@@ -62,13 +80,18 @@ export default function GeneratePayoutModal({
         endDate: new Date(endDate),
       });
       onClose();
-      setStartDate("");
-      setEndDate("");
-      setSelectedOwner("");
     } catch (error) {
       console.error(error);
     }
   };
+
+  // Helper to find the selected owner's display name
+  const selectedOwnerName = selectedOwner
+    ? fleetPartners?.find((p: any) => p.car_owner_id === selectedOwner)
+        ?.business_name ||
+      fleetPartners?.find((p: any) => p.car_owner_id === selectedOwner)?.users
+        ?.email
+    : "Choose an owner...";
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -100,31 +123,75 @@ export default function GeneratePayoutModal({
 
         <form onSubmit={handleGenerate} className="flex flex-col">
           <div className="p-4 space-y-4 bg-background transition-colors">
-            {/* Owner Selection */}
-            <div className="space-y-1.5">
+            {/* Searchable Owner Selection */}
+            <div className="space-y-1.5 flex flex-col">
               <label className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-1.5">
                 <User className="w-3 h-3" /> Fleet Owner
               </label>
-              <Select
-                value={selectedOwner}
-                onValueChange={setSelectedOwner}
-                required
-              >
-                <SelectTrigger className="h-8 text-[11px] font-semibold bg-secondary border-border rounded-lg shadow-none focus:ring-1 focus:ring-primary transition-colors">
-                  <SelectValue placeholder="Choose an owner..." />
-                </SelectTrigger>
-                <SelectContent className="rounded-xl border-border bg-popover shadow-xl">
-                  {fleetPartners?.map((partner: any) => (
-                    <SelectItem
-                      key={partner.car_owner_id}
-                      value={partner.car_owner_id}
-                      className="text-[11px] font-medium focus:bg-secondary transition-colors"
-                    >
-                      {partner.business_name || partner.user?.full_name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Popover open={openOwner} onOpenChange={setOpenOwner}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={openOwner}
+                    className={cn(
+                      "h-8 text-[11px] font-semibold bg-secondary border-border hover:bg-secondary/80 rounded-lg w-full justify-between px-3 shadow-none transition-colors",
+                      !selectedOwner && "text-muted-foreground",
+                    )}
+                  >
+                    <span className="truncate">{selectedOwnerName}</span>
+                    <ChevronsUpDown className="ml-2 h-3 w-3 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent
+                  className="w-[388px] p-0 border-border bg-popover shadow-xl rounded-xl"
+                  align="start"
+                >
+                  <Command>
+                    <CommandInput
+                      placeholder="Search owner..."
+                      className="h-8 text-[11px]"
+                    />
+                    {/* Fixed Height & Scrollable Wrapper */}
+                    <CommandList className="max-h-[200px] overflow-y-auto custom-scrollbar">
+                      <CommandEmpty className="text-[10px] py-2 text-center text-muted-foreground">
+                        No fleet owner found.
+                      </CommandEmpty>
+                      <CommandGroup>
+                        {fleetPartners?.map((partner: any) => {
+                          const displayName =
+                            partner.business_name || partner.user?.full_name;
+                          return (
+                            <CommandItem
+                              key={partner.car_owner_id}
+                              value={displayName} // Used by CommandInput for searching
+                              onSelect={() => {
+                                setSelectedOwner(partner.car_owner_id);
+                                setOpenOwner(false);
+                              }}
+                              className="text-[11px] font-medium cursor-pointer"
+                            >
+                              <Check
+                                className={cn(
+                                  "mr-2 h-3.5 w-3.5 text-primary",
+                                  selectedOwner === partner.car_owner_id
+                                    ? "opacity-100"
+                                    : "opacity-0",
+                                )}
+                              />
+                              <div className="flex flex-col">
+                                <span className="font-bold text-foreground">
+                                  {displayName}
+                                </span>
+                              </div>
+                            </CommandItem>
+                          );
+                        })}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
             </div>
 
             {/* Date Range */}

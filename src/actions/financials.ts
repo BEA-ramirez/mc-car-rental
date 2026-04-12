@@ -60,8 +60,7 @@ export async function generateOwnerPayout(
 export async function getExpenseWidgets() {
   const supabase = await createClient();
 
-  // This RPC should return { totalOutflow, totalOutflowGrowth, pendingLiabilities, ... }
-  const { data: kpis } = await supabase.rpc("get_financial_kpis_v2");
+  const { data: kpis } = await supabase.rpc("get_expense_kpis_v2");
 
   const { data: readyToSettle } = await supabase.rpc(
     "get_unsettled_fleet_revenue",
@@ -189,38 +188,31 @@ export async function markPayoutAsPaid(payoutId: string): Promise<ActionState> {
 export async function getPayoutBreakdown(payoutId: string) {
   const supabase = await createClient();
 
-  // 1. Get the main payout record and the owner's details
-  const { data: payout, error: payoutError } = await supabase
-    .from("owner_payouts")
-    .select(
-      "*, car_owner:car_owner_id(business_name, revenue_share_percentage, users(full_name))",
-    ) // <-- FLATTENED HERE
-    .eq("payout_id", payoutId)
-    .single();
+  const { data, error } = await supabase.rpc("get_payout_breakdown", {
+    p_payout_id: payoutId,
+  });
 
-  if (payoutError) throw new Error(payoutError.message);
+  if (error) {
+    console.error("Failed to fetch breakdown:", error);
+    throw new Error(error.message);
+  }
 
-  // 2. Get all locked bookings
-  const { data: bookings } = await supabase
-    .from("bookings")
-    .select(
-      "booking_id, start_date, end_date, total_price, car:car_id(brand, plate_number)",
-    ) // <-- FLATTENED HERE
-    .eq("owner_payout_id", payoutId)
-    .order("end_date", { ascending: true });
+  // The RPC returns { payout, bookings, maintenance } perfectly formatted
+  return data;
+}
 
-  // 3. Get all locked maintenance deductions
-  const { data: maintenance } = await supabase
-    .from("maintenance_logs")
-    .select(
-      "maintenance_id, service_type, cost, car:car_id(brand, plate_number)",
-    ) // <-- FLATTENED HERE
-    .eq("owner_payout_id", payoutId)
-    .order("end_date", { ascending: true });
+export async function voidOwnerPayoutAction(payoutId: string) {
+  const supabase = await createClient();
 
-  return {
-    payout,
-    bookings: bookings || [],
-    maintenance: maintenance || [],
-  };
+  const { error } = await supabase.rpc("void_owner_payout", {
+    p_payout_id: payoutId,
+  });
+
+  if (error) {
+    console.error("Failed to void payout:", error);
+    return { success: false, message: error.message };
+  }
+
+  revalidatePath("/admin/financials/expenses");
+  return { success: true, message: "Payout successfully voided and reversed." };
 }

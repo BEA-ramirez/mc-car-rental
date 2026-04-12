@@ -573,3 +573,269 @@ export const generateInvoicePDF = (folio: any) => {
 
   doc.save(`Invoice_${shortId}.pdf`);
 };
+
+export const generatePayoutPDF = (details: any) => {
+  if (!details || !details.payout) return;
+
+  const doc = new jsPDF();
+  const { payout, bookings, maintenance } = details;
+
+  // --- SAFE FALLBACKS ---
+  const safeId = payout.payout_id || "0000";
+  const shortId = safeId.split("-")[0].toUpperCase();
+  const safeStatus = payout.status || "UNKNOWN";
+  const currentDate = format(new Date(), "MMM dd, yyyy");
+
+  const ownerName =
+    payout.car_owner?.business_name ||
+    payout.car_owner?.users?.full_name ||
+    "Fleet Partner";
+  const sharePct = payout.car_owner?.revenue_share_percentage || 0;
+  const companyPct = 100 - sharePct;
+
+  const periodStr = `${format(new Date(payout.period_start), "MMM dd, yyyy")} - ${format(
+    new Date(payout.period_end),
+    "MMM dd, yyyy",
+  )}`;
+
+  // --- 1. HEADER SECTION ---
+  doc.setTextColor(15, 23, 42);
+  doc.setFontSize(22);
+  doc.setFont("helvetica", "bold");
+  doc.text("MC ORMOC CAR RENTAL", 14, 22);
+
+  doc.setFontSize(10);
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(100, 116, 139);
+  doc.text("Brgy. Cogon, Ormoc City", 14, 28);
+  doc.text("Leyte 6541, Philippines", 14, 33);
+  doc.text("Phone: 09958930398", 14, 38);
+
+  // Statement Meta
+  doc.setFontSize(24);
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(100, 197, 195);
+  doc.text("STATEMENT", 195, 22, { align: "right" });
+
+  doc.setFontSize(10);
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(15, 23, 42);
+  doc.text(`REF #: ${shortId}`, 195, 28, { align: "right" });
+  doc.setFont("helvetica", "normal");
+  doc.text(`Generated: ${currentDate}`, 195, 33, { align: "right" });
+
+  if (safeStatus === "PAID" && payout.paid_at) {
+    doc.setTextColor(16, 185, 129); // Green
+    doc.text(
+      `PAID ON: ${format(new Date(payout.paid_at), "MMM dd, yyyy")}`,
+      195,
+      38,
+      { align: "right" },
+    );
+  } else {
+    doc.setTextColor(245, 158, 11); // Amber
+    doc.text(`STATUS: ${safeStatus.toUpperCase()}`, 195, 38, {
+      align: "right",
+    });
+  }
+
+  // --- 2. PARTNER & PERIOD INFO ---
+  doc.setDrawColor(226, 232, 240);
+  doc.line(14, 45, 195, 45);
+
+  // Partner Details
+  doc.setFontSize(10);
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(15, 23, 42);
+  doc.text("FLEET PARTNER:", 14, 53);
+  doc.setFont("helvetica", "normal");
+  doc.text(ownerName, 14, 58);
+  doc.text(`Revenue Share: ${sharePct}%`, 14, 63);
+
+  // Settlement Details
+  doc.setFont("helvetica", "bold");
+  doc.text("SETTLEMENT PERIOD:", 120, 53);
+  doc.setFont("helvetica", "normal");
+  doc.text(periodStr, 120, 58);
+  doc.text(`Total Trips: ${bookings?.length || 0}`, 120, 63);
+
+  let currentY = 75;
+
+  // --- 3. REVENUE SECTION (BOOKINGS) ---
+  const bookingRows: any[] = [];
+  if (bookings && bookings.length > 0) {
+    bookings.forEach((b: any) => {
+      const bShortId = b.booking_id.split("-")[0].toUpperCase();
+      const carName = `${b.car?.brand} (${b.car?.plate_number})`;
+      const dateRange = `${format(new Date(b.start_date), "MMM dd")} - ${format(new Date(b.end_date), "MMM dd")}`;
+
+      bookingRows.push([
+        dateRange,
+        carName,
+        bShortId,
+        `P ${Number(b.total_price).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+      ]);
+    });
+  } else {
+    bookingRows.push([
+      "No settled bookings in this period",
+      "-",
+      "-",
+      "P 0.00",
+    ]);
+  }
+
+  doc.setFontSize(11);
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(15, 23, 42);
+  doc.text("GROSS REVENUE (COMPLETED TRIPS)", 14, currentY);
+
+  autoTable(doc, {
+    startY: currentY + 4,
+    head: [["DATE", "VEHICLE", "REF", "GROSS AMOUNT"]],
+    body: bookingRows,
+    theme: "striped",
+    headStyles: {
+      fillColor: [15, 23, 42],
+      textColor: 255,
+      fontSize: 9,
+      fontStyle: "bold",
+    },
+    styles: { fontSize: 9, cellPadding: 5 },
+    columnStyles: {
+      3: { halign: "right", fontStyle: "bold", textColor: [16, 185, 129] }, // Green numbers
+    },
+  });
+
+  currentY = (doc as any).lastAutoTable.finalY + 15;
+
+  // --- 4. DEDUCTIONS SECTION (MAINTENANCE) ---
+  if (maintenance && maintenance.length > 0) {
+    doc.setFontSize(11);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(15, 23, 42);
+    doc.text("MAINTENANCE & DEDUCTIONS", 14, currentY);
+
+    const maintRows = maintenance.map((m: any) => {
+      const mShortId = m.maintenance_id.split("-")[0].toUpperCase();
+      const carName = `${m.car?.brand} (${m.car?.plate_number})`;
+      const serviceName = m.service_type.replace(/_/g, " ");
+
+      return [
+        serviceName,
+        carName,
+        mShortId,
+        `- P ${Number(m.cost).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+      ];
+    });
+
+    autoTable(doc, {
+      startY: currentY + 4,
+      head: [["SERVICE", "VEHICLE", "REF", "DEDUCTION"]],
+      body: maintRows,
+      theme: "plain",
+      headStyles: {
+        fillColor: [254, 226, 226], // Light red tint
+        textColor: [153, 27, 27], // Dark red text
+        fontSize: 8,
+      },
+      styles: { fontSize: 8, cellPadding: 4, textColor: [71, 85, 105] },
+      columnStyles: {
+        3: { halign: "right", fontStyle: "bold", textColor: [220, 38, 38] }, // Red numbers
+      },
+    });
+
+    currentY = (doc as any).lastAutoTable.finalY + 15;
+  }
+
+  // --- 5. TOTALS & FINAL CALCULATION ---
+  const grossRev = Number(payout.total_revenue) || 0;
+  const commDed = Number(payout.commission_deducted) || 0;
+  const maintDed =
+    maintenance?.reduce((sum: number, m: any) => sum + Number(m.cost), 0) || 0;
+  const netPayout = Number(payout.net_payout) || 0;
+
+  // Check if we are too close to the bottom of the page. If so, add a new page.
+  if (currentY > 240) {
+    doc.addPage();
+    currentY = 20;
+  }
+
+  doc.setFontSize(10);
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(100, 116, 139);
+
+  // Breakdown
+  doc.text("Gross Revenue:", 120, currentY);
+  doc.text(
+    `P ${grossRev.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+    195,
+    currentY,
+    { align: "right" },
+  );
+
+  doc.text(`Company Share (${companyPct}%):`, 120, currentY + 6);
+  doc.setTextColor(220, 38, 38); // Red
+  doc.text(
+    `- P ${commDed.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+    195,
+    currentY + 6,
+    { align: "right" },
+  );
+
+  if (maintDed > 0) {
+    doc.setTextColor(100, 116, 139);
+    doc.text("Total Maintenance:", 120, currentY + 12);
+    doc.setTextColor(220, 38, 38);
+    doc.text(
+      `- P ${maintDed.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+      195,
+      currentY + 12,
+      { align: "right" },
+    );
+    currentY += 6;
+  }
+
+  // Draw Line
+  doc.setDrawColor(15, 23, 42);
+  doc.setLineWidth(0.5);
+  doc.line(120, currentY + 10, 195, currentY + 10);
+
+  // Net Settled
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(12);
+  doc.setTextColor(15, 23, 42);
+  doc.text("NET PAYOUT:", 120, currentY + 17);
+
+  if (netPayout > 0) {
+    doc.setTextColor(16, 185, 129); // Green
+  } else {
+    doc.setTextColor(220, 38, 38); // Red if they owe us!
+  }
+
+  doc.text(
+    `P ${netPayout.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+    195,
+    currentY + 17,
+    { align: "right" },
+  );
+
+  // --- 6. FOOTER ---
+  doc.setFont("helvetica", "italic");
+  doc.setFontSize(9);
+  doc.setTextColor(148, 163, 184);
+  doc.text(
+    "This document serves as an official settlement breakdown.",
+    105,
+    275,
+    { align: "center" },
+  );
+  doc.text(
+    "For any disputes, please contact management within 5 business days.",
+    105,
+    280,
+    { align: "center" },
+  );
+
+  doc.save(`Payout_Statement_${shortId}.pdf`);
+};

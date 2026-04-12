@@ -15,6 +15,7 @@ import {
   Loader2,
   ArrowUpRight,
   ArrowDownRight,
+  Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -29,10 +30,12 @@ import PayoutBreakdownModal from "./payout-breakdown";
 import { TableToolbar } from "../table/table-toolbar";
 import { SortableHead } from "../table/sortable-header";
 import { TablePagination } from "../table-pagination";
+import { DeleteDialog } from "../delete-dialog"; // <-- Ensure this path points to your new component
 import { useUrlParams } from "../../../hooks/use-url-params";
 import {
   useExpenseWidgets,
   useExpenseTable,
+  useFinancials,
 } from "../../../hooks/use-financials";
 
 // Reuse the TrendIndicator from Income page
@@ -88,10 +91,41 @@ export default function ExpensesMain() {
     search: searchParams.get("search") || "",
   });
 
+  const { voidPayout } = useFinancials();
+
+  // Standard Modals
   const [isGenerateOpen, setIsGenerateOpen] = useState(false);
   const [isLogOpen, setIsLogOpen] = useState(false);
   const [viewPayout, setViewPayout] = useState<any | null>(null);
   const [prefilledOwner, setPrefilledOwner] = useState<string | undefined>();
+
+  // Custom Delete Dialog State
+  const [payoutToVoid, setPayoutToVoid] = useState<string | null>(null);
+  const [isVoiding, setIsVoiding] = useState(false);
+
+  const openGenerateModal = (ownerId?: string) => {
+    setPrefilledOwner(ownerId);
+    setIsGenerateOpen(true);
+  };
+
+  // 1. Open the custom dialog instead of standard confirm()
+  const handleVoidClick = (e: React.MouseEvent, payoutId: string) => {
+    e.stopPropagation();
+    setPayoutToVoid(payoutId);
+  };
+
+  // 2. The function that runs when they click "Delete" in the custom dialog
+  const confirmVoidPayout = async () => {
+    if (!payoutToVoid) return;
+
+    setIsVoiding(true);
+    try {
+      await voidPayout(payoutToVoid);
+      setPayoutToVoid(null); // Close modal on success
+    } finally {
+      setIsVoiding(false);
+    }
+  };
 
   if (isWidgetsLoading) {
     return (
@@ -152,17 +186,16 @@ export default function ExpensesMain() {
                   <span className="text-2xl font-black text-foreground tracking-tight font-mono leading-none mt-1">
                     ₱ {Number(kpis.pendingLiabilities).toLocaleString()}
                   </span>
-                  <TrendIndicator
-                    value={kpis.pendingLiabilitiesGrowth}
-                    invertColors={true}
-                  />
+                  <span className="text-[10px] text-muted-foreground font-medium mt-1">
+                    Real-time snapshot
+                  </span>
                 </div>
               </div>
               <Button
                 variant="outline"
                 size="icon"
                 className="h-8 w-8 rounded-lg"
-                onClick={() => setIsGenerateOpen(true)}
+                onClick={() => openGenerateModal()}
               >
                 <Calculator className="w-4 h-4" />
               </Button>
@@ -236,29 +269,37 @@ export default function ExpensesMain() {
                 >
                   {activeTab === "payouts" ? (
                     <>
-                      <div className="grid grid-cols-5 p-2.5 px-4 text-[9px] font-bold text-muted-foreground uppercase tracking-widest bg-secondary/50 border-b border-border shrink-0">
+                      <div className="grid grid-cols-[1fr_2fr_1.5fr_1fr_1fr_32px] p-2.5 px-4 text-[9px] font-bold text-muted-foreground uppercase tracking-widest bg-secondary/50 border-b border-border shrink-0">
                         <div>Reference</div>
                         <div>Fleet Owner</div>
                         <div>Billing Period</div>
                         <div>Status</div>
-                        <div className="text-right">Net Payout</div>
+                        <div className="text-right pr-4">Net Payout</div>
+                        <div></div>
                       </div>
                       <div className="flex-1 overflow-y-auto custom-scrollbar divide-y divide-border">
-                        {tableData.map((pay: any) => (
+                        {tableData.map((pay: any, index: number) => (
                           <div
-                            key={pay.payout_id}
-                            className="grid grid-cols-5 p-3 px-4 items-center hover:bg-secondary/30 cursor-pointer transition-colors"
+                            key={pay.payout_id || `payout-${index}`}
+                            className="grid grid-cols-[1fr_2fr_1.5fr_1fr_1fr_32px] p-3 px-4 items-center hover:bg-secondary/30 cursor-pointer transition-colors"
                             onClick={() => setViewPayout(pay)}
                           >
                             <div className="text-[10px] font-bold font-mono truncate">
-                              {pay.payout_id.split("-")[0]}...
+                              {pay.payout_id
+                                ? `${pay.payout_id.split("-")[0]}...`
+                                : "N/A"}
                             </div>
                             <div className="text-[11px] font-bold truncate">
                               {pay.car_owner?.users?.full_name || "Unknown"}
                             </div>
                             <div className="text-[10px] font-medium text-muted-foreground">
-                              {format(new Date(pay.period_start), "MMM dd")} -{" "}
-                              {format(new Date(pay.period_end), "MMM dd")}
+                              {pay.period_start
+                                ? format(new Date(pay.period_start), "MMM dd")
+                                : "..."}{" "}
+                              -{" "}
+                              {pay.period_end
+                                ? format(new Date(pay.period_end), "MMM dd")
+                                : "..."}
                             </div>
                             <div>
                               <Badge
@@ -273,8 +314,22 @@ export default function ExpensesMain() {
                                 {pay.status}
                               </Badge>
                             </div>
-                            <div className="text-right text-[11px] font-bold font-mono">
+                            <div className="text-right text-[11px] font-bold font-mono pr-4">
                               ₱ {Number(pay.net_payout).toLocaleString()}
+                            </div>
+                            <div className="flex justify-end">
+                              {/* Using handleVoidClick to trigger the modal */}
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                                onClick={(e) =>
+                                  handleVoidClick(e, pay.payout_id)
+                                }
+                                title="Void Payout"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </Button>
                             </div>
                           </div>
                         ))}
@@ -296,13 +351,17 @@ export default function ExpensesMain() {
                           >
                             <div className="flex flex-col">
                               <span className="text-[10px] font-bold">
-                                {format(
-                                  new Date(txn.transaction_date),
-                                  "MMM dd, yyyy",
-                                )}
+                                {txn.transaction_date
+                                  ? format(
+                                      new Date(txn.transaction_date),
+                                      "MMM dd, yyyy",
+                                    )
+                                  : "No Date"}
                               </span>
                               <span className="text-[9px] font-mono text-muted-foreground">
-                                {txn.transaction_id.split("-")[0]}
+                                {txn.transaction_id
+                                  ? txn.transaction_id.split("-")[0]
+                                  : "MANUAL"}
                               </span>
                             </div>
                             <div>
@@ -310,7 +369,9 @@ export default function ExpensesMain() {
                                 variant="outline"
                                 className="text-[8px] font-bold bg-secondary uppercase tracking-widest"
                               >
-                                {txn.category.replace(/_/g, " ")}
+                                {txn.category
+                                  ? txn.category.replace(/_/g, " ")
+                                  : "UNCATEGORIZED"}
                               </Badge>
                             </div>
                             <div className="text-[10px] font-medium truncate pr-4 text-muted-foreground">
@@ -382,7 +443,7 @@ export default function ExpensesMain() {
                           variant="outline"
                           size="sm"
                           className="h-7 text-[9px] font-bold uppercase tracking-widest"
-                          onClick={() => setIsGenerateOpen(owner.owner_id)}
+                          onClick={() => openGenerateModal(owner.owner_id)}
                         >
                           Draft{" "}
                           <ChevronRight className="w-3 h-3 ml-0.5 text-muted-foreground" />
@@ -402,6 +463,7 @@ export default function ExpensesMain() {
         </div>
       </ScrollArea>
 
+      {/* --- ALL OPERATIONAL MODALS --- */}
       <GeneratePayoutModal
         isOpen={isGenerateOpen}
         onClose={() => setIsGenerateOpen(false)}
@@ -412,6 +474,16 @@ export default function ExpensesMain() {
         isOpen={!!viewPayout}
         onClose={() => setViewPayout(null)}
         payout={viewPayout}
+      />
+
+      {/* The Delete Dialog properly wired into the component */}
+      <DeleteDialog
+        isOpen={!!payoutToVoid}
+        onClose={() => setPayoutToVoid(null)}
+        onConfirm={confirmVoidPayout}
+        title="Void Payout Draft"
+        description="Are you sure you want to void this payout? This will unlock all associated bookings and reverse the ledger entry. This action cannot be undone."
+        isDeleting={isVoiding}
       />
     </div>
   );

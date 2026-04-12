@@ -15,6 +15,7 @@ import {
   getExpenseTableData,
   getExpenseWidgets,
   getPayoutBreakdown,
+  voidOwnerPayoutAction,
 } from "@/actions/financials";
 
 export const useFinancials = () => {
@@ -40,8 +41,9 @@ export const useFinancials = () => {
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["financials"] });
-      // Invalidate bookings too, since their status changes to 'SETTLED'
       queryClient.invalidateQueries({ queryKey: ["bookings"] });
+      queryClient.invalidateQueries({ queryKey: ["expense-widgets"] });
+      queryClient.invalidateQueries({ queryKey: ["expense-table"] });
       toast.success(data.message);
     },
     onError: (err) => toast.error(err.message),
@@ -53,7 +55,7 @@ export const useFinancials = () => {
       if (data.success) {
         await Promise.all([
           queryClient.invalidateQueries({ queryKey: ["expense-widgets"] }),
-          queryClient.invalidateQueries({ queryKey: ["expense-widgets"] }),
+          queryClient.invalidateQueries({ queryKey: ["expense-table"] }),
         ]);
         toast.success(data.message);
       } else {
@@ -69,7 +71,7 @@ export const useFinancials = () => {
       if (data.success) {
         await Promise.all([
           queryClient.invalidateQueries({ queryKey: ["expense-widgets"] }),
-          queryClient.invalidateQueries({ queryKey: ["expense-widgets"] }),
+          queryClient.invalidateQueries({ queryKey: ["expense-table"] }),
         ]);
         toast.success(data.message);
       } else {
@@ -77,6 +79,20 @@ export const useFinancials = () => {
       }
     },
     onError: (err) => toast.error("Failed to update status: " + err.message),
+  });
+
+  const voidPayoutMutation = useMutation({
+    mutationFn: voidOwnerPayoutAction,
+    onSuccess: (data) => {
+      if (data.success) {
+        queryClient.invalidateQueries({ queryKey: ["expense-widgets"] });
+        queryClient.invalidateQueries({ queryKey: ["expense-table"] });
+        toast.success(data.message);
+      } else {
+        toast.error(data.message);
+      }
+    },
+    onError: (err) => toast.error("Failed to void payout: " + err.message),
   });
 
   return {
@@ -95,6 +111,8 @@ export const useFinancials = () => {
     isMarkingPaid: markPaidMutation.isPending,
     generatePayout: generatePayoutMutation.mutateAsync,
     isGeneratingPayout: generatePayoutMutation.isPending,
+    voidPayout: voidPayoutMutation.mutateAsync,
+    isVoiding: voidPayoutMutation.isPending,
   };
 };
 

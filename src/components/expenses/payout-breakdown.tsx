@@ -18,17 +18,19 @@ import {
   FileText,
   Loader2,
   Receipt,
+  Hash,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { format } from "date-fns";
+import { generatePayoutPDF } from "@/utils/export-pdf";
 
 import { useFinancials, usePayoutDetails } from "../../../hooks/use-financials";
 
 type PayoutBreakdownModalProps = {
   isOpen: boolean;
   onClose: () => void;
-  payout: any | null;
+  payout: any | null; // This is the lightweight row data passed from the table
 };
 
 export default function PayoutBreakdownModal({
@@ -37,6 +39,8 @@ export default function PayoutBreakdownModal({
   payout,
 }: PayoutBreakdownModalProps) {
   const payoutId = payout?.payout_id;
+
+  // This hook calls our new get_payout_breakdown RPC
   const { data: details, isLoading } = usePayoutDetails(payoutId);
   const { markAsPaid, isMarkingPaid } = useFinancials();
 
@@ -52,9 +56,14 @@ export default function PayoutBreakdownModal({
     }
   };
 
+  // Safely extract the full RPC payload
+  const fullPayout = details?.payout || payout;
+  const bookings = details?.bookings || [];
+  const maintenance = details?.maintenance || [];
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-6xl xl:max-w-[1150px] p-0 overflow-hidden border-border bg-background shadow-2xl rounded-2xl flex flex-col h-[85vh] max-h-[800px] transition-colors duration-300 [&>button.absolute]:hidden">
+      <DialogContent className="max-w-6xl xl:max-w-[900px] gap-0! p-0 overflow-hidden border-border bg-background shadow-2xl rounded-2xl flex flex-col h-[85vh] max-h-[800px] transition-colors duration-300 [&>button.absolute]:hidden">
         {/* HEADER */}
         <DialogHeader className="px-5 py-3 border-b border-border bg-card shrink-0 flex flex-row items-center justify-between transition-colors">
           <div className="flex items-center gap-3">
@@ -75,12 +84,12 @@ export default function PayoutBreakdownModal({
               variant="outline"
               className={cn(
                 "text-[9px] font-bold uppercase tracking-widest rounded h-6 px-2 border transition-colors",
-                payout.status === "PAID"
+                fullPayout.status === "PAID"
                   ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
                   : "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20",
               )}
             >
-              {payout.status}
+              {fullPayout.status}
             </Badge>
             <div className="w-px h-6 bg-border mx-1" />
             <Button
@@ -107,9 +116,8 @@ export default function PayoutBreakdownModal({
                       <User className="w-3 h-3" /> Fleet Owner
                     </span>
                     <span className="text-[11px] font-bold text-foreground block truncate">
-                      {details?.payout?.car_owner?.business_name ||
-                        details?.payout?.car_owner?.users?.full_name ||
-                        payout.car_owner?.users?.full_name ||
+                      {fullPayout.car_owner?.business_name ||
+                        fullPayout.car_owner?.users?.full_name ||
                         "..."}
                     </span>
                   </div>
@@ -118,15 +126,45 @@ export default function PayoutBreakdownModal({
                       <CalendarIcon className="w-3 h-3" /> Period
                     </span>
                     <span className="text-[11px] font-bold text-foreground">
-                      {payout.period_start
-                        ? format(new Date(payout.period_start), "MMM dd")
+                      {fullPayout.period_start
+                        ? format(new Date(fullPayout.period_start), "MMM dd")
                         : ""}{" "}
                       -{" "}
-                      {payout.period_end
-                        ? format(new Date(payout.period_end), "MMM dd, yyyy")
+                      {fullPayout.period_end
+                        ? format(
+                            new Date(fullPayout.period_end),
+                            "MMM dd, yyyy",
+                          )
                         : ""}
                     </span>
                   </div>
+
+                  {/* Show Payment Details if Paid */}
+                  {fullPayout.status === "PAID" && (
+                    <>
+                      <div>
+                        <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-1.5 mb-1">
+                          <CheckCircle className="w-3 h-3" /> Paid On
+                        </span>
+                        <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400">
+                          {fullPayout.paid_at
+                            ? format(
+                                new Date(fullPayout.paid_at),
+                                "MMM dd, yyyy",
+                              )
+                            : "N/A"}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-1.5 mb-1">
+                          <Hash className="w-3 h-3" /> Ledger ID
+                        </span>
+                        <span className="text-[11px] font-bold text-foreground font-mono">
+                          {fullPayout.transaction_id?.split("-")[0] || "N/A"}
+                        </span>
+                      </div>
+                    </>
+                  )}
                 </div>
 
                 <hr className="border-border" />
@@ -144,40 +182,43 @@ export default function PayoutBreakdownModal({
                     <div className="space-y-3">
                       <div className="flex justify-between items-center">
                         <span className="text-[11px] font-semibold text-muted-foreground">
-                          Gross Revenue
+                          Gross Revenue ({bookings.length} trips)
                         </span>
                         <span className="text-[11px] font-bold text-foreground font-mono">
                           ₱{" "}
                           {Number(
-                            details?.payout?.total_revenue || 0,
+                            fullPayout.total_revenue || 0,
                           ).toLocaleString()}
                         </span>
                       </div>
                       <div className="flex justify-between items-center">
                         <span className="text-[11px] font-semibold text-muted-foreground">
-                          Share (
-                          {details?.payout?.car_owner?.revenue_share_percentage}
+                          Company Share (
+                          {fullPayout.car_owner?.revenue_share_percentage
+                            ? 100 -
+                              fullPayout.car_owner.revenue_share_percentage
+                            : 0}
                           %)
                         </span>
                         <span className="text-[11px] font-bold text-destructive font-mono">
                           - ₱{" "}
                           {Number(
-                            details?.payout?.commission_deducted || 0,
+                            fullPayout.commission_deducted || 0,
                           ).toLocaleString()}
                         </span>
                       </div>
                       <div className="flex justify-between items-center">
                         <span className="text-[11px] font-semibold text-muted-foreground">
-                          Maintenance
+                          Maintenance Deductions
                         </span>
                         <span className="text-[11px] font-bold text-destructive font-mono">
                           - ₱{" "}
-                          {details?.maintenance
-                            ?.reduce(
+                          {maintenance
+                            .reduce(
                               (sum: number, m: any) => sum + Number(m.cost),
                               0,
                             )
-                            .toLocaleString() || "0"}
+                            .toLocaleString()}
                         </span>
                       </div>
                     </div>
@@ -190,7 +231,7 @@ export default function PayoutBreakdownModal({
                     Net Payout
                   </span>
                   <span className="text-xl font-black text-foreground tracking-tight font-mono">
-                    ₱ {Number(payout.net_payout).toLocaleString()}
+                    ₱ {Number(fullPayout.net_payout).toLocaleString()}
                   </span>
                 </div>
               </div>
@@ -221,54 +262,59 @@ export default function PayoutBreakdownModal({
                     <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden transition-colors">
                       <div className="bg-secondary/50 border-b border-border px-3 py-2">
                         <h4 className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">
-                          Settled Bookings ({details?.bookings?.length || 0})
+                          Settled Bookings ({bookings.length})
                         </h4>
                       </div>
                       <div className="divide-y divide-border">
-                        {details?.bookings?.map((b: any) => (
-                          <div
-                            key={b.booking_id}
-                            className="p-3 hover:bg-secondary/30 flex justify-between items-center transition-colors"
-                          >
-                            <div className="flex flex-col">
-                              <span className="text-[11px] font-bold text-foreground">
-                                {b.car?.brand}{" "}
-                                <span className="text-muted-foreground font-mono">
-                                  ({b.car?.plate_number})
+                        {bookings.length === 0 ? (
+                          <div className="p-4 text-center text-[10px] text-muted-foreground uppercase tracking-widest">
+                            No bookings in this period.
+                          </div>
+                        ) : (
+                          bookings.map((b: any) => (
+                            <div
+                              key={b.booking_id}
+                              className="p-3 hover:bg-secondary/30 flex justify-between items-center transition-colors"
+                            >
+                              <div className="flex flex-col">
+                                <span className="text-[11px] font-bold text-foreground">
+                                  {b.car?.brand}{" "}
+                                  <span className="text-muted-foreground font-mono">
+                                    ({b.car?.plate_number})
+                                  </span>
                                 </span>
-                              </span>
-                              <span className="text-[9px] font-medium text-muted-foreground uppercase tracking-widest mt-0.5">
-                                {format(new Date(b.start_date), "MMM d")} -{" "}
-                                {format(new Date(b.end_date), "MMM d")} • ID:{" "}
-                                {b.booking_id.split("-")[0]}
+                                <span className="text-[9px] font-medium text-muted-foreground uppercase tracking-widest mt-0.5">
+                                  {format(new Date(b.start_date), "MMM d")} -{" "}
+                                  {format(new Date(b.end_date), "MMM d")} • REF:{" "}
+                                  {b.booking_id.split("-")[0]}
+                                </span>
+                              </div>
+                              <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 font-mono">
+                                +₱ {Number(b.total_price).toLocaleString()}
                               </span>
                             </div>
-                            <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 font-mono">
-                              +₱ {Number(b.total_price).toLocaleString()}
-                            </span>
-                          </div>
-                        ))}
+                          ))
+                        )}
                       </div>
                     </div>
 
                     {/* Maintenance List */}
-                    {details?.maintenance && details.maintenance.length > 0 && (
+                    {maintenance.length > 0 && (
                       <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden transition-colors">
                         <div className="bg-secondary/50 border-b border-border px-3 py-2">
                           <h4 className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">
-                            Maintenance Deductions ({details.maintenance.length}
-                            )
+                            Maintenance Deductions ({maintenance.length})
                           </h4>
                         </div>
                         <div className="divide-y divide-border">
-                          {details.maintenance.map((m: any) => (
+                          {maintenance.map((m: any) => (
                             <div
                               key={m.maintenance_id}
                               className="p-3 hover:bg-secondary/30 flex justify-between items-center transition-colors"
                             >
                               <div className="flex flex-col">
                                 <span className="text-[11px] font-bold text-foreground truncate">
-                                  {m.service_type.replace("_", " ")}{" "}
+                                  {m.service_type.replace(/_/g, " ")}{" "}
                                   <span className="text-muted-foreground font-mono">
                                     ({m.car?.plate_number})
                                   </span>
@@ -302,11 +348,11 @@ export default function PayoutBreakdownModal({
             Close
           </Button>
 
-          {payout.status === "PENDING" && (
+          {fullPayout.status === "PENDING" && (
             <Button
               variant="outline"
               onClick={handleMarkAsPaid}
-              disabled={isMarkingPaid}
+              disabled={isMarkingPaid || isLoading}
               className="h-8 px-4 text-[10px] font-bold uppercase tracking-widest border-emerald-500/30 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10 rounded-lg shadow-none transition-colors"
             >
               {isMarkingPaid ? (
@@ -318,8 +364,12 @@ export default function PayoutBreakdownModal({
             </Button>
           )}
 
-          <Button className="h-8 px-4 text-[10px] font-bold uppercase tracking-widest bg-primary hover:opacity-90 text-primary-foreground rounded-lg shadow-sm transition-opacity">
-            <Download className="w-3.5 h-3.5 mr-2" /> Download Invoice
+          <Button
+            onClick={() => generatePayoutPDF(details)}
+            disabled={isLoading}
+            className="h-8 px-4 text-[10px] font-bold uppercase tracking-widest bg-primary hover:opacity-90 text-primary-foreground rounded-lg shadow-sm transition-opacity"
+          >
+            <Download className="w-3.5 h-3.5 mr-2" /> Download Statement
           </Button>
         </div>
       </DialogContent>
