@@ -20,7 +20,5 @@ export async function fetchMasterReportData(
     throw new Error("Failed to load report data.");
   }
 
-  console.log("Master report", data);
-
   return data;
 }

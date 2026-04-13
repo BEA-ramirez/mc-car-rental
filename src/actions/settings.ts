@@ -134,15 +134,25 @@ export async function getServiceArea() {
 
 const INSPECTION_TEMPLATE_KEY = "inspection_template";
 
-// The shape of our template
+// 1. The shape of the categories
 export type InspectionCategory = {
   id: string;
   name: string;
   items: { id: string; label: string }[];
 };
 
-// 1. Fetch the template
-export async function getInspectionTemplate(): Promise<InspectionCategory[]> {
+// 2. NEW: The shape of the master template (Blueprint + Categories)
+export type MasterInspectionTemplate = {
+  blueprint_url: string;
+  categories: InspectionCategory[];
+};
+
+// 3. Fetch the template
+// Note: We return either the new Master object or the old Array to allow your
+// frontend's migration logic to safely convert old data!
+export async function getInspectionTemplate(): Promise<
+  MasterInspectionTemplate | InspectionCategory[]
+> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("settings")
@@ -156,11 +166,16 @@ export async function getInspectionTemplate(): Promise<InspectionCategory[]> {
     return [];
   }
 
-  return data?.value ? (data.value as InspectionCategory[]) : [];
+  return data?.value
+    ? (data.value as MasterInspectionTemplate | InspectionCategory[])
+    : [];
 }
 
-// 2. Save the template
-export async function saveInspectionTemplate(template: InspectionCategory[]) {
+// 4. Save the template
+// Note: We now strictly require the new Master format when saving
+export async function saveInspectionTemplate(
+  template: MasterInspectionTemplate,
+) {
   const supabase = await createAdminClient();
 
   // Use upsert to update if exists, or insert if it doesn't

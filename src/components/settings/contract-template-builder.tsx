@@ -302,7 +302,7 @@ export default function ContractTemplateBuilder() {
           className="m-0 border-none outline-none p-6 bg-secondary/50 flex justify-center h-[500px] overflow-y-auto custom-scrollbar transition-colors"
         >
           {/* Simulated PDF Paper */}
-          <div className="bg-card border border-border shadow-sm max-w-3xl w-full p-10 min-h-full transition-colors text-foreground">
+          <div className="bg-white border border-border shadow-sm max-w-3xl w-full p-10 min-h-full transition-colors text-foreground">
             <div
               className="prose prose-sm dark:prose-invert max-w-none prose-p:my-2 prose-li:my-0.5"
               dangerouslySetInnerHTML={{ __html: generatePreview() }}

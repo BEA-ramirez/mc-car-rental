@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -10,6 +10,8 @@ import {
   Save,
   Loader2,
   ListChecks,
+  Image as ImageIcon,
+  UploadCloud,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -24,26 +26,39 @@ const generateId = () => Math.random().toString(36).substring(2, 9);
 
 export default function InspectionTemplateBuilder() {
   const [categories, setCategories] = useState<InspectionCategory[]>([]);
+  const [blueprintUrl, setBlueprintUrl] = useState<string>("");
+
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Load existing template on mount
   useEffect(() => {
     const loadTemplate = async () => {
       try {
         const data = await getInspectionTemplate();
-        // If empty, start them off with one default category
-        setCategories(
-          data.length > 0
-            ? data
-            : [
-                {
-                  id: generateId(),
-                  name: "Exterior",
-                  items: [{ id: generateId(), label: "Front Bumper" }],
-                },
-              ],
-        );
+
+        // Handle migration: If old data is an Array, convert to new Object format
+        if (Array.isArray(data)) {
+          setCategories(data);
+          setBlueprintUrl("/default-car-outline.png"); // Fallback
+        } else if (data && data.categories) {
+          // New format
+          setCategories(data.categories);
+          setBlueprintUrl(data.blueprint_url || "/default-car-outline.png");
+        } else {
+          // Completely empty state
+          setCategories([
+            {
+              id: generateId(),
+              name: "Exterior",
+              items: [{ id: generateId(), label: "Front Bumper" }],
+            },
+          ]);
+          setBlueprintUrl("/default-car-outline.png");
+        }
       } catch (error) {
         toast.error("Failed to load template.");
       } finally {
@@ -52,6 +67,32 @@ export default function InspectionTemplateBuilder() {
     };
     loadTemplate();
   }, []);
+
+  // --- BLUEPRINT UPLOAD ACTION ---
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    try {
+      // 1. Create a local preview immediately so UI feels fast
+      const localPreview = URL.createObjectURL(file);
+      setBlueprintUrl(localPreview);
+
+      // 2. TODO: Upload to Supabase Storage
+      // const formData = new FormData();
+      // formData.append("file", file);
+      // const result = await uploadSettingsBlueprintAction(formData);
+      // if (result.success) setBlueprintUrl(result.url);
+
+      toast.success("Blueprint image updated.");
+    } catch (error) {
+      toast.error("Failed to upload image.");
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
 
   // --- CATEGORY ACTIONS ---
   const addCategory = () => {
@@ -110,25 +151,30 @@ export default function InspectionTemplateBuilder() {
     );
   };
 
-  // --- SAVE ---
+  // --- SAVE LOGIC ---
   const handleSave = async () => {
-    // Basic validation: clear out empty items/categories
-    const cleanedTemplate = categories
+    const cleanedCategories = categories
       .filter((cat) => cat.name.trim() !== "")
       .map((cat) => ({
         ...cat,
         items: cat.items.filter((item) => item.label.trim() !== ""),
       }));
 
-    if (cleanedTemplate.length === 0) {
-      toast.error("Template cannot be completely empty.");
+    if (cleanedCategories.length === 0) {
+      toast.error("Checklist cannot be completely empty.");
       return;
     }
 
+    // NEW DATA SHAPE
+    const masterTemplatePayload = {
+      blueprint_url: blueprintUrl,
+      categories: cleanedCategories,
+    };
+
     setIsSaving(true);
     try {
-      await saveInspectionTemplate(cleanedTemplate);
-      setCategories(cleanedTemplate); // Update UI with cleaned version
+      await saveInspectionTemplate(masterTemplatePayload);
+      setCategories(cleanedCategories);
       toast.success("Inspection template saved successfully!");
     } catch (error) {
       toast.error("Failed to save template.");
@@ -146,6 +192,14 @@ export default function InspectionTemplateBuilder() {
 
   return (
     <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden flex flex-col max-w-3xl transition-colors">
+      <input
+        type="file"
+        accept="image/*"
+        className="hidden"
+        ref={fileInputRef}
+        onChange={handleImageUpload}
+      />
+
       {/* Header */}
       <div className="px-4 py-3 border-b border-border bg-secondary/30 flex justify-between items-center shrink-0 transition-colors">
         <div className="flex items-center gap-3">
@@ -157,14 +211,14 @@ export default function InspectionTemplateBuilder() {
               Master Inspection Template
             </h2>
             <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-widest leading-none">
-              Define the standard checklist for pre & post-trip inspections
+              Define the standard checklist & canvas for walk-arounds
             </p>
           </div>
         </div>
         <Button
           className="h-8 px-4 text-[10px] font-bold uppercase tracking-widest bg-primary hover:opacity-90 text-primary-foreground rounded-lg shadow-sm transition-opacity"
           onClick={handleSave}
-          disabled={isSaving}
+          disabled={isSaving || isUploading}
         >
           {isSaving ? (
             <Loader2 className="w-3.5 h-3.5 mr-2 animate-spin" />
@@ -176,83 +230,142 @@ export default function InspectionTemplateBuilder() {
       </div>
 
       {/* Builder Body */}
-      <div className="p-4 space-y-4 bg-background transition-colors">
-        {categories.map((category) => (
-          <div
-            key={category.id}
-            className="bg-card border border-border rounded-xl shadow-sm p-3 animate-in fade-in slide-in-from-bottom-2 duration-300 transition-colors"
-          >
-            {/* Category Header */}
-            <div className="flex items-center gap-2 mb-3">
-              <GripVertical className="w-4 h-4 text-muted-foreground/50 cursor-grab active:cursor-grabbing" />
-              <Input
-                placeholder="Category Name (e.g., Exterior, Engine)"
-                value={category.name}
-                onChange={(e) =>
-                  updateCategoryName(category.id, e.target.value)
-                }
-                className="h-8 text-[11px] font-bold bg-secondary border-border focus-visible:ring-1 focus-visible:ring-primary rounded-lg transition-colors text-foreground shadow-none"
-              />
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 shrink-0 rounded-lg transition-colors"
-                onClick={() => deleteCategory(category.id)}
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-              </Button>
-            </div>
+      <div className="p-5 space-y-6 bg-background transition-colors">
+        {/* --- BLUEPRINT SECTION --- */}
+        <div className="space-y-3">
+          <h3 className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
+            <ImageIcon className="w-3.5 h-3.5" /> 1. Digital Glass Blueprint
+          </h3>
+          <div className="bg-secondary/20 border-2 border-dashed border-border rounded-xl p-4 flex flex-col items-center justify-center gap-4 transition-colors">
+            {blueprintUrl ? (
+              <div className="relative group rounded-lg overflow-hidden border border-border shadow-sm bg-white">
+                <img
+                  src={blueprintUrl}
+                  alt="Inspection Blueprint"
+                  className="w-full max-w-[400px] h-auto object-contain opacity-90"
+                />
+                <div className="absolute inset-0 bg-background/60 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="text-[10px] uppercase tracking-widest font-bold h-8"
+                  >
+                    <UploadCloud className="w-3.5 h-3.5 mr-2" /> Replace Image
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="py-8 flex flex-col items-center text-center">
+                <UploadCloud className="w-8 h-8 text-muted-foreground/50 mb-2" />
+                <p className="text-xs font-medium text-foreground mb-1">
+                  No blueprint uploaded
+                </p>
+                <p className="text-[10px] text-muted-foreground mb-4 max-w-xs">
+                  Upload a top-down or multi-angle vehicle outline for
+                  inspectors to draw damage markups on.
+                </p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="text-[10px] uppercase tracking-widest font-bold h-8 shadow-none"
+                >
+                  Browse Files
+                </Button>
+              </div>
+            )}
+          </div>
+        </div>
 
-            {/* Checklist Items */}
-            <div className="pl-6 space-y-1.5">
-              {category.items.map((item) => (
-                <div key={item.id} className="flex items-center gap-2 group">
-                  <div className="w-3 h-3 border border-muted-foreground/30 rounded-sm shrink-0" />{" "}
-                  {/* Fake checkbox for visuals */}
+        <hr className="border-border" />
+
+        {/* --- CHECKLIST SECTION --- */}
+        <div className="space-y-3">
+          <h3 className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
+            <ListChecks className="w-3.5 h-3.5" /> 2. Form Checklist
+          </h3>
+
+          <div className="space-y-4">
+            {categories.map((category) => (
+              <div
+                key={category.id}
+                className="bg-card border border-border rounded-xl shadow-sm p-3 animate-in fade-in slide-in-from-bottom-2 duration-300 transition-colors"
+              >
+                {/* Category Header */}
+                <div className="flex items-center gap-2 mb-3">
+                  <GripVertical className="w-4 h-4 text-muted-foreground/50 cursor-grab active:cursor-grabbing" />
                   <Input
-                    placeholder="Checklist Item (e.g., Front Bumper)"
-                    value={item.label}
+                    placeholder="Category Name (e.g., Exterior, Engine)"
+                    value={category.name}
                     onChange={(e) =>
-                      updateItemLabel(category.id, item.id, e.target.value)
+                      updateCategoryName(category.id, e.target.value)
                     }
-                    className="h-7 text-[11px] font-medium border-transparent hover:border-border focus-visible:border-border focus-visible:ring-1 focus-visible:ring-primary bg-transparent hover:bg-secondary transition-colors text-foreground shadow-none px-2 rounded-md"
+                    className="h-8 text-[11px] font-bold bg-secondary border-border focus-visible:ring-1 focus-visible:ring-primary rounded-lg transition-colors text-foreground shadow-none"
                   />
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-7 w-7 text-muted-foreground/50 opacity-0 group-hover:opacity-100 hover:text-destructive hover:bg-destructive/10 shrink-0 transition-all rounded-md"
-                    onClick={() => deleteItem(category.id, item.id)}
+                    className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 shrink-0 rounded-lg transition-colors"
+                    onClick={() => deleteCategory(category.id)}
                   >
-                    <X className="w-3.5 h-3.5" />
+                    <Trash2 className="w-3.5 h-3.5" />
                   </Button>
                 </div>
-              ))}
 
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-7 px-2 text-[10px] font-bold uppercase tracking-widest text-primary hover:text-primary hover:bg-primary/10 mt-1 rounded-md transition-colors"
-                onClick={() => addItem(category.id)}
-              >
-                <Plus className="w-3 h-3 mr-1" /> Add Item
-              </Button>
-            </div>
+                {/* Checklist Items */}
+                <div className="pl-6 space-y-1.5">
+                  {category.items.map((item) => (
+                    <div
+                      key={item.id}
+                      className="flex items-center gap-2 group"
+                    >
+                      <div className="w-3 h-3 border border-muted-foreground/30 rounded-sm shrink-0" />
+                      <Input
+                        placeholder="Checklist Item (e.g., Front Bumper)"
+                        value={item.label}
+                        onChange={(e) =>
+                          updateItemLabel(category.id, item.id, e.target.value)
+                        }
+                        className="h-7 text-[11px] font-medium border-transparent hover:border-border focus-visible:border-border focus-visible:ring-1 focus-visible:ring-primary bg-transparent hover:bg-secondary transition-colors text-foreground shadow-none px-2 rounded-md"
+                      />
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 text-muted-foreground/50 opacity-0 group-hover:opacity-100 hover:text-destructive hover:bg-destructive/10 shrink-0 transition-all rounded-md"
+                        onClick={() => deleteItem(category.id, item.id)}
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </Button>
+                    </div>
+                  ))}
+
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 px-2 text-[10px] font-bold uppercase tracking-widest text-primary hover:text-primary hover:bg-primary/10 mt-1 rounded-md transition-colors"
+                    onClick={() => addItem(category.id)}
+                  >
+                    <Plus className="w-3 h-3 mr-1" /> Add Item
+                  </Button>
+                </div>
+              </div>
+            ))}
+
+            <Button
+              variant="outline"
+              className="w-full border-dashed border-2 border-border text-muted-foreground hover:text-foreground hover:border-primary/50 hover:bg-secondary h-10 text-[10px] font-bold uppercase tracking-widest rounded-xl transition-colors shadow-none"
+              onClick={addCategory}
+            >
+              <Plus className="w-3.5 h-3.5 mr-2" /> Add New Category
+            </Button>
           </div>
-        ))}
-
-        <Button
-          variant="outline"
-          className="w-full border-dashed border-2 border-border text-muted-foreground hover:text-foreground hover:border-primary/50 hover:bg-secondary h-10 text-[10px] font-bold uppercase tracking-widest rounded-xl transition-colors shadow-none"
-          onClick={addCategory}
-        >
-          <Plus className="w-3.5 h-3.5 mr-2" /> Add New Category
-        </Button>
+        </div>
       </div>
     </div>
   );
 }
 
-// Just adding this quick X icon locally since we didn't import it at the top
 const X = ({ className }: { className?: string }) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
