@@ -106,8 +106,6 @@ export async function createCustomerBooking(data: any): Promise<any> {
   };
 }
 
-// CREATE (Admin Super Form)
-// CREATE (Admin Super Form)
 export async function createAdminBooking(data: unknown) {
   const supabase = await createClient();
 
@@ -122,7 +120,7 @@ export async function createAdminBooking(data: unknown) {
   }
   const input = result.data;
 
-  // --- NEW: FETCH CAR FOR BASE RATE AND PROMO RATE ---
+  // --- FETCH CAR FOR BASE RATE AND PROMO RATE ---
   const { data: car } = await supabase
     .from("cars")
     .select(
@@ -135,7 +133,7 @@ export async function createAdminBooking(data: unknown) {
 
   const dailyRate = input.custom_daily_rate || car.rental_rate_per_day;
 
-  // --- NEW: DATE & PROMO LOGIC ---
+  // --- DATE & PROMO LOGIC ---
   const startDate = input.start_date;
   let endDate = input.end_date;
 
@@ -151,7 +149,7 @@ export async function createAdminBooking(data: unknown) {
     .select("booking_id")
     .eq("car_id", input.car_id)
     .in("booking_status", ["CONFIRMED", "ONGOING", "MAINTENANCE"])
-    .lt("start_date", endDate.toISOString()) // Uses adjusted endDate
+    .lt("start_date", endDate.toISOString())
     .gt("end_date", startDate.toISOString())
     .limit(1);
 
@@ -230,7 +228,7 @@ export async function createAdminBooking(data: unknown) {
 
   // E. Additional Charges
   if (input.additional_charges && input.additional_charges.length > 0) {
-    input.additional_charges.forEach((c) => {
+    input.additional_charges.forEach((c: any) => {
       charges.push({
         category: c.category,
         amount: c.amount,
@@ -252,58 +250,14 @@ export async function createAdminBooking(data: unknown) {
     return { success: false, message: "Invalid Payment Amount" };
   }
 
-  const masterTemplate = await getInspectionTemplate();
-  let fillableChecklist = null;
-
-  if (masterTemplate && masterTemplate.length > 0) {
-    fillableChecklist = masterTemplate.map((category) => ({
-      categoryId: category.id,
-      categoryName: category.name,
-      items: category.items.map((item) => ({
-        itemId: item.id,
-        label: item.label,
-        status: "PENDING",
-        notes: "",
-        photoUrl: null,
-      })),
-    }));
-  }
-
-  const rawContract = await getContractTemplate();
-  let filledContractHtml = null;
-
-  const { data: customer } = await supabase
-    .from("users")
-    .select("full_name, address")
-    .eq("user_id", input.user_id)
-    .single();
-
-  if (rawContract && customer) {
-    filledContractHtml = rawContract
-      .replace(/{{CUSTOMER_NAME}}/g, customer.full_name || "Unknown Customer")
-      .replace(
-        /{{CUSTOMER_ADDRESS}}/g,
-        customer.address || "Address not provided",
-      )
-      .replace(/{{CAR_BRAND_MODEL}}/g, `${car.brand} ${car.model}`)
-      .replace(/{{PLATE_NUMBER}}/g, car.plate_number)
-      .replace(/{{START_DATE}}/g, startDate.toLocaleDateString())
-      .replace(/{{END_DATE}}/g, endDate.toLocaleDateString())
-      .replace(/{{TOTAL_PRICE}}/g, baseRent.toFixed(2))
-      .replace(
-        /{{SECURITY_DEPOSIT}}/g,
-        (input.security_deposit || 0).toFixed(2),
-      );
-  }
-
-  // 4. Call the RPC
+  // 4. Call the RPC (Removed Template and Contract parameters)
   const { data: bookingId, error } = await supabase.rpc(
     "admin_create_booking_v1",
     {
       p_user_id: input.user_id,
       p_car_id: input.car_id,
       p_start_date: startDate.toISOString(),
-      p_end_date: endDate.toISOString(), // Adjusted date!
+      p_end_date: endDate.toISOString(),
       p_pickup_loc: input.pickup_location,
       p_dropoff_loc: input.dropoff_location,
       p_pickup_coordinates: input.pickup_coordinates || null,
@@ -317,8 +271,6 @@ export async function createAdminBooking(data: unknown) {
       p_security_deposit: input.security_deposit,
       p_charges_json: charges,
       p_initial_payment_json: input.initial_payment ?? null,
-      p_inspection_template: fillableChecklist,
-      p_contract_html: filledContractHtml,
     },
   );
 
@@ -330,7 +282,6 @@ export async function createAdminBooking(data: unknown) {
   revalidatePath("/admin/bookings");
   return { success: true, message: "Booking created successfully", bookingId };
 }
-
 // UPDATE (Admin Super Form)
 export async function updateAdminBooking(bookingId: string, data: unknown) {
   const supabase = await createClient();

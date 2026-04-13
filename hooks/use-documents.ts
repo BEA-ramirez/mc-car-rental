@@ -20,6 +20,7 @@ import {
   adminUploadDocumentAction,
   adminUpdateDocumentAction,
   saveContractSignature,
+  upsertInspectionChecklist,
 } from "@/actions/docs-mutations";
 
 export function useKYCDocuments(page: number, search: string, filters: any) {
@@ -89,6 +90,52 @@ export function useInspections() {
       return response.data;
     },
   });
+}
+
+export function useUpsertInspection() {
+  const queryClient = useQueryClient();
+
+  const upsertInspection = useMutation({
+    mutationFn: async ({
+      inspectionId,
+      bookingId,
+      type,
+      payload,
+    }: {
+      inspectionId: string;
+      bookingId: string;
+      type: string;
+      payload: any;
+    }) => {
+      const response = await upsertInspectionChecklist(
+        inspectionId,
+        bookingId,
+        type,
+        payload,
+      );
+
+      if (!response.success) {
+        throw new Error("Failed to save inspection");
+      }
+      return response;
+    },
+    onSuccess: () => {
+      // Invalidate everything related to bookings and inspections
+      // This forces the UI badges (Pending -> Completed) to instantly update!
+      queryClient.invalidateQueries({ queryKey: ["documents", "inspections"] });
+      queryClient.invalidateQueries({ queryKey: ["inspections"] });
+      queryClient.invalidateQueries({ queryKey: ["bookings"] });
+    },
+    onError: (error) => {
+      console.error("Inspection save error:", error);
+      toast.error(error.message || "Failed to save inspection report.");
+    },
+  });
+
+  return {
+    saveInspection: upsertInspection.mutateAsync,
+    isSaving: upsertInspection.isPending,
+  };
 }
 
 export function useDocumentMutations() {

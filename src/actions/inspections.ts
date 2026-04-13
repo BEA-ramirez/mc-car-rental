@@ -10,9 +10,20 @@ export async function generateInspectionForBooking(
   const supabase = await createClient();
 
   // 1. Fetch the master template from Settings
-  const masterTemplate = await getInspectionTemplate();
+  const rawTemplate = await getInspectionTemplate();
 
-  if (!masterTemplate || masterTemplate.length === 0) {
+  let categories: any = [];
+  let blueprintUrl = "/default-car-outline.png"; // Fallback if none uploaded
+
+  // Handle the transition gracefully (checks if it's the old Array or new Object format)
+  if (Array.isArray(rawTemplate)) {
+    categories = rawTemplate;
+  } else if (rawTemplate && rawTemplate.categories) {
+    categories = rawTemplate.categories;
+    blueprintUrl = rawTemplate.blueprint_url || blueprintUrl;
+  }
+
+  if (!categories || categories.length === 0) {
     throw new Error(
       "No inspection template found in settings. Please configure one first.",
     );
@@ -20,10 +31,10 @@ export async function generateInspectionForBooking(
 
   // 2. Transform the template into a "Fillable Form" for the staff
   // We add 'status', 'notes', and 'photoUrl' to every single item.
-  const fillableChecklist = masterTemplate.map((category) => ({
+  const fillableChecklist = categories.map((category: any) => ({
     categoryId: category.id,
     categoryName: category.name,
-    items: category.items.map((item) => ({
+    items: category.items.map((item: any) => ({
       itemId: item.id,
       label: item.label,
       status: "PENDING", // Options: 'PENDING', 'PASS', 'ISSUE'
@@ -40,7 +51,11 @@ export async function generateInspectionForBooking(
       type: type,
       checklist_data: fillableChecklist, // Save the interactive JSON here!
       notes: "",
-      images: [], // For general photos not tied to a specific item
+      // NEW: Pre-seed the images object with the correct blueprint background
+      images: {
+        blueprint_bg: blueprintUrl,
+        markup_layer: null,
+      },
     })
     .select()
     .single();

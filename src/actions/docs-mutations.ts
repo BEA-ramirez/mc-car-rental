@@ -281,32 +281,45 @@ export async function adminUpdateDocumentAction(formData: FormData) {
   }
 }
 
-export async function updateInspectionChecklist(
-  inspectionId: string,
-  updatedChecklist: any,
+export async function upsertInspectionChecklist(
+  inspectionId: string, // Often "NEW_PRETRIP_[booking_id]" if new
+  bookingId: string,
+  type: string,
+  payload: any,
 ) {
-  try {
-    const supabase = await createClient();
-    const { error } = await supabase
-      .from("booking_inspections")
-      .update({ checklist_data: updatedChecklist })
-      .eq("inspection_id", inspectionId);
+  const supabase = await createClient();
+
+  // If the ID starts with NEW_, it means we are inserting for the first time
+  if (inspectionId.startsWith("NEW_")) {
+    const { error } = await supabase.from("booking_inspections").insert({
+      booking_id: bookingId,
+      type: type,
+      checklist_data: payload.checklist_data,
+      images: payload.images,
+      notes: "",
+    });
 
     if (error) {
-      console.error("Failed to update inspection checklist:", error);
-      return {
-        success: false,
-        message: "Failed to update inspection checklist.",
-      };
+      console.error("Insert error:", error);
+      throw new Error(error.message);
     }
-    return {
-      success: true,
-      message: "Inspection checklist updated successfully.",
-    };
-  } catch (error) {
-    console.error("Unexpected error in updateInspectionChecklist:", error);
-    return { success: false, message: "An unexpected error occurred." };
+    return { success: true };
   }
+
+  // Otherwise, it's an update to an existing inspection
+  const { error } = await supabase
+    .from("booking_inspections")
+    .update({
+      checklist_data: payload.checklist_data,
+      images: payload.images,
+    })
+    .eq("inspection_id", inspectionId);
+
+  if (error) {
+    console.error("Update error:", error);
+    throw new Error(error.message);
+  }
+  return { success: true };
 }
 
 export async function saveContractSignature(

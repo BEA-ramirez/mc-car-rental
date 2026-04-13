@@ -16,18 +16,20 @@ import {
   Undo,
   Redo,
   Loader2,
+  Download,
 } from "lucide-react";
 import { toast } from "sonner";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { updateInspectionChecklist } from "@/actions/docs-mutations";
+import { useQueryClient } from "@tanstack/react-query";
+import { useUpsertInspection } from "../../../hooks/use-documents";
+import { generateInspectionPDF } from "@/utils/export-pdf";
 import { cn } from "@/lib/utils";
-import { format } from "date-fns";
 
 type InspectionExecutionModalProps = {
   isOpen: boolean;
   onClose: () => void;
   inspection: any;
-  blueprintUrl?: string; // Passed down from your template settings
+  blueprintUrl?: string;
+  bookingDetails?: any;
 };
 
 export default function InspectionExecutionModal({
@@ -35,6 +37,7 @@ export default function InspectionExecutionModal({
   onClose,
   inspection,
   blueprintUrl = "/default-car-outline.png",
+  bookingDetails,
 }: InspectionExecutionModalProps) {
   const queryClient = useQueryClient();
   const [checklist, setChecklist] = useState<any[]>([]);
@@ -44,14 +47,17 @@ export default function InspectionExecutionModal({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
 
-  // Undo/Redo Stacks (stores base64 snapshots of the canvas)
+  // Undo/Redo Stacks
   const [history, setHistory] = useState<string[]>([]);
   const [historyStep, setHistoryStep] = useState<number>(-1);
+
+  const existingDrawingUrl = inspection?.images?.markup_layer;
+  const { saveInspection, isSaving } = useUpsertInspection();
 
   useEffect(() => {
     if (isOpen && inspection?.checklist_data) {
       setChecklist(inspection.checklist_data);
-      setTimeout(initCanvas, 300); // Wait for DOM to expand
+      setTimeout(initCanvas, 300);
     }
   }, [isOpen, inspection]);
 
@@ -61,19 +67,28 @@ export default function InspectionExecutionModal({
     const container = containerRef.current;
     if (!canvas || !container) return;
 
-    // Match canvas size to the full scrollable container size
     canvas.width = container.scrollWidth;
     canvas.height = container.scrollHeight;
 
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    ctx.strokeStyle = "#2563eb"; // Blue pen color for visibility
+    ctx.strokeStyle = "#2563eb";
     ctx.lineWidth = 2.5;
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
 
-    saveState(); // Save initial blank state
+    if (existingDrawingUrl) {
+      const img = new Image();
+      img.src = existingDrawingUrl;
+      img.onload = () => {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(img, 0, 0);
+        saveState();
+      };
+    } else {
+      saveState();
+    }
   };
 
   const saveState = () => {
@@ -123,7 +138,6 @@ export default function InspectionExecutionModal({
     const clientY =
       "touches" in e ? e.touches[0].clientY : (e as React.MouseEvent).clientY;
 
-    // Calculate scale in case the canvas CSS size differs from its internal resolution
     const scaleX = canvas.width / rect.width;
     const scaleY = canvas.height / rect.height;
 
@@ -145,7 +159,7 @@ export default function InspectionExecutionModal({
 
   const draw = (e: React.MouseEvent | React.TouchEvent) => {
     if (!isDrawing) return;
-    e.preventDefault(); // Prevent scrolling on mobile while drawing
+    e.preventDefault();
     const ctx = canvasRef.current?.getContext("2d");
     if (!ctx) return;
 
@@ -170,33 +184,52 @@ export default function InspectionExecutionModal({
   };
 
   // --- SAVE LOGIC ---
-  const saveMutation = useMutation({
-    mutationFn: async () => {
-      const scribbleDataUrl = canvasRef.current?.toDataURL("image/png");
+  const handleSave = async () => {
+    const scribbleDataUrl = canvasRef.current?.toDataURL("image/png");
 
-      const finalPayload = {
-        checklist_data: checklist,
-        images: {
-          markup_layer: scribbleDataUrl,
-          blueprint_bg: blueprintUrl, // Save the reference so the PDF generator knows what background to use
-        },
-      };
+    const finalPayload = {
+      checklist_data: checklist,
+      images: {
+        markup_layer: scribbleDataUrl,
+        blueprint_bg: blueprintUrl,
+      },
+    };
 
-      return updateInspectionChecklist(inspection.inspection_id, finalPayload);
-    },
-    onSuccess: () => {
-      toast.success("Inspection locked and saved.");
-      queryClient.invalidateQueries({ queryKey: ["inspections"] });
+    try {
+      await saveInspection({
+        inspectionId: inspection.inspection_id,
+        bookingId: inspection.booking_id,
+        type: inspection.type,
+        payload: finalPayload,
+      });
+      toast.success(`${inspection.type} Inspection locked and saved.`);
       onClose();
-    },
-    onError: (err) => toast.error(`Failed to save: ${err.message}`),
-  });
+    } catch (error) {
+      // Handled by hook
+    }
+  };
+
+  // --- EXPORT PDF DELEGATION ---
+  const handleExportPDF = async () => {
+    if (!containerRef.current) return;
+    toast.loading("Generating Aligned PDF...", { id: "pdf-toast" });
+    try {
+      await generateInspectionPDF(
+        inspection,
+        bookingDetails,
+        containerRef.current,
+      );
+      toast.success("PDF Downloaded!", { id: "pdf-toast" });
+    } catch (err) {
+      toast.error("Failed to generate PDF", { id: "pdf-toast" });
+    }
+  };
 
   if (!inspection) return null;
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-3xl p-0 h-[90vh] flex flex-col border-border bg-background shadow-2xl rounded-2xl transition-colors">
+      <DialogContent className="max-w-4xl p-0 h-[90vh] flex flex-col border-border bg-background shadow-2xl rounded-2xl transition-colors">
         {/* HEADER & TOOLS */}
         <DialogHeader className="px-4 py-3 border-b border-border bg-card shrink-0 flex flex-col gap-3">
           <div className="flex items-center justify-between">
@@ -205,20 +238,31 @@ export default function InspectionExecutionModal({
                 <ShieldCheck className="w-4 h-4 text-primary" />
               </div>
               <DialogTitle className="text-sm font-bold text-foreground tracking-tight uppercase">
-                Digital Inspection
+                {inspection.type} Digital Inspection
               </DialogTitle>
             </div>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={onClose}
-              className="h-8 w-8"
-            >
-              <X className="w-4 h-4" />
-            </Button>
+            <div className="flex items-center gap-2">
+              {existingDrawingUrl && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleExportPDF}
+                  className="h-8 px-3 text-[10px] uppercase font-bold text-primary border-primary/20 bg-primary/5 hover:bg-primary/10"
+                >
+                  <Download className="w-3.5 h-3.5 mr-1.5" /> Export PDF
+                </Button>
+              )}
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={onClose}
+                className="h-8 w-8"
+              >
+                <X className="w-4 h-4" />
+              </Button>
+            </div>
           </div>
 
-          {/* Canvas Tools */}
           <div className="flex items-center gap-2 bg-secondary/50 p-1.5 rounded-lg w-max">
             <Button
               variant="ghost"
@@ -250,7 +294,7 @@ export default function InspectionExecutionModal({
           </div>
         </DialogHeader>
 
-        {/* THE DIGITAL PAPER (Scrollable Container) */}
+        {/* THE DIGITAL PAPER */}
         <div
           className="flex-1 overflow-y-auto relative custom-scrollbar bg-white"
           ref={containerRef}
@@ -268,54 +312,78 @@ export default function InspectionExecutionModal({
             onTouchEnd={stopDrawing}
           />
 
-          {/* THE UNDERLYING FORM (Matches your uploaded image) */}
-          <div className="p-8 max-w-2xl mx-auto space-y-10 select-none">
-            <h1 className="text-center text-xl font-bold text-black uppercase tracking-widest mb-6">
-              Vehicle Checklist
+          {/* THE UNDERLYING FORM - Tighter layout for PDF */}
+          <div className="p-6 max-w-2xl mx-auto space-y-6 select-none pointer-events-none">
+            <h1 className="text-center text-lg font-bold text-black uppercase tracking-widest mb-4">
+              Vehicle {inspection.type} Checklist
             </h1>
 
-            {/* Dynamic Checklist Table */}
-            <div className="border-2 border-black rounded-sm overflow-hidden">
-              {checklist.map((category, catIdx) => (
+            <div
+              id="pdf-checklist-section"
+              className="border-2 border-black rounded-sm overflow-hidden bg-white"
+            >
+              {/* Table Header */}
+              <div className="grid grid-cols-[1fr_120px] bg-gray-200 border-b-2 border-black p-1.5 text-[11px] font-black uppercase text-black tracking-widest">
+                <div className="pl-1">Checklist Item</div>
+                <div className="text-center border-l border-black">
+                  Mark ( ✔ / ✖ )
+                </div>
+              </div>
+
+              {checklist.map((category) => (
                 <div key={category.categoryId}>
-                  <div className="bg-gray-100 border-b border-black p-2 text-xs font-bold uppercase text-black">
+                  <div className="bg-gray-100 border-y border-black p-1.5 text-[9px] font-black uppercase text-gray-700 tracking-widest">
                     {category.categoryName}
                   </div>
                   {category.items.map((item: any, idx: number) => (
                     <div
                       key={item.itemId}
                       className={cn(
-                        "grid grid-cols-[1fr_80px] text-sm text-black",
+                        "grid grid-cols-[1fr_120px] text-xs text-black",
                         idx !== category.items.length - 1 &&
                           "border-b border-gray-300",
                       )}
                     >
-                      <div className="p-2 border-r border-black">
+                      <div className="p-1.5 pl-2 border-r border-black font-medium flex items-center">
                         {item.label}
                       </div>
-                      <div className="p-2"></div>{" "}
-                      {/* Empty space for them to draw a checkmark */}
+                      {/* Blank drawing space */}
+                      <div className="h-7 bg-white"></div>
                     </div>
                   ))}
                 </div>
               ))}
             </div>
 
-            {/* Signatures */}
-            <div className="flex justify-center gap-10 text-sm font-bold text-black mt-8">
-              <div className="flex flex-col items-center">
-                <span>Checked by: _______________________</span>
-                <span className="mt-4">Date: _______________________</span>
-              </div>
-            </div>
+            {/* BLUEPRINT SECTION - With explicit ID for measurement */}
+            <div
+              id="pdf-blueprint-section"
+              className="flex flex-col items-center w-full mt-20"
+            >
+              {blueprintUrl && (
+                <div className="mt-8 pt-6 border-t border-dashed border-gray-300 flex flex-col items-center w-full">
+                  <h2 className="text-[11px] font-black text-black uppercase tracking-widest mb-4">
+                    Vehicle Damage Markup
+                  </h2>
+                  <img
+                    src={blueprintUrl}
+                    alt="Car Blueprint"
+                    crossOrigin="anonymous"
+                    className="w-full max-w-[450px] opacity-80"
+                  />
+                </div>
+              )}
 
-            {/* The Blueprint */}
-            <div className="mt-12 flex justify-center">
-              <img
-                src={blueprintUrl}
-                alt="Car Blueprint"
-                className="w-full max-w-lg opacity-80 pointer-events-none"
-              />
+              <div className="flex justify-between w-full px-8 text-xs font-bold text-black pt-12 pb-4">
+                <div className="flex flex-col items-center">
+                  <span className="w-40 border-b border-black inline-block mb-2"></span>
+                  <span>Inspector Signature</span>
+                </div>
+                <div className="flex flex-col items-center">
+                  <span className="w-40 border-b border-black inline-block mb-2"></span>
+                  <span>Date</span>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -323,11 +391,18 @@ export default function InspectionExecutionModal({
         {/* FOOTER */}
         <div className="bg-card border-t border-border p-3 shrink-0 flex gap-2 justify-end z-50">
           <Button
-            className="h-8 px-5 text-[10px] font-bold uppercase tracking-widest bg-primary"
-            onClick={() => saveMutation.mutate()}
-            disabled={saveMutation.isPending}
+            variant="outline"
+            className="h-8 px-4 text-[10px] font-bold uppercase tracking-widest"
+            onClick={onClose}
           >
-            {saveMutation.isPending ? (
+            Cancel
+          </Button>
+          <Button
+            className="h-8 px-5 text-[10px] font-bold uppercase tracking-widest bg-primary"
+            onClick={handleSave}
+            disabled={isSaving}
+          >
+            {isSaving ? (
               <Loader2 className="w-3.5 h-3.5 mr-2 animate-spin" />
             ) : (
               <Save className="w-3.5 h-3.5 mr-2" />

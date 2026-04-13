@@ -909,3 +909,160 @@ export const generatePayoutPDF = (details: any) => {
 
   doc.save(`Payout_Statement_${shortId}.pdf`);
 };
+
+const getBase64ImageFromURL = (url: string): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = "Anonymous"; // Crucial for Supabase CORS
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      canvas.width = img.width;
+      canvas.height = img.height;
+      const ctx = canvas.getContext("2d");
+      ctx?.drawImage(img, 0, 0);
+      resolve(canvas.toDataURL("image/png"));
+    };
+    img.onerror = (error) => reject(error);
+    img.src = url;
+  });
+};
+
+export const generateInspectionPDF = async (
+  inspection: any,
+  booking: any,
+  containerElement: HTMLElement,
+) => {
+  if (!inspection || !booking || !containerElement) return;
+
+  const shortId = booking.id.split("-")[0].toUpperCase();
+  const currentDate = format(new Date(), "MMM dd, yyyy hh:mm a");
+
+  // 1. Locate the blueprint section in the DOM
+  const blueprintEl = containerElement.querySelector(
+    "#pdf-blueprint-section",
+  ) as HTMLElement;
+
+  // CRITICAL FIX: Calculate the exact pixel offset BEFORE we call html-to-image.
+  // html-to-image temporarily alters the DOM layout, which throws off the math if done later.
+  let pixelOffset = 0;
+  const scrollHeight = containerElement.scrollHeight;
+  const scrollWidth = containerElement.scrollWidth;
+
+  if (blueprintEl) {
+    const containerRect = containerElement.getBoundingClientRect();
+    const blueprintRect = blueprintEl.getBoundingClientRect();
+    // Calculate exact distance from the top of the scrollable container to the top of the car title
+    pixelOffset =
+      blueprintRect.top - containerRect.top + containerElement.scrollTop;
+  }
+
+  // 2. Create the A4 PDF Document
+  const doc = new jsPDF("p", "mm", "a4");
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const pdfWidth = doc.internal.pageSize.getWidth() - 28; // 14mm margins
+
+  // --- NATIVE HEADER SECTION ---
+  doc.setTextColor(15, 23, 42);
+  doc.setFontSize(20);
+  doc.setFont("helvetica", "bold");
+  doc.text("MC ORMOC CAR RENTAL", 14, 22);
+
+  doc.setFontSize(9);
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(100, 116, 139);
+  doc.text("Brgy. Cogon, Ormoc City", 14, 27);
+  doc.text("Leyte 6541, Philippines", 14, 32);
+
+  doc.setFontSize(16);
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(15, 23, 42);
+  doc.text(`${inspection.type.toUpperCase()} INSPECTION`, 195, 22, {
+    align: "right",
+  });
+
+  // Booking & Customer Info
+  doc.setFontSize(9);
+  doc.setFont("helvetica", "normal");
+  doc.text(`Booking Ref: ${shortId}`, 195, 28, { align: "right" });
+  doc.text(`Date: ${currentDate}`, 195, 33, { align: "right" });
+  doc.text(`Customer: ${booking.customer?.name || "N/A"}`, 195, 38, {
+    align: "right",
+  });
+  doc.text(
+    `Vehicle: ${booking.car?.brand} ${booking.car?.model} (${booking.car?.plate})`,
+    195,
+    43,
+    { align: "right" },
+  );
+
+  doc.setDrawColor(226, 232, 240);
+  doc.line(14, 48, 195, 48);
+
+  const startY = 52; // Where the snapshot starts printing on Page 1
+
+  // --- PIXEL-PERFECT SNAPSHOT SECTION ---
+  const { toPng } = await import("html-to-image");
+
+  try {
+    const imgData = await toPng(containerElement, {
+      quality: 1,
+      pixelRatio: 2,
+      backgroundColor: "#ffffff",
+      width: scrollWidth,
+      height: scrollHeight,
+      style: { overflow: "visible" },
+    });
+
+    const imgProps = doc.getImageProperties(imgData);
+    const ratio = imgProps.height / imgProps.width;
+    const totalPdfHeight = pdfWidth * ratio;
+
+    // Map the HTML pixel offset to the PDF millimeter offset
+    const percentageDown = pixelOffset / scrollHeight;
+    const blueprintOffsetPdfY = totalPdfHeight * percentageDown;
+
+    // ==============================================================
+    // PAGE 1: Draw Full Image, but MASK everything below the checklist
+    // ==============================================================
+    doc.addImage(imgData, "PNG", 14, startY, pdfWidth, totalPdfHeight);
+
+    // Calculate where the car starts on the physical PDF paper
+    const absoluteBlueprintY = startY + blueprintOffsetPdfY;
+
+    // Draw a massive solid white rectangle over the car blueprint so it becomes invisible on Page 1
+    doc.setFillColor(255, 255, 255);
+    // We start the mask 5mm higher than the car to catch any stray borders
+    doc.rect(
+      0,
+      absoluteBlueprintY - 5,
+      doc.internal.pageSize.getWidth(),
+      pageHeight,
+      "F",
+    );
+
+    // ==============================================================
+    // PAGE 2: Shift Image Up to Blueprint Start
+    // ==============================================================
+    doc.addPage();
+
+    // We want the car blueprint to start nicely near the top of Page 2 (Y = 20)
+    // So we shift the massive snapshot UP by exactly the car's offset
+    let shiftY = -blueprintOffsetPdfY + 20;
+
+    doc.addImage(imgData, "PNG", 14, shiftY, pdfWidth, totalPdfHeight);
+
+    // (Fallback) If the car blueprint and signatures somehow bleed off the bottom of Page 2, add Page 3
+    let remainingHeightOnPage2 = shiftY + totalPdfHeight;
+    while (remainingHeightOnPage2 > pageHeight) {
+      doc.addPage();
+      shiftY -= pageHeight;
+      doc.addImage(imgData, "PNG", 14, shiftY, pdfWidth, totalPdfHeight);
+      remainingHeightOnPage2 -= pageHeight;
+    }
+
+    doc.save(`${inspection.type}_Inspection_${shortId}.pdf`);
+  } catch (error) {
+    console.error("Error creating snapshot:", error);
+    throw new Error("Failed to capture inspection snapshot.");
+  }
+};

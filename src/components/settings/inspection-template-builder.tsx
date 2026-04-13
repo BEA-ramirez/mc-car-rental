@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -20,6 +20,7 @@ import {
   InspectionCategory,
 } from "@/actions/settings";
 import { cn } from "@/lib/utils";
+import { useFileUpload } from "../../../hooks/use-file-upload";
 
 // Helper to generate quick unique IDs
 const generateId = () => Math.random().toString(36).substring(2, 9);
@@ -30,9 +31,20 @@ export default function InspectionTemplateBuilder() {
 
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-  const [isUploading, setIsUploading] = useState(false);
 
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  // --- USE YOUR CUSTOM FILE UPLOAD HOOK ---
+  const { isUploading, fileInputRef, handleFileSelect, triggerFileDialog } =
+    useFileUpload({
+      bucket: "documents", // Target bucket
+      folder: "system_assets", // Dedicated folder for system-wide images
+      onUploadComplete: (uploads) => {
+        // The hook returns an array of uploaded files, we grab the first one
+        if (uploads.length > 0) {
+          setBlueprintUrl(uploads[0].url);
+          toast.success("Blueprint image successfully uploaded.");
+        }
+      },
+    });
 
   // Load existing template on mount
   useEffect(() => {
@@ -67,32 +79,6 @@ export default function InspectionTemplateBuilder() {
     };
     loadTemplate();
   }, []);
-
-  // --- BLUEPRINT UPLOAD ACTION ---
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    setIsUploading(true);
-    try {
-      // 1. Create a local preview immediately so UI feels fast
-      const localPreview = URL.createObjectURL(file);
-      setBlueprintUrl(localPreview);
-
-      // 2. TODO: Upload to Supabase Storage
-      // const formData = new FormData();
-      // formData.append("file", file);
-      // const result = await uploadSettingsBlueprintAction(formData);
-      // if (result.success) setBlueprintUrl(result.url);
-
-      toast.success("Blueprint image updated.");
-    } catch (error) {
-      toast.error("Failed to upload image.");
-    } finally {
-      setIsUploading(false);
-      if (fileInputRef.current) fileInputRef.current.value = "";
-    }
-  };
 
   // --- CATEGORY ACTIONS ---
   const addCategory = () => {
@@ -192,12 +178,13 @@ export default function InspectionTemplateBuilder() {
 
   return (
     <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden flex flex-col max-w-3xl transition-colors">
+      {/* Hidden input provided by your custom hook */}
       <input
         type="file"
         accept="image/*"
         className="hidden"
         ref={fileInputRef}
-        onChange={handleImageUpload}
+        onChange={handleFileSelect}
       />
 
       {/* Header */}
@@ -236,7 +223,16 @@ export default function InspectionTemplateBuilder() {
           <h3 className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
             <ImageIcon className="w-3.5 h-3.5" /> 1. Digital Glass Blueprint
           </h3>
-          <div className="bg-secondary/20 border-2 border-dashed border-border rounded-xl p-4 flex flex-col items-center justify-center gap-4 transition-colors">
+          <div className="bg-secondary/20 border-2 border-dashed border-border rounded-xl p-4 flex flex-col items-center justify-center gap-4 transition-colors relative">
+            {isUploading && (
+              <div className="absolute inset-0 z-10 bg-background/50 backdrop-blur-sm flex flex-col items-center justify-center rounded-xl">
+                <Loader2 className="w-6 h-6 animate-spin text-primary mb-2" />
+                <span className="text-[10px] font-bold uppercase tracking-widest">
+                  Uploading to Cloud...
+                </span>
+              </div>
+            )}
+
             {blueprintUrl ? (
               <div className="relative group rounded-lg overflow-hidden border border-border shadow-sm bg-white">
                 <img
@@ -248,7 +244,7 @@ export default function InspectionTemplateBuilder() {
                   <Button
                     variant="secondary"
                     size="sm"
-                    onClick={() => fileInputRef.current?.click()}
+                    onClick={triggerFileDialog}
                     className="text-[10px] uppercase tracking-widest font-bold h-8"
                   >
                     <UploadCloud className="w-3.5 h-3.5 mr-2" /> Replace Image
@@ -268,7 +264,7 @@ export default function InspectionTemplateBuilder() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => fileInputRef.current?.click()}
+                  onClick={triggerFileDialog}
                   className="text-[10px] uppercase tracking-widest font-bold h-8 shadow-none"
                 >
                   Browse Files
