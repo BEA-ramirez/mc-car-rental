@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { format, subDays } from "date-fns";
 import {
   Calendar as CalendarIcon,
@@ -14,17 +14,19 @@ import {
   User,
   ChevronDown,
   ChevronRight,
-  PieChart,
   Activity,
   CreditCard,
   Settings2,
   Loader2,
   Briefcase,
   FolderOpen,
+  MapPin,
+  Banknote,
+  ShipWheel,
 } from "lucide-react";
 import { DateRange } from "react-day-picker";
 
-import { cn } from "@/lib/utils";
+import { cn, formatDisplayId } from "@/lib/utils"; // <-- IMPORTED HERE
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -48,7 +50,7 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { Calendar } from "@/components/ui/calendar";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Collapsible,
@@ -59,7 +61,6 @@ import {
 import { useReportsDashboard } from "../../../hooks/use-reports";
 import { generateExcelReport } from "@/utils/export-excel";
 import * as echarts from "echarts";
-import { useEffect, useRef } from "react";
 
 export default function ReportsMain() {
   // --- STATE ---
@@ -74,12 +75,92 @@ export default function ReportsMain() {
     "idle",
   );
 
+  // Add these right below your existing state variables
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilters, setStatusFilters] = useState({
+    completed: true,
+    pending: true,
+  });
+
   // --- DATA FETCHING ---
   const { data: reportData, isLoading } = useReportsDashboard(
     date?.from || new Date(),
     date?.to || new Date(),
     partnerFilter,
   );
+
+  const filteredData = React.useMemo(() => {
+    if (!reportData) return null;
+
+    const query = searchQuery.toLowerCase().trim();
+
+    // Helper function for global search
+    const matchesSearch = (str: string | undefined | null) =>
+      str ? str.toLowerCase().includes(query) : false;
+
+    return {
+      ...reportData, // Keep the KPIs untouched
+
+      unit_economics: reportData.unit_economics?.filter(
+        (item: any) =>
+          !query ||
+          matchesSearch(item.vehicle) ||
+          matchesSearch(item.plate) ||
+          matchesSearch(item.owner),
+      ),
+
+      partners: reportData.partners?.filter(
+        (item: any) =>
+          !query ||
+          matchesSearch(item.name) ||
+          matchesSearch(item.business) ||
+          matchesSearch(item.id),
+      ),
+
+      master_ledger: reportData.master_ledger?.filter((item: any) => {
+        const searchMatch =
+          !query ||
+          matchesSearch(item.id) ||
+          matchesSearch(item.ref) ||
+          matchesSearch(item.category);
+        const statusMatch =
+          (statusFilters.completed &&
+            item.status.toUpperCase() === "COMPLETED") ||
+          (statusFilters.pending && item.status.toUpperCase() === "PENDING");
+
+        // If the status is something else entirely, let it through, or strictly filter it.
+        // Usually, ledgers only have completed/pending.
+        return searchMatch && statusMatch;
+      }),
+
+      bookings: reportData.bookings?.filter((item: any) => {
+        const searchMatch =
+          !query ||
+          matchesSearch(item.id) ||
+          matchesSearch(item.customer) ||
+          matchesSearch(item.vehicle);
+        const statusMatch =
+          (statusFilters.completed &&
+            ["COMPLETED", "ONGOING"].includes(item.status.toUpperCase())) ||
+          (statusFilters.pending &&
+            ["PENDING", "UNPAID"].includes(item.status.toUpperCase()));
+        return searchMatch && statusMatch;
+      }),
+
+      customers: reportData.customers?.filter(
+        (item: any) =>
+          !query || matchesSearch(item.name) || matchesSearch(item.id),
+      ),
+
+      drivers: reportData.drivers?.filter(
+        (item: any) =>
+          !query ||
+          matchesSearch(item.name) ||
+          matchesSearch(item.vehicle) ||
+          matchesSearch(item.display_id),
+      ),
+    };
+  }, [reportData, searchQuery, statusFilters]);
 
   const chartRef = useRef<HTMLDivElement>(null);
   const chartInstanceRef = useRef<any>(null);
@@ -105,15 +186,14 @@ export default function ReportsMain() {
       if (pieData.length === 0) pieData.push({ value: 1, name: "No Revenue" });
 
       // 3. Data for Bar Chart (Top 5 Assets by Yield)
-      // Safely map and sort the unit_economics array
       const sortedCars = [...(reportData.unit_economics || [])]
         .sort((a, b) => (b.gross || 0) - (a.gross || 0))
         .slice(0, 5)
-        .reverse(); // Reverse so the highest is at the top of the horizontal bar chart
+        .reverse();
 
       const carNames = sortedCars.map(
         (c) => `${c.vehicle.split(" ")[0]} [${c.plate}]`,
-      ); // e.g., "Toyota [ABC-123]"
+      );
       const carGross = sortedCars.map((c) => c.gross || 0);
 
       // 4. Define ECharts Option (Dual-Canvas Layout)
@@ -122,7 +202,7 @@ export default function ReportsMain() {
         title: [
           {
             text: "Revenue Allocation",
-            left: "20%", // Center over the pie chart
+            left: "20%",
             top: "5%",
             textAlign: "center",
             textStyle: {
@@ -133,7 +213,7 @@ export default function ReportsMain() {
           },
           {
             text: "Top 5 Assets by Gross Yield",
-            left: "70%", // Center over the bar chart
+            left: "70%",
             top: "5%",
             textAlign: "center",
             textStyle: {
@@ -146,13 +226,11 @@ export default function ReportsMain() {
         tooltip: {
           trigger: "item",
           formatter: (params: any) => {
-            // Add currency formatting to tooltips
             return `${params.name}: ₱${params.value.toLocaleString()}`;
           },
         },
-        // Grid only applies to Cartesian coordinate systems (the Bar Chart)
         grid: {
-          left: "55%", // Push the bar chart to the right half
+          left: "55%",
           right: "5%",
           bottom: "15%",
           top: "20%",
@@ -163,7 +241,7 @@ export default function ReportsMain() {
           axisLine: { show: false },
           axisTick: { show: false },
           splitLine: { show: false },
-          axisLabel: { show: false }, // Hide the numbers on the bottom
+          axisLabel: { show: false },
         },
         yAxis: {
           type: "category",
@@ -172,15 +250,13 @@ export default function ReportsMain() {
           axisTick: { show: false },
           axisLabel: { color: "#64748b", fontWeight: "bold" },
         },
-        // IMPORTANT: Must define colors array here for pie chart to map to
         color: ["#059669", "#3b82f6", "#dc2626", "#e2e8f0"],
         series: [
-          // The Pie/Donut Chart (Left Side)
           {
             name: "Revenue Split",
             type: "pie",
-            radius: ["45%", "75%"], // Makes it a donut
-            center: ["20%", "55%"], // Centers it on the left half
+            radius: ["45%", "75%"],
+            center: ["20%", "55%"],
             avoidLabelOverlap: false,
             itemStyle: {
               borderRadius: 5,
@@ -190,20 +266,19 @@ export default function ReportsMain() {
             label: {
               show: true,
               position: "outside",
-              formatter: "{b}\n{d}%", // Shows Name and Percentage
+              formatter: "{b}\n{d}%",
               color: "#475569",
               fontWeight: "bold",
             },
             labelLine: { show: true },
             data: pieData,
           },
-          // The Bar Chart (Right Side)
           {
             name: "Gross Yield",
             type: "bar",
             data: carGross.length > 0 ? carGross : [0],
             itemStyle: {
-              color: "#0f172a", // Slate 900
+              color: "#0f172a",
               borderRadius: [0, 4, 4, 0],
             },
             label: {
@@ -213,15 +288,13 @@ export default function ReportsMain() {
               color: "#0f172a",
               fontWeight: "bold",
             },
-            barWidth: "60%", // Make bars a bit thicker
+            barWidth: "60%",
           },
         ],
       };
 
-      // Set the options to render the chart
       myChart.setOption(option);
 
-      // Cleanup function
       return () => {
         myChart.dispose();
         chartInstanceRef.current = null;
@@ -232,7 +305,7 @@ export default function ReportsMain() {
   // --- HANDLERS ---
   const handleTabChange = (val: string) => {
     setActiveTab(val);
-    setExpandedRow(null); // Reset expansions on tab switch
+    setExpandedRow(null);
   };
 
   const handleExportPDF = async () => {
@@ -242,11 +315,10 @@ export default function ReportsMain() {
     try {
       let chartImageURI = undefined;
 
-      // Extract the high-res image from ECharts BEFORE dynamic import
       if (chartInstanceRef.current) {
         chartImageURI = chartInstanceRef.current.getDataURL({
           type: "png",
-          pixelRatio: 3, // Very high resolution for PDF
+          pixelRatio: 3,
           backgroundColor: "#ffffff",
         });
       }
@@ -388,6 +460,8 @@ export default function ReportsMain() {
                 <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
                 <Input
                   placeholder="Search records..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
                   className="h-8 pl-8 pr-3 text-[11px] rounded-lg border-border bg-secondary shadow-none focus-visible:ring-1 focus-visible:ring-primary font-medium transition-colors"
                 />
               </div>
@@ -417,21 +491,34 @@ export default function ReportsMain() {
                         <label className="flex items-center gap-2 p-2.5 border border-border bg-card rounded-xl cursor-pointer hover:border-primary transition-colors">
                           <input
                             type="checkbox"
-                            defaultChecked
+                            checked={statusFilters.completed}
+                            onChange={(e) =>
+                              setStatusFilters((prev) => ({
+                                ...prev,
+                                completed: e.target.checked,
+                              }))
+                            }
                             className="rounded border-muted-foreground text-primary focus:ring-primary"
-                          />{" "}
+                          />
                           <span className="text-[11px] font-bold text-foreground">
-                            Completed
+                            Completed / Active
                           </span>
                         </label>
+
                         <label className="flex items-center gap-2 p-2.5 border border-border bg-card rounded-xl cursor-pointer hover:border-primary transition-colors">
                           <input
                             type="checkbox"
-                            defaultChecked
+                            checked={statusFilters.pending}
+                            onChange={(e) =>
+                              setStatusFilters((prev) => ({
+                                ...prev,
+                                pending: e.target.checked,
+                              }))
+                            }
                             className="rounded border-muted-foreground text-primary focus:ring-primary"
-                          />{" "}
+                          />
                           <span className="text-[11px] font-bold text-foreground">
-                            Pending
+                            Pending / Unpaid
                           </span>
                         </label>
                       </div>
@@ -589,8 +676,8 @@ export default function ReportsMain() {
 
                 {/* TAB 1: UNIT ECONOMICS */}
                 {activeTab === "unit_economics" && (
-                  <div className="flex-1 bg-background transition-colors">
-                    <div className="grid grid-cols-[2fr_1.5fr_0.5fr_1fr_1fr_1fr_0.3fr] p-2.5 px-4 border-b border-border bg-secondary/50 text-[9px] font-bold text-muted-foreground uppercase tracking-widest transition-colors">
+                  <div className="flex-1 bg-background">
+                    <div className="grid grid-cols-[2fr_1.5fr_0.5fr_1fr_1fr_1fr_0.3fr] p-2.5 px-4 border-b border-border bg-secondary/50 text-[9px] font-bold text-muted-foreground uppercase tracking-widest">
                       <div>Asset / Plate No.</div>
                       <div>Fleet Partner</div>
                       <div className="text-center">Trips</div>
@@ -600,8 +687,8 @@ export default function ReportsMain() {
                       <div></div>
                     </div>
                     <div className="divide-y divide-border">
-                      {reportData.unit_economics?.length > 0 ? (
-                        reportData.unit_economics.map((car: any) => (
+                      {filteredData.unit_economics?.length > 0 ? (
+                        filteredData.unit_economics.map((car: any) => (
                           <Collapsible
                             key={car.car_id}
                             open={expandedRow === car.car_id}
@@ -613,7 +700,7 @@ export default function ReportsMain() {
                             <CollapsibleTrigger asChild>
                               <div
                                 className={cn(
-                                  "grid grid-cols-[2fr_1.5fr_0.5fr_1fr_1fr_1fr_0.3fr] p-2.5 px-4 items-center cursor-pointer transition-colors hover:bg-secondary/30",
+                                  "grid grid-cols-[2fr_1.5fr_0.5fr_1fr_1fr_1fr_0.3fr] p-2.5 px-4 items-center cursor-pointer hover:bg-secondary/30",
                                   expandedRow === car.car_id &&
                                     "bg-secondary/30",
                                 )}
@@ -637,7 +724,7 @@ export default function ReportsMain() {
                                 <div className="text-center text-[11px] font-bold text-foreground">
                                   {car.trips}
                                 </div>
-                                <div className="text-right text-[11px] font-bold text-foreground font-mono">
+                                <div className="text-right text-[11px] font-bold font-mono">
                                   ₱ {car.gross.toLocaleString()}
                                 </div>
                                 <div className="text-right text-[11px] font-bold text-destructive font-mono">
@@ -674,13 +761,31 @@ export default function ReportsMain() {
                                 </div>
                               </div>
                             </CollapsibleTrigger>
-                            <CollapsibleContent className="bg-secondary/30 border-t border-border transition-colors">
-                              <div className="p-3 px-8">
+                            <CollapsibleContent className="bg-secondary/30 border-t border-border">
+                              <div className="p-4 px-8">
+                                <div className="flex items-center gap-6 mb-4">
+                                  <div className="flex flex-col">
+                                    <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">
+                                      Configured Day Rate
+                                    </span>
+                                    <span className="text-[11px] font-bold font-mono text-foreground">
+                                      ₱ {car.rate_day?.toLocaleString() || "0"}
+                                    </span>
+                                  </div>
+                                  <div className="flex flex-col">
+                                    <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">
+                                      Configured Half Rate
+                                    </span>
+                                    <span className="text-[11px] font-bold font-mono text-foreground">
+                                      ₱ {car.rate_12h?.toLocaleString() || "0"}
+                                    </span>
+                                  </div>
+                                </div>
                                 <h5 className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest mb-2.5 border-b border-border pb-1 w-max">
                                   Income Breakdown (Trips)
                                 </h5>
                                 {car.breakdown && car.breakdown.length > 0 ? (
-                                  <div className="grid grid-cols-[1fr_2fr_1fr] gap-2 max-w-lg text-[10px]">
+                                  <div className="grid grid-cols-[1fr_2fr_1fr_1fr] gap-2 max-w-3xl text-[10px]">
                                     {car.breakdown.map((trip: any) => (
                                       <React.Fragment key={trip.id}>
                                         <span className="font-mono font-bold text-foreground">
@@ -688,6 +793,23 @@ export default function ReportsMain() {
                                         </span>
                                         <span className="text-muted-foreground font-medium uppercase tracking-widest">
                                           {trip.dates}
+                                        </span>
+                                        <span>
+                                          {trip.with_driver ? (
+                                            <Badge
+                                              variant="outline"
+                                              className="text-[8px] bg-blue-500/10 text-blue-600 border-blue-500/20 uppercase tracking-widest"
+                                            >
+                                              w/ Driver
+                                            </Badge>
+                                          ) : (
+                                            <Badge
+                                              variant="outline"
+                                              className="text-[8px] bg-secondary text-muted-foreground uppercase tracking-widest"
+                                            >
+                                              Self-Drive
+                                            </Badge>
+                                          )}
                                         </span>
                                         <span className="text-right font-mono font-bold text-emerald-600 dark:text-emerald-400">
                                           + ₱ {trip.amount.toLocaleString()}
@@ -708,7 +830,214 @@ export default function ReportsMain() {
                         <div className="p-10 flex flex-col items-center justify-center text-muted-foreground">
                           <FolderOpen className="w-8 h-8 mb-2 opacity-20" />
                           <p className="text-[10px] font-bold uppercase tracking-widest">
-                            No active vehicles found in this date range.
+                            No active vehicles found.
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* TAB 2: PARTNER SETTLEMENTS */}
+                {activeTab === "bookings" && (
+                  <div className="flex-1 bg-background">
+                    <div className="grid grid-cols-[1fr_1.5fr_1.5fr_1fr_1fr_1fr_0.3fr] p-2.5 px-4 border-b border-border bg-secondary/50 text-[9px] font-bold text-muted-foreground uppercase tracking-widest">
+                      <div>Booking Ref</div>
+                      <div>Customer</div>
+                      <div>Asset & Dates</div>
+                      <div>Status</div>
+                      <div className="text-right">Total Billed</div>
+                      <div className="text-right">Balance Due</div>
+                      <div></div>
+                    </div>
+                    <div className="divide-y divide-border">
+                      {filteredData.bookings?.length > 0 ? (
+                        filteredData.bookings.map((bkg: any) => (
+                          <Collapsible
+                            key={bkg.id}
+                            open={expandedRow === bkg.id}
+                            onOpenChange={(isOpen) =>
+                              setExpandedRow(isOpen ? bkg.id : null)
+                            }
+                            className="group"
+                          >
+                            <CollapsibleTrigger asChild>
+                              <div
+                                className={cn(
+                                  "grid grid-cols-[1fr_1.5fr_1.5fr_1fr_1fr_1fr_0.3fr] p-2.5 px-4 items-center cursor-pointer hover:bg-secondary/30",
+                                  expandedRow === bkg.id && "bg-secondary/30",
+                                )}
+                              >
+                                <span className="text-[11px] font-bold text-foreground font-mono">
+                                  {bkg.id}
+                                </span>
+                                <span className="text-[11px] font-bold text-foreground">
+                                  {bkg.customer}
+                                </span>
+                                <div className="flex flex-col">
+                                  <span className="text-[11px] font-bold text-foreground truncate">
+                                    {bkg.vehicle}
+                                  </span>
+                                  <span className="text-[9px] font-medium uppercase tracking-widest text-muted-foreground mt-0.5">
+                                    {bkg.dates}
+                                  </span>
+                                </div>
+                                <div>
+                                  <Badge
+                                    variant="outline"
+                                    className="text-[8px] font-bold h-4 px-1.5 uppercase tracking-widest bg-secondary text-muted-foreground border-border rounded"
+                                  >
+                                    {bkg.status}
+                                  </Badge>
+                                </div>
+                                <span className="text-right text-[11px] font-bold text-foreground font-mono">
+                                  ₱ {bkg.total.toLocaleString()}
+                                </span>
+                                <span
+                                  className={cn(
+                                    "text-right text-[11px] font-bold font-mono",
+                                    bkg.due > 0
+                                      ? "text-amber-600 dark:text-amber-400"
+                                      : "text-emerald-600 dark:text-emerald-400",
+                                  )}
+                                >
+                                  ₱ {bkg.due.toLocaleString()}
+                                </span>
+                                <div className="flex justify-end pr-2 text-muted-foreground">
+                                  {expandedRow === bkg.id ? (
+                                    <ChevronDown className="w-4 h-4" />
+                                  ) : (
+                                    <ChevronRight className="w-4 h-4" />
+                                  )}
+                                </div>
+                              </div>
+                            </CollapsibleTrigger>
+                            <CollapsibleContent className="bg-secondary/30 border-t border-border">
+                              <div className="p-5 px-8 grid grid-cols-1 md:grid-cols-3 gap-6">
+                                {/* Itinerary */}
+                                <div className="space-y-3">
+                                  <h5 className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest border-b border-border pb-1">
+                                    Trip Itinerary
+                                  </h5>
+                                  <div className="flex gap-2">
+                                    <MapPin className="w-4 h-4 text-emerald-500 mt-0.5 shrink-0" />
+                                    <div className="flex flex-col">
+                                      <span className="text-[10px] font-bold text-foreground uppercase tracking-widest">
+                                        {bkg.pickup_type} Pickup
+                                      </span>
+                                      <span
+                                        className="text-[11px] font-medium text-muted-foreground truncate"
+                                        title={bkg.pickup_location}
+                                      >
+                                        {bkg.pickup_location}
+                                      </span>
+                                      <span className="text-[10px] font-mono text-muted-foreground mt-0.5">
+                                        {bkg.full_start}
+                                      </span>
+                                    </div>
+                                  </div>
+                                  <div className="flex gap-2">
+                                    <MapPin className="w-4 h-4 text-destructive mt-0.5 shrink-0" />
+                                    <div className="flex flex-col">
+                                      <span className="text-[10px] font-bold text-foreground uppercase tracking-widest">
+                                        {bkg.dropoff_type} Dropoff
+                                      </span>
+                                      <span
+                                        className="text-[11px] font-medium text-muted-foreground truncate"
+                                        title={bkg.dropoff_location}
+                                      >
+                                        {bkg.dropoff_location}
+                                      </span>
+                                      <span className="text-[10px] font-mono text-muted-foreground mt-0.5">
+                                        {bkg.full_end}
+                                      </span>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {/* Financials */}
+                                <div className="space-y-3">
+                                  <h5 className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest border-b border-border pb-1">
+                                    Financial Snapshot
+                                  </h5>
+                                  <div className="grid grid-cols-2 gap-2 text-[11px]">
+                                    <span className="text-muted-foreground font-medium">
+                                      Base Rate Locked:
+                                    </span>
+                                    <span className="font-mono font-bold text-foreground">
+                                      ₱{" "}
+                                      {bkg.base_rate_snapshot?.toLocaleString() ||
+                                        "0"}
+                                    </span>
+
+                                    <span className="text-muted-foreground font-medium">
+                                      Security Deposit:
+                                    </span>
+                                    <span className="font-mono font-bold text-foreground">
+                                      ₱{" "}
+                                      {bkg.security_deposit?.toLocaleString() ||
+                                        "0"}
+                                    </span>
+
+                                    <span className="text-muted-foreground font-medium">
+                                      Payment Status:
+                                    </span>
+                                    <span className="font-bold uppercase tracking-widest text-[9px]">
+                                      {bkg.payment_status}
+                                    </span>
+                                  </div>
+                                </div>
+
+                                {/* Operations */}
+                                <div className="space-y-3">
+                                  <h5 className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest border-b border-border pb-1">
+                                    Operations & Settlement
+                                  </h5>
+                                  <div className="flex flex-col gap-3">
+                                    <div className="flex items-center gap-2">
+                                      <ShipWheel className="w-4 h-4 text-blue-500 shrink-0" />
+                                      <div className="flex flex-col">
+                                        <span className="text-[10px] font-bold text-foreground uppercase tracking-widest">
+                                          Driver Assignment
+                                        </span>
+                                        <span className="text-[11px] font-medium text-muted-foreground">
+                                          {bkg.is_with_driver
+                                            ? bkg.driver_name
+                                            : "Self-Drive (No Driver)"}
+                                        </span>
+                                      </div>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                      <Banknote className="w-4 h-4 text-emerald-600 shrink-0" />
+                                      <div className="flex flex-col">
+                                        <span className="text-[10px] font-bold text-foreground uppercase tracking-widest">
+                                          Owner Payout Link
+                                        </span>
+                                        <span className="text-[11px] font-medium text-muted-foreground flex items-center gap-2">
+                                          Status:{" "}
+                                          <Badge
+                                            variant="outline"
+                                            className="text-[8px] h-4 px-1"
+                                          >
+                                            {bkg.owner_payout_status}
+                                          </Badge>
+                                        </span>
+                                        <span className="text-[10px] font-mono text-muted-foreground mt-0.5">
+                                          Ref: {bkg.payout_ref}
+                                        </span>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            </CollapsibleContent>
+                          </Collapsible>
+                        ))
+                      ) : (
+                        <div className="p-10 flex flex-col items-center justify-center text-muted-foreground">
+                          <FolderOpen className="w-8 h-8 mb-2 opacity-20" />
+                          <p className="text-[10px] font-bold uppercase tracking-widest">
+                            No bookings created in this date range.
                           </p>
                         </div>
                       )}
@@ -729,8 +1058,8 @@ export default function ReportsMain() {
                       <div></div>
                     </div>
                     <div className="divide-y divide-border">
-                      {reportData.partners?.length > 0 ? (
-                        reportData.partners.map((prt: any) => (
+                      {filteredData.partners?.length > 0 ? (
+                        filteredData.partners.map((prt: any) => (
                           <Collapsible
                             key={prt.id}
                             open={expandedRow === prt.id}
@@ -900,7 +1229,7 @@ export default function ReportsMain() {
                 {/* TAB 3: MASTER LEDGER */}
                 {activeTab === "master_ledger" && (
                   <div className="flex-1 bg-background transition-colors">
-                    <div className="grid grid-cols-[1.5fr_1.5fr_1fr_1fr_1fr] p-2.5 px-4 border-b border-border bg-secondary/50 text-[9px] font-bold text-muted-foreground uppercase tracking-widest transition-colors">
+                    <div className="grid grid-cols-[1fr_3fr_1fr_1fr_1fr] p-2.5 px-4 border-b border-border bg-secondary/50 text-[9px] font-bold text-muted-foreground uppercase tracking-widest transition-colors">
                       <div>Date & Time</div>
                       <div>Reference</div>
                       <div>Category</div>
@@ -908,11 +1237,11 @@ export default function ReportsMain() {
                       <div className="text-right">Amount</div>
                     </div>
                     <div className="divide-y divide-border">
-                      {reportData.master_ledger?.length > 0 ? (
-                        reportData.master_ledger.map((txn: any) => (
+                      {filteredData.master_ledger?.length > 0 ? (
+                        filteredData.master_ledger.map((txn: any) => (
                           <div
                             key={txn.id}
-                            className="grid grid-cols-[1.5fr_1.5fr_1fr_1fr_1fr] p-2.5 px-4 items-center hover:bg-secondary/30 transition-colors"
+                            className="grid grid-cols-[1fr_3fr_1fr_1fr_1fr] p-2.5 px-4 items-center hover:bg-secondary/30 transition-colors"
                           >
                             <div className="flex flex-col">
                               <span className="text-[11px] font-bold text-foreground">
@@ -926,8 +1255,8 @@ export default function ReportsMain() {
                               <span className="text-[11px] font-bold text-foreground font-mono">
                                 {txn.id}
                               </span>
-                              <span className="text-[10px] font-medium text-muted-foreground truncate uppercase tracking-widest mt-0.5">
-                                {txn.ref}
+                              <span className="text-[9px] font-medium text-muted-foreground truncate tracking-widest mt-0.5">
+                                {txn.ref ? txn.ref : "No reference note"}
                               </span>
                             </div>
                             <div>
@@ -967,73 +1296,6 @@ export default function ReportsMain() {
                   </div>
                 )}
 
-                {/* TAB 4: BOOKING VOLUME */}
-                {activeTab === "bookings" && (
-                  <div className="flex-1 bg-background transition-colors">
-                    <div className="grid grid-cols-[1fr_1.5fr_1.5fr_1fr_1fr_1fr] p-2.5 px-4 border-b border-border bg-secondary/50 text-[9px] font-bold text-muted-foreground uppercase tracking-widest transition-colors">
-                      <div>Booking Ref</div>
-                      <div>Customer</div>
-                      <div>Asset & Dates</div>
-                      <div>Status</div>
-                      <div className="text-right">Total Billed</div>
-                      <div className="text-right">Balance Due</div>
-                    </div>
-                    <div className="divide-y divide-border">
-                      {reportData.bookings?.length > 0 ? (
-                        reportData.bookings.map((bkg: any) => (
-                          <div
-                            key={bkg.id}
-                            className="grid grid-cols-[1fr_1.5fr_1.5fr_1fr_1fr_1fr] p-2.5 px-4 items-center hover:bg-secondary/30 transition-colors"
-                          >
-                            <span className="text-[11px] font-bold text-foreground font-mono">
-                              {bkg.id}
-                            </span>
-                            <span className="text-[11px] font-bold text-foreground">
-                              {bkg.customer}
-                            </span>
-                            <div className="flex flex-col">
-                              <span className="text-[11px] font-bold text-foreground truncate">
-                                {bkg.vehicle}
-                              </span>
-                              <span className="text-[9px] font-medium uppercase tracking-widest text-muted-foreground mt-0.5">
-                                {bkg.dates}
-                              </span>
-                            </div>
-                            <div>
-                              <Badge
-                                variant="outline"
-                                className="text-[8px] font-bold h-4 px-1.5 uppercase tracking-widest bg-secondary text-muted-foreground border-border rounded"
-                              >
-                                {bkg.status}
-                              </Badge>
-                            </div>
-                            <span className="text-right text-[11px] font-bold text-foreground font-mono">
-                              ₱ {bkg.total.toLocaleString()}
-                            </span>
-                            <span
-                              className={cn(
-                                "text-right text-[11px] font-bold font-mono",
-                                bkg.due > 0
-                                  ? "text-amber-600 dark:text-amber-400"
-                                  : "text-emerald-600 dark:text-emerald-400",
-                              )}
-                            >
-                              ₱ {bkg.due.toLocaleString()}
-                            </span>
-                          </div>
-                        ))
-                      ) : (
-                        <div className="p-10 flex flex-col items-center justify-center text-muted-foreground">
-                          <FolderOpen className="w-8 h-8 mb-2 opacity-20" />
-                          <p className="text-[10px] font-bold uppercase tracking-widest">
-                            No bookings created in this date range.
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-
                 {/* TAB 5: CUSTOMER INSIGHTS */}
                 {activeTab === "customers" && (
                   <div className="flex-1 bg-background transition-colors">
@@ -1046,8 +1308,8 @@ export default function ReportsMain() {
                       <div></div>
                     </div>
                     <div className="divide-y divide-border">
-                      {reportData.customers?.length > 0 ? (
-                        reportData.customers.map((cus: any) => (
+                      {filteredData.customers?.length > 0 ? (
+                        filteredData.customers.map((cus: any) => (
                           <Collapsible
                             key={cus.id}
                             open={expandedRow === cus.id}
@@ -1068,7 +1330,7 @@ export default function ReportsMain() {
                                     {cus.name}
                                   </span>
                                   <span className="text-[9px] font-mono text-muted-foreground mt-0.5">
-                                    {split_part_mock(cus.id)}
+                                    {formatDisplayId(cus.id, "CUS")}
                                   </span>
                                 </div>
                                 <div className="text-center text-[11px] font-bold text-foreground">
@@ -1178,8 +1440,8 @@ export default function ReportsMain() {
                       <div></div>
                     </div>
                     <div className="divide-y divide-border">
-                      {reportData.drivers?.length > 0 ? (
-                        reportData.drivers.map((drv: any) => (
+                      {filteredData.drivers?.length > 0 ? (
+                        filteredData.drivers.map((drv: any) => (
                           <Collapsible
                             key={drv.id}
                             open={expandedRow === drv.id}
@@ -1200,7 +1462,8 @@ export default function ReportsMain() {
                                     {drv.name}
                                   </span>
                                   <span className="text-[9px] font-mono text-muted-foreground mt-0.5">
-                                    {split_part_mock(drv.id)}
+                                    {drv.display_id ||
+                                      formatDisplayId(drv.id, "DRV")}
                                   </span>
                                 </div>
                                 <div className="text-center text-[11px] font-bold text-foreground">
@@ -1290,7 +1553,6 @@ export default function ReportsMain() {
         </div>
       </ScrollArea>
       {/* --- HIDDEN ECHART FOR PDF EXPORT CAPTURE --- */}
-      {/* Width 1000px gives enough room for two charts side-by-side */}
       {reportData && (
         <div
           className="absolute -left-[9999px] top-0 p-4 bg-white"
@@ -1301,10 +1563,4 @@ export default function ReportsMain() {
       )}
     </div>
   );
-}
-
-// Small helper function since the RPC returns full UUIDs sometimes
-function split_part_mock(id: string) {
-  if (!id) return "N/A";
-  return id.split("-")[0].toUpperCase();
 }

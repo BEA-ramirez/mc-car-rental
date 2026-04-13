@@ -1,7 +1,7 @@
 import ExcelJS from "exceljs";
 import { saveAs } from "file-saver";
 import { format } from "date-fns";
-import { ClientRow } from "../../hooks/use-clients";
+import { formatDisplayId } from "@/lib/utils";
 
 // --- HELPER FUNCTIONS FOR PROFESSIONAL STYLING ---
 const styleHeaderRow = (row: ExcelJS.Row) => {
@@ -9,8 +9,8 @@ const styleHeaderRow = (row: ExcelJS.Row) => {
   row.fill = {
     type: "pattern",
     pattern: "solid",
-    fgColor: { argb: "FF0F172A" },
-  }; // Slate 900
+    fgColor: { argb: "FF0F172A" }, // Slate 900
+  };
   row.alignment = { vertical: "middle", horizontal: "left" };
 };
 
@@ -19,8 +19,8 @@ const styleMasterRow = (row: ExcelJS.Row) => {
   row.fill = {
     type: "pattern",
     pattern: "solid",
-    fgColor: { argb: "FFF1F5F9" },
-  }; // Slate 100
+    fgColor: { argb: "FFF1F5F9" }, // Slate 100
+  };
   row.alignment = { vertical: "middle", horizontal: "left" };
 };
 
@@ -34,10 +34,11 @@ export async function generateExcelReport(
   endDate: Date,
 ) {
   const workbook = new ExcelJS.Workbook();
-  workbook.creator = "Car Rental ERP System";
+  workbook.creator = "MC Ormoc Car Rental ERP";
   workbook.created = new Date();
 
   const dateRangeStr = `${format(startDate, "MMM dd, yyyy")} to ${format(endDate, "MMM dd, yyyy")}`;
+  const generatedStr = format(new Date(), "MMM dd, yyyy hh:mm a");
   const currencyFormat = '"₱"#,##0.00';
 
   // ==========================================
@@ -45,11 +46,26 @@ export async function generateExcelReport(
   // ==========================================
   const summarySheet = workbook.addWorksheet("Executive Summary");
   summarySheet.columns = [
-    { header: "Financial Metric", key: "metric", width: 35 },
-    { header: "Total Value", key: "value", width: 25 },
+    { header: "Report Metadata", key: "metric", width: 35 },
+    { header: "Details / Value", key: "value", width: 35 },
   ];
 
   styleHeaderRow(summarySheet.getRow(1));
+
+  summarySheet.addRow({ metric: "Report Period", value: dateRangeStr });
+  summarySheet.addRow({ metric: "Generated On", value: generatedStr });
+  summarySheet.addRow({});
+
+  const kpiHeader = summarySheet.addRow({
+    metric: "Financial Metrics",
+    value: "",
+  });
+  kpiHeader.font = { bold: true, size: 12 };
+  kpiHeader.fill = {
+    type: "pattern",
+    pattern: "solid",
+    fgColor: { argb: "FFE2E8F0" },
+  };
 
   summarySheet.addRow({
     metric: "Gross Fleet Revenue",
@@ -72,10 +88,11 @@ export async function generateExcelReport(
     value: reportData.kpis?.total_trips || 0,
   });
 
-  for (let i = 2; i <= 5; i++) {
+  for (let i = 6; i <= 9; i++) {
     summarySheet.getCell(`B${i}`).numFmt = currencyFormat;
     summarySheet.getCell(`B${i}`).font = { bold: true };
   }
+  summarySheet.getCell(`B10`).font = { bold: true };
 
   // ==========================================
   // SHEET 2: UNIT ECONOMICS (CARS & BREAKDOWN)
@@ -84,6 +101,7 @@ export async function generateExcelReport(
   unitSheet.columns = [
     { header: "Asset / Plate No.", key: "asset", width: 35 },
     { header: "Fleet Partner", key: "partner", width: 25 },
+    { header: "Configured Rates", key: "rates", width: 25 },
     { header: "Trips", key: "trips", width: 12 },
     { header: "Gross Rev", key: "gross", width: 18 },
     { header: "Maint. Deduct", key: "maint", width: 18 },
@@ -96,6 +114,7 @@ export async function generateExcelReport(
       const masterRow = unitSheet.addRow({
         asset: `🚘 ${car.vehicle} [${car.plate}]`,
         partner: `${car.owner} (${car.share}%)`,
+        rates: `Day: ₱${car.rate_day || 0} | 12H: ₱${car.rate_12h || 0}`,
         trips: car.trips,
         gross: car.gross,
         maint: car.maint,
@@ -105,9 +124,11 @@ export async function generateExcelReport(
 
       if (car.breakdown && car.breakdown.length > 0) {
         car.breakdown.forEach((trip: any) => {
+          const type = trip.with_driver ? "w/ Driver" : "Self-Drive";
           const childRow = unitSheet.addRow({
             asset: `      ↳ ${trip.id}`,
             partner: trip.dates,
+            rates: `[${type}] Payout: ${trip.payout_status}`,
             gross: trip.amount,
           });
           styleChildRow(childRow);
@@ -115,7 +136,7 @@ export async function generateExcelReport(
       }
       unitSheet.addRow([]);
     });
-    ["D", "E", "F"].forEach(
+    ["E", "F", "G"].forEach(
       (col) => (unitSheet.getColumn(col).numFmt = currencyFormat),
     );
   }
@@ -126,7 +147,7 @@ export async function generateExcelReport(
   const partnerSheet = workbook.addWorksheet("Partner Settlements");
   partnerSheet.columns = [
     { header: "Fleet Partner Info", key: "partner", width: 35 },
-    { header: "Vehicle / Dates", key: "details", width: 30 },
+    { header: "Vehicle / Dates", key: "details", width: 35 },
     { header: "Gross Fleet Rev", key: "gross", width: 18 },
     { header: "Platform Cut", key: "comm", width: 18 },
     { header: "Maint. Deduct", key: "maint", width: 18 },
@@ -137,7 +158,7 @@ export async function generateExcelReport(
   if (reportData.partners) {
     reportData.partners.forEach((prt: any) => {
       const masterRow = partnerSheet.addRow({
-        partner: `💼 ${prt.name} (${prt.business})`,
+        partner: `💼 ${prt.name} [${formatDisplayId(prt.id, "PRT")}]`,
         details: `${prt.active_cars} Cars | ${prt.total_trips} Trips`,
         gross: prt.gross,
         comm: prt.platform_cut,
@@ -149,7 +170,7 @@ export async function generateExcelReport(
       if (prt.breakdown && prt.breakdown.length > 0) {
         prt.breakdown.forEach((tx: any) => {
           const childRow = partnerSheet.addRow({
-            partner: `      ↳ ${tx.id}`,
+            partner: `      ↳ ${tx.id} (${tx.payout_status})`,
             details: `${tx.vehicle} | ${tx.dates}`,
             gross: tx.gross,
             comm: tx.comm,
@@ -197,15 +218,23 @@ export async function generateExcelReport(
   }
 
   // ==========================================
-  // SHEET 5: BOOKING VOLUME
+  // SHEET 5: BOOKING VOLUME (MASSIVELY EXPANDED)
   // ==========================================
-  const bookingsSheet = workbook.addWorksheet("Booking Volume");
+  const bookingsSheet = workbook.addWorksheet("Booking Manifest");
   bookingsSheet.columns = [
-    { header: "Booking Ref", key: "id", width: 20 },
-    { header: "Customer", key: "customer", width: 30 },
-    { header: "Asset / Vehicle", key: "vehicle", width: 35 },
-    { header: "Rental Dates", key: "dates", width: 25 },
-    { header: "Status", key: "status", width: 15 },
+    { header: "Booking Ref", key: "id", width: 18 },
+    { header: "Customer Name", key: "customer", width: 25 },
+    { header: "Asset / Vehicle", key: "vehicle", width: 30 },
+    { header: "Driver Assignment", key: "driver", width: 25 },
+    { header: "Start Date & Time", key: "start", width: 25 },
+    { header: "End Date & Time", key: "end", width: 25 },
+    { header: "Pickup Details", key: "pickup", width: 35 },
+    { header: "Dropoff Details", key: "dropoff", width: 35 },
+    { header: "Booking Status", key: "status", width: 15 },
+    { header: "Payment Status", key: "pay_status", width: 15 },
+    { header: "Owner Payout Ref", key: "payout_ref", width: 20 },
+    { header: "Base Rate Locked", key: "base_rate", width: 18 },
+    { header: "Security Deposit", key: "deposit", width: 18 },
     { header: "Total Billed", key: "total", width: 18 },
     { header: "Balance Due", key: "due", width: 18 },
   ];
@@ -217,16 +246,26 @@ export async function generateExcelReport(
         id: bkg.id,
         customer: bkg.customer,
         vehicle: bkg.vehicle,
-        dates: bkg.dates,
+        driver: bkg.is_with_driver ? bkg.driver_name : "Self-Drive",
+        start: bkg.full_start,
+        end: bkg.full_end,
+        pickup: `[${bkg.pickup_type.toUpperCase()}] ${bkg.pickup_location}`,
+        dropoff: `[${bkg.dropoff_type.toUpperCase()}] ${bkg.dropoff_location}`,
         status: bkg.status.toUpperCase(),
+        pay_status: bkg.payment_status.toUpperCase(),
+        payout_ref: `${bkg.payout_ref} (${bkg.owner_payout_status})`,
+        base_rate: bkg.base_rate_snapshot,
+        deposit: bkg.security_deposit,
         total: bkg.total,
         due: bkg.due,
       });
-      // Highlight unpaid balances in red
-      if (bkg.due > 0)
+
+      if (bkg.due > 0) {
         row.getCell("due").font = { color: { argb: "FFDC2626" }, bold: true };
+      }
     });
-    ["F", "G"].forEach(
+    // Apply currency formatting to the financial columns
+    ["L", "M", "N", "O"].forEach(
       (col) => (bookingsSheet.getColumn(col).numFmt = currencyFormat),
     );
   }
@@ -247,7 +286,7 @@ export async function generateExcelReport(
   if (reportData.customers) {
     reportData.customers.forEach((cus: any) => {
       const masterRow = customerSheet.addRow({
-        customer: `👤 ${cus.name} [${cus.id.split("-")[0].toUpperCase()}]`,
+        customer: `👤 ${cus.name} [${formatDisplayId(cus.id, "CUS")}]`,
         details: `Total Bookings: ${cus.bookings}`,
         type: "",
         status:
@@ -290,8 +329,9 @@ export async function generateExcelReport(
 
   if (reportData.drivers) {
     reportData.drivers.forEach((drv: any) => {
+      const drvId = drv.display_id || formatDisplayId(drv.id, "DRV");
       const masterRow = driversSheet.addRow({
-        driver: `🪪 ${drv.name} [${drv.id.split("-")[0].toUpperCase()}]`,
+        driver: `🪪 ${drv.name} [${drvId}]`,
         dates: `Total Shifts: ${drv.shifts} | Status: ${drv.status}`,
         ref: "",
         vehicle: `Primary: ${drv.vehicle}`,
@@ -328,7 +368,7 @@ export async function generateExcelReport(
   saveAs(blob, fileName);
 }
 
-export async function exportClientsToExcel(filteredUsers: ClientRow[]) {
+export async function exportClientsToExcel(filteredUsers: any[]) {
   const workbook = new ExcelJS.Workbook();
   workbook.creator = "Car Rental ERP System";
   workbook.created = new Date();

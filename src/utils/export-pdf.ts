@@ -1,8 +1,7 @@
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-import { format, differenceInCalendarDays, differenceInHours } from "date-fns";
-import { ClientRow } from "../../hooks/use-clients";
-import { toTitleCase } from "@/actions/helper/format-text";
+import { format, differenceInHours } from "date-fns";
+import { formatDisplayId } from "@/lib/utils";
 
 export async function generatePDFReport(
   reportData: any,
@@ -26,7 +25,7 @@ export async function generatePDFReport(
   doc.text(`Generated on: ${format(new Date(), "PPpp")}`, 14, 28);
   doc.text(`Reporting Period: ${dateStr}`, 14, 34);
 
-  // --- NEW COMPACT KPI BANNER (4 in a row) ---
+  // --- COMPACT KPI BANNER (4 in a row) ---
   doc.setDrawColor(220, 226, 230);
   doc.setFillColor(248, 250, 252);
 
@@ -36,7 +35,7 @@ export async function generatePDFReport(
   doc.roundedRect(106, 42, 43, 18, 2, 2, "FD");
   doc.roundedRect(152, 42, 43, 18, 2, 2, "FD");
 
-  doc.setFontSize(7); // Smaller, sleeker label font
+  doc.setFontSize(7);
   doc.setFont("helvetica", "bold");
   doc.setTextColor(100, 116, 139);
 
@@ -88,8 +87,6 @@ export async function generatePDFReport(
 
   // --- INJECT DUAL CHARTS ---
   if (chartImageURI) {
-    // Because the KPIs are smaller, we can push the charts way up to y: 68
-    // We make the image wide (180mm) and properly proportioned (65mm tall)
     doc.addImage(chartImageURI, "PNG", 14, 68, 180, 65);
   }
 
@@ -103,9 +100,9 @@ export async function generatePDFReport(
 
   const unitRows =
     reportData.unit_economics?.map((car: any) => [
-      car.vehicle,
-      car.plate,
-      car.owner,
+      `${car.vehicle}\n${car.plate}`,
+      `${car.owner}\n(${car.share}% Share)`,
+      `Day: P ${car.rate_day || 0}\n12H: P ${car.rate_12h || 0}`, // Added Base Rates
       car.trips?.toString() || "0",
       `P ${car.gross?.toLocaleString() || 0}`,
       car.maint < 0 ? `-P ${Math.abs(car.maint).toLocaleString()}` : "P 0",
@@ -116,9 +113,9 @@ export async function generatePDFReport(
     startY: 25,
     head: [
       [
-        "Vehicle",
-        "Plate No.",
+        "Vehicle & Plate",
         "Fleet Partner",
+        "Configured Rates",
         "Trips",
         "Gross Rev",
         "Maint. Deduct",
@@ -127,7 +124,7 @@ export async function generatePDFReport(
     ],
     body: unitRows,
     theme: "grid",
-    headStyles: { fillColor: [15, 23, 42], textColor: 255, fontSize: 9 },
+    headStyles: { fillColor: [15, 23, 42], textColor: 255, fontSize: 8 },
     bodyStyles: { fontSize: 8, textColor: [50, 50, 50] },
     alternateRowStyles: { fillColor: [248, 250, 252] },
     columnStyles: {
@@ -147,7 +144,7 @@ export async function generatePDFReport(
 
   const partnerRows =
     reportData.partners?.map((prt: any) => [
-      prt.name,
+      `${prt.name}\n${formatDisplayId(prt.id, "PRT")}`, // Fixed ID
       prt.business,
       `${prt.active_cars} Cars / ${prt.total_trips} Trips`,
       `P ${prt.gross?.toLocaleString() || 0}`,
@@ -159,7 +156,7 @@ export async function generatePDFReport(
     startY: 25,
     head: [
       [
-        "Partner Name",
+        "Partner Name & Ref",
         "Business Entity",
         "Activity",
         "Gross Fleet Rev",
@@ -169,7 +166,7 @@ export async function generatePDFReport(
     ],
     body: partnerRows,
     theme: "grid",
-    headStyles: { fillColor: [15, 23, 42], fontSize: 9 },
+    headStyles: { fillColor: [15, 23, 42], fontSize: 8 },
     bodyStyles: { fontSize: 8 },
     columnStyles: {
       3: { halign: "right" },
@@ -179,7 +176,80 @@ export async function generatePDFReport(
   });
 
   // ==========================================
-  // PAGE 4: CUSTOMER INSIGHTS
+  // PAGE 4: MASTER LEDGER (NEW)
+  // ==========================================
+  doc.addPage();
+  doc.setFontSize(14);
+  doc.setTextColor(15, 23, 42);
+  doc.text("Master Financial Ledger", 14, 20);
+
+  const ledgerRows =
+    reportData.master_ledger?.map((txn: any) => [
+      format(new Date(txn.date), "MMM dd, yyyy\nhh:mm a"),
+      `${txn.id}\nRef: ${txn.ref}`,
+      txn.category.replace(/_/g, " "),
+      txn.method,
+      txn.amount < 0
+        ? `-P ${Math.abs(txn.amount).toLocaleString()}`
+        : `P ${txn.amount.toLocaleString()}`,
+    ]) || [];
+
+  autoTable(doc, {
+    startY: 25,
+    head: [
+      ["Date & Time", "Transaction & Ref", "Category", "Method", "Amount"],
+    ],
+    body: ledgerRows,
+    theme: "grid",
+    headStyles: { fillColor: [15, 23, 42], fontSize: 8 },
+    bodyStyles: { fontSize: 8 },
+    columnStyles: {
+      4: { halign: "right", fontStyle: "bold" },
+    },
+  });
+
+  // ==========================================
+  // PAGE 5: BOOKING MANIFEST (NEW)
+  // ==========================================
+  doc.addPage();
+  doc.setFontSize(14);
+  doc.setTextColor(15, 23, 42);
+  doc.text("Booking Volume Manifest", 14, 20);
+
+  const bookingRows =
+    reportData.bookings?.map((bkg: any) => [
+      `${bkg.id}\n${bkg.status.toUpperCase()}`,
+      `${bkg.customer}\n${bkg.is_with_driver ? "w/ Driver" : "Self-Drive"}`,
+      bkg.vehicle,
+      bkg.dates.replace(" - ", "\n"), // Splits dates into two lines for fit
+      `P ${bkg.total.toLocaleString()}`,
+      `P ${bkg.due.toLocaleString()}`,
+    ]) || [];
+
+  autoTable(doc, {
+    startY: 25,
+    head: [
+      [
+        "Booking Ref & Status",
+        "Customer",
+        "Asset / Vehicle",
+        "Rental Dates",
+        "Total Billed",
+        "Balance Due",
+      ],
+    ],
+    body: bookingRows,
+    theme: "grid",
+    headStyles: { fillColor: [15, 23, 42], fontSize: 8 },
+    bodyStyles: { fontSize: 8 },
+    columnStyles: {
+      4: { halign: "right" },
+      5: { halign: "right", fontStyle: "bold", textColor: [220, 38, 38] },
+    },
+  });
+
+  // ==========================================
+  // PAGE 6: CUSTOMER INSIGHTS
   // ==========================================
   doc.addPage();
   doc.setFontSize(14);
@@ -189,7 +259,7 @@ export async function generatePDFReport(
   const customerRows =
     reportData.customers?.map((cus: any) => [
       cus.name,
-      cus.id.split("-")[0].toUpperCase(),
+      formatDisplayId(cus.id, "CUS"), // Fixed ID
       cus.bookings?.toString() || "0",
       `P ${cus.ltv?.toLocaleString() || 0}`,
       cus.flags?.length > 0 ? cus.flags.join(", ") : "Clean Record",
@@ -208,7 +278,7 @@ export async function generatePDFReport(
     ],
     body: customerRows,
     theme: "grid",
-    headStyles: { fillColor: [15, 23, 42], fontSize: 9 },
+    headStyles: { fillColor: [15, 23, 42], fontSize: 8 },
     bodyStyles: { fontSize: 8 },
     columnStyles: {
       2: { halign: "center" },
@@ -218,7 +288,7 @@ export async function generatePDFReport(
   });
 
   // ==========================================
-  // PAGE 5: DRIVER PERFORMANCE
+  // PAGE 7: DRIVER PERFORMANCE
   // ==========================================
   doc.addPage();
   doc.setFontSize(14);
@@ -227,7 +297,7 @@ export async function generatePDFReport(
 
   const driverRows =
     reportData.drivers?.map((drv: any) => [
-      drv.name,
+      `${drv.name}\n${drv.display_id || formatDisplayId(drv.id, "DRV")}`, // Fixed ID
       drv.shifts?.toString() || "0",
       drv.status,
       drv.vehicle || "None",
@@ -247,7 +317,7 @@ export async function generatePDFReport(
     ],
     body: driverRows,
     theme: "grid",
-    headStyles: { fillColor: [15, 23, 42], fontSize: 9 },
+    headStyles: { fillColor: [15, 23, 42], fontSize: 8 },
     bodyStyles: { fontSize: 8 },
     columnStyles: {
       1: { halign: "center" },
@@ -259,7 +329,7 @@ export async function generatePDFReport(
   doc.save(fileName);
 }
 
-export async function exportClientsToPDF(filteredUsers: ClientRow[]) {
+export async function exportClientsToPDF(filteredUsers: any[]) {
   const doc = new jsPDF("p", "mm", "a4");
 
   doc.setFontSize(22);
@@ -282,7 +352,7 @@ export async function exportClientsToPDF(filteredUsers: ClientRow[]) {
   };
 
   const clientRows =
-    filteredUsers?.map((user: ClientRow) => {
+    filteredUsers?.map((user: any) => {
       const name =
         user.full_name ||
         [user.first_name, user.last_name].filter(Boolean).join(" ") ||
