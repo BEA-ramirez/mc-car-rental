@@ -25,6 +25,7 @@ import {
   CheckSquare,
   Mail,
   Calendar as CalendarIcon,
+  AlertTriangle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -56,11 +57,13 @@ import { useDocumentMutations } from "../../../../../hooks/use-documents";
 import { useBookingWorkflows } from "../../../../../hooks/use-booking-workflow";
 import { generateInvoicePDF } from "@/utils/export-pdf";
 import { useBookingFolio } from "../../../../../hooks/use-incomes";
+import { useScheduler } from "../../../../../hooks/use-scheduler";
 
 export default function AdminBookingDetailsPage() {
   const params = useParams();
   const router = useRouter();
   const bookingId = params.bookingId as string;
+  const date = new Date();
 
   // --- CORE DATA HOOKS ---
   const { data: booking, isLoading, isError } = useBookingDetails(bookingId);
@@ -77,6 +80,7 @@ export default function AdminBookingDetailsPage() {
   } = useBookingWorkflows(bookingId);
   const { signContract } = useDocumentMutations();
   const { data: folio } = useBookingFolio(bookingId);
+  const { updateDates } = useScheduler(date);
 
   // --- MODAL STATES ---
   const [isCancelOpen, setIsCancelOpen] = useState(false);
@@ -118,6 +122,22 @@ export default function AdminBookingDetailsPage() {
     }
   };
 
+  // --- DISPATCH GAP DETECTION ---
+  // Find the latest shift end date among all assignments
+  const latestShiftEnd = booking?.booking_driver_assignments?.reduce(
+    (latest: Date, assignment: any) => {
+      const shiftEnd = new Date(assignment.shift_end);
+      return shiftEnd > latest ? shiftEnd : latest;
+    },
+    new Date(0),
+  );
+
+  // If the booking is supposed to have a driver, but the latest shift ends BEFORE the booking ends, we have a gap!
+  const hasDispatchGap =
+    booking?.is_with_driver &&
+    latestShiftEnd &&
+    latestShiftEnd < new Date(booking.end_date);
+
   // --- EARLY RETURNS ---
   if (isLoading) {
     return (
@@ -148,6 +168,7 @@ export default function AdminBookingDetailsPage() {
     start: booking.start_date,
     end: booking.end_date,
     resourceId: booking.car.id,
+    assignments: booking.booking_driver_assignments,
   };
 
   // --- INSPECTION LOGIC & PARSING ---
@@ -373,26 +394,49 @@ export default function AdminBookingDetailsPage() {
                 </h3>
 
                 {booking.driver ? (
-                  /* STATE 1: Driver is assigned */
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-secondary border border-border flex items-center justify-center shrink-0">
-                      <UserCircle className="w-5 h-5 text-primary" />
+                  <div className="flex flex-col gap-3">
+                    {/* STATE 1: Driver is assigned (But check for gaps!) */}
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-secondary border border-border flex items-center justify-center shrink-0">
+                        <UserCircle className="w-5 h-5 text-primary" />
+                      </div>
+                      <div className="flex-1 overflow-hidden">
+                        <p className="text-xs font-bold truncate">
+                          {booking.driver.name}
+                        </p>
+                        <Button
+                          variant="link"
+                          onClick={() => setIsDispatchOpen(true)}
+                          className="h-5 p-0 text-[10px] text-primary"
+                        >
+                          Manage Dispatch
+                        </Button>
+                      </div>
                     </div>
-                    <div className="flex-1 overflow-hidden">
-                      <p className="text-xs font-bold truncate">
-                        {booking.driver.name}
-                      </p>
-                      <Button
-                        variant="link"
-                        onClick={() => setIsDispatchOpen(true)}
-                        className="h-5 p-0 text-[10px] text-primary"
-                      >
-                        Change Driver
-                      </Button>
-                    </div>
+
+                    {/* NEW STATE: GAP DETECTED WARNING */}
+                    {hasDispatchGap && (
+                      <div className="p-2 border border-dashed border-amber-500/40 rounded-lg bg-amber-500/10 mt-1 animate-in fade-in">
+                        <p className="text-[9px] font-bold text-amber-600 dark:text-amber-500 mb-1.5 flex items-center gap-1.5">
+                          <AlertTriangle className="w-3.5 h-3.5" /> Shift Gap
+                          Detected!
+                        </p>
+                        <p className="text-[9px] text-amber-600/80 font-medium leading-tight mb-2">
+                          The booking was extended, but the driver's schedule
+                          ends early. You need to assign relief coverage.
+                        </p>
+                        <Button
+                          onClick={() => setIsDispatchOpen(true)}
+                          size="sm"
+                          className="h-6 text-[8px] font-bold uppercase tracking-widest w-full bg-amber-500 hover:bg-amber-600 text-white shadow-none"
+                        >
+                          Fix Dispatch Gap
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 ) : booking.is_with_driver ? (
-                  /* STATE 2: Customer requested a driver, but none is assigned yet */
+                  /* STATE 2: Customer requested a driver, but none is assigned at all */
                   <div className="text-center p-3 border border-dashed border-destructive/30 rounded-lg bg-destructive/5">
                     <p className="text-[10px] font-bold text-destructive mb-2 flex items-center justify-center gap-1.5">
                       <AlertCircle className="w-3.5 h-3.5" /> Dispatch Needed!
@@ -784,7 +828,9 @@ export default function AdminBookingDetailsPage() {
       <ExtendBookingDialog
         isOpen={isExtendOpen}
         onClose={() => setIsExtendOpen(false)}
-        onConfirm={(newEnd: any) => setIsExtendOpen(false)}
+        onConfirm={async (endDate) => {
+          await updateDates({ id: booking.id, newEndDate: endDate });
+        }}
         event={mockSchedulerEvent as any}
       />
       <DispatchDialog

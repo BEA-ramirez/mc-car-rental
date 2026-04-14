@@ -25,6 +25,7 @@ import {
   CalendarDays,
   Banknote,
   AlertCircle,
+  AlertTriangle,
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
@@ -55,6 +56,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import PaymentVerificationView from "./payment-verification-tab";
 import BookingListView from "./booking-list-view";
+import { Input } from "../ui/input";
 
 // --- Define the Tabs ---
 type ViewTab = "timeline" | "list" | "payments";
@@ -134,6 +136,8 @@ export default function BookingMain() {
   const confirmedEvents = events.filter((e) => e.status !== "PENDING");
   const originalBooking =
     pendingRequests.find((e) => e.id === selectedPendingId) || null;
+
+  const [archiveReason, setArchiveReason] = useState("");
 
   // Calculate how many payments need verification (Assuming your hook fetches this or you do it in the payments tab)
   // For now, we'll use a placeholder count to show the badge concept
@@ -548,21 +552,40 @@ export default function BookingMain() {
 
       <AlertDialog
         open={!!deleteTarget}
-        onOpenChange={() => setDeleteTarget(null)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setDeleteTarget(null);
+            setArchiveReason(""); // Reset reason when closed
+          }
+        }}
       >
-        <AlertDialogContent className="sm:max-w-[400px] border-destructive/20 bg-background shadow-2xl rounded-xl">
+        <AlertDialogContent className="sm:max-w-[400px] border-amber-500/20 bg-background shadow-2xl rounded-xl">
           <AlertDialogHeader>
-            <AlertDialogTitle className="text-destructive flex items-center gap-2 text-xs font-bold uppercase tracking-widest">
-              <Trash className="w-4 h-4" /> Delete Booking?
+            <AlertDialogTitle className="text-red-600 dark:text-red-500 flex items-center gap-2 text-xs font-bold uppercase tracking-widest">
+              <AlertTriangle className="w-4 h-4" /> Delete Booking?
             </AlertDialogTitle>
             <AlertDialogDescription className="text-[11px] font-medium text-muted-foreground leading-relaxed mt-2">
-              This will permanently remove the booking for{" "}
+              This will archive the booking for{" "}
               <b className="text-foreground font-bold">{deleteTarget?.title}</b>
-              . This action cannot be undone and will delete all associated
-              financial records.
+              . The booking will be hidden from operational views, assigned
+              drivers will be freed, and any pending payments will be voided.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter className="mt-4 border-t border-border pt-4">
+
+          {/* NEW: Reason Input for the Audit Log */}
+          <div className="py-2">
+            <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1.5 block">
+              Reason for Archiving <span className="text-red-500">*</span>
+            </label>
+            <Input
+              value={archiveReason}
+              onChange={(e) => setArchiveReason(e.target.value)}
+              placeholder="e.g., Test booking, Spam, Mistake..."
+              className="h-9 text-xs bg-secondary/50 border-border shadow-none focus-visible:ring-red-500"
+            />
+          </div>
+
+          <AlertDialogFooter className="mt-2 border-t border-border pt-4">
             <AlertDialogCancel
               disabled={isDeleting}
               className="h-8 text-[10px] font-semibold uppercase tracking-widest bg-card border-border hover:bg-secondary text-foreground rounded-lg shadow-none transition-colors"
@@ -570,8 +593,8 @@ export default function BookingMain() {
               Cancel
             </AlertDialogCancel>
             <AlertDialogAction
-              className="h-8 text-[10px] font-bold uppercase tracking-widest bg-destructive hover:opacity-90 text-destructive-foreground rounded-lg shadow-sm transition-opacity"
-              disabled={isDeleting}
+              className="h-8 text-[10px] font-bold uppercase tracking-widest bg-amber-500 hover:bg-amber-600 text-white rounded-lg shadow-sm transition-opacity"
+              disabled={isDeleting || !archiveReason.trim()}
               onClick={(e) => {
                 e.preventDefault();
                 if (deleteTarget) {
@@ -581,7 +604,7 @@ export default function BookingMain() {
                 }
               }}
             >
-              {isDeleting ? "Deleting..." : "Yes, Delete Booking"}
+              {isDeleting ? "Archiving..." : "Yes, Archive Booking"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

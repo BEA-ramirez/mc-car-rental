@@ -147,7 +147,7 @@ export default function SplitBookingDialog({
               </Popover>
             </div>
 
-            <div className="w-28 space-y-1.5">
+            <div className="w-38 space-y-1.5">
               <label className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">
                 Time
               </label>

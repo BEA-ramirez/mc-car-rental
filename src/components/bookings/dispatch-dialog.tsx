@@ -44,6 +44,11 @@ import { toast } from "sonner";
 import { useDriverDispatch } from "../../../hooks/use-drivers";
 import { SchedulerEvent } from "../scheduler/timeline-scheduler";
 
+// Extend SchedulerEvent to safely include the assignments array
+interface DispatchEvent extends SchedulerEvent {
+  assignments?: any[];
+}
+
 interface ShiftSegment {
   id: string;
   start: Date;
@@ -58,7 +63,7 @@ export default function DispatchDialog({
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  booking: SchedulerEvent | null;
+  booking: DispatchEvent | null;
 }) {
   const bookingStart = booking ? new Date(booking.start) : new Date();
   const bookingEnd = booking ? new Date(booking.end) : new Date();
@@ -77,16 +82,29 @@ export default function DispatchDialog({
     open ? bookingEnd : undefined,
   );
 
+  // --- FIX: PRE-POPULATE EXISTING SEGMENTS ---
   useEffect(() => {
     if (open && booking) {
-      setSegments([
-        {
-          id: `seg-${Date.now()}`,
-          start: bookingStart,
-          end: bookingEnd,
-          driverId: null,
-        },
-      ]);
+      if (booking.assignments && booking.assignments.length > 0) {
+        // If there are existing shifts, map them into the UI state
+        const existingSegments = booking.assignments.map((a, i) => ({
+          id: `seg-${Date.now()}-${i}`,
+          start: new Date(a.shift_start),
+          end: new Date(a.shift_end),
+          driverId: a.driver_id,
+        }));
+        setSegments(existingSegments);
+      } else {
+        // Default empty state
+        setSegments([
+          {
+            id: `seg-${Date.now()}`,
+            start: bookingStart,
+            end: bookingEnd,
+            driverId: null,
+          },
+        ]);
+      }
     }
   }, [open, booking]);
 
@@ -99,7 +117,7 @@ export default function DispatchDialog({
       if (!seg.driverId) allAssigned = false;
     });
 
-    const hasGaps = coveredDays !== totalBookingDays;
+    const hasGaps = coveredDays < totalBookingDays;
     return {
       coveredDays,
       hasGaps,
@@ -110,7 +128,8 @@ export default function DispatchDialog({
 
   const handleAddSegment = () => {
     const lastSeg = segments[segments.length - 1];
-    const newStart = lastSeg ? addDays(lastSeg.end, 1) : bookingStart;
+    // Automatically start the new segment where the last one ended
+    const newStart = lastSeg ? addDays(lastSeg.end, 0) : bookingStart;
     const newEnd = isAfter(newStart, bookingEnd) ? newStart : bookingEnd;
     setSegments([
       ...segments,
@@ -133,11 +152,12 @@ export default function DispatchDialog({
     return driver.conflicts.some((c: any) => {
       const cStart = new Date(c.start);
       const cEnd = new Date(c.end);
+      // Ensure we don't flag conflicts against the booking we are currently editing
+      if (booking && c.bookingId === booking.id) return false;
       return segStart < cEnd && segEnd > cStart;
     });
   };
 
-  // UPDATED: Proper async error handling
   const handleConfirmSave = async () => {
     if (!booking) return;
 
@@ -197,7 +217,14 @@ export default function DispatchDialog({
             ) : (
               <CheckCircle2 className="w-4 h-4 text-emerald-500" />
             )}
-            <span className="text-[10px] font-bold text-foreground uppercase tracking-widest">
+            <span
+              className={cn(
+                "text-[10px] font-bold uppercase tracking-widest",
+                coverageStatus.hasGaps
+                  ? "text-amber-600 dark:text-amber-500"
+                  : "text-foreground",
+              )}
+            >
               Coverage: {coverageStatus.coveredDays} of {totalBookingDays} Days
             </span>
           </div>
@@ -218,10 +245,20 @@ export default function DispatchDialog({
             {segments.map((seg, index) => (
               <div
                 key={seg.id}
-                className="bg-card border border-border rounded-xl shadow-sm flex flex-col relative overflow-hidden transition-colors"
+                className={cn(
+                  "bg-card border rounded-xl shadow-sm flex flex-col relative overflow-hidden transition-colors",
+                  !seg.driverId ? "border-amber-500/30" : "border-border",
+                )}
               >
                 {/* Segment Header */}
-                <div className="bg-secondary/30 border-b border-border px-4 py-2 flex items-center justify-between">
+                <div
+                  className={cn(
+                    "px-4 py-2 flex items-center justify-between border-b",
+                    !seg.driverId
+                      ? "bg-amber-500/10 border-amber-500/20"
+                      : "bg-secondary/30 border-border",
+                  )}
+                >
                   <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">
                     Shift Segment {index + 1}
                   </span>
@@ -333,7 +370,7 @@ export default function DispatchDialog({
                           className={cn(
                             "w-full justify-between h-[72px] items-start p-3 rounded-lg shadow-none border-border bg-card hover:bg-secondary transition-colors",
                             !seg.driverId &&
-                              "text-muted-foreground bg-secondary/50 border-dashed",
+                              "text-amber-600 bg-amber-500/5 border-amber-500/30 border-dashed hover:text-amber-700",
                           )}
                         >
                           {seg.driverId && availableDrivers ? (
@@ -358,7 +395,7 @@ export default function DispatchDialog({
                               </Badge>
                             </div>
                           ) : (
-                            <div className="flex items-center text-[10px] font-semibold text-muted-foreground mt-2">
+                            <div className="flex items-center text-[10px] font-semibold mt-2">
                               <UserCircle className="w-4 h-4 mr-2" /> Select
                               available driver...
                             </div>
@@ -452,9 +489,17 @@ export default function DispatchDialog({
             <Button
               variant="outline"
               onClick={handleAddSegment}
-              className="w-full border-dashed border-border text-muted-foreground hover:text-foreground bg-card hover:bg-secondary h-9 text-[10px] font-bold uppercase tracking-widest rounded-lg shadow-none transition-colors"
+              className={cn(
+                "w-full border-dashed text-muted-foreground bg-card hover:bg-secondary h-9 text-[10px] font-bold uppercase tracking-widest rounded-lg shadow-none transition-colors",
+                coverageStatus.hasGaps
+                  ? "border-amber-500/50 hover:text-amber-600"
+                  : "border-border hover:text-foreground",
+              )}
             >
-              <Plus className="w-3.5 h-3.5 mr-2" /> Split / Add Shift Segment
+              <Plus className="w-3.5 h-3.5 mr-2" />{" "}
+              {coverageStatus.hasGaps
+                ? "Add Relief Driver Segment"
+                : "Split Shift Segment"}
             </Button>
           </div>
         </ScrollArea>

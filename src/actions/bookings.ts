@@ -470,42 +470,57 @@ export async function updateBookingStatus(
 }
 
 // --- 4. DELETE ---
-export async function deleteBooking(id: string): Promise<ActionState> {
+export async function deleteBooking(id: string, reason?: string) {
   const supabase = await createClient();
 
-  const { error } = await supabase
-    .from("bookings")
-    .update({ is_archived: true })
-    .eq("booking_id", id);
+  // Call the atomic RPC transaction to handle the booking, driver schedules, payments, and logs safely
+  const { error } = await supabase.rpc("archive_booking_transaction", {
+    p_booking_id: id,
+    p_reason: reason || "Archived by Admin",
+  });
 
-  if (error) return { success: false, message: error.message };
+  if (error) {
+    console.error("Error archiving booking:", error);
+    return {
+      success: false,
+      message: error.message || "Failed to archive booking.",
+    };
+  }
 
+  // Revalidate the lists and the specific booking page to instantly update the UI
   revalidatePath("/admin/bookings");
-  return { success: true, message: "Booking archived" };
+  revalidatePath(`/admin/bookings/${id}`);
+
+  return {
+    success: true,
+    message: "Booking securely archived and resources freed.",
+  };
 }
 
-// udpate booking dates
-export async function updateBookingDates(
-  bookingId: string,
-  newEndDate: Date,
-): Promise<ActionState> {
+export async function updateBookingDates(bookingId: string, newEndDate: Date) {
   const supabase = await createClient();
 
-  const { error } = await supabase
-    .from("bookings")
-    .update({
-      end_date: newEndDate.toISOString(),
-      last_updated_at: new Date().toISOString(),
-    })
-    .eq("booking_id", bookingId);
+  const { error } = await supabase.rpc("update_booking_dates_transaction", {
+    p_booking_id: bookingId,
+    p_new_end_date: newEndDate.toISOString(),
+  });
 
   if (error) {
     console.error("Error updating booking dates:", error);
-    return { success: false, message: error.message };
+    // The RPC raises a specific error message if there is a car conflict
+    return {
+      success: false,
+      message: error.message || "Failed to update booking dates.",
+    };
   }
 
   revalidatePath("/admin/bookings");
-  return { success: true, message: "Booking dates updated" };
+  revalidatePath(`/admin/bookings/${bookingId}`);
+
+  return {
+    success: true,
+    message: "Booking dates and calculations updated successfully.",
+  };
 }
 
 // update buffer duration
@@ -790,6 +805,7 @@ export async function getBookingDetailsAction(bookingId: string) {
   }
 
   // Fetch the booking with all relational joins
+  // NEW: Added booking_driver_assignments to the query string
   const { data: booking, error } = await supabase
     .from("bookings")
     .select(
@@ -798,6 +814,13 @@ export async function getBookingDetailsAction(bookingId: string) {
       customer:users!user_id(user_id,full_name, email, phone_number),
       car:cars!car_id(brand, model, plate_number, car_images(image_url, is_primary)),
       driver:drivers!driver_id(driver_id, users(full_name)),
+      booking_driver_assignments (
+        assignment_id,
+        driver_id,
+        shift_start,
+        shift_end,
+        status
+      ),
       payments:booking_payments(amount, status),
       contracts:booking_contracts(is_signed),
       inspections:booking_inspections(type),
@@ -842,7 +865,11 @@ export async function getBookingDetailsAction(bookingId: string) {
     amount_paid: amountPaid,
     is_with_driver: booking.is_with_driver,
     notes: booking.notes || "",
-    logs: sortedLogs, // <-- NEW: Added to payload
+    logs: sortedLogs,
+
+    // <-- NEW: Passed to the payload so the frontend can detect Dispatch Gaps!
+    booking_driver_assignments: booking.booking_driver_assignments || [],
+
     customer: {
       id: booking.customer?.user_id,
       name: booking.customer?.full_name || "Unknown Customer",

@@ -16,7 +16,13 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { SchedulerEvent } from "@/components/scheduler/timeline-scheduler";
-import { ArrowRight, CalendarRange, Clock, CalendarIcon } from "lucide-react";
+import {
+  ArrowRight,
+  CalendarRange,
+  Clock,
+  CalendarIcon,
+  Info,
+} from "lucide-react";
 import {
   format,
   differenceInCalendarDays,
@@ -109,6 +115,7 @@ export default function ExtendBookingDialog({
                     variant="outline"
                     className={cn(
                       "w-full justify-start text-left font-semibold h-8 bg-secondary border-border text-[11px] text-foreground shadow-none hover:bg-background rounded-lg transition-colors",
+                      !newDate && "text-muted-foreground",
                     )}
                   >
                     <CalendarIcon className="mr-2 h-3.5 w-3.5 text-muted-foreground" />
@@ -193,6 +200,18 @@ export default function ExtendBookingDialog({
                   : `Shortening by ${Math.abs(diffDays)} Day(s)`}
             </Badge>
           </div>
+
+          {/* NEW: Financial Recalculation Warning */}
+          {diffDays !== 0 && (
+            <div className="flex items-start gap-2 bg-blue-500/10 border border-blue-500/20 p-2.5 rounded-lg mt-1">
+              <Info className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
+              <p className="text-[10px] font-medium text-blue-700 dark:text-blue-300 leading-tight">
+                The total bill will be automatically recalculated based on the
+                vehicle's locked-in base rate. You may need to collect
+                additional payment.
+              </p>
+            </div>
+          )}
         </div>
 
         <div className="p-3 bg-card border-t border-border flex justify-end gap-2 transition-colors">
