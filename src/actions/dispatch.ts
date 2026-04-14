@@ -17,43 +17,27 @@ export async function fetchDispatchAvailability(start: Date, end: Date) {
 export async function saveDispatchPlan(
   bookingId: string,
   segments: { driverId: string; start: Date; end: Date }[],
-): Promise<ActionState> {
+) {
   const supabase = await createClient();
 
-  // 1. Wipe existing SCHEDULED assignments for this booking to allow clean replacements
-  await supabase
-    .from("booking_driver_assignments")
-    .delete()
-    .eq("booking_id", bookingId)
-    .in("status", ["SCHEDULED"]);
-
-  // 2. Insert the new segmented shifts
-  const assignments = segments.map((seg) => ({
-    booking_id: bookingId,
-    driver_id: seg.driverId,
-    shift_start: seg.start.toISOString(),
-    shift_end: seg.end.toISOString(),
-    status: "SCHEDULED",
+  // Format the dates so Postgres JSON parser understands them perfectly
+  const formattedSegments = segments.map((seg) => ({
+    driverId: seg.driverId,
+    start: seg.start.toISOString(),
+    end: seg.end.toISOString(),
   }));
 
-  const { error } = await supabase
-    .from("booking_driver_assignments")
-    .insert(assignments);
+  const { error } = await supabase.rpc("save_dispatch_plan_transaction", {
+    p_booking_id: bookingId,
+    p_segments: formattedSegments, // Send as JSON array
+  });
+
   if (error) {
     console.error("Error saving dispatch plan:", error);
     return {
       success: false,
-      message: "Failed to save dispatch plan.",
+      message: error.message || "Failed to save dispatch plan via RPC.",
     };
-  }
-
-  // 3. Update the main booking table to reflect the primary driver (for legacy UI support)
-  // We just take the driver from the first segment
-  if (segments.length > 0) {
-    await supabase
-      .from("bookings")
-      .update({ driver_id: segments[0].driverId })
-      .eq("booking_id", bookingId);
   }
 
   return { success: true, message: "Dispatch plan saved successfully!" };

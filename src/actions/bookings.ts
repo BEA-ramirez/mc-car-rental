@@ -795,7 +795,7 @@ export async function getBookingDetailsAction(bookingId: string) {
     .select(
       `
       *,
-      customer:users!user_id(full_name, email, phone_number),
+      customer:users!user_id(user_id,full_name, email, phone_number),
       car:cars!car_id(brand, model, plate_number, car_images(image_url, is_primary)),
       driver:drivers!driver_id(driver_id, users(full_name)),
       payments:booking_payments(amount, status),
@@ -844,6 +844,7 @@ export async function getBookingDetailsAction(bookingId: string) {
     notes: booking.notes || "",
     logs: sortedLogs, // <-- NEW: Added to payload
     customer: {
+      id: booking.customer?.user_id,
       name: booking.customer?.full_name || "Unknown Customer",
       email: booking.customer?.email || "No Email",
       phone: booking.customer?.phone_number || "No Phone",
@@ -876,43 +877,32 @@ export async function cancelBookingAction(
   bookingId: string,
   reason: string,
   refundAction: "forfeit" | "refund",
-): Promise<ActionState> {
+  amountPaid: number,
+  refundMethod?: string,
+) {
   const supabase = await createClient();
 
-  // 1. Update the booking status
-  const { error: updateErr } = await supabase
-    .from("bookings")
-    .update({
-      booking_status: "CANCELLED",
-      notes: reason, // Save the reason in the notes
-    })
-    .eq("booking_id", bookingId);
-
-  if (updateErr) return { success: false, message: updateErr.message };
-
-  // 2. Handle the money logic if they chose to refund
-  if (refundAction === "refund") {
-    // NOTE: In a real app, you might create a negative charge or a specific refund transaction here.
-    // For now, we log the refund intent in the ledger.
-    await supabase.from("financial_transactions").insert({
-      transaction_type: "EXPENSE",
-      category: "REFUND_RECEIVED",
-      amount: 0, // You would calculate the actual paid amount to refund here
-      booking_id: bookingId,
-      notes: `Cancellation Refund Triggered. Reason: ${reason}`,
-      status: "PENDING", // Pending until admin actually sends money back
-    });
-  }
-
-  // 3. Log the cancellation
-  await supabase.from("booking_logs").insert({
-    booking_id: bookingId,
-    action_type: "CANCELLED",
-    message: `Booking cancelled by Admin. Downpayment: ${refundAction}. Reason: ${reason}`,
+  // Call the single database transaction
+  const { error } = await supabase.rpc("cancel_booking_transaction", {
+    p_booking_id: bookingId,
+    p_reason: reason,
+    p_refund_action: refundAction,
+    p_amount_paid: amountPaid,
+    p_refund_method: refundAction === "refund" ? refundMethod || "Cash" : null,
   });
 
+  if (error) {
+    console.error("Transaction Error:", error);
+    return {
+      success: false,
+      message: error.message || "Failed to cancel booking via RPC.",
+    };
+  }
+
+  // Revalidate the UI so the frontend reflects the cancelled status instantly
   revalidatePath("/admin/bookings");
   revalidatePath(`/admin/bookings/${bookingId}`);
+
   return { success: true, message: "Booking cancelled successfully." };
 }
 

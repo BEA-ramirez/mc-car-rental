@@ -143,11 +143,22 @@ export const useBookings = () => {
       bookingId,
       reason,
       refundAction,
+      amountPaid,
+      refundMethod,
     }: {
       bookingId: string;
       reason: string;
       refundAction: "forfeit" | "refund";
-    }) => cancelBookingAction(bookingId, reason, refundAction),
+      amountPaid: number;
+      refundMethod?: string;
+    }) =>
+      cancelBookingAction(
+        bookingId,
+        reason,
+        refundAction,
+        amountPaid,
+        refundMethod,
+      ),
     onSuccess: (data) => {
       if (data.success) {
         toast.success(data.message);

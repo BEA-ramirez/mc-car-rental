@@ -6,7 +6,6 @@ import { format } from "date-fns";
 import {
   ArrowLeft,
   Phone,
-  MessageSquare,
   Car,
   User,
   MapPin,
@@ -24,11 +23,20 @@ import {
   Loader2,
   Image as ImageIcon,
   CheckSquare,
+  Mail,
+  Calendar as CalendarIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { toast } from "sonner";
 
 // --- EXISTING COMPONENT IMPORTS ---
@@ -38,6 +46,7 @@ import ExtendBookingDialog from "@/components/bookings/extend-booking-dialog";
 import DispatchDialog from "@/components/bookings/dispatch-dialog";
 import ContractPreviewModal from "@/components/documents/contract-preview-modal";
 import InspectionExecutionModal from "@/components/documents/inspection-execution-modal";
+import MessageModal from "@/components/clients/message-modal";
 
 import {
   useBookingDetails,
@@ -55,7 +64,8 @@ export default function AdminBookingDetailsPage() {
 
   // --- CORE DATA HOOKS ---
   const { data: booking, isLoading, isError } = useBookingDetails(bookingId);
-  const { updateNote, isUpdatingNote } = useBookings();
+  // NOTE: Destructuring `updateBookingStatus` here. Make sure your hook exports this mutation!
+  const { updateNote, isUpdatingNote, updateStatus } = useBookings();
   const {
     contract,
     inspections,
@@ -72,6 +82,7 @@ export default function AdminBookingDetailsPage() {
   const [isCancelOpen, setIsCancelOpen] = useState(false);
   const [isExtendOpen, setIsExtendOpen] = useState(false);
   const [isDispatchOpen, setIsDispatchOpen] = useState(false);
+  const [isMessageModalOpen, setIsMessageModalOpen] = useState(false);
   const [financeModal, setFinanceModal] = useState<{
     isOpen: boolean;
     action: "none" | "payment" | "charge" | "refund";
@@ -79,8 +90,8 @@ export default function AdminBookingDetailsPage() {
 
   // DOC MODAL STATES
   const [isContractOpen, setIsContractOpen] = useState(false);
-  const [isInspectionExecOpen, setIsInspectionExecOpen] = useState(false); // Pre-trip
-  const [isPostTripExecOpen, setIsPostTripExecOpen] = useState(false); // Post-trip
+  const [isInspectionExecOpen, setIsInspectionExecOpen] = useState(false);
+  const [isPostTripExecOpen, setIsPostTripExecOpen] = useState(false);
 
   // NOTE STATE
   const [adminNote, setAdminNote] = useState("");
@@ -89,6 +100,23 @@ export default function AdminBookingDetailsPage() {
   useEffect(() => {
     if (booking?.notes) setAdminNote(booking.notes);
   }, [booking?.notes]);
+
+  // --- QUICK STATUS UPDATE HANDLER ---
+  const handleStatusChange = async (newStatus: string) => {
+    if (!updateStatus) {
+      toast.error("Status update mutation not wired up in hook.");
+      return;
+    }
+    try {
+      await updateStatus({
+        id: booking?.id,
+        status: newStatus.toLowerCase(),
+      });
+      toast.success(`Booking status updated to ${newStatus}`);
+    } catch (error: any) {
+      toast.error(error.message || "Failed to update status");
+    }
+  };
 
   // --- EARLY RETURNS ---
   if (isLoading) {
@@ -130,7 +158,6 @@ export default function AdminBookingDetailsPage() {
     (i: any) => i.type === "Post-trip",
   );
 
-  // Safely extract categories and blueprint from the new Master Object format
   const templateCategories = Array.isArray(inspectionTemplate)
     ? inspectionTemplate
     : inspectionTemplate?.categories || [];
@@ -139,7 +166,6 @@ export default function AdminBookingDetailsPage() {
     ? inspectionTemplate?.blueprint_url
     : undefined;
 
-  // Fallback checklist
   const draftChecklist = templateCategories.map((cat: any) => ({
     categoryId: cat.id,
     categoryName: cat.name,
@@ -174,45 +200,78 @@ export default function AdminBookingDetailsPage() {
 
   return (
     <div className="min-h-screen bg-background text-foreground font-sans flex flex-col transition-colors duration-300">
-      {/* --- TOP HEADER --- */}
-      <header className="px-4 py-3 sm:px-6 shrink-0 flex justify-between items-center border-b border-border bg-card">
+      {/* --- TOP HEADER (Responsive) --- */}
+      <header className="px-4 py-3 sm:px-6 shrink-0 flex flex-col md:flex-row md:justify-between md:items-center gap-4 border-b border-border bg-card">
         <div className="flex items-center gap-4">
           <button
             onClick={() => router.back()}
-            className="p-1.5 bg-secondary border border-border rounded text-muted-foreground hover:text-primary transition-colors"
+            className="p-1.5 bg-secondary border border-border rounded text-muted-foreground hover:text-primary transition-colors shrink-0"
           >
             <ArrowLeft className="w-4 h-4" />
           </button>
-          <div>
+          <div className="flex flex-col">
             <div className="text-[10px] font-semibold text-muted-foreground flex items-center gap-1.5 mb-0.5">
               <span>Bookings</span> <span className="opacity-50">/</span>{" "}
               <span className="text-primary">Details</span>
             </div>
-            <div className="flex items-center gap-3">
-              <h1 className="text-lg font-black tracking-tighter uppercase">
+            <div className="flex items-center gap-3 flex-wrap">
+              <h1 className="text-lg md:text-xl font-black tracking-tighter uppercase">
                 {booking.id.split("-")[0]}
               </h1>
-              <Badge
-                variant="outline"
-                className={cn(
-                  "text-[9px] font-bold uppercase tracking-widest px-2",
-                  booking.status === "ongoing"
-                    ? "bg-amber-500/10 text-amber-500 border-amber-500/20"
-                    : "bg-primary/10 text-primary border-primary/20",
-                )}
+
+              {/* INTERACTIVE STATUS DROPDOWN */}
+              <Select
+                value={booking.status.toUpperCase()}
+                onValueChange={handleStatusChange}
               >
-                {booking.status}
-              </Badge>
+                <SelectTrigger
+                  className={cn(
+                    "h-7 text-[10px] font-bold uppercase tracking-widest px-3 border border-border shadow-none",
+                    booking.status === "ongoing"
+                      ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20"
+                      : booking.status === "confirmed"
+                        ? "bg-amber-500/10 text-amber-600 border-amber-500/20"
+                        : booking.status === "completed"
+                          ? "bg-secondary text-muted-foreground"
+                          : "bg-primary/10 text-primary border-primary/20",
+                  )}
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="PENDING" className="text-xs font-bold">
+                    PENDING
+                  </SelectItem>
+                  <SelectItem
+                    value="CONFIRMED"
+                    className="text-xs font-bold text-amber-600"
+                  >
+                    CONFIRMED
+                  </SelectItem>
+                  <SelectItem
+                    value="ONGOING"
+                    className="text-xs font-bold text-emerald-600"
+                  >
+                    ONGOING
+                  </SelectItem>
+                  <SelectItem
+                    value="COMPLETED"
+                    className="text-xs font-bold text-muted-foreground"
+                  >
+                    COMPLETED
+                  </SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <Button
             variant="outline"
             size="sm"
             onClick={() => setIsExtendOpen(true)}
-            className="h-8 text-[10px] font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground"
+            className="h-8 text-[10px] font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground flex-1 md:flex-none"
           >
             <CalendarRange className="w-3.5 h-3.5 mr-2" /> Modify Dates
           </Button>
@@ -220,17 +279,17 @@ export default function AdminBookingDetailsPage() {
             onClick={() => generateInvoicePDF(folio)}
             variant="outline"
             size="sm"
-            className="h-8 text-[10px] font-bold uppercase tracking-widest"
+            className="h-8 text-[10px] font-bold uppercase tracking-widest flex-1 md:flex-none"
           >
-            <Printer className="w-3.5 h-3.5 mr-2" /> Print Invoice
+            <Printer className="w-3.5 h-3.5 mr-2" /> Print
           </Button>
           <Button
             size="sm"
             variant="destructive"
             onClick={() => setIsCancelOpen(true)}
-            className="h-8 text-[10px] font-bold uppercase tracking-widest bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white border border-red-500/20"
+            className="h-8 text-[10px] font-bold uppercase tracking-widest bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white border border-red-500/20 flex-1 md:flex-none"
           >
-            <XCircle className="w-3.5 h-3.5 mr-2" /> Cancel Booking
+            <XCircle className="w-3.5 h-3.5 mr-2" /> Cancel
           </Button>
         </div>
       </header>
@@ -239,10 +298,10 @@ export default function AdminBookingDetailsPage() {
       <main className="flex-1 overflow-y-auto p-4 sm:px-6 custom-scrollbar">
         <div className="max-w-[1600px] mx-auto flex flex-col gap-4">
           {/* TOP SECTION: COLUMNS */}
-          <div className="grid grid-cols-1 xl:grid-cols-12 gap-4">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
             {/* === LEFT COLUMN: THE ENTITIES === */}
-            <div className="xl:col-span-3 flex flex-col gap-4">
-              {/* Customer Card */}
+            <div className="lg:col-span-4 xl:col-span-3 flex flex-col gap-4">
+              {/* Customer Card (Updated with Phone/Email) */}
               <div className="bg-card border border-border rounded-xl p-4 shadow-sm shrink-0">
                 <h3 className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest mb-3">
                   Customer
@@ -251,42 +310,45 @@ export default function AdminBookingDetailsPage() {
                   <div className="w-10 h-10 rounded-full bg-secondary border border-border flex items-center justify-center shrink-0">
                     <User className="w-5 h-5 text-muted-foreground" />
                   </div>
-                  <div>
-                    <p className="text-xs font-bold">{booking.customer.name}</p>
-                    <p className="text-[10px] font-medium text-muted-foreground">
+                  <div className="overflow-hidden">
+                    <p className="text-xs font-bold truncate">
+                      {booking.customer.name}
+                    </p>
+                    <p className="text-[10px] font-medium text-muted-foreground truncate">
                       {booking.customer.email}
+                    </p>
+                    <p className="text-[10px] font-medium text-muted-foreground truncate">
+                      {booking.customer.phone || "No phone provided"}
                     </p>
                   </div>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex flex-col gap-2">
                   <Button
                     variant="outline"
-                    className="flex-1 h-8 text-[10px] font-bold uppercase tracking-widest bg-secondary"
+                    className="w-full h-8 text-[10px] font-bold uppercase tracking-widest bg-secondary hover:bg-secondary/80"
+                    onClick={() => setIsMessageModalOpen(true)}
                   >
-                    <Phone className="w-3 h-3 mr-1.5" /> Call
-                  </Button>
-                  <Button
-                    variant="outline"
-                    className="flex-1 h-8 text-[10px] font-bold uppercase tracking-widest bg-secondary"
-                  >
-                    <MessageSquare className="w-3 h-3 mr-1.5" /> SMS
+                    <Mail className="w-3 h-3 mr-1.5" /> Send Email
                   </Button>
                 </div>
               </div>
 
-              {/* Vehicle Card */}
-              <div className="bg-card border border-border rounded-xl p-4 h-[160px] shadow-sm shrink-0">
-                <h3 className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest mb-3">
-                  Assigned Asset
-                </h3>
-                <div className="flex gap-3">
+              {/* Vehicle Card (Updated with Dates) */}
+              <div className="bg-card border border-border rounded-xl p-4 shadow-sm shrink-0">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest">
+                    Assigned Asset
+                  </h3>
+                </div>
+
+                <div className="flex gap-3 items-center">
                   <img
                     src={booking.car.image}
                     alt="Car"
-                    className="w-16 h-12 object-cover rounded border border-border"
+                    className="w-16 h-12 object-cover rounded border border-border shrink-0"
                   />
-                  <div>
-                    <p className="text-xs font-bold uppercase">
+                  <div className="overflow-hidden">
+                    <p className="text-xs font-bold uppercase truncate">
                       {booking.car.brand} {booking.car.model}
                     </p>
                     <p className="text-[10px] font-mono text-primary bg-primary/10 px-1.5 py-0.5 rounded border border-primary/20 mt-1 inline-block">
@@ -294,51 +356,75 @@ export default function AdminBookingDetailsPage() {
                     </p>
                   </div>
                 </div>
+                {/* Booking Dates Banner */}
+                <div className=" bg-secondary/40 border border-border rounded-md p-2 mt-3 flex items-center justify-center gap-2 text-center">
+                  <CalendarIcon className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                  <span className="text-[9px] font-bold text-foreground uppercase tracking-widest leading-tight">
+                    {format(new Date(booking.start_date), "MMM dd")} -{" "}
+                    {format(new Date(booking.end_date), "MMM dd, yyyy")}
+                  </span>
+                </div>
               </div>
 
               {/* Driver Card */}
-              {booking.is_with_driver && (
-                <div className="bg-card border border-border rounded-xl p-4 shadow-sm shrink-0">
-                  <h3 className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest mb-3">
-                    Chauffeur / Driver
-                  </h3>
-                  {booking.driver ? (
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-secondary border border-border flex items-center justify-center shrink-0">
-                        <UserCircle className="w-5 h-5 text-primary" />
-                      </div>
-                      <div className="flex-1">
-                        <p className="text-xs font-bold">
-                          {booking.driver.name}
-                        </p>
-                        <Button
-                          variant="link"
-                          onClick={() => setIsDispatchOpen(true)}
-                          className="h-5 p-0 text-[10px] text-primary"
-                        >
-                          Change Driver
-                        </Button>
-                      </div>
+              <div className="bg-card border border-border rounded-xl p-4 shadow-sm shrink-0">
+                <h3 className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest mb-3">
+                  Chauffeur / Driver
+                </h3>
+
+                {booking.driver ? (
+                  /* STATE 1: Driver is assigned */
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-secondary border border-border flex items-center justify-center shrink-0">
+                      <UserCircle className="w-5 h-5 text-primary" />
                     </div>
-                  ) : (
-                    <div className="text-center p-3 border border-dashed border-border rounded-lg bg-secondary/30">
-                      <p className="text-[10px] font-medium text-muted-foreground mb-2">
-                        No driver assigned yet.
+                    <div className="flex-1 overflow-hidden">
+                      <p className="text-xs font-bold truncate">
+                        {booking.driver.name}
                       </p>
                       <Button
+                        variant="link"
                         onClick={() => setIsDispatchOpen(true)}
-                        size="sm"
-                        className="h-7 text-[9px] font-bold uppercase tracking-widest w-full"
+                        className="h-5 p-0 text-[10px] text-primary"
                       >
-                        Assign Driver
+                        Change Driver
                       </Button>
                     </div>
-                  )}
-                </div>
-              )}
+                  </div>
+                ) : booking.is_with_driver ? (
+                  /* STATE 2: Customer requested a driver, but none is assigned yet */
+                  <div className="text-center p-3 border border-dashed border-destructive/30 rounded-lg bg-destructive/5">
+                    <p className="text-[10px] font-bold text-destructive mb-2 flex items-center justify-center gap-1.5">
+                      <AlertCircle className="w-3.5 h-3.5" /> Dispatch Needed!
+                    </p>
+                    <Button
+                      onClick={() => setIsDispatchOpen(true)}
+                      size="sm"
+                      className="h-7 text-[9px] font-bold uppercase tracking-widest w-full bg-destructive text-destructive-foreground hover:bg-destructive/90 shadow-none"
+                    >
+                      Assign Driver Now
+                    </Button>
+                  </div>
+                ) : (
+                  /* STATE 3: Self-Drive booking (Default) */
+                  <div className="text-center p-3 border border-dashed border-border rounded-lg bg-secondary/30">
+                    <p className="text-[10px] font-medium text-muted-foreground mb-2">
+                      Currently a self-drive booking.
+                    </p>
+                    <Button
+                      onClick={() => setIsDispatchOpen(true)}
+                      size="sm"
+                      variant="outline"
+                      className="h-7 text-[9px] font-bold uppercase tracking-widest w-full bg-card hover:bg-secondary"
+                    >
+                      Upgrade to Chauffeur
+                    </Button>
+                  </div>
+                )}
+              </div>
 
-              {/* Internal Notes (Constrained Height to align with right side logs) */}
-              <div className="bg-card border border-border rounded-xl p-4 shadow-sm flex flex-col h-[280px] shrink-0">
+              {/* Internal Notes */}
+              <div className="bg-card border border-border rounded-xl p-4 shadow-sm flex flex-col flex-1 max-h-[250px] shrink-0">
                 <h3 className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest mb-3 shrink-0">
                   Internal Notes
                 </h3>
@@ -362,7 +448,7 @@ export default function AdminBookingDetailsPage() {
             </div>
 
             {/* === RIGHT COLUMN: WORKFLOWS & FINANCE === */}
-            <div className="xl:col-span-9 flex flex-col gap-4">
+            <div className="lg:col-span-8 xl:col-span-9 flex flex-col gap-4">
               {/* BIG ACTION BANNER */}
               {booking.status === "confirmed" && (
                 <div className="bg-primary/10 border border-primary/30 rounded-xl p-6 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-sm shrink-0">
@@ -381,7 +467,7 @@ export default function AdminBookingDetailsPage() {
                     onClick={handleStartHandoverClick}
                     disabled={isStartingTrip}
                     size="lg"
-                    className="shrink-0 bg-primary text-primary-foreground font-black uppercase tracking-widest text-[11px] h-12 px-8 shadow-sm transition-all hover:scale-[1.02]"
+                    className="shrink-0 w-full sm:w-auto bg-primary text-primary-foreground font-black uppercase tracking-widest text-[11px] h-12 px-8 shadow-sm transition-all hover:scale-[1.02]"
                   >
                     {isStartingTrip ? (
                       <Loader2 className="w-4 h-4 animate-spin" />
@@ -393,8 +479,8 @@ export default function AdminBookingDetailsPage() {
               )}
 
               {/* STRETCHED GRID: FINANCE & LOGISTICS */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-stretch">
-                {/* Financial Ledger (h-full stretches to match logistics) */}
+              <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 items-stretch">
+                {/* Financial Ledger */}
                 <div className="bg-card border border-border rounded-xl p-5 shadow-sm h-full flex flex-col justify-between">
                   <div>
                     <div className="flex justify-between items-center mb-4 pb-3 border-b border-border">
@@ -461,7 +547,7 @@ export default function AdminBookingDetailsPage() {
                   </div>
                 </div>
 
-                {/* Logistics & Paperwork (h-full stretches to match finance) */}
+                {/* Logistics & Paperwork */}
                 <div className="bg-card border border-border rounded-xl p-5 shadow-sm h-full flex flex-col justify-between">
                   <div>
                     <h3 className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest mb-4 pb-3 border-b border-border flex items-center justify-between">
@@ -469,7 +555,6 @@ export default function AdminBookingDetailsPage() {
                     </h3>
 
                     <div className="space-y-4 mb-4">
-                      {/* Route */}
                       <div className="flex items-start gap-3">
                         <MapPin className="w-4 h-4 text-muted-foreground mt-0.5" />
                         <div>
@@ -483,7 +568,6 @@ export default function AdminBookingDetailsPage() {
                         </div>
                       </div>
 
-                      {/* --- DYNAMIC CONTRACT ROW --- */}
                       {!contract ? (
                         <div className="flex items-center justify-between p-3 border border-dashed border-border rounded-lg bg-secondary/10">
                           <div className="flex items-center gap-2">
@@ -543,7 +627,6 @@ export default function AdminBookingDetailsPage() {
                   </div>
 
                   <div className="space-y-3 pt-4 border-t border-border">
-                    {/* --- PRE-TRIP INSPECTION ROW --- */}
                     <div
                       onClick={() => setIsInspectionExecOpen(true)}
                       className="flex items-center justify-between p-3 border border-border rounded-lg bg-secondary/30 cursor-pointer hover:border-primary/50 hover:bg-primary/5 transition-all"
@@ -567,7 +650,6 @@ export default function AdminBookingDetailsPage() {
                       </Badge>
                     </div>
 
-                    {/* --- POST-TRIP INSPECTION ROW --- */}
                     <div
                       onClick={() => setIsPostTripExecOpen(true)}
                       className="flex items-center justify-between p-3 border border-border rounded-lg bg-secondary/30 cursor-pointer hover:border-primary/50 hover:bg-primary/5 transition-all"
@@ -594,8 +676,8 @@ export default function AdminBookingDetailsPage() {
                 </div>
               </div>
 
-              {/* --- AUDIT TIMELINE (Strict Height to Match Internal Notes) --- */}
-              <div className="bg-card border border-border rounded-xl p-5 shadow-sm flex flex-col h-[280px] shrink-0 ">
+              {/* --- AUDIT TIMELINE --- */}
+              <div className="bg-card border border-border rounded-xl p-5 shadow-sm flex flex-col flex-1 max-h-[320px]">
                 <h3 className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest mb-4 shrink-0 flex items-center justify-between pb-3 border-b border-border">
                   <span>Audit & Activity Log</span>
                   <Badge variant="secondary" className="text-[9px] font-mono">
@@ -645,7 +727,6 @@ export default function AdminBookingDetailsPage() {
                 Documents
               </h3>
 
-              {/* Native Horizontal Scroll Container */}
               <div className="flex overflow-x-auto gap-4 pb-4 custom-scrollbar snap-x">
                 {folio.payments.map((payment: any, index: number) => (
                   <div
@@ -718,6 +799,14 @@ export default function AdminBookingDetailsPage() {
         defaultAction={financeModal.action}
       />
 
+      <MessageModal
+        isOpen={isMessageModalOpen}
+        onClose={() => setIsMessageModalOpen(false)}
+        userId={booking.customer.id}
+        recipientName={booking.customer.name}
+        recipientEmail={booking.customer.email}
+      />
+
       <ContractPreviewModal
         isOpen={isContractOpen}
         onClose={() => setIsContractOpen(false)}
@@ -725,7 +814,7 @@ export default function AdminBookingDetailsPage() {
           id: bookingId,
           customerName: booking.customer.name,
           vehicle: `${booking.car.brand} ${booking.car.model}`,
-          rentalDates: `${format(booking.start_date, "MMM dd")} - ${format(booking.end_date, "MMM dd")}`,
+          rentalDates: `${format(new Date(booking.start_date), "MMM dd")} - ${format(new Date(booking.end_date), "MMM dd")}`,
           status: contract?.is_signed ? "SIGNED" : "UNSIGNED",
           htmlContent: contract?.contract_html,
           signatureUrl: contract?.customer_signature_url,

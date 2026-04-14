@@ -20,7 +20,6 @@ import {
   DialogContent,
   DialogTitle,
   DialogDescription,
-  DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -40,6 +39,7 @@ import {
   CommandList,
 } from "@/components/ui/command";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 import { useDriverDispatch } from "../../../hooks/use-drivers";
 import { SchedulerEvent } from "../scheduler/timeline-scheduler";
@@ -62,13 +62,11 @@ export default function DispatchDialog({
 }) {
   const bookingStart = booking ? new Date(booking.start) : new Date();
   const bookingEnd = booking ? new Date(booking.end) : new Date();
-  // We use differenceInDays + 1 to count inclusive days (e.g. Mar 10 to Mar 12 is 3 days)
   const totalBookingDays = differenceInDays(bookingEnd, bookingStart) + 1;
 
   const [segments, setSegments] = useState<ShiftSegment[]>([]);
   const [comboboxOpen, setComboboxOpen] = useState<Record<string, boolean>>({});
 
-  // 1. USE THE REAL HOOK
   const {
     availableDrivers,
     isLoadingAvailability,
@@ -79,7 +77,6 @@ export default function DispatchDialog({
     open ? bookingEnd : undefined,
   );
 
-  // 2. RESET STATE ON OPEN
   useEffect(() => {
     if (open && booking) {
       setSegments([
@@ -93,7 +90,6 @@ export default function DispatchDialog({
     }
   }, [open, booking]);
 
-  // 3. COVERAGE MATH
   const coverageStatus = useMemo(() => {
     let coveredDays = 0;
     let allAssigned = true;
@@ -112,7 +108,6 @@ export default function DispatchDialog({
     };
   }, [segments, totalBookingDays]);
 
-  // 4. SEGMENT HANDLERS
   const handleAddSegment = () => {
     const lastSeg = segments[segments.length - 1];
     const newStart = lastSeg ? addDays(lastSeg.end, 1) : bookingStart;
@@ -133,11 +128,8 @@ export default function DispatchDialog({
     );
   };
 
-  // 5. CONFLICT CHECKER
   const checkDriverConflict = (driver: any, segStart: Date, segEnd: Date) => {
     if (!driver.conflicts || driver.conflicts.length === 0) return false;
-
-    // Check if the driver has any shifts that overlap with this segment's dates
     return driver.conflicts.some((c: any) => {
       const cStart = new Date(c.start);
       const cEnd = new Date(c.end);
@@ -145,11 +137,10 @@ export default function DispatchDialog({
     });
   };
 
-  // 6. SUBMIT TO DB
+  // UPDATED: Proper async error handling
   const handleConfirmSave = async () => {
     if (!booking) return;
 
-    // Format segments exactly as the Server Action expects
     const validSegments = segments
       .filter((s) => s.driverId !== null)
       .map((s) => ({
@@ -158,8 +149,15 @@ export default function DispatchDialog({
         end: s.end,
       }));
 
-    await saveDispatchPlan({ bookingId: booking.id, segments: validSegments });
-    onOpenChange(false);
+    try {
+      await saveDispatchPlan({
+        bookingId: booking.id,
+        segments: validSegments,
+      });
+      onOpenChange(false);
+    } catch (error: any) {
+      toast.error(error.message || "Failed to save driver dispatch plan.");
+    }
   };
 
   if (!booking) return null;
@@ -467,6 +465,7 @@ export default function DispatchDialog({
             variant="outline"
             size="sm"
             onClick={() => onOpenChange(false)}
+            disabled={isSavingDispatch}
             className="h-8 text-[11px] font-semibold rounded-lg shadow-none border-border bg-card text-foreground hover:bg-secondary transition-colors"
           >
             Cancel
