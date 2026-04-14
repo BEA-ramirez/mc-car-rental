@@ -1,114 +1,80 @@
 "use client";
 
-import React from "react";
-import TimelineScheduler, {
-  SchedulerEvent,
-  SchedulerResource,
-} from "@/components/scheduler/timeline-scheduler"; // Ensure this path matches where you saved the latest component
+import React, { useMemo } from "react";
+import OperationsCalendar, {
+  OpsEvent,
+} from "@/components/scheduler/operations-calendar";
+// Adjust this import path depending on where this page file is located in your structure:
+import { useBookings } from "../../../../hooks/use-bookings";
+import { Loader2, AlertCircle } from "lucide-react";
 
-// 1. Define your Units (The Sidebar Rows)
-const MOCK_RESOURCES: SchedulerResource[] = [
-  {
-    id: "c1",
-    title: "Toyota Vios 2024",
-    subtitle: "ABC-123",
-    tags: ["Sedan", "Auto"],
-    image: "/cars/vios.jpg", // Optional
-  },
-  {
-    id: "c2",
-    title: "Mitsubishi Mirage",
-    subtitle: "XYZ-789",
-    tags: ["Hatchback", "Manual"],
-  },
-  {
-    id: "c3",
-    title: "Ford Everest",
-    subtitle: "SUV-999",
-    tags: ["SUV", "Diesel", "4x4"],
-  },
-  {
-    id: "c4",
-    title: "Nissan Urvan",
-    subtitle: "VAN-111",
-    tags: ["Van", "Manual", "15-Seater"],
-  },
-];
+export default function CalendarPage() {
+  const { bookings: rawBookings, isLoading, isError } = useBookings(); // Note: Changed bookings to data if using raw React Query
 
-// 2. Define your Bookings (Linked to Units via resourceId)
-const MOCK_EVENTS: SchedulerEvent[] = [
-  {
-    id: "1",
-    resourceId: "c1",
-    start: new Date(2026, 1, 18, 9, 30),
-    end: new Date(2026, 1, 20, 14, 0),
-    title: "John Doe",
-    subtitle: "Confirmed",
-    status: "confirmed",
-    // --- NEW FIELDS ---
-    amount: 4500,
-    paymentStatus: "Paid",
-    customerPhone: "0917-123-4567",
-    customerEmail: "john@gmail.com",
-    pickupLocation: "Ormoc City Center",
-    dropoffLocation: "Tacloban Airport",
-  },
-  {
-    id: "2",
-    resourceId: "c2", // Linked to Mirage
-    start: new Date(2026, 1, 19, 10, 0),
-    end: new Date(2026, 1, 19, 18, 0),
-    title: "Maria Clara",
-    subtitle: "Pending Payment",
-    status: "pending", // Triggers amber color
-    // --- NEW FIELDS ---
-    amount: 3000,
-    paymentStatus: "Unpaid",
-    customerPhone: "0928-765-4321",
-    customerEmail: "maria.clara@gmail.com",
-    pickupLocation: "Tacloban Downtown",
-    dropoffLocation: "San Juanico Bridge",
-  },
-  {
-    id: "3",
-    resourceId: "c3", // Linked to Everest
-    start: new Date(2026, 1, 17, 8, 0),
-    end: new Date(2026, 1, 22, 20, 0),
-    title: "Tech Corp Inc.",
-    subtitle: "Long Term Rental",
-    status: "confirmed",
-    // --- NEW FIELDS ---
-    amount: 25000,
-    paymentStatus: "Partial",
-    customerPhone: "0917-555-1234",
-    customerEmail: "tech.corp@gmail.com",
-    pickupLocation: "Ormoc Port",
-    dropoffLocation: "Tacloban City Hall",
-  },
-];
+  const transformedBookings: OpsEvent[] = useMemo(() => {
+    if (!rawBookings) return [];
 
-function CalendarPage() {
+    return (
+      rawBookings
+        // 1. FILTER OUT UNWANTED STATUSES EARLY
+        .filter((booking: any) => {
+          const rawStatus = booking.booking_status || booking.status || "";
+          const normalized = rawStatus.toUpperCase();
+          return ["CONFIRMED", "ONGOING", "COMPLETED"].includes(normalized);
+        })
+        // 2. MAP TO OPS EVENT SHAPE
+        .map((booking: any) => {
+          const car = booking.car || booking.cars || {};
+          const customer = booking.customer || booking.users || {};
+          const normalizedStatus = (
+            booking.booking_status || booking.status
+          ).toUpperCase();
+
+          return {
+            id: booking.booking_id || booking.id,
+            carBrand: car.brand || "Unknown",
+            carModel: car.model || "Vehicle",
+            plate: car.plate_number || car.plate || "N/A",
+            customerName: customer.full_name || customer.name || "Guest User",
+            startDate: new Date(booking.start_date),
+            endDate: new Date(booking.end_date),
+            status: normalizedStatus as OpsEvent["status"],
+          };
+        })
+    );
+  }, [rawBookings]);
+
+  // --- LOADING STATE ---
+  if (isLoading) {
+    return (
+      <div className="h-[calc(100vh-100px)] w-full flex flex-col items-center justify-center bg-slate-50/50 dark:bg-background">
+        <Loader2 className="w-8 h-8 animate-spin text-primary mb-4" />
+        <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+          Loading Operations Dispatch...
+        </p>
+      </div>
+    );
+  }
+
+  // --- ERROR STATE ---
+  if (isError) {
+    return (
+      <div className="h-[calc(100vh-100px)] w-full flex flex-col items-center justify-center bg-slate-50/50 dark:bg-background">
+        <AlertCircle className="w-12 h-12 text-destructive/50 mb-4" />
+        <h2 className="text-lg font-bold text-foreground">
+          Failed to load calendar data
+        </h2>
+        <p className="text-sm text-muted-foreground mt-2">
+          Please check your database connection.
+        </p>
+      </div>
+    );
+  }
+
+  // --- MAIN RENDER ---
   return (
-    // Adjust height calculation based on your layout header/sidebar
-    <div className="h-[calc(100vh-100px)] p-6 bg-slate-50/50">
-      <TimelineScheduler
-        resources={MOCK_RESOURCES}
-        events={MOCK_EVENTS}
-        // 1. Triggered when you click "Edit Booking" inside the side panel
-        onEditClick={(event) => {
-          console.log("Open Edit Modal for:", event);
-          // router.push(`/admin/bookings/${event.id}/edit`);
-        }}
-        // 2. Triggered when you click an empty space on the grid
-        onEmptyClick={(resourceId, date) => {
-          console.log(
-            `Create new booking for Car ${resourceId} starting at ${date}`,
-          );
-          // router.push(`/admin/bookings/new?carId=${resourceId}&date=${date.toISOString()}`);
-        }}
-      />
+    <div className="h-[calc(100vh-100px)] p-4 sm:p-6 bg-slate-50/50 dark:bg-background">
+      <OperationsCalendar bookings={transformedBookings} />
     </div>
   );
 }
-
-export default CalendarPage;
