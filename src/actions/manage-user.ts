@@ -170,7 +170,7 @@ export async function createClientAction(
     const full_name =
       `${profileData.first_name || ""} ${profileData.last_name || ""}`.trim();
 
-    // Auth Creation
+    // 1. Auth Creation
     const { data: authUser, error: authError } =
       await supabaseAdmin.auth.admin.createUser({
         email: email!,
@@ -184,6 +184,11 @@ export async function createClientAction(
 
     // Post-Creation Operations (Wrapped for Rollback)
     try {
+      // --- NEW: Sync Auth Metadata for RLS ---
+      await supabaseAdmin.auth.admin.updateUserById(newUserId, {
+        app_metadata: { role: profileData.role },
+      });
+
       // Avatar Upload
       let profile_picture_url = undefined;
       if (rawData.files.profile_picture_url) {
@@ -230,6 +235,28 @@ export async function createClientAction(
         .eq("user_id", newUserId);
 
       if (dbError) throw dbError;
+
+      // --- NEW: Auto-Generate Operational Profiles ---
+      if (profileData.role === "driver") {
+        const { error: driverError } = await supabaseAdmin
+          .from("drivers")
+          .insert({
+            user_id: newUserId,
+            driver_status: "Available",
+            is_verified: true, // <-- Auto-verified by Admin
+          });
+        if (driverError) throw driverError;
+      } else if (profileData.role === "car_owner") {
+        const { error: ownerError } = await supabaseAdmin
+          .from("car_owner")
+          .insert({
+            user_id: newUserId,
+            business_name: full_name || "Pending Business Name",
+            revenue_share_percentage: 70,
+            verification_status: "verified", // <-- Auto-verified by Admin
+          });
+        if (ownerError) throw ownerError;
+      }
     } catch (innerError: any) {
       // ORPHAN CLEANUP ROLLBACK
       console.error(
@@ -350,6 +377,60 @@ export async function updateClientAction(
         success: false,
         message: "Failed to update user profile.",
       };
+    }
+
+    // --- NEW: Sync Auth Metadata for RLS ---
+    await supabaseAdmin.auth.admin.updateUserById(user_id, {
+      app_metadata: { role: profileData.role },
+      user_metadata: { role: profileData.role }, // Keep user_metadata matching
+    });
+
+    // --- NEW: Ensure Operational Profiles Exist if Role Changed ---
+    if (profileData.role === "driver") {
+      const { data: existingDriver } = await supabaseAdmin
+        .from("drivers")
+        .select("driver_id")
+        .eq("user_id", user_id)
+        .single();
+
+      if (!existingDriver) {
+        // Create new auto-verified driver
+        await supabaseAdmin
+          .from("drivers")
+          .insert({
+            user_id: user_id,
+            driver_status: "Available",
+            is_verified: true,
+          });
+      } else {
+        // If they already exist (e.g., they were pending), force them to verified
+        await supabaseAdmin
+          .from("drivers")
+          .update({ is_verified: true })
+          .eq("user_id", user_id);
+      }
+    } else if (profileData.role === "car_owner") {
+      const { data: existingOwner } = await supabaseAdmin
+        .from("car_owner")
+        .select("car_owner_id")
+        .eq("user_id", user_id)
+        .single();
+
+      if (!existingOwner) {
+        // Create new auto-verified fleet partner
+        await supabaseAdmin.from("car_owner").insert({
+          user_id: user_id,
+          business_name: full_name || "Pending Business Name",
+          revenue_share_percentage: 70,
+          verification_status: "verified",
+        });
+      } else {
+        // If they already exist, force them to verified
+        await supabaseAdmin
+          .from("car_owner")
+          .update({ verification_status: "verified" })
+          .eq("user_id", user_id);
+      }
     }
 
     revalidatePath("/admin/clients");

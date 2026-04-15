@@ -1,6 +1,7 @@
 "use server";
 
 import z from "zod";
+import { createAdminClient } from "@/utils/supabase/admin";
 import { carOwnerSchema } from "@/lib/schemas/car-owner";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/utils/supabase/server";
@@ -46,21 +47,32 @@ export async function managePartner(
 
   const { car_owner_id, ...dataToSave } = validateFields.data;
   const supabase = await createClient();
+  const supabaseAdmin = createAdminClient(); // <-- NEW: Instantiate admin client
   const now = new Date().toISOString();
 
   try {
+    let targetUserId = dataToSave.user_id;
+
     if (car_owner_id) {
-      // update
+      // --- UPDATE EXISTING PARTNER ---
       const { error } = await supabase
         .from("car_owner")
         .update({ ...dataToSave, last_updated_at: now })
         .eq("car_owner_id", car_owner_id);
       if (error) throw error;
-      revalidatePath("/admin/fleet-partners");
-      return { success: true, message: "Fleet partner updated successfully." };
+
+      // If user_id wasn't in the form data for the update, fetch it so we can sync the role
+      if (!targetUserId) {
+        const { data: ownerRecord } = await supabase
+          .from("car_owner")
+          .select("user_id")
+          .eq("car_owner_id", car_owner_id)
+          .single();
+        if (ownerRecord) targetUserId = ownerRecord.user_id;
+      }
     } else {
-      // create
-      if (!dataToSave.user_id) {
+      // --- CREATE NEW PARTNER ---
+      if (!targetUserId) {
         return {
           success: false,
           message: "User is required for new fleet partner.",
@@ -73,9 +85,39 @@ export async function managePartner(
         last_updated_at: now,
       });
       if (error) throw error;
-      revalidatePath("/admin/fleet-partners");
-      return { success: true, message: "Fleet partner created successfully." };
     }
+
+    // --- NEW: THE MAGIC SYNC ---
+    // Guarantee this user has the car_owner role in both the DB and their Auth token
+    if (targetUserId) {
+      // 1. Sync the visible role in public.users
+      await supabaseAdmin
+        .from("users")
+        .update({ role: "car_owner", last_updated_at: now })
+        .eq("user_id", targetUserId);
+
+      // 2. Sync the secure Auth metadata for RLS policies
+      const { error: authError } =
+        await supabaseAdmin.auth.admin.updateUserById(targetUserId, {
+          app_metadata: { role: "car_owner" },
+          user_metadata: { role: "car_owner" },
+        });
+
+      if (authError) {
+        console.error(
+          "Warning: Fleet partner saved, but Auth metadata sync failed:",
+          authError,
+        );
+      }
+    }
+
+    revalidatePath("/admin/fleet-partners");
+    return {
+      success: true,
+      message: car_owner_id
+        ? "Fleet partner updated successfully."
+        : "Fleet partner created successfully.",
+    };
   } catch (error: any) {
     console.error("Error managing fleet partner:", error);
     return {
@@ -199,6 +241,8 @@ export async function verifyFleetPartnerAction(
 ) {
   try {
     const supabase = await createClient();
+    const supabaseAdmin = createAdminClient(); // Needed for Auth metadata bypass
+
     const { data, error } = await supabase.rpc("verify_fleet_partner", {
       p_car_owner_id: carOwnerId,
       p_user_id: userId,
@@ -207,6 +251,24 @@ export async function verifyFleetPartnerAction(
     if (error) {
       console.error("Partner Verification Error:", error);
       return { success: false, message: "Failed to verify partner." };
+    }
+
+    // --- NEW: Sync the Auth Metadata so RLS allows them into the Partner portal ---
+    const { error: authError } = await supabaseAdmin.auth.admin.updateUserById(
+      userId,
+      {
+        app_metadata: { role: "car_owner" },
+        user_metadata: { role: "car_owner" },
+      },
+    );
+
+    if (authError) {
+      console.error(
+        "Warning: Partner verified in DB, but Auth metadata sync failed:",
+        authError,
+      );
+      // We don't necessarily throw here, as the operational DB update succeeded,
+      // but it's worth logging so you know if RLS issues occur.
     }
 
     // Try to send the email notification

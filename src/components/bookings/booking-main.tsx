@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { useRouter } from "next/navigation";
 import TimelineScheduler, {
   SchedulerEvent,
   SchedulerResource,
@@ -26,6 +27,12 @@ import {
   Banknote,
   AlertCircle,
   AlertTriangle,
+  FileText,
+  Car,
+  Key,
+  ShieldAlert,
+  CheckCircle2,
+  X,
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
@@ -43,6 +50,7 @@ import SplitBookingDialog from "./split-booking-dialog";
 import DispatchDialog from "./dispatch-dialog";
 import AdminBookingForm from "./admin-booking-form";
 import { useScheduler } from "../../../hooks/use-scheduler";
+import { toast } from "sonner";
 
 import {
   AlertDialog,
@@ -62,13 +70,14 @@ import { Input } from "../ui/input";
 type ViewTab = "timeline" | "list" | "payments";
 
 export default function BookingMain() {
+  const router = useRouter();
   const [date, setDate] = useState(new Date());
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
   // --- NEW: View State ---
   const [activeTab, setActiveTab] = useState<ViewTab>("timeline");
 
-  // --- HOOK ---
+  // --- HOOK WITH NEW WORKFLOWS ---
   const {
     data,
     isLoading: loading,
@@ -87,6 +96,15 @@ export default function BookingMain() {
     isReassigning,
     deleteBooking,
     isDeleting,
+    // --- NEW EXPORTS ---
+    checkHandover,
+    checkReturn,
+    executeHandover,
+    isExecutingHandover,
+    executeReturn,
+    isExecutingReturn,
+    executeNoShow,
+    isExecutingNoShow,
   } = useScheduler(date);
 
   const resources = data?.resources || [];
@@ -129,18 +147,32 @@ export default function BookingMain() {
     null,
   );
 
+  // --- NEW: VALIDATION TARGET STATES ---
+  const [handoverValidation, setHandoverValidation] = useState<{
+    event: SchedulerEvent;
+    details: {
+      isContractSigned: boolean;
+      hasPreTrip: boolean;
+      isPaid: boolean;
+      isReady: boolean;
+    };
+  } | null>(null);
+
+  const [returnValidation, setReturnValidation] = useState<{
+    event: SchedulerEvent;
+    details: { hasPostTrip: boolean; isReady: boolean };
+  } | null>(null);
+  const [noShowTarget, setNoShowTarget] = useState<SchedulerEvent | null>(null);
+
   // --- SETTINGS STATE ---
   const [isOverrideMode, setIsOverrideMode] = useState(false);
+  const [archiveReason, setArchiveReason] = useState("");
 
   const pendingRequests = events.filter((e) => e.status === "PENDING");
   const confirmedEvents = events.filter((e) => e.status !== "PENDING");
   const originalBooking =
     pendingRequests.find((e) => e.id === selectedPendingId) || null;
 
-  const [archiveReason, setArchiveReason] = useState("");
-
-  // Calculate how many payments need verification (Assuming your hook fetches this or you do it in the payments tab)
-  // For now, we'll use a placeholder count to show the badge concept
   const pendingPaymentsCount = 3;
 
   // --- HANDLERS ---
@@ -170,19 +202,13 @@ export default function BookingMain() {
     } else {
       setSelectedPendingId(req.id);
       const resource = resources.find((r) => r.id === req.resourceId);
-
-      // SAFETY NET: Ensure the end date is never identical to the start date!
-      // If they are identical (which means it's broken data), force it to be 12 hours long for the preview.
       let safeEnd = new Date(req.end);
       const start = new Date(req.start);
-
-      if (safeEnd.getTime() === start.getTime()) {
-        safeEnd = addHours(start, 12);
-      }
+      if (safeEnd.getTime() === start.getTime()) safeEnd = addHours(start, 12);
 
       setGhostBooking({
         ...req,
-        end: safeEnd, // Use the corrected end date
+        end: safeEnd,
         subtitle: resource?.title || "Unknown Car",
       });
     }
@@ -281,6 +307,35 @@ export default function BookingMain() {
     setSplitTarget(null);
   };
 
+  // --- NEW WORKFLOW HANDLERS ---
+  const handleReleaseVehicle = async (evt: SchedulerEvent) => {
+    try {
+      const res = await checkHandover(evt.id);
+      // TypeScript safety check to ensure res exists
+      if (res && res.isReady) {
+        await executeHandover(evt.id);
+      } else if (res) {
+        setHandoverValidation({ event: evt, details: res as any });
+      }
+    } catch (e: any) {
+      toast.error(e.message || "Failed to validate handover requirements.");
+    }
+  };
+
+  const handleProcessReturn = async (evt: SchedulerEvent) => {
+    try {
+      const res = await checkReturn(evt.id);
+      // TypeScript safety check to ensure res exists
+      if (res && res.isReady) {
+        await executeReturn(evt.id);
+      } else if (res) {
+        setReturnValidation({ event: evt, details: res as any });
+      }
+    } catch (e: any) {
+      toast.error(e.message || "Failed to validate return requirements.");
+    }
+  };
+
   return (
     <div className="flex flex-col h-[93vh] bg-background font-sans overflow-hidden transition-colors duration-300">
       {/* GLOBAL PAGE HEADER WITH INTEGRATED CONTROLS */}
@@ -327,9 +382,8 @@ export default function BookingMain() {
           </button>
         </div>
 
-        {/* Right Side: Integrated Toolbar (Only shows relevant tools based on active tab) */}
+        {/* Right Side: Integrated Toolbar */}
         <div className="flex flex-wrap items-center gap-2">
-          {/* New Booking is global */}
           <Button
             size="sm"
             onClick={() => handleOpenNewBooking()}
@@ -338,11 +392,9 @@ export default function BookingMain() {
             <Plus className="w-3.5 h-3.5 mr-1.5" /> New Booking
           </Button>
 
-          {/* Timeline Specific Controls */}
           {activeTab === "timeline" && (
             <>
               <div className="h-5 w-px bg-border mx-1 hidden sm:block" />
-
               <div
                 className={cn(
                   "flex items-center gap-1.5 px-2 h-8 rounded-md transition-colors border",
@@ -449,6 +501,10 @@ export default function BookingMain() {
                   onDeleteClick={(evt) => setDeleteTarget(evt)}
                   onEditClick={(evt) => setEditTarget(evt)}
                   onDispatchClick={(evt) => setDispatchTarget(evt)}
+                  // NEW WORKFLOW HANDLERS WIRED UP
+                  onReleaseClick={handleReleaseVehicle}
+                  onReturnClick={handleProcessReturn}
+                  onNoShowClick={(evt) => setNoShowTarget(evt)}
                 />
               </div>
 
@@ -474,14 +530,12 @@ export default function BookingMain() {
             </div>
           )}
 
-          {/* --- LIST VIEW PLACEHOLDER --- */}
           {activeTab === "list" && (
             <div className="flex-1 bg-card border border-border rounded-xl shadow-sm p-6 overflow-y-auto custom-scrollbar">
               <BookingListView />
             </div>
           )}
 
-          {/* --- PAYMENTS VERIFICATION PLACEHOLDER --- */}
           {activeTab === "payments" && (
             <div className="flex-1 bg-card border border-border rounded-xl shadow-sm p-6 overflow-y-auto custom-scrollbar">
               <PaymentVerificationView />
@@ -490,7 +544,7 @@ export default function BookingMain() {
         </div>
       </div>
 
-      {/* DIALOGS (Kept at root level so they work regardless of tab) */}
+      {/* --- ALL DIALOGS --- */}
       <ProposalDialog
         isOpen={isProposalOpen}
         onClose={() => setIsProposalOpen(false)}
@@ -555,24 +609,22 @@ export default function BookingMain() {
         onOpenChange={(open) => {
           if (!open) {
             setDeleteTarget(null);
-            setArchiveReason(""); // Reset reason when closed
+            setArchiveReason("");
           }
         }}
       >
         <AlertDialogContent className="sm:max-w-[400px] border-amber-500/20 bg-background shadow-2xl rounded-xl">
           <AlertDialogHeader>
-            <AlertDialogTitle className="text-red-600 dark:text-red-500 flex items-center gap-2 text-xs font-bold uppercase tracking-widest">
-              <AlertTriangle className="w-4 h-4" /> Delete Booking?
+            <AlertDialogTitle className="text-amber-600 dark:text-amber-500 flex items-center gap-2 text-xs font-bold uppercase tracking-widest">
+              <AlertTriangle className="w-4 h-4" /> Archive Booking?
             </AlertDialogTitle>
             <AlertDialogDescription className="text-[11px] font-medium text-muted-foreground leading-relaxed mt-2">
               This will archive the booking for{" "}
               <b className="text-foreground font-bold">{deleteTarget?.title}</b>
               . The booking will be hidden from operational views, assigned
-              drivers will be freed, and any pending payments will be voided.
+              drivers will be freed, and pending payments voided.
             </AlertDialogDescription>
           </AlertDialogHeader>
-
-          {/* NEW: Reason Input for the Audit Log */}
           <div className="py-2">
             <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1.5 block">
               Reason for Archiving <span className="text-red-500">*</span>
@@ -581,31 +633,229 @@ export default function BookingMain() {
               value={archiveReason}
               onChange={(e) => setArchiveReason(e.target.value)}
               placeholder="e.g., Test booking, Spam, Mistake..."
-              className="h-9 text-xs bg-secondary/50 border-border shadow-none focus-visible:ring-red-500"
+              className="h-9 text-xs bg-secondary/50 border-border shadow-none focus-visible:ring-amber-500"
             />
           </div>
-
           <AlertDialogFooter className="mt-2 border-t border-border pt-4">
             <AlertDialogCancel
               disabled={isDeleting}
-              className="h-8 text-[10px] font-semibold uppercase tracking-widest bg-card border-border hover:bg-secondary text-foreground rounded-lg shadow-none transition-colors"
+              className="h-8 text-[10px] font-semibold uppercase tracking-widest bg-card border-border hover:bg-secondary text-foreground rounded-lg shadow-none"
             >
               Cancel
             </AlertDialogCancel>
             <AlertDialogAction
-              className="h-8 text-[10px] font-bold uppercase tracking-widest bg-amber-500 hover:bg-amber-600 text-white rounded-lg shadow-sm transition-opacity"
+              className="h-8 text-[10px] font-bold uppercase tracking-widest bg-amber-500 hover:bg-amber-600 text-white rounded-lg shadow-sm"
               disabled={isDeleting || !archiveReason.trim()}
               onClick={(e) => {
                 e.preventDefault();
                 if (deleteTarget) {
-                  deleteBooking(deleteTarget.id, {
-                    onSuccess: () => setDeleteTarget(null),
-                  });
+                  deleteBooking(
+                    { id: deleteTarget.id, reason: archiveReason },
+                    {
+                      onSuccess: () => {
+                        setDeleteTarget(null);
+                        setArchiveReason("");
+                      },
+                    },
+                  );
                 }
               }}
             >
               {isDeleting ? "Archiving..." : "Yes, Archive Booking"}
             </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* --- NEW VALIDATION & NO-SHOW DIALOGS --- */}
+
+      {/* HANDOVER VALIDATION DIALOG */}
+      <AlertDialog
+        open={!!handoverValidation}
+        onOpenChange={() => setHandoverValidation(null)}
+      >
+        <AlertDialogContent className="sm:max-w-[450px] border-amber-500/20 bg-background shadow-2xl rounded-xl">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="absolute right-3 top-3 h-6 w-6 rounded-md text-muted-foreground hover:text-foreground hover:bg-secondary"
+            onClick={() => setHandoverValidation(null)}
+          >
+            <X className="w-4 h-4" />
+            <span className="sr-only">Close</span>
+          </Button>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-amber-600 flex items-center gap-2 text-xs font-bold uppercase tracking-widest">
+              <ShieldAlert className="w-5 h-5" /> Requirements Missing
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-[11px] font-medium text-muted-foreground leading-relaxed mt-2">
+              You cannot release this vehicle yet. The following mandatory steps
+              are incomplete:
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          <div className="py-2 space-y-2.5">
+            <div className="flex items-center justify-between p-2.5 rounded-md border bg-secondary/30">
+              <span className="flex items-center gap-2 text-xs font-semibold text-foreground">
+                <Banknote className="w-4 h-4 text-muted-foreground" /> Fully
+                Paid
+              </span>
+              {handoverValidation?.details.isPaid ? (
+                <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+              ) : (
+                <AlertCircle className="w-4 h-4 text-destructive" />
+              )}
+            </div>
+            <div className="flex items-center justify-between p-2.5 rounded-md border bg-secondary/30">
+              <span className="flex items-center gap-2 text-xs font-semibold text-foreground">
+                <FileText className="w-4 h-4 text-muted-foreground" /> Contract
+                Signed
+              </span>
+              {handoverValidation?.details.isContractSigned ? (
+                <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+              ) : (
+                <AlertCircle className="w-4 h-4 text-destructive" />
+              )}
+            </div>
+            <div className="flex items-center justify-between p-2.5 rounded-md border bg-secondary/30">
+              <span className="flex items-center gap-2 text-xs font-semibold text-foreground">
+                <Car className="w-4 h-4 text-muted-foreground" /> Pre-trip
+                Inspection
+              </span>
+              {handoverValidation?.details.hasPreTrip ? (
+                <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+              ) : (
+                <AlertCircle className="w-4 h-4 text-destructive" />
+              )}
+            </div>
+          </div>
+
+          <AlertDialogFooter className="mt-4 border-t border-border pt-4 flex-col sm:flex-row gap-2">
+            <Button
+              variant="outline"
+              className="flex-1 h-9 text-[10px] font-bold uppercase tracking-widest bg-card border-amber-500/30 text-amber-600 hover:bg-amber-500/10 transition-colors"
+              onClick={() => {
+                if (handoverValidation?.event) {
+                  executeHandover(handoverValidation.event.id).then(() =>
+                    setHandoverValidation(null),
+                  );
+                }
+              }}
+              disabled={isExecutingHandover}
+            >
+              {isExecutingHandover ? "Forcing..." : "Force (Paper Docs)"}
+            </Button>
+            <Button
+              className="flex-1 h-9 text-[10px] font-bold uppercase tracking-widest bg-primary hover:opacity-90 text-primary-foreground shadow-sm transition-opacity"
+              onClick={() => {
+                if (handoverValidation?.event) {
+                  router.push(`/admin/bookings/${handoverValidation.event.id}`);
+                  setHandoverValidation(null);
+                }
+              }}
+            >
+              Go to Command Center
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* RETURN VALIDATION DIALOG */}
+      <AlertDialog
+        open={!!returnValidation}
+        onOpenChange={() => setReturnValidation(null)}
+      >
+        <AlertDialogContent className="sm:max-w-[400px] border-amber-500/20 bg-background shadow-2xl rounded-xl">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="absolute right-3 top-3 h-6 w-6 rounded-md text-muted-foreground hover:text-foreground hover:bg-secondary"
+            onClick={() => setReturnValidation(null)}
+          >
+            <X className="w-4 h-4" />
+            <span className="sr-only">Close</span>
+          </Button>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-amber-600 flex items-center gap-2 text-xs font-bold uppercase tracking-widest">
+              <ShieldAlert className="w-5 h-5" /> Post-Trip Required
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-[11px] font-medium text-muted-foreground leading-relaxed mt-2">
+              Before closing this booking, you must verify the returning
+              mileage, fuel, and inspect for damages.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="mt-4 border-t border-border pt-4 flex-col sm:flex-row gap-2">
+            <Button
+              variant="outline"
+              className="flex-1 h-9 text-[10px] font-bold uppercase tracking-widest bg-card border-amber-500/30 text-amber-600 hover:bg-amber-500/10 transition-colors"
+              onClick={() => {
+                if (returnValidation?.event) {
+                  executeReturn(returnValidation.event.id).then(() =>
+                    setReturnValidation(null),
+                  );
+                }
+              }}
+              disabled={isExecutingReturn}
+            >
+              {isExecutingReturn ? "Forcing..." : "Force Return"}
+            </Button>
+            <Button
+              className="flex-1 h-9 text-[10px] font-bold uppercase tracking-widest bg-primary hover:opacity-90 text-primary-foreground shadow-sm transition-opacity"
+              onClick={() => {
+                if (returnValidation?.event) {
+                  router.push(`/admin/bookings/${returnValidation.event.id}`);
+                  setReturnValidation(null);
+                }
+              }}
+            >
+              Go to Command Center
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* NO-SHOW CONFIRMATION DIALOG */}
+      <AlertDialog
+        open={!!noShowTarget}
+        onOpenChange={() => setNoShowTarget(null)}
+      >
+        <AlertDialogContent className="sm:max-w-[400px] border-destructive/20 bg-background shadow-2xl rounded-xl">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="absolute right-3 top-3 h-6 w-6 rounded-md text-muted-foreground hover:text-foreground hover:bg-secondary"
+            onClick={() => setNoShowTarget(null)}
+          >
+            <X className="w-4 h-4" />
+            <span className="sr-only">Close</span>
+          </Button>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-destructive flex items-center gap-2 text-xs font-bold uppercase tracking-widest">
+              <AlertCircle className="w-4 h-4" /> Declare No-Show?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-[11px] font-medium text-muted-foreground leading-relaxed mt-2">
+              This will cancel the booking, free up the vehicle and driver,
+              forfeit the downpayment, and send an automated system notification
+              to the customer.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="mt-4 border-t border-border pt-4">
+            <AlertDialogCancel className="h-8 text-[10px] font-semibold uppercase tracking-widest bg-card border-border hover:bg-secondary text-foreground rounded-lg shadow-none">
+              Cancel
+            </AlertDialogCancel>
+            <Button
+              className="h-8 px-4 text-[10px] font-bold uppercase tracking-widest bg-destructive hover:bg-destructive/90 text-destructive-foreground rounded-lg shadow-sm"
+              disabled={isExecutingNoShow}
+              onClick={() => {
+                if (noShowTarget) {
+                  executeNoShow(noShowTarget.id).then(() =>
+                    setNoShowTarget(null),
+                  );
+                }
+              }}
+            >
+              {isExecutingNoShow ? "Processing..." : "Confirm No-Show"}
+            </Button>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

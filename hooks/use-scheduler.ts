@@ -13,6 +13,13 @@ import {
   reassignBooking,
   deleteBooking,
 } from "@/actions/bookings";
+import {
+  executeHandoverAction,
+  executeReturnAction,
+  executeNoShowAction,
+  validateHandoverRequirements,
+  validateReturnRequirements,
+} from "@/actions/scheduler";
 import { toast } from "sonner";
 import { SchedulerEvent } from "@/components/scheduler/timeline-scheduler";
 
@@ -396,20 +403,22 @@ export function useScheduler(currentDate: Date) {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: async (id: string) => {
-      const result = await deleteBooking(id);
+    mutationFn: async (variables: { id: string; reason: string }) => {
+      const result = await deleteBooking(variables.id, variables.reason);
       if (!result.success)
         throw new Error(result.message || "Failed to delete booking");
       return result;
     },
-    onMutate: async (id) => {
+    onMutate: async (variables) => {
       await queryClient.cancelQueries({ queryKey: currentQueryKey });
       const previousData = queryClient.getQueryData(currentQueryKey);
       queryClient.setQueryData(currentQueryKey, (oldData: any) => {
         if (!oldData) return oldData;
         return {
           ...oldData,
-          events: oldData.events.map((evt: SchedulerEvent) => evt.id !== id),
+          events: oldData.events.map(
+            (evt: SchedulerEvent) => evt.id !== variables.id,
+          ),
         };
       });
       return { previousData };
@@ -426,8 +435,81 @@ export function useScheduler(currentDate: Date) {
     },
   });
 
+  const invalidateQueries = () => {
+    queryClient.invalidateQueries({ queryKey: ["bookings"] });
+    queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
+    queryClient.invalidateQueries({ queryKey: ["fleet-status"] });
+  };
+
+  // 1. Validate Handover (Checks Contract, Inspection, and Payment)
+  const checkHandover = async (bookingId: string) => {
+    const res = await validateHandoverRequirements(bookingId);
+    if (!res.success) throw new Error(res.message);
+    return res.data; // { isContractSigned, hasPreTrip, isPaid, isReady }
+  };
+
+  // 2. Validate Return
+  const checkReturn = async (bookingId: string) => {
+    const res = await validateReturnRequirements(bookingId);
+    if (!res.success) throw new Error(res.message);
+    return res.data; // { hasPostTrip, isReady }
+  };
+
+  // 3. Execute Handover (CONFIRMED -> ONGOING)
+  const handoverMutation = useMutation({
+    mutationFn: (bookingId: string) => executeHandoverAction(bookingId),
+    onSuccess: (res) => {
+      if (res.success) {
+        toast.success(res.message);
+        invalidateQueries();
+      } else {
+        toast.error(res.message);
+      }
+    },
+    onError: (error: any) =>
+      toast.error(error.message || "Failed to handover vehicle."),
+  });
+
+  // 4. Execute Return (ONGOING -> COMPLETED)
+  const returnMutation = useMutation({
+    mutationFn: (bookingId: string) => executeReturnAction(bookingId),
+    onSuccess: (res) => {
+      if (res.success) {
+        toast.success(res.message);
+        invalidateQueries();
+      } else {
+        toast.error(res.message);
+      }
+    },
+    onError: (error: any) =>
+      toast.error(error.message || "Failed to return vehicle."),
+  });
+
+  // 5. Execute No-Show
+  const noShowMutation = useMutation({
+    mutationFn: (bookingId: string) => executeNoShowAction(bookingId),
+    onSuccess: (res) => {
+      if (res.success) {
+        toast.success(res.message);
+        invalidateQueries();
+      } else {
+        toast.error(res.message);
+      }
+    },
+    onError: (error: any) =>
+      toast.error(error.message || "Failed to process no-show."),
+  });
+
   return {
     ...query,
+    checkHandover,
+    checkReturn,
+    executeHandover: handoverMutation.mutateAsync,
+    isExecutingHandover: handoverMutation.isPending,
+    executeReturn: returnMutation.mutateAsync,
+    isExecutingReturn: returnMutation.isPending,
+    executeNoShow: noShowMutation.mutateAsync,
+    isExecutingNoShow: noShowMutation.isPending,
     updateStatus: updateStatusMutation.mutate,
     isUpdatingStatus: updateStatusMutation.isPending, //loading state
     updateDates: updateDatesMutation.mutate,

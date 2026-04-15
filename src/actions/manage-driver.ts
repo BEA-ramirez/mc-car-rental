@@ -1,6 +1,8 @@
 "use server";
 import { createClient } from "@/utils/supabase/server";
 import { CompleteDriverType } from "@/lib/schemas/driver";
+import { revalidatePath } from "next/cache";
+import { createAdminClient } from "@/utils/supabase/admin";
 import { DriverFormValues, driverFormSchema } from "@/lib/schemas/driver";
 import {
   sendDriverRejectionEmail,
@@ -40,6 +42,9 @@ export async function saveDriver(data: DriverFormValues): Promise<ActionState> {
     }
 
     const supabase = await createClient();
+    const supabaseAdmin = createAdminClient(); // <-- NEW: Import and create the Admin Client
+
+    // 1. Save operational data and update public.users via RPC
     const { error } = await supabase.rpc("save_driver_v1", {
       p_user_id: validData.user_id,
       p_driver_status: validData.driver_status || "PENDING",
@@ -53,6 +58,27 @@ export async function saveDriver(data: DriverFormValues): Promise<ActionState> {
         message: "Failed to save driver.",
       };
     }
+
+    // 2. --- NEW: Sync Auth Metadata for RLS ---
+    // This explicitly tells Supabase Auth that this user is now a driver
+    const { error: authError } = await supabaseAdmin.auth.admin.updateUserById(
+      validData.user_id,
+      {
+        app_metadata: { role: "driver" },
+        user_metadata: { role: "driver" }, // Keep user_metadata matching just in case
+      },
+    );
+
+    if (authError) {
+      console.error(
+        "Warning: Driver saved in DB, but Auth metadata sync failed:",
+        authError,
+      );
+      // We log this, but don't fail the whole request since the DB update succeeded.
+    }
+
+    // Optional: Add a revalidatePath here if you need the UI to refresh immediately
+    // revalidatePath("/admin/drivers");
     return {
       success: true,
       message: "Driver saved successfully!",
@@ -318,13 +344,12 @@ export async function getPendingDriversAction() {
 export async function verifyDriverAction(driverId: string) {
   try {
     const supabase = await createClient();
+    const supabaseAdmin = createAdminClient(); // Needed for Auth metadata bypass
 
-    //Call the RPC. It updates the DB, creates the notification, AND returns user info.
+    // Call the RPC. It updates the DB, creates the notification, AND returns user info.
     const { data, error: rpcError } = await supabase.rpc(
       "verify_driver_application",
-      {
-        p_driver_id: driverId,
-      },
+      { p_driver_id: driverId },
     );
 
     if (rpcError || !data) {
@@ -333,6 +358,24 @@ export async function verifyDriverAction(driverId: string) {
         success: false,
         message: "Driver update failed. Driver was not verified.",
       };
+    }
+
+    const userId = data.user_id;
+
+    // --- NEW: Sync the Auth Metadata so RLS allows them into the Driver portal ---
+    if (userId) {
+      const { error: authError } =
+        await supabaseAdmin.auth.admin.updateUserById(userId, {
+          app_metadata: { role: "driver" },
+          user_metadata: { role: "driver" },
+        });
+
+      if (authError) {
+        console.error(
+          "Warning: Driver verified in DB, but Auth metadata sync failed:",
+          authError,
+        );
+      }
     }
 
     // Send the Email using the returned data
@@ -347,6 +390,7 @@ export async function verifyDriverAction(driverId: string) {
       console.error("Failed to send verification email:", emailError);
     }
 
+    revalidatePath("/admin/drivers");
     return { success: true, message: "Driver verified successfully!" };
   } catch (error) {
     console.error("Verify Driver Error:", error);

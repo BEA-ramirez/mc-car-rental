@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useMemo, useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
 import {
   format,
   addDays,
@@ -50,8 +51,7 @@ import {
   MoveRight,
   Check,
   Undo2,
-  AlertTriangle,
-  ShieldCheck,
+  ExternalLink,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -152,6 +152,10 @@ type TimelineSchedulerProps = {
   onExtendClick?: (event: SchedulerEvent) => void;
   onDispatchClick?: (event: SchedulerEvent) => void;
   isOverrideMode?: boolean;
+  onApproveClick?: (event: SchedulerEvent) => void;
+  onReleaseClick?: (event: SchedulerEvent) => void;
+  onReturnClick?: (event: SchedulerEvent) => void;
+  onNoShowClick?: (event: SchedulerEvent) => void;
 };
 
 // --- CONFIG ---
@@ -188,10 +192,15 @@ export default function TimelineScheduler({
   onExtendClick,
   onDispatchClick,
   isOverrideMode = false,
+  onApproveClick,
+  onReleaseClick,
+  onReturnClick,
+  onNoShowClick,
 }: TimelineSchedulerProps) {
   const [view, setView] = useState<ViewType>("day");
   const [currentDate, setCurrentDate] = useState(new Date());
   const [clickOffsets, setClickOffsets] = useState<Record<string, number>>({});
+  const router = useRouter();
 
   const events = useMemo(() => {
     return rawEvents.map((evt) => ({
@@ -1301,7 +1310,7 @@ export default function TimelineScheduler({
                                         onDeleteClick && onDeleteClick(evt)
                                       }
                                     >
-                                      <Trash className="w-3.5 h-3.5 mr-2" />{" "}
+                                      <Trash className="w-3.5 h-3.5 mr-2 text-muted-foreground" />{" "}
                                       Delete Block
                                     </ContextMenuItem>
                                   ) : (
@@ -1312,11 +1321,13 @@ export default function TimelineScheduler({
                                       <ContextMenuItem
                                         className="text-[11px] font-medium cursor-pointer focus:bg-secondary text-popover-foreground"
                                         onClick={() =>
-                                          onEditClick && onEditClick(evt)
+                                          router.push(
+                                            `/admin/bookings/${evt.id}`,
+                                          )
                                         }
                                       >
-                                        <Edit className="w-3.5 h-3.5 mr-2 text-muted-foreground" />{" "}
-                                        Edit Booking
+                                        <ExternalLink className="w-3.5 h-3.5 mr-2 text-muted-foreground" />{" "}
+                                        Open Command Center
                                       </ContextMenuItem>
                                       <ContextMenuItem
                                         className="text-[11px] font-medium cursor-pointer focus:bg-secondary text-popover-foreground"
@@ -1328,7 +1339,7 @@ export default function TimelineScheduler({
                                         Change Dates / Extend
                                       </ContextMenuItem>
 
-                                      {/* DISPATCH ACTION IN RIGHT CLICK MENU */}
+                                      {/* DISPATCH ACTION */}
                                       {needsDriver && (
                                         <ContextMenuItem
                                           className="text-[11px] font-medium cursor-pointer focus:bg-secondary text-popover-foreground"
@@ -1342,81 +1353,93 @@ export default function TimelineScheduler({
                                         </ContextMenuItem>
                                       )}
 
-                                      {isOngoing && (
+                                      {/* NEW: SPECIFIC WORKFLOW ACTIONS */}
+                                      {evt.status === "PENDING" && (
+                                        <ContextMenuItem
+                                          className="text-[11px] font-medium cursor-pointer text-amber-600 focus:bg-secondary focus:text-amber-700"
+                                          onClick={() =>
+                                            router.push(
+                                              `/admin/bookings/${evt.id}`,
+                                            )
+                                          }
+                                        >
+                                          <Check className="w-3.5 h-3.5 mr-2 text-amber-600" />{" "}
+                                          Review & Approve
+                                        </ContextMenuItem>
+                                      )}
+                                      {evt.status === "CONFIRMED" && (
+                                        <ContextMenuItem
+                                          className="text-[11px] font-medium cursor-pointer text-primary focus:bg-secondary focus:text-primary"
+                                          onClick={() =>
+                                            onReleaseClick &&
+                                            onReleaseClick(evt)
+                                          }
+                                        >
+                                          <Key className="w-3.5 h-3.5 mr-2 text-primary" />{" "}
+                                          Execute Handover
+                                        </ContextMenuItem>
+                                      )}
+                                      {evt.status === "ONGOING" && (
                                         <ContextMenuItem
                                           className="text-[11px] font-medium cursor-pointer text-emerald-600 focus:bg-secondary focus:text-emerald-700"
-                                          onClick={() => {
-                                            if (now < (evt.end as Date)) {
-                                              if (onEarlyReturnClick)
-                                                onEarlyReturnClick(evt);
-                                            } else {
-                                              if (onStatusChange)
-                                                onStatusChange(
-                                                  evt,
-                                                  "COMPLETED",
-                                                );
-                                            }
-                                          }}
+                                          onClick={() =>
+                                            onReturnClick && onReturnClick(evt)
+                                          }
                                         >
                                           <Flag className="w-3.5 h-3.5 mr-2 text-emerald-600" />{" "}
                                           Process Return
                                         </ContextMenuItem>
                                       )}
+
                                       <ContextMenuSeparator className="bg-border" />
+
+                                      {/* EMERGENCY OVERRIDES (Keep existing onStatusChange logic here) */}
                                       <ContextMenuSub>
                                         <ContextMenuSubTrigger className="text-[11px] font-medium cursor-pointer focus:bg-secondary text-popover-foreground">
                                           <CheckSquare className="w-3.5 h-3.5 mr-2 text-muted-foreground" />{" "}
-                                          Force Status
+                                          Force Status Override
                                         </ContextMenuSubTrigger>
                                         <ContextMenuSubContent className="w-40 rounded-lg shadow-xl border-border bg-popover">
                                           <ContextMenuItem
-                                            className="text-[11px] font-medium cursor-pointer focus:bg-secondary text-popover-foreground"
                                             onClick={() =>
-                                              onStatusChange &&
-                                              onStatusChange(evt, "PENDING")
+                                              onStatusChange?.(evt, "PENDING")
                                             }
                                           >
                                             Set Pending
                                           </ContextMenuItem>
                                           <ContextMenuItem
-                                            className="text-[11px] font-medium cursor-pointer focus:bg-secondary text-popover-foreground"
                                             onClick={() =>
-                                              onStatusChange &&
-                                              onStatusChange(evt, "CONFIRMED")
+                                              onStatusChange?.(evt, "CONFIRMED")
                                             }
                                           >
                                             Set Confirmed
                                           </ContextMenuItem>
                                           <ContextMenuItem
-                                            className="text-[11px] font-medium cursor-pointer focus:bg-secondary text-popover-foreground"
                                             onClick={() =>
-                                              onStatusChange &&
-                                              onStatusChange(evt, "ONGOING")
+                                              onStatusChange?.(evt, "ONGOING")
                                             }
                                           >
                                             Set Ongoing
                                           </ContextMenuItem>
                                           <ContextMenuItem
-                                            className="text-[11px] font-medium cursor-pointer focus:bg-secondary text-popover-foreground"
                                             onClick={() =>
-                                              onStatusChange &&
-                                              onStatusChange(evt, "COMPLETED")
+                                              onStatusChange?.(evt, "COMPLETED")
                                             }
                                           >
                                             Set Completed
                                           </ContextMenuItem>
                                           <ContextMenuSeparator className="bg-border" />
                                           <ContextMenuItem
-                                            className="text-[11px] font-medium text-destructive cursor-pointer focus:bg-secondary focus:text-destructive"
+                                            className="text-destructive"
                                             onClick={() =>
-                                              onStatusChange &&
-                                              onStatusChange(evt, "NO_SHOW")
+                                              onStatusChange?.(evt, "NO_SHOW")
                                             }
                                           >
                                             Set No-Show
                                           </ContextMenuItem>
                                         </ContextMenuSubContent>
                                       </ContextMenuSub>
+
                                       <ContextMenuSeparator className="bg-border" />
                                       <ContextMenuItem
                                         className="text-[11px] font-semibold text-destructive cursor-pointer focus:bg-secondary focus:text-destructive"
@@ -1425,7 +1448,7 @@ export default function TimelineScheduler({
                                         }
                                       >
                                         <Trash className="w-3.5 h-3.5 mr-2" />{" "}
-                                        Delete Booking
+                                        Archive Booking
                                       </ContextMenuItem>
                                     </>
                                   )}
@@ -1466,6 +1489,18 @@ export default function TimelineScheduler({
                                           }
                                         >
                                           <Edit className="h-3 w-3" />
+                                        </Button>
+                                        <Button
+                                          variant="ghost"
+                                          size="icon"
+                                          className="h-6 w-6 rounded-md hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors"
+                                          onClick={() =>
+                                            router.push(
+                                              `/admin/bookings/${evt.id}`,
+                                            )
+                                          }
+                                        >
+                                          <ExternalLink className="h-3 w-3" />
                                         </Button>
                                       </div>
                                       <div className="flex items-center mb-1.5 gap-2">
@@ -1716,54 +1751,38 @@ export default function TimelineScheduler({
 
                                     {/* Action Footer inside Popover */}
                                     <div className="p-2.5 bg-secondary/30 border-t border-border flex flex-col gap-1.5">
+                                      {/* PENDING STATE -> Routes to details page to handle ledger */}
                                       {evt.status === "PENDING" && (
-                                        <div className="flex gap-1.5 w-full">
-                                          {now >= (evt.start as Date) && (
-                                            <Button
-                                              size="sm"
-                                              className="flex-1 h-8 text-[9px] font-bold uppercase tracking-widest bg-primary text-primary-foreground hover:opacity-90 rounded-md shadow-none transition-opacity"
-                                              onClick={() =>
-                                                onStatusChange?.(evt, "ONGOING")
-                                              }
-                                            >
-                                              Approve & Release
-                                            </Button>
-                                          )}
-                                          <Button
-                                            size="sm"
-                                            variant={
-                                              now >= (evt.start as Date)
-                                                ? "outline"
-                                                : "default"
-                                            }
-                                            className={cn(
-                                              "flex-1 h-8 text-[9px] font-bold uppercase tracking-widest rounded-md shadow-none",
-                                              now < (evt.start as Date)
-                                                ? "bg-primary text-primary-foreground hover:opacity-90"
-                                                : "bg-card text-foreground border-border hover:bg-secondary",
-                                            )}
-                                            onClick={() =>
-                                              onStatusChange?.(evt, "CONFIRMED")
-                                            }
-                                          >
-                                            <Check className="w-3 h-3 mr-1" />{" "}
-                                            Approve
-                                          </Button>
-                                        </div>
+                                        <Button
+                                          size="sm"
+                                          className="w-full h-8 text-[9px] font-bold uppercase tracking-widest bg-amber-500 hover:bg-amber-600 text-white rounded-md shadow-none transition-colors"
+                                          onClick={() =>
+                                            router.push(
+                                              `/admin/bookings/${evt.id}`,
+                                            )
+                                          }
+                                        >
+                                          <Check className="w-3 h-3 mr-1" />{" "}
+                                          Review & Approve
+                                        </Button>
                                       )}
+
+                                      {/* CONFIRMED STATE -> Handover Check */}
                                       {evt.status === "CONFIRMED" &&
                                         !isLateArrival && (
                                           <Button
                                             size="sm"
                                             className="w-full h-8 text-[9px] font-bold uppercase tracking-widest bg-primary text-primary-foreground hover:opacity-90 rounded-md shadow-none transition-opacity"
                                             onClick={() =>
-                                              onStatusChange?.(evt, "ongoing")
+                                              onReleaseClick?.(evt)
                                             }
                                           >
                                             Release Vehicle{" "}
-                                            <MoveRight className="w-3 h-3 ml-1.5" />{" "}
+                                            <MoveRight className="w-3 h-3 ml-1.5" />
                                           </Button>
                                         )}
+
+                                      {/* LATE ARRIVAL -> Handover or No-Show */}
                                       {evt.status === "CONFIRMED" &&
                                         isLateArrival && (
                                           <div className="flex gap-1.5 w-full">
@@ -1771,7 +1790,7 @@ export default function TimelineScheduler({
                                               size="sm"
                                               className="flex-1 h-8 text-[9px] font-bold uppercase tracking-widest bg-primary text-primary-foreground hover:opacity-90 rounded-md shadow-none transition-opacity"
                                               onClick={() =>
-                                                onStatusChange?.(evt, "ONGOING")
+                                                onReleaseClick?.(evt)
                                               }
                                             >
                                               <Key className="w-3 h-3 mr-1" />{" "}
@@ -1782,7 +1801,7 @@ export default function TimelineScheduler({
                                               variant="outline"
                                               className="flex-1 h-8 text-[9px] font-bold uppercase tracking-widest text-destructive border-destructive/30 hover:bg-destructive/10 hover:border-destructive/50 rounded-md shadow-none bg-card transition-colors"
                                               onClick={() =>
-                                                onStatusChange?.(evt, "NO_SHOW")
+                                                onNoShowClick?.(evt)
                                               }
                                             >
                                               <UserX className="w-3 h-3 mr-1" />{" "}
@@ -1790,27 +1809,20 @@ export default function TimelineScheduler({
                                             </Button>
                                           </div>
                                         )}
+
+                                      {/* ONGOING STATE -> Return Check */}
                                       {evt.status === "ONGOING" && (
                                         <Button
                                           size="sm"
-                                          className="w-full h-8 text-[9px] font-bold uppercase tracking-widest bg-primary text-primary-foreground hover:opacity-90 rounded-md shadow-none transition-opacity"
-                                          onClick={() => {
-                                            if (now < (evt.end as Date)) {
-                                              if (onEarlyReturnClick)
-                                                onEarlyReturnClick(evt);
-                                            } else {
-                                              if (onStatusChange)
-                                                onStatusChange(
-                                                  evt,
-                                                  "COMPLETED",
-                                                );
-                                            }
-                                          }}
+                                          className="w-full h-8 text-[9px] font-bold uppercase tracking-widest bg-emerald-600 text-white hover:bg-emerald-700 rounded-md shadow-none transition-opacity"
+                                          onClick={() => onReturnClick?.(evt)}
                                         >
                                           <Flag className="w-3 h-3 mr-1.5" />{" "}
                                           Process Return
                                         </Button>
                                       )}
+
+                                      {/* COMPLETED STATE */}
                                       {evt.status === "COMPLETED" && (
                                         <div className="w-full text-center text-[10px] font-bold uppercase tracking-widest text-muted-foreground py-1.5 flex items-center justify-center bg-secondary/50 rounded border border-border">
                                           <CheckCircle className="w-3 h-3 mr-1.5 text-muted-foreground/70" />{" "}
