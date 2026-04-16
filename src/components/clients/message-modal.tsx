@@ -17,7 +17,7 @@ import { cn } from "@/lib/utils";
 interface MessageModalProps {
   isOpen: boolean;
   onClose: () => void;
-  userId: string; // <-- NEW: Added userId to props
+  userId: string;
   recipientName: string;
   recipientEmail: string;
 }
@@ -56,24 +56,23 @@ export default function MessageModal({
       onClose(); // Close the modal upon success
     } catch (error) {
       console.error("Failed to send email:", error);
-      // Toasts are already handled inside your hook, so no need to add them here
     }
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-137.5 p-0 overflow-hidden border-slate-200 shadow-2xl rounded-sm flex flex-col [&>button.absolute]:hidden bg-white">
+      <DialogContent className="sm:max-w-[550px] p-0 overflow-hidden border-border shadow-2xl rounded-2xl flex flex-col [&>button.absolute]:hidden bg-background transition-colors duration-300">
         {/* CUSTOM HIGH-CONTRAST HEADER */}
-        <DialogHeader className="px-5 py-4 border-b border-slate-200 bg-white shrink-0 flex flex-row items-center justify-between">
+        <DialogHeader className="px-5 py-3 border-b border-border bg-card shrink-0 flex flex-row items-center justify-between transition-colors">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-sm bg-blue-50 flex items-center justify-center border border-blue-100 shadow-sm">
-              <Mail className="w-4 h-4 text-blue-600" />
+            <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center border border-primary/20 shadow-sm transition-colors">
+              <Mail className="w-4 h-4 text-primary" />
             </div>
             <div className="flex flex-col text-left">
-              <DialogTitle className="text-sm font-bold text-slate-900 tracking-tight leading-none mb-1">
+              <DialogTitle className="text-sm font-bold text-foreground tracking-tight leading-none mb-1 uppercase">
                 Compose Message
               </DialogTitle>
-              <span className="text-[10px] font-medium text-slate-500 uppercase tracking-widest leading-none">
+              <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest leading-none">
                 Secure System Communication
               </span>
             </div>
@@ -82,7 +81,7 @@ export default function MessageModal({
             type="button"
             variant="ghost"
             size="icon"
-            className="h-8 w-8 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-sm"
+            className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-secondary rounded-lg transition-colors shadow-none"
             onClick={onClose}
             disabled={isSendingCustomEmail}
           >
@@ -92,17 +91,17 @@ export default function MessageModal({
 
         {/* FORM BODY */}
         <form onSubmit={handleSend} className="flex flex-col flex-1">
-          <div className="p-5 space-y-4">
+          <div className="p-5 space-y-4 bg-background transition-colors">
             {/* Read-Only Recipient Field */}
             <div className="space-y-1.5">
-              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+              <label className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">
                 To
               </label>
-              <div className="flex items-center h-9 px-3 bg-slate-50 border border-slate-200 rounded-sm overflow-hidden">
-                <span className="text-xs font-bold text-slate-700 mr-1.5">
+              <div className="flex items-center h-8 px-3 bg-secondary/50 border border-border rounded-lg overflow-hidden transition-colors">
+                <span className="text-[11px] font-bold text-foreground mr-1.5 truncate">
                   {recipientName}
                 </span>
-                <span className="text-xs font-mono text-slate-400">
+                <span className="text-[10px] font-mono text-muted-foreground truncate">
                   &lt;{recipientEmail}&gt;
                 </span>
               </div>
@@ -110,16 +109,14 @@ export default function MessageModal({
 
             {/* Subject Line */}
             <div className="space-y-1.5">
-              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center justify-between">
+              <label className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest flex items-center justify-between">
                 Subject
-                <span className="text-red-500 text-[9px] normal-case font-medium">
-                  *
-                </span>
+                <span className="text-destructive text-[9px] font-bold">*</span>
               </label>
               <Input
                 autoFocus
                 placeholder="e.g., Missing Document for KYC Verification"
-                className="h-9 text-xs shadow-sm border-slate-200 rounded-sm focus-visible:ring-blue-500"
+                className="h-8 text-[11px] font-semibold bg-secondary border-border rounded-lg shadow-none focus-visible:ring-1 focus-visible:ring-primary transition-colors text-foreground"
                 value={subject}
                 onChange={(e) => setSubject(e.target.value)}
                 disabled={isSendingCustomEmail}
@@ -129,15 +126,13 @@ export default function MessageModal({
 
             {/* Message Body */}
             <div className="space-y-1.5">
-              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center justify-between">
+              <label className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest flex items-center justify-between">
                 Message Body
-                <span className="text-red-500 text-[9px] normal-case font-medium">
-                  *
-                </span>
+                <span className="text-destructive text-[9px] font-bold">*</span>
               </label>
               <Textarea
                 placeholder="Type your message here..."
-                className="min-h-40 text-xs shadow-sm border-slate-200 rounded-sm resize-none focus-visible:ring-blue-500 leading-relaxed"
+                className="min-h-[140px] text-[11px] font-medium bg-secondary border-border rounded-lg shadow-none resize-none focus-visible:ring-1 focus-visible:ring-primary leading-relaxed transition-colors text-foreground"
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
                 disabled={isSendingCustomEmail}
@@ -146,9 +141,9 @@ export default function MessageModal({
             </div>
 
             {/* Helper Context Box */}
-            <div className="flex items-start gap-2 bg-blue-50 p-3 rounded-sm border border-blue-100 mt-2">
-              <Info className="w-3.5 h-3.5 text-blue-600 shrink-0 mt-0.5" />
-              <p className="text-[10px] text-blue-800 font-medium leading-relaxed">
+            <div className="flex items-start gap-2 bg-primary/10 p-3 rounded-lg border border-primary/20 mt-1 transition-colors">
+              <Info className="w-3.5 h-3.5 text-primary shrink-0 mt-0.5" />
+              <p className="text-[10px] text-primary/80 font-bold uppercase tracking-widest leading-relaxed">
                 This message will be dispatched immediately via the official
                 system Gmail account. A copy will not be saved locally.
               </p>
@@ -156,13 +151,13 @@ export default function MessageModal({
           </div>
 
           {/* ACTION FOOTER */}
-          <div className="px-5 py-3 border-t border-slate-200 bg-slate-50 flex items-center justify-end gap-2 shrink-0">
+          <div className="px-5 py-3 border-t border-border bg-card flex items-center justify-end gap-2 shrink-0 transition-colors">
             <Button
               type="button"
               variant="outline"
               onClick={onClose}
               disabled={isSendingCustomEmail}
-              className="h-9 text-[10px] font-bold uppercase tracking-widest rounded-sm shadow-none border-slate-200 text-slate-600 hover:bg-white"
+              className="h-8 px-4 text-[10px] font-bold uppercase tracking-widest rounded-lg shadow-none border-border bg-background text-foreground hover:bg-secondary transition-colors"
             >
               Cancel
             </Button>
@@ -171,7 +166,7 @@ export default function MessageModal({
               disabled={
                 isSendingCustomEmail || !subject.trim() || !message.trim()
               }
-              className="h-9 min-w-32.5 text-[10px] font-bold uppercase tracking-widest rounded-sm shadow-none bg-blue-600 text-white hover:bg-blue-700 transition-colors"
+              className="h-8 min-w-[120px] text-[10px] font-bold uppercase tracking-widest rounded-lg shadow-sm bg-primary hover:opacity-90 text-primary-foreground transition-opacity"
             >
               {isSendingCustomEmail ? (
                 <Loader2 className="w-3.5 h-3.5 mr-2 animate-spin" />

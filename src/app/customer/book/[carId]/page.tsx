@@ -19,7 +19,6 @@ import {
   CheckCircle2,
   FileText,
   AlertCircle,
-  UserCheck,
   CreditCard,
 } from "lucide-react";
 
@@ -48,7 +47,6 @@ import ReceiptScanner from "@/components/bookings/receipt-scanner";
 import { useBookingSettings } from "../../../../../hooks/use-settings";
 import { useUnits } from "../../../../../hooks/use-units";
 import { useBookings } from "../../../../../hooks/use-bookings";
-import { useAvailableDrivers } from "../../../../../hooks/use-bookings";
 import { createClient } from "@/utils/supabase/client";
 import { uploadFile } from "@/actions/helper/upload-file";
 
@@ -66,16 +64,17 @@ export default function CustomerBookingPage({
   const { unit, isLoadingUnit } = useUnits(carId);
 
   const realHubs: MapHub[] = useMemo(() => settings?.hubs || [], [settings]);
-  const realFees = useMemo(
-    () =>
-      settings?.fees || {
-        driver_rate_per_day: 1500,
-        custom_pickup_fee: 500,
-        custom_dropoff_fee: 500,
-        security_deposit_default: 5000,
-      },
-    [settings],
-  );
+
+  // Safe Fallback Merge for Settings
+  const realFees = useMemo(() => {
+    const defaultFees = {
+      driver_rate_per_day: 1500,
+      custom_pickup_fee: 500,
+      custom_dropoff_fee: 500,
+      security_deposit_default: 5000,
+    };
+    return { ...defaultFees, ...(settings?.fees || {}) };
+  }, [settings]);
 
   const car = useMemo(() => {
     if (!unit) return null;
@@ -89,7 +88,7 @@ export default function CustomerBookingPage({
       brand: unit.brand,
       model: unit.model,
       price: Number(unit.rental_rate_per_day) || 0,
-      price12h: Number(unit.rental_rate_per_12h) || 0, // <-- NEW 12H RATE
+      price12h: Number(unit.rental_rate_per_12h) || 0,
       image:
         sortedImages.length > 0
           ? sortedImages[0].image_url
@@ -108,7 +107,6 @@ export default function CustomerBookingPage({
   const [dropoffLocation, setDropoffLocation] = useState("");
   const [dropoffCoords, setDropoffCoords] = useState<string | null>(null);
 
-  // --- PROMO STATE ---
   const [is12HourPromo, setIs12HourPromo] = useState(false);
 
   const [mapOpen, setMapOpen] = useState(false);
@@ -121,9 +119,6 @@ export default function CustomerBookingPage({
   const [isSuccess, setIsSuccess] = useState(false);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
-
-  const { data: hasAvailableDrivers = false, isLoading: isCheckingDrivers } =
-    useAvailableDrivers(startDate, endDate);
 
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
   const [receiptRef, setReceiptRef] = useState("");
@@ -151,22 +146,14 @@ export default function CustomerBookingPage({
     }
   }, [realHubs]);
 
-  useEffect(() => {
-    if (!hasAvailableDrivers && withDriver) {
-      setWithDriver(false);
-    }
-  }, [hasAvailableDrivers, withDriver]);
-
   // --- DYNAMIC PRICING MATH ---
   let totalDays = 1;
   if (startDate && endDate) {
     totalDays = Math.max(1, differenceInDays(endDate, startDate) + 1);
   }
 
-  // Safety Check: Promo is only valid if duration is exactly 1 day and car supports it
   const isPromoEligible = !!car && car.price12h > 0 && totalDays === 1;
 
-  // Auto-reset promo if they change dates to > 1 day
   useEffect(() => {
     if (!isPromoEligible && is12HourPromo) {
       setIs12HourPromo(false);
@@ -178,11 +165,16 @@ export default function CustomerBookingPage({
     is12HourPromo && isPromoEligible ? car!.price - car!.price12h : 0;
   const rentTotal = baseRentTotal - promoDiscount;
 
-  const driverTotal = withDriver ? totalDays * realFees.driver_rate_per_day : 0;
+  // Driver fee is calculated but purely used for display!
+  const estimatedDriverFee = withDriver
+    ? totalDays * realFees.driver_rate_per_day
+    : 0;
+
   const pickupFee = pickupType === "custom" ? realFees.custom_pickup_fee : 0;
   const dropoffFee = dropoffType === "custom" ? realFees.custom_dropoff_fee : 0;
 
-  const subTotal = rentTotal + driverTotal + pickupFee + dropoffFee;
+  // EXCLUDE driver fee from platform Subtotal
+  const subTotal = rentTotal + pickupFee + dropoffFee;
   const grandTotal = subTotal + realFees.security_deposit_default;
 
   const reservationFee = Math.round(subTotal * 0.1);
@@ -231,7 +223,6 @@ export default function CustomerBookingPage({
         throw new Error("You must be logged in to upload a receipt.");
       }
 
-      // --- EXACT 24-HOUR CLOCK MATH ---
       const [hours, minutes] = time.split(":").map(Number);
 
       const exactStartDate = new Date(startDate);
@@ -240,7 +231,6 @@ export default function CustomerBookingPage({
       const exactEndDate = new Date(exactStartDate);
       exactEndDate.setDate(exactStartDate.getDate() + totalDays);
 
-      // --- UPLOAD FILE VIA SERVER ACTION ---
       const uploadResult = await uploadFile(
         receiptFile,
         "documents",
@@ -270,12 +260,9 @@ export default function CustomerBookingPage({
         dropoff_coords: dropoffCoords,
         booking_status: "CONFIRMED",
         payment_status: "Unpaid",
-
-        // --- NEW PROMO FIELDS FOR BACKEND TO INTERCEPT ---
         is12HourPromo: is12HourPromo,
         car12HourRate: car.price12h,
         carDailyRate: car.price,
-
         payment_details: {
           amount: Number(receiptAmount) || reservationFee,
           transaction_reference: receiptRef,
@@ -381,7 +368,6 @@ export default function CustomerBookingPage({
 
   return (
     <div className="min-h-screen bg-[#050B10] font-sans selection:bg-[#64c5c3] selection:text-black text-white pb-24">
-      {/* Sticky Header */}
       <div className="bg-[#050B10]/80 backdrop-blur-xl border-b border-white/5 sticky top-0 z-50 transition-all duration-500">
         <div className="max-w-6xl mx-auto px-4 md:px-6 h-16 md:h-20 flex items-center gap-4 md:gap-6">
           <Button
@@ -451,48 +437,27 @@ export default function CustomerBookingPage({
                   />
                 </div>
 
-                <div
-                  className={cn(
-                    "flex flex-col justify-center bg-black/40 p-4 border border-white/5 rounded-2xl transition-colors relative",
-                    !hasAvailableDrivers
-                      ? "opacity-60 bg-red-900/10 border-red-500/20"
-                      : "hover:border-[#64c5c3]/30",
-                  )}
-                >
+                {/* UPDATED DRIVER TOGGLE (No longer checks availability) */}
+                <div className="flex flex-col justify-center bg-black/40 p-4 border border-white/5 rounded-2xl transition-colors hover:border-[#64c5c3]/30 relative">
                   <div className="flex items-center justify-between w-full">
-                    <div className="flex flex-col gap-1 cursor-pointer">
+                    <div className="flex flex-col gap-1 cursor-pointer pr-4">
                       <span className="text-[10px] font-bold uppercase tracking-widest text-white flex items-center gap-2">
-                        Request a Driver
-                        {isCheckingDrivers && (
-                          <span className="animate-pulse text-[#64c5c3]">
-                            ...
-                          </span>
-                        )}
+                        Request a Driver Service
                       </span>
-                      <span className="text-[9px] font-bold text-[#64c5c3] tracking-widest uppercase">
-                        + ₱{realFees.driver_rate_per_day.toLocaleString()} / day
+                      <span className="text-[9px] font-bold text-gray-400 tracking-widest uppercase mt-1">
+                        Subject to availability • Paid directly to driver
                       </span>
                     </div>
                     <Switch
                       checked={withDriver}
                       onCheckedChange={setWithDriver}
-                      disabled={!hasAvailableDrivers || isCheckingDrivers}
-                      className="data-[state=checked]:bg-[#64c5c3]"
+                      className="data-[state=checked]:bg-[#64c5c3] shrink-0"
                     />
                   </div>
-                  {!hasAvailableDrivers && !isCheckingDrivers && (
-                    <div className="mt-3 pt-3 border-t border-red-500/20 flex items-start gap-2">
-                      <UserCheck className="w-3.5 h-3.5 text-red-400 shrink-0" />
-                      <p className="text-[9px] font-bold text-red-400 uppercase tracking-widest leading-snug">
-                        No chauffeurs available for these dates. Self-drive
-                        only.
-                      </p>
-                    </div>
-                  )}
                 </div>
               </div>
 
-              {/* --- NEW 12-HOUR PROMO CHECKBOX --- */}
+              {/* 12-HOUR PROMO CHECKBOX */}
               {isPromoEligible && (
                 <div className="mt-6 border-t border-white/10 pt-6 animate-in fade-in slide-in-from-top-4 duration-500">
                   <div
@@ -703,7 +668,6 @@ export default function CustomerBookingPage({
                   Pricing Breakdown
                 </h4>
                 <div className="space-y-4 text-[10px] md:text-[11px] font-bold uppercase tracking-widest">
-                  {/* --- DYNAMIC RENT BREAKDOWN --- */}
                   <div className="flex justify-between text-gray-400">
                     <span>Vehicle ({totalDays} days)</span>
                     <span className="text-white">
@@ -719,13 +683,12 @@ export default function CustomerBookingPage({
                   )}
 
                   {withDriver && (
-                    <div className="flex justify-between text-gray-400">
-                      <span>Chauffeur Service</span>
-                      <span className="text-[#64c5c3]">
-                        ₱{driverTotal.toLocaleString()}
-                      </span>
+                    <div className="flex justify-between text-yellow-500/70">
+                      <span>Est. Driver Fee (Paid Directly)</span>
+                      <span>₱{estimatedDriverFee.toLocaleString()}</span>
                     </div>
                   )}
+
                   {pickupFee > 0 && (
                     <div className="flex justify-between text-gray-400">
                       <span>Logistics Pick-up</span>
@@ -744,7 +707,7 @@ export default function CustomerBookingPage({
                   )}
 
                   <div className="flex justify-between text-gray-400 border-t border-white/10 pt-4 border-dashed">
-                    <span>Rental Subtotal</span>
+                    <span>Platform Subtotal</span>
                     <span className="text-white">
                       ₱{subTotal.toLocaleString()}
                     </span>
@@ -756,7 +719,10 @@ export default function CustomerBookingPage({
                       <ShieldCheck className="w-3 h-3 text-gray-600" />
                     </span>
                     <span className="text-gray-400">
-                      ₱{realFees.security_deposit_default.toLocaleString()}
+                      ₱
+                      {Number(
+                        realFees.security_deposit_default || 5000,
+                      ).toLocaleString()}
                     </span>
                   </div>
                 </div>
@@ -765,7 +731,7 @@ export default function CustomerBookingPage({
               <div className="p-6 md:p-8 bg-black/60 border-t border-[#64c5c3]/20 shadow-[0_-15px_30px_rgba(100,197,195,0.05)]">
                 <div className="flex items-end justify-between mb-4 pb-4 border-b border-white/10">
                   <p className="text-[9px] md:text-[10px] font-bold text-gray-500 uppercase tracking-widest">
-                    Total Booking Value
+                    Platform Booking Value
                   </p>
                   <p className="text-xl font-black text-gray-300 tracking-tighter leading-none">
                     ₱{grandTotal.toLocaleString()}
@@ -815,15 +781,12 @@ export default function CustomerBookingPage({
             </DialogDescription>
           </DialogHeader>
 
-          {/* Wrapper to handle spacing inside the scrollable area */}
           <div className="flex flex-col gap-6 mt-4">
-            {/* Payment Instructions / QR Code */}
             <div className="p-5 bg-black/40 border border-[#64c5c3]/20 rounded-2xl text-center flex flex-col items-center shrink-0">
               <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-3">
                 Scan to Pay via GCash / Maya
               </p>
               <div className="w-32 h-32 bg-white rounded-xl p-2 mb-3 relative flex items-center justify-center">
-                {/* Using standard img tag temporarily to avoid Next.config errors */}
                 <img
                   src="https://placehold.co/400x400?text=QR+Code"
                   alt="GCash/Maya QR Code"
@@ -838,7 +801,6 @@ export default function CustomerBookingPage({
               </p>
             </div>
 
-            {/* The OCR Scanner Component */}
             <div className="shrink-0">
               <ReceiptScanner
                 onScanComplete={handleReceiptScan}
@@ -846,7 +808,6 @@ export default function CustomerBookingPage({
               />
             </div>
 
-            {/* Consent Checkbox */}
             <label className="flex items-start gap-3 cursor-pointer group shrink-0">
               <div className="relative flex items-center justify-center mt-0.5">
                 <input
@@ -870,7 +831,6 @@ export default function CustomerBookingPage({
               </p>
             </label>
 
-            {/* Final Submit */}
             <Button
               size="lg"
               onClick={handleSubmitBooking}

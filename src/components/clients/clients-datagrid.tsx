@@ -73,16 +73,16 @@ import MessageModal from "./message-modal";
 function getRoleBadgeStyle(role: string) {
   switch (role) {
     case "admin":
-      return "bg-slate-900 text-white border-slate-900";
+      return "bg-foreground/10 text-foreground border-foreground/20";
     case "staff":
-      return "bg-blue-50 text-blue-700 border-blue-200";
+      return "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20";
     case "car_owner":
-      return "bg-purple-50 text-purple-700 border-purple-200";
+      return "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20";
     case "driver":
-      return "bg-orange-50 text-orange-700 border-orange-200";
+      return "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20";
     case "customer":
     default:
-      return "bg-slate-100 text-slate-700 border-slate-200";
+      return "bg-secondary text-muted-foreground border-border";
   }
 }
 
@@ -91,7 +91,7 @@ function getStatusBadge(status: string) {
     return (
       <Badge
         variant="outline"
-        className="text-[9px] uppercase tracking-widest bg-emerald-50 text-emerald-700 border-emerald-200 px-1.5 rounded-sm"
+        className="text-[8px] uppercase tracking-widest bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 px-1.5 rounded"
       >
         Verified
       </Badge>
@@ -100,7 +100,7 @@ function getStatusBadge(status: string) {
     return (
       <Badge
         variant="outline"
-        className="text-[9px] uppercase tracking-widest bg-slate-50 text-slate-700 border-red-200 px-1.5 rounded-sm"
+        className="text-[8px] uppercase tracking-widest bg-secondary text-muted-foreground border-border px-1.5 rounded"
       >
         Suspended
       </Badge>
@@ -109,7 +109,7 @@ function getStatusBadge(status: string) {
     return (
       <Badge
         variant="outline"
-        className="text-[9px] uppercase tracking-widest bg-red-50 text-red-700 border-red-200 px-1.5 rounded-sm"
+        className="text-[8px] uppercase tracking-widest bg-destructive/10 text-destructive border-destructive/20 px-1.5 rounded"
       >
         Rejected
       </Badge>
@@ -117,7 +117,7 @@ function getStatusBadge(status: string) {
   return (
     <Badge
       variant="outline"
-      className="text-[9px] uppercase tracking-widest bg-amber-50 text-amber-700 border-amber-200 px-1.5 rounded-sm"
+      className="text-[8px] uppercase tracking-widest bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20 px-1.5 rounded"
     >
       Pending
     </Badge>
@@ -222,7 +222,6 @@ export default function ClientsDataGrid() {
     }
   };
 
-  // Export bypass pagination
   const handleExportExcel = async () => {
     const urlParams = new URLSearchParams({ search: searchQuery });
     if (statusFilter.length > 0)
@@ -248,7 +247,7 @@ export default function ClientsDataGrid() {
   };
 
   return (
-    <div className="flex h-full bg-slate-50 min-h-0 overflow-hidden relative w-full">
+    <div className="flex h-full bg-background min-h-0 overflow-hidden relative w-full transition-colors duration-300">
       {/* --- MAIN GRID AREA --- */}
       <div
         className={cn(
@@ -257,13 +256,13 @@ export default function ClientsDataGrid() {
         )}
       >
         {/* Toolbar */}
-        <div className="flex items-center justify-between p-3 bg-white border-b border-slate-200 shrink-0">
+        <div className="flex items-center justify-between p-2.5 bg-card border-b border-border shrink-0 transition-colors">
           <div className="flex items-center gap-2">
             <div className="relative">
-              <Search className="absolute left-2.5 top-2 h-3.5 w-3.5 text-slate-400" />
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
               <Input
-                placeholder="Search name, email, or ID..."
-                className="pl-8 h-8 w-64 xl:w-72 text-xs font-medium bg-slate-50 border-slate-200 focus-visible:ring-1 focus-visible:bg-white rounded-sm shadow-none"
+                placeholder="Search records..."
+                className="pl-8 h-8 w-56 xl:w-64 text-[11px] font-medium bg-secondary border-border focus-visible:ring-1 focus-visible:ring-primary rounded-lg shadow-none transition-colors"
                 value={searchQuery}
                 onChange={(e) => {
                   setSearchQuery(e.target.value);
@@ -279,10 +278,10 @@ export default function ClientsDataGrid() {
                   variant="outline"
                   size="sm"
                   className={cn(
-                    "h-8 px-2.5 rounded-sm shadow-none border-dashed",
+                    "h-8 px-3 rounded-lg shadow-none border-border transition-colors",
                     statusFilter.length > 0 || roleFilter.length > 0
-                      ? "border-blue-500 bg-blue-50 text-blue-700 hover:bg-blue-100"
-                      : "text-slate-600 border-slate-200 bg-slate-50 hover:bg-slate-100",
+                      ? "border-primary bg-primary/10 text-primary hover:bg-primary/20"
+                      : "text-muted-foreground bg-secondary hover:bg-background hover:text-foreground",
                   )}
                 >
                   <Filter className="w-3.5 h-3.5 mr-1.5" />
@@ -290,7 +289,7 @@ export default function ClientsDataGrid() {
                     Filter
                   </span>
                   {(statusFilter.length > 0 || roleFilter.length > 0) && (
-                    <span className="ml-1.5 flex h-4 w-4 items-center justify-center rounded-sm bg-blue-600 text-[8px] font-bold text-white">
+                    <span className="ml-1.5 flex h-4 w-4 items-center justify-center rounded bg-primary text-[8px] font-bold text-primary-foreground">
                       {statusFilter.length + roleFilter.length}
                     </span>
                   )}
@@ -298,13 +297,13 @@ export default function ClientsDataGrid() {
               </DropdownMenuTrigger>
               <DropdownMenuContent
                 align="start"
-                className="w-48 rounded-sm border-slate-200 shadow-lg p-1"
+                className="w-48 rounded-xl border-border shadow-xl p-1 bg-popover"
               >
-                <DropdownMenuLabel className="text-[10px] font-bold uppercase tracking-widest text-slate-400 px-2 py-1.5">
+                <DropdownMenuLabel className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground px-2 py-1.5">
                   By Status
                 </DropdownMenuLabel>
                 <DropdownMenuCheckboxItem
-                  className="text-xs font-medium rounded-sm cursor-pointer"
+                  className="text-[11px] font-semibold rounded-lg cursor-pointer transition-colors focus:bg-secondary"
                   checked={statusFilter.includes("PENDING")}
                   onCheckedChange={() => handleStatusCheckedChange("PENDING")}
                   onSelect={(e) => e.preventDefault()}
@@ -312,7 +311,7 @@ export default function ClientsDataGrid() {
                   Pending
                 </DropdownMenuCheckboxItem>
                 <DropdownMenuCheckboxItem
-                  className="text-xs font-medium rounded-sm cursor-pointer"
+                  className="text-[11px] font-semibold rounded-lg cursor-pointer transition-colors focus:bg-secondary"
                   checked={statusFilter.includes("VERIFIED")}
                   onCheckedChange={() => handleStatusCheckedChange("VERIFIED")}
                   onSelect={(e) => e.preventDefault()}
@@ -320,7 +319,7 @@ export default function ClientsDataGrid() {
                   Verified
                 </DropdownMenuCheckboxItem>
                 <DropdownMenuCheckboxItem
-                  className="text-xs font-medium rounded-sm cursor-pointer"
+                  className="text-[11px] font-semibold rounded-lg cursor-pointer transition-colors focus:bg-secondary"
                   checked={statusFilter.includes("REJECTED")}
                   onCheckedChange={() => handleStatusCheckedChange("REJECTED")}
                   onSelect={(e) => e.preventDefault()}
@@ -328,19 +327,19 @@ export default function ClientsDataGrid() {
                   Rejected
                 </DropdownMenuCheckboxItem>
                 <DropdownMenuCheckboxItem
-                  className="text-xs font-medium rounded-sm cursor-pointer"
+                  className="text-[11px] font-semibold rounded-lg cursor-pointer transition-colors focus:bg-secondary"
                   checked={statusFilter.includes("SUSPENDED")}
                   onCheckedChange={() => handleStatusCheckedChange("SUSPENDED")}
                   onSelect={(e) => e.preventDefault()}
                 >
                   Suspended
                 </DropdownMenuCheckboxItem>
-                <DropdownMenuSeparator className="bg-slate-100" />
-                <DropdownMenuLabel className="text-[10px] font-bold uppercase tracking-widest text-slate-400 px-2 py-1.5">
+                <DropdownMenuSeparator className="bg-border" />
+                <DropdownMenuLabel className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground px-2 py-1.5">
                   By Role
                 </DropdownMenuLabel>
                 <DropdownMenuCheckboxItem
-                  className="text-xs font-medium rounded-sm cursor-pointer"
+                  className="text-[11px] font-semibold rounded-lg cursor-pointer transition-colors focus:bg-secondary"
                   checked={roleFilter.includes("customer")}
                   onCheckedChange={() => handleRoleCheckedChange("customer")}
                   onSelect={(e) => e.preventDefault()}
@@ -348,7 +347,7 @@ export default function ClientsDataGrid() {
                   Customer
                 </DropdownMenuCheckboxItem>
                 <DropdownMenuCheckboxItem
-                  className="text-xs font-medium rounded-sm cursor-pointer"
+                  className="text-[11px] font-semibold rounded-lg cursor-pointer transition-colors focus:bg-secondary"
                   checked={roleFilter.includes("staff")}
                   onCheckedChange={() => handleRoleCheckedChange("staff")}
                   onSelect={(e) => e.preventDefault()}
@@ -356,7 +355,7 @@ export default function ClientsDataGrid() {
                   Staff
                 </DropdownMenuCheckboxItem>
                 <DropdownMenuCheckboxItem
-                  className="text-xs font-medium rounded-sm cursor-pointer"
+                  className="text-[11px] font-semibold rounded-lg cursor-pointer transition-colors focus:bg-secondary"
                   checked={roleFilter.includes("car_owner")}
                   onCheckedChange={() => handleRoleCheckedChange("car_owner")}
                   onSelect={(e) => e.preventDefault()}
@@ -364,7 +363,7 @@ export default function ClientsDataGrid() {
                   Car Owner
                 </DropdownMenuCheckboxItem>
                 <DropdownMenuCheckboxItem
-                  className="text-xs font-medium rounded-sm cursor-pointer"
+                  className="text-[11px] font-semibold rounded-lg cursor-pointer transition-colors focus:bg-secondary"
                   checked={roleFilter.includes("driver")}
                   onCheckedChange={() => handleRoleCheckedChange("driver")}
                   onSelect={(e) => e.preventDefault()}
@@ -372,20 +371,20 @@ export default function ClientsDataGrid() {
                   Driver
                 </DropdownMenuCheckboxItem>
                 <DropdownMenuCheckboxItem
-                  className="text-xs font-medium rounded-sm cursor-pointer"
+                  className="text-[11px] font-semibold rounded-lg cursor-pointer transition-colors focus:bg-secondary"
                   checked={roleFilter.includes("admin")}
                   onCheckedChange={() => handleRoleCheckedChange("admin")}
                   onSelect={(e) => e.preventDefault()}
                 >
                   Admin
                 </DropdownMenuCheckboxItem>
-                <DropdownMenuSeparator className="bg-slate-100" />
+                <DropdownMenuSeparator className="bg-border" />
 
                 {(statusFilter.length > 0 || roleFilter.length > 0) && (
                   <>
-                    <DropdownMenuSeparator className="bg-slate-100 mt-1" />
+                    <DropdownMenuSeparator className="bg-border mt-1" />
                     <DropdownMenuItem
-                      className="text-[10px] font-bold uppercase tracking-widest text-red-600 hover:text-red-700 hover:bg-red-50 justify-center cursor-pointer py-2 mt-1 rounded-sm transition-colors"
+                      className="text-[9px] font-bold uppercase tracking-widest text-destructive hover:text-destructive hover:bg-destructive/10 justify-center cursor-pointer py-2 mt-1 rounded-lg transition-colors"
                       onClick={(e) => {
                         e.preventDefault();
                         setStatusFilter([]);
@@ -393,7 +392,7 @@ export default function ClientsDataGrid() {
                         setCurrentPage(1);
                       }}
                     >
-                      <X className="w-3.5 h-3.5 mr-1.5" /> Clear Filters
+                      <X className="w-3 h-3 mr-1.5" /> Clear Filters
                     </DropdownMenuItem>
                   </>
                 )}
@@ -402,14 +401,14 @@ export default function ClientsDataGrid() {
 
             {selectedRowIds.size > 0 && (
               <>
-                <div className="h-4 w-px bg-slate-200 mx-1" />
-                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest pl-1">
+                <div className="h-4 w-px bg-border mx-1" />
+                <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest pl-1">
                   {selectedRowIds.size} Selected
                 </span>
                 <Button
                   variant="outline"
                   size="icon"
-                  className="h-7 w-7 rounded-sm text-red-600 hover:bg-red-50 border-red-200 shadow-none ml-1"
+                  className="h-7 w-7 rounded-md text-destructive hover:bg-destructive/10 border-border shadow-none ml-1 transition-colors"
                   onClick={handleBulkDelete}
                 >
                   <Trash2 className="w-3.5 h-3.5" />
@@ -417,34 +416,35 @@ export default function ClientsDataGrid() {
               </>
             )}
           </div>
+
           <div className="flex items-center gap-2">
             <DropdownMenu modal={false}>
               <DropdownMenuTrigger asChild>
                 <Button
                   variant="outline"
                   size="sm"
-                  className="h-8 text-[10px] font-bold uppercase tracking-widest rounded-sm shadow-none bg-white text-slate-600"
+                  className="h-8 text-[10px] font-bold uppercase tracking-widest rounded-lg shadow-none bg-card text-foreground border-border hover:bg-secondary transition-colors"
                 >
-                  <Download className="w-3.5 h-3.5 mr-1.5 text-slate-400" />{" "}
+                  <Download className="w-3.5 h-3.5 mr-1.5 text-muted-foreground" />{" "}
                   Export
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent
                 align="end"
-                className="w-32 rounded-sm border-slate-200 shadow-lg"
+                className="w-32 rounded-xl border-border bg-popover shadow-xl p-1"
               >
                 <DropdownMenuItem
-                  className="text-xs font-medium cursor-pointer"
+                  className="text-[11px] font-semibold cursor-pointer rounded-lg focus:bg-secondary transition-colors"
                   onClick={handleExportPDF}
                 >
-                  <FileText className="w-3.5 h-3.5 mr-2 text-slate-400" />
+                  <FileText className="w-3.5 h-3.5 mr-2 text-muted-foreground" />{" "}
                   PDF
                 </DropdownMenuItem>
                 <DropdownMenuItem
-                  className="text-xs font-medium cursor-pointer"
+                  className="text-[11px] font-semibold cursor-pointer rounded-lg focus:bg-secondary transition-colors"
                   onClick={handleExportExcel}
                 >
-                  <FileSpreadsheet className="w-3.5 h-3.5 mr-2 text-slate-400" />{" "}
+                  <FileSpreadsheet className="w-3.5 h-3.5 mr-2 text-muted-foreground" />{" "}
                   Excel
                 </DropdownMenuItem>
               </DropdownMenuContent>
@@ -452,7 +452,7 @@ export default function ClientsDataGrid() {
             <Button
               size="sm"
               onClick={handleAdd}
-              className="h-8 text-[10px] font-bold uppercase tracking-widest rounded-sm bg-slate-900 hover:bg-slate-800 text-white shadow-none"
+              className="h-8 px-4 text-[10px] font-bold uppercase tracking-widest rounded-lg bg-primary hover:opacity-90 text-primary-foreground shadow-sm transition-opacity"
             >
               <Plus className="w-3.5 h-3.5 mr-1.5" /> Add Client
             </Button>
@@ -460,12 +460,12 @@ export default function ClientsDataGrid() {
         </div>
 
         {/* Table Area */}
-        <div className="flex-1 overflow-auto bg-white h-full relative thin-scrollbar">
+        <div className="flex-1 overflow-auto bg-background h-full relative custom-scrollbar transition-colors">
           {isLoading ? (
             <ClientsDataGridSkeleton />
           ) : (
             <Table>
-              <TableHeader className="sticky top-0 bg-slate-50/90 backdrop-blur-sm shadow-[0_1px_0_0_#e2e8f0] z-10">
+              <TableHeader className="sticky top-0 bg-secondary/80 backdrop-blur-md shadow-[0_1px_0_0_hsl(var(--border))] z-10 transition-colors">
                 <TableRow className="border-none hover:bg-transparent">
                   <TableHead className="w-10 text-center px-0">
                     <Checkbox
@@ -474,30 +474,30 @@ export default function ClientsDataGrid() {
                         selectedRowIds.size === paginatedUsers.length
                       }
                       onCheckedChange={toggleSelectAll}
-                      className="rounded-[3px]"
+                      className="rounded shadow-none border-muted-foreground/50"
                     />
                   </TableHead>
-                  <TableHead className="h-9 text-[10px] font-bold uppercase tracking-widest text-slate-500">
+                  <TableHead className="h-8 text-[9px] font-bold uppercase tracking-widest text-muted-foreground">
                     Client
                   </TableHead>
-                  <TableHead className="h-9 text-[10px] font-bold uppercase tracking-widest text-slate-500">
+                  <TableHead className="h-8 text-[9px] font-bold uppercase tracking-widest text-muted-foreground">
                     Contact Info
                   </TableHead>
-                  <TableHead className="h-9 text-[10px] font-bold uppercase tracking-widest text-slate-500">
+                  <TableHead className="h-8 text-[9px] font-bold uppercase tracking-widest text-muted-foreground">
                     Role
                   </TableHead>
-                  <TableHead className="h-9 text-[10px] font-bold uppercase tracking-widest text-slate-500">
+                  <TableHead className="h-8 text-[9px] font-bold uppercase tracking-widest text-muted-foreground">
                     Status
                   </TableHead>
                   <TableHead
                     className={cn(
-                      "h-9 text-[10px] font-bold uppercase tracking-widest text-slate-500",
+                      "h-8 text-[9px] font-bold uppercase tracking-widest text-muted-foreground",
                       selectedUser && "hidden xl:table-cell",
                     )}
                   >
                     Last Active
                   </TableHead>
-                  <TableHead className="h-9 text-right pr-6"></TableHead>
+                  <TableHead className="h-8 text-right pr-6"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -505,7 +505,7 @@ export default function ClientsDataGrid() {
                   <TableRow>
                     <TableCell
                       colSpan={7}
-                      className="h-32 text-center text-slate-400"
+                      className="h-32 text-center text-muted-foreground"
                     >
                       <span className="text-[10px] font-bold uppercase tracking-widest">
                         No clients found.
@@ -522,15 +522,15 @@ export default function ClientsDataGrid() {
                         key={user.user_id}
                         onClick={() => setSelectedUser(user)}
                         className={cn(
-                          "cursor-pointer transition-colors border-b border-slate-100 group",
+                          "cursor-pointer transition-colors border-b border-border group",
                           isActiveRow
-                            ? "bg-blue-50/40 hover:bg-blue-50/60"
-                            : "hover:bg-slate-50",
-                          isSelected && "bg-slate-50",
+                            ? "bg-primary/10 hover:bg-primary/10"
+                            : "hover:bg-secondary/50",
+                          isSelected && "bg-secondary/50",
                         )}
                       >
                         <TableCell
-                          className="w-10 text-center px-0 align-middle"
+                          className="w-10 text-center px-0 align-middle py-2"
                           onClick={(e) => e.stopPropagation()}
                         >
                           <Checkbox
@@ -538,25 +538,25 @@ export default function ClientsDataGrid() {
                             onCheckedChange={() =>
                               toggleSelectRow(user.user_id)
                             }
-                            className="rounded-[3px]"
+                            className="rounded shadow-none border-muted-foreground/50"
                           />
                         </TableCell>
 
                         {/* CLIENT AVATAR & NAME */}
-                        <TableCell className="py-3 align-middle">
+                        <TableCell className="py-2 align-middle">
                           <div className="flex items-center gap-3">
-                            <Avatar className="h-8 w-8 rounded-sm border border-slate-200">
+                            <Avatar className="h-7 w-7 rounded-lg border border-border">
                               <AvatarImage
                                 src={user.profile_picture_url || undefined}
                                 className="object-cover"
                               />
-                              <AvatarFallback className="text-[10px] font-bold bg-slate-100 text-slate-600 rounded-sm">
+                              <AvatarFallback className="text-[9px] font-bold bg-secondary text-foreground rounded-lg">
                                 {getInitials(user.full_name || "")}
                               </AvatarFallback>
                             </Avatar>
                             <span
                               className={cn(
-                                "text-xs font-bold text-slate-900 leading-none",
+                                "text-[11px] font-bold text-foreground leading-none",
                                 selectedUser ? "hidden 2xl:block" : "block",
                               )}
                             >
@@ -566,34 +566,34 @@ export default function ClientsDataGrid() {
                         </TableCell>
 
                         {/* CONTACT INFO */}
-                        <TableCell className="py-3 align-middle">
-                          <div className="flex flex-col gap-1.5">
-                            <div className="flex items-center gap-1.5 text-[10px] font-mono text-slate-600 leading-none">
-                              <Mail className="w-3 h-3 text-slate-400 shrink-0" />
+                        <TableCell className="py-2 align-middle">
+                          <div className="flex flex-col gap-1">
+                            <div className="flex items-center gap-1.5 text-[10px] font-mono text-muted-foreground leading-none">
+                              <Mail className="w-3 h-3 text-muted-foreground/70 shrink-0" />
                               <span
                                 className={cn(
                                   "truncate",
                                   selectedUser
-                                    ? "max-w-25"
-                                    : "max-w-35 xl:max-w-50",
+                                    ? "max-w-[120px]"
+                                    : "max-w-[160px] xl:max-w-[200px]",
                                 )}
                               >
                                 {user.email}
                               </span>
                             </div>
-                            <div className="flex items-center gap-1.5 text-[10px] font-mono text-slate-500 leading-none">
-                              <Phone className="w-3 h-3 text-slate-400 shrink-0" />
+                            <div className="flex items-center gap-1.5 text-[10px] font-mono text-muted-foreground/80 leading-none">
+                              <Phone className="w-3 h-3 text-muted-foreground/70 shrink-0" />
                               <span>{user.phone_number || "N/A"}</span>
                             </div>
                           </div>
                         </TableCell>
 
                         {/* ROLE */}
-                        <TableCell className="py-3 align-middle">
+                        <TableCell className="py-2 align-middle">
                           <Badge
                             variant="outline"
                             className={cn(
-                              "text-[9px] uppercase tracking-widest px-1.5 h-4 rounded-sm",
+                              "text-[8px] uppercase tracking-widest px-1.5 h-4 rounded",
                               getRoleBadgeStyle(user.role || ""),
                             )}
                           >
@@ -602,23 +602,24 @@ export default function ClientsDataGrid() {
                         </TableCell>
 
                         {/* STATUS */}
-                        <TableCell className="py-3 align-middle">
+                        <TableCell className="py-2 align-middle">
                           {getStatusBadge(user.account_status || "PENDING")}
                         </TableCell>
 
+                        {/* LAST ACTIVE */}
                         <TableCell
                           className={cn(
-                            "py-3 align-middle",
+                            "py-2 align-middle",
                             selectedUser && "hidden xl:table-cell",
                           )}
                         >
-                          <span className="text-[10px] font-mono text-slate-500">
+                          <span className="text-[10px] font-mono text-muted-foreground">
                             2026-03-14
                           </span>
                         </TableCell>
 
                         {/* ACTIONS */}
-                        <TableCell className="py-3 align-middle text-right pr-4">
+                        <TableCell className="py-2 align-middle text-right pr-4">
                           <div
                             className="flex items-center justify-end opacity-0 group-hover:opacity-100 transition-opacity"
                             onClick={(e) => e.stopPropagation()}
@@ -626,18 +627,18 @@ export default function ClientsDataGrid() {
                             <Button
                               variant="ghost"
                               size="icon"
-                              className="h-6 w-6 rounded-sm text-slate-400 hover:text-slate-900 hover:bg-slate-200"
+                              className="h-6 w-6 rounded-md text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
                               onClick={(e) => handleEdit(e, user)}
                             >
-                              <Edit2 className="h-3 w-3" />
+                              <Edit2 className="h-3.5 w-3.5" />
                             </Button>
                             <Button
                               variant="ghost"
                               size="icon"
-                              className="h-6 w-6 rounded-sm text-red-400 hover:text-red-700 hover:bg-red-50"
+                              className="h-6 w-6 rounded-md text-destructive/70 hover:text-destructive hover:bg-destructive/10 transition-colors"
                               onClick={(e) => handleDelete(e, user.user_id)}
                             >
-                              <Trash2 className="h-3 w-3" />
+                              <Trash2 className="h-3.5 w-3.5" />
                             </Button>
                           </div>
                         </TableCell>
@@ -651,18 +652,18 @@ export default function ClientsDataGrid() {
         </div>
 
         {/* Pagination Footer */}
-        <div className="flex items-center justify-between px-4 py-3 border-t border-slate-200 bg-white shrink-0 z-10">
-          <div className="text-[10px] font-bold uppercase tracking-widest text-slate-500">
+        <div className="flex items-center justify-between px-4 py-2 border-t border-border bg-card shrink-0 z-10 transition-colors">
+          <div className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">
             Showing{" "}
             {totalCount === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1} to{" "}
             {Math.min(currentPage * itemsPerPage, totalCount)} of {totalCount}{" "}
             entries
           </div>
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1.5">
             <Button
               variant="outline"
               size="sm"
-              className="h-7 px-2 rounded-sm shadow-none text-[10px] font-bold uppercase tracking-widest text-slate-600 border-slate-200"
+              className="h-7 px-2.5 rounded-lg shadow-none text-[9px] font-bold uppercase tracking-widest text-foreground border-border hover:bg-secondary transition-colors"
               disabled={currentPage === 1 || isLoading}
               onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
             >
@@ -676,10 +677,10 @@ export default function ClientsDataGrid() {
                   variant={currentPage === i + 1 ? "default" : "ghost"}
                   size="sm"
                   className={cn(
-                    "h-7 w-7 p-0 rounded-sm shadow-none text-xs font-mono",
+                    "h-7 w-7 p-0 rounded-md shadow-none text-[11px] font-mono transition-colors",
                     currentPage === i + 1
-                      ? "bg-slate-900 text-white"
-                      : "text-slate-600 hover:bg-slate-100",
+                      ? "bg-foreground text-background"
+                      : "text-muted-foreground hover:bg-secondary hover:text-foreground",
                   )}
                   onClick={() => setCurrentPage(i + 1)}
                 >
@@ -691,7 +692,7 @@ export default function ClientsDataGrid() {
             <Button
               variant="outline"
               size="sm"
-              className="h-7 px-2 rounded-sm shadow-none text-[10px] font-bold uppercase tracking-widest text-slate-600 border-slate-200"
+              className="h-7 px-2.5 rounded-lg shadow-none text-[9px] font-bold uppercase tracking-widest text-foreground border-border hover:bg-secondary transition-colors"
               disabled={
                 currentPage === totalPages || isLoading || totalPages === 0
               }
@@ -706,91 +707,95 @@ export default function ClientsDataGrid() {
       {/* RIGHT SIDEBAR: DOSSIER */}
       <div
         className={cn(
-          "bg-white transition-all duration-300 ease-in-out shrink-0 overflow-hidden flex flex-col shadow-[-10px_0_15px_-3px_rgba(0,0,0,0.05)]",
+          "bg-background transition-all duration-300 ease-in-out shrink-0 overflow-hidden flex flex-col shadow-[-10px_0_15px_-3px_hsl(var(--shadow)/0.05)]",
           selectedUser
-            ? "w-[40%] xl:w-1/3 translate-x-0 border-l border-slate-200"
+            ? "w-[40%] xl:w-1/3 translate-x-0 border-l border-border"
             : "w-0 translate-x-full border-none opacity-0",
         )}
       >
         {selectedUser && (
           <>
-            <div className="shrink-0 flex flex-col bg-slate-900 p-6 relative">
+            {/* DOSSIER HEADER */}
+            <div className="shrink-0 flex flex-col bg-card p-5 relative border-b border-border transition-colors">
               <Button
                 variant="ghost"
                 size="icon"
-                className="absolute top-3 right-3 h-6 w-6 text-slate-400 hover:text-white hover:bg-slate-800 rounded-sm"
+                className="absolute top-3 right-3 h-7 w-7 text-muted-foreground hover:text-foreground hover:bg-secondary rounded-lg transition-colors"
                 onClick={() => setSelectedUser(null)}
               >
                 <X className="h-4 w-4" />
               </Button>
 
               <div className="flex items-start gap-4">
-                <Avatar className="h-16 w-16 rounded-sm border border-slate-700 bg-slate-800 shrink-0">
+                <Avatar className="h-14 w-14 rounded-xl border border-border bg-secondary shrink-0">
                   <AvatarImage
                     src={selectedUser.profile_picture_url || undefined}
                     className="object-cover"
                   />
-                  <AvatarFallback className="text-lg font-bold bg-slate-800 text-slate-300 rounded-sm">
+                  <AvatarFallback className="text-sm font-bold bg-secondary text-foreground rounded-xl">
                     {getInitials(selectedUser.full_name || "")}
                   </AvatarFallback>
                 </Avatar>
                 <div className="flex flex-col pt-1">
-                  <h2 className="text-lg font-bold text-white leading-none mb-1.5 pr-6">
+                  <h2 className="text-sm font-bold text-foreground leading-none mb-1.5 pr-6 truncate">
                     {toTitleCase(selectedUser.full_name)}
                   </h2>
                   <div className="flex items-center gap-2">
                     <Badge
                       variant="outline"
                       className={cn(
-                        "text-[9px] uppercase tracking-widest h-4 px-1.5 rounded-sm border-none bg-white/10 text-white",
+                        "text-[8px] uppercase tracking-widest h-4 px-1.5 rounded",
+                        getRoleBadgeStyle(selectedUser.role || ""),
                       )}
                     >
                       {toTitleCaseLine(selectedUser.role)}
                     </Badge>
-                    <span className="text-[10px] font-mono text-slate-400">
-                      ID: {selectedUser.user_id.split("-")[0].toUpperCase()}
+                    <span className="text-[9px] font-mono text-muted-foreground uppercase tracking-widest">
+                      ID: {selectedUser.user_id.split("-")[0]}
                     </span>
                   </div>
                 </div>
               </div>
 
-              <div className="flex gap-2 mt-5">
+              <div className="flex gap-2 mt-4">
                 <Button
                   size="sm"
-                  className="h-7 text-[10px] font-bold uppercase tracking-widest bg-blue-600 hover:bg-blue-500 text-white flex-1 rounded-sm shadow-none"
+                  className="h-8 text-[10px] font-bold uppercase tracking-widest bg-primary hover:opacity-90 text-primary-foreground flex-1 rounded-lg shadow-sm transition-opacity"
                 >
-                  <SquarePlus className="w-3 h-3 mr-1.5" /> Book
+                  <SquarePlus className="w-3.5 h-3.5 mr-1.5" /> Book
                 </Button>
                 <Button
                   variant="outline"
                   size="sm"
-                  className="h-7 text-[10px] font-bold uppercase tracking-widest bg-transparent border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-white flex-1 rounded-sm shadow-none"
+                  className="h-8 text-[10px] font-bold uppercase tracking-widest bg-background border-border text-foreground hover:bg-secondary flex-1 rounded-lg shadow-none transition-colors"
                   onClick={() => setUserToMessage(selectedUser)}
                 >
-                  <Send className="w-3 h-3 mr-1.5" /> Msg
+                  <Send className="w-3.5 h-3.5 mr-1.5 text-muted-foreground" />{" "}
+                  Msg
                 </Button>
               </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto bg-slate-50/50 thin-scrollbar">
+            {/* DOSSIER BODY */}
+            <div className="flex-1 overflow-y-auto bg-background custom-scrollbar transition-colors">
               <Tabs defaultValue="overview" className="w-full">
-                <div className="p-4 border-b border-slate-200 bg-slate-50 sticky top-0 z-10 shadow-sm">
-                  <TabsList className="h-9 bg-slate-200/60 p-1 flex w-full rounded-sm">
+                <div className="px-3 pt-2 border-b border-border bg-secondary/30 sticky top-0 z-10 transition-colors">
+                  <TabsList className="h-9 bg-transparent p-0 flex w-full border-b-0">
                     <TabsTrigger
                       value="overview"
-                      className="flex-1 h-7 text-[10px] font-bold uppercase tracking-widest rounded-[2px] data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-slate-900 text-slate-500 transition-all"
+                      className="flex-1 h-9 text-[10px] font-bold uppercase tracking-widest rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-foreground text-muted-foreground transition-all"
                     >
                       Overview
                     </TabsTrigger>
                     <TabsTrigger
                       value="history"
-                      className="flex-1 h-7 text-[10px] font-bold uppercase tracking-widest rounded-[2px] data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-slate-900 text-slate-500 transition-all"
+                      className="flex-1 h-9 text-[10px] font-bold uppercase tracking-widest rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-foreground text-muted-foreground transition-all"
                     >
                       Bookings
                     </TabsTrigger>
                     <TabsTrigger
                       value="docs"
-                      className="flex-1 h-7 text-[10px] font-bold uppercase tracking-widest rounded-[2px] data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-slate-900 text-slate-500 transition-all"
+                      className="flex-1 h-9 text-[10px] font-bold uppercase tracking-widest rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-foreground text-muted-foreground transition-all"
                     >
                       Docs
                     </TabsTrigger>
@@ -799,28 +804,30 @@ export default function ClientsDataGrid() {
 
                 <TabsContent
                   value="overview"
-                  className="p-5 m-0 space-y-5 outline-none"
+                  className="p-4 m-0 space-y-4 outline-none"
                 >
-                  <div className="bg-white border border-slate-200 rounded-sm p-4 shadow-sm">
-                    <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-1.5">
+                  <div className="bg-card border border-border rounded-xl p-4 shadow-sm transition-colors">
+                    <h4 className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest mb-3 flex items-center gap-1.5 border-b border-border pb-1.5">
                       <ShieldCheck className="w-3.5 h-3.5" /> Account Health
                     </h4>
                     <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest mb-1">
+                      <div className="flex flex-col gap-1">
+                        <span className="text-[9px] text-muted-foreground font-bold uppercase tracking-widest">
                           Status
-                        </p>
-                        {getStatusBadge(
-                          selectedUser.account_status || "PENDING",
-                        )}
+                        </span>
+                        <div>
+                          {getStatusBadge(
+                            selectedUser.account_status || "PENDING",
+                          )}
+                        </div>
                       </div>
-                      <div>
-                        <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest mb-1">
+                      <div className="flex flex-col gap-1">
+                        <span className="text-[9px] text-muted-foreground font-bold uppercase tracking-widest">
                           Trust Score
-                        </p>
-                        <p className="text-xs font-black font-mono text-emerald-600">
+                        </span>
+                        <p className="text-lg font-black font-mono text-emerald-600 dark:text-emerald-400 leading-none">
                           {selectedUser.trust_score || "5.0"}{" "}
-                          <span className="text-[10px] text-slate-400 font-medium">
+                          <span className="text-[10px] text-muted-foreground font-sans font-medium">
                             / 5.0
                           </span>
                         </p>
@@ -828,43 +835,43 @@ export default function ClientsDataGrid() {
                     </div>
                   </div>
 
-                  <div className="bg-white border border-slate-200 rounded-sm p-4 shadow-sm">
-                    <div className="flex items-center justify-between mb-3">
-                      <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
+                  <div className="bg-card border border-border rounded-xl p-4 shadow-sm transition-colors">
+                    <div className="flex items-center justify-between mb-3 border-b border-border pb-1.5">
+                      <h4 className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-1.5">
                         <User className="w-3.5 h-3.5" /> Contact Profile
                       </h4>
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="h-5 px-1.5 text-[9px] font-bold uppercase tracking-widest text-blue-600 hover:bg-blue-50"
+                        className="h-5 px-1.5 text-[9px] font-bold uppercase tracking-widest text-primary hover:bg-primary/10 rounded"
                         onClick={(e) => handleEdit(e, selectedUser)}
                       >
                         Edit
                       </Button>
                     </div>
 
-                    <div className="space-y-3">
-                      <div className="grid grid-cols-[80px_1fr] items-start">
-                        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-0.5">
+                    <div className="space-y-2.5">
+                      <div className="grid grid-cols-[60px_1fr] items-start">
+                        <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest mt-0.5">
                           Email
                         </span>
-                        <span className="text-[11px] font-mono text-slate-900 font-medium break-all">
+                        <span className="text-[11px] font-mono text-foreground font-medium break-all">
                           {selectedUser.email}
                         </span>
                       </div>
-                      <div className="grid grid-cols-[80px_1fr] items-start">
-                        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-0.5">
+                      <div className="grid grid-cols-[60px_1fr] items-start">
+                        <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest mt-0.5">
                           Phone
                         </span>
-                        <span className="text-[11px] font-mono text-slate-900 font-medium">
+                        <span className="text-[11px] font-mono text-foreground font-medium">
                           {selectedUser.phone_number || "N/A"}
                         </span>
                       </div>
-                      <div className="grid grid-cols-[80px_1fr] items-start">
-                        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-0.5">
-                          Address
+                      <div className="grid grid-cols-[60px_1fr] items-start">
+                        <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest mt-0.5">
+                          Addr
                         </span>
-                        <span className="text-xs text-slate-700 leading-snug">
+                        <span className="text-[11px] text-foreground leading-snug font-medium">
                           {selectedUser.address || "No address on file."}
                         </span>
                       </div>
@@ -872,65 +879,68 @@ export default function ClientsDataGrid() {
                   </div>
                 </TabsContent>
 
-                <TabsContent value="history" className="p-5 m-0 outline-none">
-                  <div className="bg-white border border-slate-200 rounded-sm shadow-sm overflow-hidden">
-                    <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
-                      <h4 className="text-[10px] font-bold text-slate-700 uppercase tracking-widest flex items-center gap-1.5">
-                        <History className="w-3.5 h-3.5 text-slate-400" />{" "}
-                        Recent Bookings
+                <TabsContent value="history" className="p-4 m-0 outline-none">
+                  <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden transition-colors">
+                    <div className="p-3 border-b border-border flex items-center justify-between bg-secondary/50">
+                      <h4 className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-1.5">
+                        <History className="w-3.5 h-3.5" /> Recent Bookings
                       </h4>
-                      <span className="text-[10px] font-bold text-slate-400">
+                      <span className="text-[9px] font-bold text-muted-foreground">
                         Total: 2
                       </span>
                     </div>
 
-                    <div className="flex flex-col">
-                      <div className="p-4 border-b border-slate-100 hover:bg-slate-50 transition-colors cursor-pointer group">
-                        <div className="flex items-center justify-between mb-2">
-                          <span className="text-[10px] font-mono font-bold text-slate-900">
+                    <div className="flex flex-col divide-y divide-border">
+                      {/* Booking 1 */}
+                      <div className="p-3 hover:bg-secondary/30 transition-colors cursor-pointer group">
+                        <div className="flex items-center justify-between mb-1.5">
+                          <span className="text-[11px] font-mono font-bold text-foreground">
                             BK-7A921
                           </span>
                           <Badge
                             variant="outline"
-                            className="text-[9px] uppercase tracking-widest bg-emerald-50 text-emerald-700 border-emerald-200 px-1.5 h-4 rounded-sm"
+                            className="text-[8px] uppercase tracking-widest bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 px-1.5 h-4 rounded"
                           >
                             Completed
                           </Badge>
                         </div>
-                        <div className="flex items-center gap-2 text-xs text-slate-600 mb-2">
-                          <CarFront className="w-3.5 h-3.5 text-slate-400" />
-                          <span className="font-medium">
+                        <div className="flex items-center gap-1.5 text-[11px] text-foreground mb-1.5">
+                          <CarFront className="w-3.5 h-3.5 text-muted-foreground" />
+                          <span className="font-semibold">
                             2023 Toyota Fortuner
                           </span>
                         </div>
-                        <div className="flex items-center justify-between text-[10px] font-mono text-slate-500">
+                        <div className="flex items-center justify-between text-[9px] font-mono text-muted-foreground uppercase tracking-widest">
                           <span>Mar 12 - Mar 15</span>
-                          <span className="font-bold text-slate-700">
-                            ₱12,500
+                          <span className="font-bold text-foreground text-[11px]">
+                            ₱ 12,500
                           </span>
                         </div>
                       </div>
 
-                      <div className="p-4 hover:bg-slate-50 transition-colors cursor-pointer group">
-                        <div className="flex items-center justify-between mb-2">
-                          <span className="text-[10px] font-mono font-bold text-slate-900">
+                      {/* Booking 2 */}
+                      <div className="p-3 hover:bg-secondary/30 transition-colors cursor-pointer group">
+                        <div className="flex items-center justify-between mb-1.5">
+                          <span className="text-[11px] font-mono font-bold text-foreground">
                             BK-3B445
                           </span>
                           <Badge
                             variant="outline"
-                            className="text-[9px] uppercase tracking-widest bg-blue-50 text-blue-700 border-blue-200 px-1.5 h-4 rounded-sm"
+                            className="text-[8px] uppercase tracking-widest bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20 px-1.5 h-4 rounded"
                           >
                             Upcoming
                           </Badge>
                         </div>
-                        <div className="flex items-center gap-2 text-xs text-slate-600 mb-2">
-                          <CarFront className="w-3.5 h-3.5 text-slate-400" />
-                          <span className="font-medium">2024 Honda Civic</span>
+                        <div className="flex items-center gap-1.5 text-[11px] text-foreground mb-1.5">
+                          <CarFront className="w-3.5 h-3.5 text-muted-foreground" />
+                          <span className="font-semibold">
+                            2024 Honda Civic
+                          </span>
                         </div>
-                        <div className="flex items-center justify-between text-[10px] font-mono text-slate-500">
+                        <div className="flex items-center justify-between text-[9px] font-mono text-muted-foreground uppercase tracking-widest">
                           <span>Apr 01 - Apr 03</span>
-                          <span className="font-bold text-slate-700">
-                            ₱8,200
+                          <span className="font-bold text-foreground text-[11px]">
+                            ₱ 8,200
                           </span>
                         </div>
                       </div>
@@ -940,21 +950,20 @@ export default function ClientsDataGrid() {
 
                 <TabsContent
                   value="docs"
-                  className="p-5 m-0 space-y-4 outline-none"
+                  className="p-4 m-0 space-y-4 outline-none"
                 >
-                  <div className="bg-white border border-slate-200 rounded-sm p-4 shadow-sm">
-                    <div className="flex items-center justify-between mb-3">
-                      <h4 className="text-[10px] font-bold text-slate-700 uppercase tracking-widest flex items-center gap-1.5">
-                        <FileBadge className="w-3.5 h-3.5 text-slate-400" />{" "}
-                        Driver's License
+                  <div className="bg-card border border-border rounded-xl p-4 shadow-sm transition-colors">
+                    <div className="flex items-center justify-between mb-3 border-b border-border pb-1.5">
+                      <h4 className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-1.5">
+                        <FileBadge className="w-3.5 h-3.5" /> Driver's License
                       </h4>
                       <Badge
                         variant="outline"
                         className={cn(
-                          "text-[9px] uppercase tracking-widest h-4 px-1.5 rounded-sm",
+                          "text-[8px] uppercase tracking-widest h-4 px-1.5 rounded",
                           selectedUser.license_id_url
-                            ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                            : "bg-slate-100 text-slate-500 border-slate-200",
+                            ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
+                            : "bg-secondary text-muted-foreground border-border",
                         )}
                       >
                         {selectedUser.license_id_url ? "Uploaded" : "Missing"}
@@ -962,20 +971,20 @@ export default function ClientsDataGrid() {
                     </div>
 
                     {selectedUser.license_id_url ? (
-                      <div className="space-y-3">
-                        <div className="grid grid-cols-[80px_1fr] items-start">
-                          <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-0.5">
+                      <div className="space-y-2.5">
+                        <div className="grid grid-cols-[60px_1fr] items-start">
+                          <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest mt-0.5">
                             Number
                           </span>
-                          <span className="text-[11px] font-mono font-medium text-slate-900 uppercase">
+                          <span className="text-[11px] font-mono font-medium text-foreground uppercase">
                             {selectedUser.license_number || "N/A"}
                           </span>
                         </div>
-                        <div className="grid grid-cols-[80px_1fr] items-start">
-                          <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-0.5">
+                        <div className="grid grid-cols-[60px_1fr] items-start">
+                          <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest mt-0.5">
                             Expiry
                           </span>
-                          <span className="text-[11px] font-mono text-slate-900 font-medium">
+                          <span className="text-[11px] font-mono text-foreground font-medium">
                             {selectedUser.license_expiry_date
                               ? new Date(
                                   selectedUser.license_expiry_date,
@@ -987,20 +996,20 @@ export default function ClientsDataGrid() {
                           href={selectedUser.license_id_url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="flex items-center justify-center gap-2 w-full mt-2 h-8 bg-slate-50 border border-slate-200 rounded-sm text-xs font-bold text-blue-600 hover:bg-blue-50 transition-colors"
+                          className="flex items-center justify-center gap-2 w-full mt-3 h-8 bg-secondary border border-border rounded-lg text-[10px] font-bold text-primary hover:bg-background transition-colors uppercase tracking-widest shadow-sm"
                         >
-                          View Document <ExternalLink className="w-3.5 h-3.5" />
+                          View Document <ExternalLink className="w-3 h-3" />
                         </a>
                       </div>
                     ) : (
-                      <div className="border border-dashed border-slate-200 rounded-sm p-4 flex flex-col items-center justify-center text-center mt-2 bg-slate-50/50">
-                        <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2">
+                      <div className="border border-dashed border-border rounded-lg p-4 flex flex-col items-center justify-center text-center mt-2 bg-secondary/30 transition-colors">
+                        <span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground mb-2">
                           No file on record
                         </span>
                         <Button
                           variant="outline"
                           size="sm"
-                          className="h-6 px-2 text-[9px] font-bold uppercase tracking-widest rounded-sm"
+                          className="h-7 px-3 text-[9px] font-bold uppercase tracking-widest rounded-md shadow-none"
                           onClick={(e) => handleEdit(e, selectedUser)}
                         >
                           Upload Now
@@ -1009,19 +1018,18 @@ export default function ClientsDataGrid() {
                     )}
                   </div>
 
-                  <div className="bg-white border border-slate-200 rounded-sm p-4 shadow-sm">
-                    <div className="flex items-center justify-between mb-3">
-                      <h4 className="text-[10px] font-bold text-slate-700 uppercase tracking-widest flex items-center gap-1.5">
-                        <ShieldCheck className="w-3.5 h-3.5 text-slate-400" />{" "}
-                        Secondary ID
+                  <div className="bg-card border border-border rounded-xl p-4 shadow-sm transition-colors">
+                    <div className="flex items-center justify-between mb-3 border-b border-border pb-1.5">
+                      <h4 className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-1.5">
+                        <ShieldCheck className="w-3.5 h-3.5" /> Secondary ID
                       </h4>
                       <Badge
                         variant="outline"
                         className={cn(
-                          "text-[9px] uppercase tracking-widest h-4 px-1.5 rounded-sm",
+                          "text-[8px] uppercase tracking-widest h-4 px-1.5 rounded",
                           selectedUser.valid_id_url
-                            ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                            : "bg-slate-100 text-slate-500 border-slate-200",
+                            ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
+                            : "bg-secondary text-muted-foreground border-border",
                         )}
                       >
                         {selectedUser.valid_id_url ? "Uploaded" : "Missing"}
@@ -1029,12 +1037,12 @@ export default function ClientsDataGrid() {
                     </div>
 
                     {selectedUser.valid_id_url ? (
-                      <div className="space-y-3">
-                        <div className="grid grid-cols-[80px_1fr] items-start">
-                          <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-0.5">
+                      <div className="space-y-2.5">
+                        <div className="grid grid-cols-[60px_1fr] items-start">
+                          <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest mt-0.5">
                             Expiry
                           </span>
-                          <span className="text-[11px] font-mono text-slate-900 font-medium">
+                          <span className="text-[11px] font-mono text-foreground font-medium">
                             {selectedUser.valid_id_expiry_date
                               ? new Date(
                                   selectedUser.valid_id_expiry_date,
@@ -1046,20 +1054,20 @@ export default function ClientsDataGrid() {
                           href={selectedUser.valid_id_url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="flex items-center justify-center gap-2 w-full mt-2 h-8 bg-slate-50 border border-slate-200 rounded-sm text-xs font-bold text-blue-600 hover:bg-blue-50 transition-colors"
+                          className="flex items-center justify-center gap-2 w-full mt-3 h-8 bg-secondary border border-border rounded-lg text-[10px] font-bold text-primary hover:bg-background transition-colors uppercase tracking-widest shadow-sm"
                         >
-                          View Document <ExternalLink className="w-3.5 h-3.5" />
+                          View Document <ExternalLink className="w-3 h-3" />
                         </a>
                       </div>
                     ) : (
-                      <div className="border border-dashed border-slate-200 rounded-sm p-4 flex flex-col items-center justify-center text-center mt-2 bg-slate-50/50">
-                        <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2">
+                      <div className="border border-dashed border-border rounded-lg p-4 flex flex-col items-center justify-center text-center mt-2 bg-secondary/30 transition-colors">
+                        <span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground mb-2">
                           No file on record
                         </span>
                         <Button
                           variant="outline"
                           size="sm"
-                          className="h-6 px-2 text-[9px] font-bold uppercase tracking-widest rounded-sm"
+                          className="h-7 px-3 text-[9px] font-bold uppercase tracking-widest rounded-md shadow-none"
                           onClick={(e) => handleEdit(e, selectedUser)}
                         >
                           Upload Now
@@ -1077,10 +1085,10 @@ export default function ClientsDataGrid() {
       <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
         <DialogContent
           showCloseButton={false}
-          className="sm:max-w-150 flex flex-col p-0 border-slate-200 shadow-xl rounded-sm overflow-hidden gap-0 bg-white"
+          className="sm:max-w-[600px] flex flex-col p-0 border-border shadow-2xl rounded-2xl overflow-hidden gap-0 bg-background transition-colors duration-300"
         >
-          <DialogHeader className="p-0 ">
-            <DialogTitle className="sr-only text-xs font-bold text-slate-900 uppercase tracking-widest">
+          <DialogHeader className="p-0">
+            <DialogTitle className="sr-only text-xs font-bold text-foreground uppercase tracking-widest">
               {editingUser ? "Edit Client Profile" : "Add New Client"}
             </DialogTitle>
           </DialogHeader>

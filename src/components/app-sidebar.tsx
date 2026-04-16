@@ -27,6 +27,8 @@ import {
   SwatchBook,
 } from "lucide-react";
 
+import Image from "next/image";
+
 import NavMain from "./sidebar/nav-main"; // <-- Adjust path to where your ModeToggle is saved
 import { ModeToggle } from "./mode-toggle";
 
@@ -82,11 +84,18 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               onClick={toggleSidebar}
               className="hover:bg-sidebar-accent hover:text-sidebar-accent-foreground cursor-pointer rounded-lg p-1.5 transition-all duration-200 group-data-[collapsible=icon]:!p-0 group-data-[collapsible=icon]:!size-8 group-data-[collapsible=icon]:!justify-center"
             >
-              <div className="bg-primary text-primary-foreground flex aspect-square size-7 items-center justify-center rounded-md shrink-0 shadow-[0_0_10px_rgba(100,197,195,0.2)] transition-all duration-200 group-data-[collapsible=icon]:!m-0">
-                <SwatchBook className="w-3.5 h-3.5" />
+              <div className="relative flex aspect-square size-12 items-center justify-center shrink-0 transition-all duration-200 group-data-[collapsible=icon]:!m-0">
+                <Image
+                  src="/mc-ormoc-logo.png" /* Change this to your exact filename */
+                  alt="Company Logo"
+                  width={40}
+                  height={40}
+                  priority
+                  className="object-contain"
+                />
               </div>
 
-              <div className="flex flex-col gap-0.5 leading-none overflow-hidden ml-1 transition-all duration-200 group-data-[collapsible=icon]:w-0 group-data-[collapsible=icon]:opacity-0 group-data-[collapsible=icon]:!ml-0">
+              <div className="flex flex-col gap-0.5 leading-none overflow-hidden transition-all duration-200 group-data-[collapsible=icon]:w-0 group-data-[collapsible=icon]:opacity-0 group-data-[collapsible=icon]:!ml-0">
                 <span className="font-black text-[12px] text-sidebar-foreground uppercase tracking-widest truncate whitespace-nowrap">
                   MC Rentals
                 </span>

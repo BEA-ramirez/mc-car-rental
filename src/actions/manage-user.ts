@@ -170,13 +170,16 @@ export async function createClientAction(
     const full_name =
       `${profileData.first_name || ""} ${profileData.last_name || ""}`.trim();
 
-    // 1. Auth Creation
+    // 1. Auth Creation (FIXED FOR DB TRIGGER)
     const { data: authUser, error: authError } =
       await supabaseAdmin.auth.admin.createUser({
         email: email!,
         password: password,
         email_confirm: true,
-        user_metadata: { full_name, role: profileData.role },
+        user_metadata: {
+          ...profileData, // <-- This passes first_name, last_name, role, etc. to satisfy your trigger!
+          full_name,
+        },
       });
 
     if (authError) throw authError;
@@ -242,7 +245,7 @@ export async function createClientAction(
           .from("drivers")
           .insert({
             user_id: newUserId,
-            driver_status: "Available",
+            driver_status: "AVAILABLE",
             is_verified: true, // <-- Auto-verified by Admin
           });
         if (driverError) throw driverError;
@@ -253,7 +256,7 @@ export async function createClientAction(
             user_id: newUserId,
             business_name: full_name || "Pending Business Name",
             revenue_share_percentage: 70,
-            verification_status: "verified", // <-- Auto-verified by Admin
+            verification_status: "VERIFIED", // <-- Auto-verified by Admin
           });
         if (ownerError) throw ownerError;
       }
@@ -294,7 +297,7 @@ export async function updateClientAction(
 
   const {
     user_id,
-    password,
+    password, // Usually ignored on update unless you have a specific password reset flow
     email,
     valid_id_expiry_date,
     license_expiry_date,
@@ -395,13 +398,11 @@ export async function updateClientAction(
 
       if (!existingDriver) {
         // Create new auto-verified driver
-        await supabaseAdmin
-          .from("drivers")
-          .insert({
-            user_id: user_id,
-            driver_status: "Available",
-            is_verified: true,
-          });
+        await supabaseAdmin.from("drivers").insert({
+          user_id: user_id,
+          driver_status: "Available",
+          is_verified: true,
+        });
       } else {
         // If they already exist (e.g., they were pending), force them to verified
         await supabaseAdmin

@@ -34,23 +34,23 @@ export async function updateSession(request: NextRequest) {
   );
 
   //Calling getUser() refreshes the session token if it is expired.
-  // const {
-  //   data: { user },
-  // } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
-  // // If no user exists and they try to go to /admin, kick them to /login
-  // if (!user && request.nextUrl.pathname.startsWith("/admin")) {
-  //   const url = request.nextUrl.clone();
-  //   url.pathname = "/auth/login";
-  //   return NextResponse.redirect(url);
-  // }
+  // If no user exists and they try to go to /admin, kick them to /login
+  if (!user && request.nextUrl.pathname.startsWith("/admin")) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/auth/login";
+    return NextResponse.redirect(url);
+  }
 
-  // // If they are logged in, don't let them sit on the login page. Send them to the dashboard.
-  // if (user && request.nextUrl.pathname.startsWith("/auth/login")) {
-  //   const url = request.nextUrl.clone();
-  //   url.pathname = "/admin/dashboard";
-  //   return NextResponse.redirect(url);
-  // }
+  // If they are logged in, don't let them sit on the login page. Send them to the dashboard.
+  if (user && request.nextUrl.pathname.startsWith("/auth/login")) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/admin/dashboard";
+    return NextResponse.redirect(url);
+  }
 
   return supabaseResponse;
 }

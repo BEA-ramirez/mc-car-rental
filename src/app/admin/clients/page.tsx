@@ -11,6 +11,7 @@ import ClientsDataGrid from "@/components/clients/clients-datagrid";
 import RequestsQueue from "@/components/clients/requests-queue";
 
 import { useClientsKpi } from "../../../../hooks/use-clients";
+import { cn } from "@/lib/utils";
 
 export default function ClientsPage() {
   const { data: kpiData } = useClientsKpi();
@@ -18,69 +19,34 @@ export default function ClientsPage() {
   const pendingCount = kpiData?.pending_id || 0;
 
   return (
-    <div className="flex flex-col h-[calc(100vh-80px)] bg-slate-50 font-sans overflow-hidden">
-      {/* GLOBAL PAGE HEADER */}
-      <div className="flex items-center justify-between px-6 py-4 bg-white border-b border-slate-200 shrink-0 z-20 shadow-sm">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-sm bg-slate-900 flex items-center justify-center shadow-sm">
-            <Users className="w-4 h-4 text-white" />
-          </div>
-          <div>
-            <h1 className="text-base font-bold text-slate-900 tracking-tight leading-none mb-1">
-              Client Directory
-            </h1>
-            <p className="text-[11px] font-medium text-slate-500 leading-none">
-              Manage customers, drivers, and fleet partners.
-            </p>
-          </div>
-        </div>
-        <div className="flex items-center gap-3">
-          <div className="text-right hidden sm:block mr-2">
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-              Today
-            </p>
-            <p className="text-xs font-bold text-slate-800">
-              {format(new Date(), "MMM dd, yyyy")}
-            </p>
-          </div>
-          <div className="w-px h-6 bg-slate-200 hidden sm:block" />
-          <Button
-            variant="outline"
-            size="icon"
-            className="h-8 w-8 rounded-sm border-slate-200 text-slate-600 hover:bg-slate-100 hover:text-slate-900 shadow-none"
-          >
-            <MoreVertical className="w-4 h-4" />
-          </Button>
-        </div>
-      </div>
-
+    <div className="flex flex-col h-full bg-background font-sans overflow-hidden transition-colors duration-300">
       <div className="flex-1 w-full overflow-y-auto custom-scrollbar">
-        <div className="max-w-400 mx-auto p-6 space-y-6 flex flex-col min-h-full">
+        <div className="max-w-[1400px] mx-auto p-4 md:p-5 space-y-5 flex flex-col min-h-full">
           {/* TOP ROW: KPIs */}
-          <div className="bg-white border border-slate-200 rounded-sm shadow-sm overflow-hidden flex flex-col shrink-0">
+          <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden flex flex-col shrink-0 transition-colors">
             <ClientsOverview />
           </div>
 
           {/* MAIN TABBED AREA */}
           <Tabs
             defaultValue="directory"
-            className="flex flex-col flex-1 min-h-150"
+            className="flex flex-col flex-1 min-h-[150px]"
           >
             <div className="flex items-center justify-between mb-4">
-              <TabsList className="bg-slate-200/60 p-1 h-9 rounded-sm shadow-inner">
+              <TabsList className="bg-secondary/50 p-1 h-9 rounded-lg shadow-inner border border-border/50 transition-colors">
                 <TabsTrigger
                   value="directory"
-                  className="h-7 px-4 text-[10px] font-bold uppercase tracking-widest rounded-[2px] data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-slate-900 text-slate-500 transition-all flex items-center gap-1.5"
+                  className="h-7 px-4 text-[10px] font-bold uppercase tracking-widest rounded-md data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-foreground text-muted-foreground transition-all flex items-center gap-1.5"
                 >
                   <LayoutGrid className="w-3.5 h-3.5" /> Directory
                 </TabsTrigger>
                 <TabsTrigger
                   value="requests"
-                  className="h-7 px-4 text-[10px] font-bold uppercase tracking-widest rounded-[2px] data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-slate-900 text-slate-500 transition-all flex items-center gap-1.5 relative pr-8"
+                  className="h-7 px-4 text-[10px] font-bold uppercase tracking-widest rounded-md data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-foreground text-muted-foreground transition-all flex items-center gap-1.5 relative pr-9"
                 >
                   <Inbox className="w-3.5 h-3.5" /> Verification Queue
                   {pendingCount > 0 && (
-                    <span className="absolute right-2 top-1.5 flex h-4 min-w-4 items-center justify-center rounded-sm bg-red-600 px-1 text-[9px] font-bold text-white shadow-sm">
+                    <span className="absolute right-1.5 top-1.5 flex h-4 min-w-[16px] items-center justify-center rounded bg-destructive px-1 text-[8px] font-bold text-destructive-foreground shadow-sm">
                       {pendingCount > 99 ? "99+" : pendingCount}
                     </span>
                   )}
@@ -92,7 +58,7 @@ export default function ClientsPage() {
               value="directory"
               className="flex-1 m-0 h-full outline-none"
             >
-              <div className="bg-white border border-slate-200 rounded-sm shadow-sm overflow-hidden flex flex-col h-full">
+              <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden flex flex-col h-full transition-colors">
                 <ClientsDataGrid />
               </div>
             </TabsContent>
@@ -101,7 +67,7 @@ export default function ClientsPage() {
               value="requests"
               className="flex-1 m-0 h-full outline-none"
             >
-              <div className="bg-white border border-slate-200 rounded-sm shadow-sm overflow-hidden flex flex-col h-full">
+              <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden flex flex-col h-full transition-colors">
                 <RequestsQueue />
               </div>
             </TabsContent>

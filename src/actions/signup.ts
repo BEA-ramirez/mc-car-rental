@@ -5,6 +5,7 @@ import { createClient } from "@/utils/supabase/server";
 import { signupSchema } from "@/lib/schemas/auth";
 
 export type SignupState = {
+  success: boolean;
   errors?: {
     name?: string[];
     email?: string[];
@@ -16,7 +17,7 @@ export type SignupState = {
 
 export async function signup(
   prevState: SignupState,
-  formData: FormData
+  formData: FormData,
 ): Promise<SignupState> {
   // 1. Log that the function started
   console.log("--- Signup Action Started ---");
@@ -33,6 +34,7 @@ export async function signup(
   if (!validateFields.success) {
     console.log("Validation Failed");
     return {
+      success: false,
       errors: validateFields.error.flatten().fieldErrors,
       message: "Missing fields, failed to create account.",
     };
@@ -57,7 +59,7 @@ export async function signup(
 
     if (error) {
       console.error("Supabase Error:", error.message);
-      return { message: error.message };
+      return { success: false, message: error.message };
     }
 
     console.log("Supabase SignUp Successful");
@@ -65,6 +67,7 @@ export async function signup(
     // If we catch an error, we log it to see what it really is
     console.error("UNEXPECTED ERROR CAUGHT:", err);
     return {
+      success: false,
       message:
         "Database error: " + (err instanceof Error ? err.message : String(err)),
     };
@@ -74,7 +77,7 @@ export async function signup(
   console.log("Redirecting...");
   redirect(
     `/auth/confirm?email=${encodeURIComponent(
-      email
-    )}&message=Account created successfully.`
+      email,
+    )}&message=Account created successfully.`,
   );
 }

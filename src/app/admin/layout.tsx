@@ -4,7 +4,15 @@ import { usePathname } from "next/navigation";
 import React, { useMemo, useState } from "react"; // <-- Added useState
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
-import { Bell, Settings, UserCircle, CarFront, Search } from "lucide-react";
+import {
+  Bell,
+  Settings,
+  UserCircle,
+  CarFront,
+  Search,
+  LogOut,
+  User,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Breadcrumb,
@@ -14,9 +22,18 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import CarCatalogueModal from "@/components/dashboard/car-catalogue";
 import NotificationsPopover from "@/components/topbar/notifications-popover";
-import SettingsDialog from "@/components/settings/settings-dialog"; // <-- Make sure path is correct
+import SettingsDialog from "@/components/settings/settings-dialog";
+import LogoutDialog from "@/components/auth/logout-dialog";
 import { cn } from "@/lib/utils";
 
 export default function AdminLayout({
@@ -28,6 +45,7 @@ export default function AdminLayout({
 
   // State to manage the Settings Takeover Modal
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isLogoutOpen, setIsLogoutOpen] = useState(false);
 
   const breadcrumbs = useMemo(() => {
     const segments = pathname.split("/").filter((segment) => segment !== "");
@@ -103,13 +121,49 @@ export default function AdminLayout({
             </Button>
 
             {/* User Profile */}
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8 rounded-sm text-muted-foreground hover:text-foreground hover:bg-secondary ml-1 transition-colors"
-            >
-              <UserCircle className="w-[18px] h-[18px]" />
-            </Button>
+            <DropdownMenu modal={false}>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary ml-1 transition-colors shadow-none outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                >
+                  <UserCircle className="w-[18px] h-[18px]" />
+                </Button>
+              </DropdownMenuTrigger>
+
+              <DropdownMenuContent
+                align="end"
+                className="w-36 rounded-xl border-border bg-popover shadow-xl p-1 transition-colors"
+              >
+                <DropdownMenuLabel className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground px-2 py-1.5">
+                  My Account
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator className="bg-border" />
+
+                <DropdownMenuItem className="text-[11px] font-semibold rounded-lg cursor-pointer transition-colors focus:bg-secondary px-2.5 py-1.5">
+                  <User className="w-3.5 h-3.5 mr-2 text-muted-foreground" />
+                  Profile
+                </DropdownMenuItem>
+
+                <DropdownMenuItem className="text-[11px] font-semibold rounded-lg cursor-pointer transition-colors focus:bg-secondary px-2.5 py-1.5">
+                  <Settings className="w-3.5 h-3.5 mr-2 text-muted-foreground" />
+                  Settings
+                </DropdownMenuItem>
+
+                <DropdownMenuSeparator className="bg-border mt-1" />
+
+                <DropdownMenuItem
+                  className="text-[10px] font-bold uppercase tracking-widest text-destructive hover:text-destructive focus:bg-destructive/10 focus:text-destructive cursor-pointer py-2 mt-1 rounded-lg transition-colors"
+                  onClick={() => {
+                    setIsLogoutOpen(true);
+                  }}
+                >
+                  <LogOut className="w-3.5 h-3.5 mr-2" />
+                  Sign Out
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </header>
 
@@ -122,6 +176,10 @@ export default function AdminLayout({
         <SettingsDialog
           isOpen={isSettingsOpen}
           onClose={() => setIsSettingsOpen(false)}
+        />
+        <LogoutDialog
+          isOpen={isLogoutOpen}
+          onClose={() => setIsLogoutOpen(false)}
         />
       </SidebarInset>
     </SidebarProvider>

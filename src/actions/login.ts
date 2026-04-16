@@ -37,8 +37,10 @@ export async function login(
   const { email, password } = validateFields.data;
   const supabase = await createClient();
 
+  let redirectPath = "/customer/fleet"; //fallback route
+
   try {
-    const { error } = await supabase.auth.signInWithPassword({
+    const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
@@ -46,13 +48,30 @@ export async function login(
     if (error) {
       return { success: false, message: error.message };
     }
+
+    const role = data.user?.user_metadata?.role;
+
+    switch (role) {
+      case "admin":
+        redirectPath = "/admin/dashboard";
+        break;
+      case "customer":
+        redirectPath = "/customer/fleet";
+        break;
+      case "driver":
+        redirectPath = "/driver/home";
+        break;
+      case "car_owner":
+        redirectPath = "/fleet-partner/home";
+        break;
+    }
   } catch (err) {
     console.error("UNEXPECTED ERROR CAUGHT:", err);
     return { success: false, message: "An unexpected error occurred." };
   }
 
-  revalidatePath("/", "layout"); // forces nextjs to cache
-  redirect("/admin/dashboard");
+  revalidatePath("/", "layout"); // clear the router cache to update the UI based on the new auth state
+  redirect(redirectPath); // navigate to the appropriate dashboard based on the user's role
 }
 
 export async function logout() {
@@ -64,6 +83,6 @@ export async function logout() {
   } catch (error) {
     console.error("Failed to log out:", error);
   }
-  revalidatePath("/", "layout"); // forces nextjs to cache
-  redirect("/login");
+  revalidatePath("/", "layout");
+  redirect("/auth/login");
 }

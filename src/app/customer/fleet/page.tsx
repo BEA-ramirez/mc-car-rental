@@ -10,6 +10,7 @@ import {
   CheckCircle2,
   ShieldCheck,
   ArrowRight,
+  LogOut,
 } from "lucide-react";
 import { motion } from "framer-motion";
 
@@ -24,6 +25,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
+import LogoutDialog from "@/components/auth/logout-dialog";
 
 import { useUnits } from "../../../../hooks/use-units";
 
@@ -50,6 +52,7 @@ const MOCK_NOTIFICATIONS = [
 export default function CustomerFleetPage() {
   const [selectedCar, setSelectedCar] = useState<any | null>(null);
   const [isSheetOpen, setIsSheetOpen] = useState(false);
+  const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
 
   console.log("Selected car", selectedCar);
 
@@ -223,6 +226,14 @@ export default function CustomerFleetPage() {
                 <span className="hidden sm:inline">Profile</span>
               </Button>
             </Link>
+            <Button
+              onClick={() => setIsLogoutModalOpen(true)}
+              variant="ghost"
+              className="text-white/50 hover:text-white hover:bg-white/10 rounded-full h-10 px-4 text-xs font-bold uppercase tracking-widest transition-all duration-300"
+            >
+              <LogOut className="w-4 h-4 sm:mr-2" />
+              <span className="hidden sm:inline">Logout</span>
+            </Button>
           </div>
         </div>
       </nav>
@@ -395,6 +406,11 @@ export default function CustomerFleetPage() {
         car={selectedCar}
         isOpen={isSheetOpen}
         onClose={() => setIsSheetOpen(false)}
+      />
+
+      <LogoutDialog
+        isOpen={isLogoutModalOpen}
+        onClose={() => setIsLogoutModalOpen(false)}
       />
     </div>
   );
