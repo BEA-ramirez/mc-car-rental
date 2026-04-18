@@ -948,3 +948,32 @@ export async function updateBookingNoteAction(
   revalidatePath(`/admin/bookings/${bookingId}`);
   return { success: true, message: "Notes updated." };
 }
+
+export async function cancelPendingBooking(bookingId: string) {
+  const supabase = await createClient();
+
+  // RLS protects this - they can only update their OWN bookings
+  const { error } = await supabase
+    .from("bookings")
+    .update({
+      booking_status: "CANCELLED",
+      notes: "Cancelled by customer before verification.",
+    })
+    .eq("booking_id", bookingId)
+    .eq("booking_status", "PENDING"); // Security check: Only allow if still Pending!
+
+  if (error) {
+    console.error("Failed to cancel:", error);
+    return { success: false, message: "Could not cancel booking." };
+  }
+
+  // Log the cancellation
+  await supabase.from("booking_logs").insert({
+    booking_id: bookingId,
+    action_type: "BOOKING_CANCELLED",
+    message: "Customer cancelled the booking request.",
+  });
+
+  revalidatePath("/customer/my-bookings");
+  return { success: true, message: "Booking cancelled successfully." };
+}

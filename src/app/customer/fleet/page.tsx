@@ -11,8 +11,10 @@ import {
   ShieldCheck,
   ArrowRight,
   LogOut,
+  CheckCheck,
 } from "lucide-react";
 import { motion } from "framer-motion";
+import { formatDistanceToNow } from "date-fns";
 
 import FleetFilters, { FilterState } from "@/components/customer/fleet-filters";
 import CarCard from "@/components/customer/car-card";
@@ -28,33 +30,12 @@ import { cn } from "@/lib/utils";
 import LogoutDialog from "@/components/auth/logout-dialog";
 
 import { useUnits } from "../../../../hooks/use-units";
-
-// Mock notifs
-const MOCK_NOTIFICATIONS = [
-  {
-    id: 1,
-    title: "Booking Approved",
-    message: "Your request has been verified and approved.",
-    time: "10 mins ago",
-    unread: true,
-    type: "booking",
-  },
-  {
-    id: 2,
-    title: "Identity Verified",
-    message: "Your credentials have been securely authenticated.",
-    time: "2 hours ago",
-    unread: false,
-    type: "system",
-  },
-];
+import { useNotifications } from "../../../../hooks/use-notifications"; // <-- NEW HOOK
 
 export default function CustomerFleetPage() {
   const [selectedCar, setSelectedCar] = useState<any | null>(null);
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
-
-  console.log("Selected car", selectedCar);
 
   const [filters, setFilters] = useState<FilterState>({
     search: "",
@@ -66,7 +47,16 @@ export default function CustomerFleetPage() {
 
   const { units, isUnitsLoading } = useUnits();
 
-  // MAPPING UPDATED: Added 'features' to the returned object
+  // --- FETCH REAL NOTIFICATIONS ---
+  const {
+    data: notifications = [],
+    markAsRead,
+    markAllAsRead,
+  } = useNotifications();
+
+  // Calculate unread count from the real data
+  const unreadCount = notifications.filter((n: any) => !n.is_read).length;
+
   const formattedCars = units.map((unit: any) => {
     const sortedImages = [...(unit.images || [])].sort((a: any, b: any) => {
       if (a.is_primary && !b.is_primary) return -1;
@@ -90,7 +80,7 @@ export default function CustomerFleetPage() {
       fuel: unit.specifications?.fuel_type || "Fuel",
       price: Number(unit.rental_rate_per_day) || 0,
       images: imageUrls,
-      features: unit.features || [], // <-- Added this line to pass features down
+      features: unit.features || [],
     };
   });
 
@@ -118,8 +108,6 @@ export default function CustomerFleetPage() {
     setIsSheetOpen(true);
   };
 
-  const unreadCount = MOCK_NOTIFICATIONS.filter((n) => n.unread).length;
-
   return (
     <div className="min-h-screen bg-[#050B10] text-white font-sans selection:bg-[#64c5c3] selection:text-black">
       {/* Top Nav (Glassmorphic) */}
@@ -135,6 +123,7 @@ export default function CustomerFleetPage() {
           </Link>
 
           <div className="flex items-center gap-2 sm:gap-6">
+            {/* NOTIFICATIONS POPOVER */}
             <Popover>
               <PopoverTrigger asChild>
                 <Button
@@ -151,40 +140,78 @@ export default function CustomerFleetPage() {
               <PopoverContent
                 align="end"
                 sideOffset={12}
-                className="w-80 sm:w-96 p-0 rounded-2xl border-white/10 bg-[#0a1118]/95 backdrop-blur-2xl shadow-2xl overflow-hidden"
+                className="w-80 sm:w-96 p-0 rounded-2xl border-white/10 bg-[#0a1118]/95 backdrop-blur-2xl shadow-2xl overflow-hidden z-[100]"
               >
                 <div className="bg-white/5 border-b border-white/5 p-4 flex items-center justify-between">
-                  <h3 className="font-bold text-white text-sm uppercase tracking-wider">
-                    Notifications
-                  </h3>
+                  <div className="flex items-center gap-3">
+                    <h3 className="font-bold text-white text-sm uppercase tracking-wider">
+                      Notifications
+                    </h3>
+                    {unreadCount > 0 && (
+                      <span className="text-[10px] font-bold text-black bg-[#64c5c3] px-2 py-0.5 rounded-full uppercase tracking-widest">
+                        {unreadCount} New
+                      </span>
+                    )}
+                  </div>
                   {unreadCount > 0 && (
-                    <span className="text-[10px] font-bold text-black bg-[#64c5c3] px-2 py-0.5 rounded-full uppercase tracking-widest">
-                      {unreadCount} New
-                    </span>
+                    <button
+                      onClick={() => markAllAsRead()}
+                      className="text-[10px] text-gray-400 hover:text-[#64c5c3] uppercase tracking-widest font-bold transition-colors flex items-center gap-1"
+                    >
+                      <CheckCheck className="w-3 h-3" /> Mark All Read
+                    </button>
                   )}
                 </div>
+
                 <div className="max-h-[350px] overflow-y-auto custom-scrollbar">
-                  {MOCK_NOTIFICATIONS.length > 0 ? (
+                  {notifications.length > 0 ? (
                     <div className="flex flex-col">
-                      {MOCK_NOTIFICATIONS.map((notif) => (
+                      {notifications.map((notif: any) => (
                         <div
-                          key={notif.id}
+                          key={notif.notification_id}
+                          onClick={() => {
+                            if (!notif.is_read)
+                              markAsRead(notif.notification_id);
+                          }}
                           className={cn(
                             "p-5 border-b border-white/5 flex gap-4 hover:bg-white/5 transition-colors cursor-pointer",
-                            notif.unread ? "bg-[#64c5c3]/10" : "bg-transparent",
+                            !notif.is_read
+                              ? "bg-[#64c5c3]/10"
+                              : "bg-transparent",
                           )}
                         >
                           <div className="shrink-0 mt-1">
-                            {notif.type === "booking" && (
-                              <CheckCircle2 className="w-5 h-5 text-[#64c5c3]" />
-                            )}
-                            {notif.type === "system" && (
-                              <ShieldCheck className="w-5 h-5 text-slate-400" />
+                            {notif.type === "booking" ||
+                            notif.type === "payment" ? (
+                              <CheckCircle2
+                                className={cn(
+                                  "w-5 h-5",
+                                  !notif.is_read
+                                    ? "text-[#64c5c3]"
+                                    : "text-gray-500",
+                                )}
+                              />
+                            ) : (
+                              <ShieldCheck
+                                className={cn(
+                                  "w-5 h-5",
+                                  !notif.is_read
+                                    ? "text-blue-400"
+                                    : "text-gray-500",
+                                )}
+                              />
                             )}
                           </div>
                           <div>
                             <div className="flex justify-between items-start mb-1">
-                              <h4 className="text-sm font-bold text-white tracking-wide">
+                              <h4
+                                className={cn(
+                                  "text-sm tracking-wide",
+                                  !notif.is_read
+                                    ? "font-bold text-white"
+                                    : "font-medium text-gray-300",
+                                )}
+                              >
                                 {notif.title}
                               </h4>
                             </div>
@@ -192,14 +219,17 @@ export default function CustomerFleetPage() {
                               {notif.message}
                             </p>
                             <span className="text-[10px] font-bold text-[#64c5c3]/50 uppercase tracking-widest">
-                              {notif.time}
+                              {formatDistanceToNow(new Date(notif.created_at), {
+                                addSuffix: true,
+                              })}
                             </span>
                           </div>
                         </div>
                       ))}
                     </div>
                   ) : (
-                    <div className="p-8 text-center text-xs font-bold text-white/40 uppercase tracking-widest">
+                    <div className="p-8 text-center text-xs font-bold text-white/40 uppercase tracking-widest flex flex-col items-center">
+                      <Bell className="w-8 h-8 mb-3 opacity-20" />
                       No new notifications
                     </div>
                   )}
@@ -226,6 +256,7 @@ export default function CustomerFleetPage() {
                 <span className="hidden sm:inline">Profile</span>
               </Button>
             </Link>
+
             <Button
               onClick={() => setIsLogoutModalOpen(true)}
               variant="ghost"
@@ -238,14 +269,12 @@ export default function CustomerFleetPage() {
         </div>
       </nav>
 
-      {/* Hero Header Section - With "Driving In" Car Animation */}
+      {/* Hero Header Section */}
       <div className="relative pt-32 pb-24 md:pb-32 px-6 overflow-hidden border-b border-white/5 min-h-[60vh] flex items-center">
-        {/* Dynamic Background Glows */}
         <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-[#64c5c3]/10 rounded-full blur-[120px] pointer-events-none -z-10" />
         <div className="absolute bottom-0 left-0 w-[300px] h-[300px] bg-blue-900/10 rounded-full blur-[100px] pointer-events-none -z-10" />
 
         <div className="max-w-7xl mx-auto w-full flex flex-col md:flex-row items-center justify-between gap-12 relative z-10">
-          {/* Left Side: Text Content */}
           <motion.div
             initial={{ opacity: 0, x: -50 }}
             animate={{ opacity: 1, x: 0 }}
@@ -267,11 +296,8 @@ export default function CustomerFleetPage() {
             </p>
           </motion.div>
 
-          {/* Right Side: The "Running" Car Animation */}
           <motion.div
-            // Starts off-screen right (100vw) and leaning forward (-10 deg)
             initial={{ x: "100vw", opacity: 0, skewX: -10 }}
-            // Straightens out (0 deg) as it hits its resting position
             animate={{ x: 0, opacity: 1, skewX: 0 }}
             transition={{
               type: "spring",
@@ -282,9 +308,7 @@ export default function CustomerFleetPage() {
             }}
             className="flex-1 w-full relative hidden md:block"
           >
-            {/* Wrapper to make the car break out of its container slightly */}
             <div className="relative w-[115%] -right-[5%]">
-              {/* Fading speed lines effect behind the car */}
               <motion.div
                 initial={{ opacity: 1, scaleX: 1, x: 0 }}
                 animate={{ opacity: 0, scaleX: 0, x: -100 }}
@@ -298,7 +322,6 @@ export default function CustomerFleetPage() {
                 className="absolute top-[60%] left-10 w-3/4 h-[1px] bg-gradient-to-r from-transparent via-white/30 to-transparent -z-10 origin-left"
               />
 
-              {/* The Car Image - A sleek, non-luxury Mazda 3 Hatchback */}
               <div className="relative rounded-3xl overflow-hidden border border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.5)] bg-black">
                 <img
                   src="https://images.unsplash.com/photo-1609521263047-f8f205293f24?q=80&w=1000"
@@ -308,7 +331,6 @@ export default function CustomerFleetPage() {
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
               </div>
 
-              {/* Glassmorphic spec tag attached to the car */}
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -339,7 +361,7 @@ export default function CustomerFleetPage() {
       {/* Main Content Area */}
       <div className="max-w-7xl mx-auto px-6 py-12">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12">
-          {/* Filters Area (Left to handle its own mobile view via sheet/drawer) */}
+          {/* Filters Area */}
           <div className="lg:col-span-3">
             <FleetFilters filters={filters} setFilters={setFilters} />
           </div>
@@ -366,7 +388,7 @@ export default function CustomerFleetPage() {
               </div>
             </div>
 
-            {/* Grid - Mobile first (2 cols on mobile, 3 on tablet/desktop) */}
+            {/* Grid */}
             {isUnitsLoading ? (
               <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-6">
                 {Array.from({ length: 8 }).map((_, i) => (

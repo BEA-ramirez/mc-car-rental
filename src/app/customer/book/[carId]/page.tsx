@@ -20,6 +20,7 @@ import {
   FileText,
   AlertCircle,
   CreditCard,
+  Info,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -65,7 +66,6 @@ export default function CustomerBookingPage({
 
   const realHubs: MapHub[] = useMemo(() => settings?.hubs || [], [settings]);
 
-  // Safe Fallback Merge for Settings
   const realFees = useMemo(() => {
     const defaultFees = {
       driver_rate_per_day: 1500,
@@ -141,12 +141,20 @@ export default function CustomerBookingPage({
 
   useEffect(() => {
     if (realHubs.length > 0) {
-      if (!pickupLocation) setPickupLocation(realHubs[0].name);
-      if (!dropoffLocation) setDropoffLocation(realHubs[0].name);
-    }
-  }, [realHubs]);
+      const defaultHub = realHubs[0];
 
-  // --- DYNAMIC PRICING MATH ---
+      if (!pickupLocation) {
+        setPickupLocation(defaultHub.name);
+        setPickupCoords(`${defaultHub.lat},${defaultHub.lng}`);
+      }
+
+      if (!dropoffLocation) {
+        setDropoffLocation(defaultHub.name);
+        setDropoffCoords(`${defaultHub.lat},${defaultHub.lng}`);
+      }
+    }
+  }, [realHubs, pickupLocation, dropoffLocation]);
+
   let totalDays = 1;
   if (startDate && endDate) {
     totalDays = Math.max(1, differenceInDays(endDate, startDate) + 1);
@@ -165,7 +173,6 @@ export default function CustomerBookingPage({
     is12HourPromo && isPromoEligible ? car!.price - car!.price12h : 0;
   const rentTotal = baseRentTotal - promoDiscount;
 
-  // Driver fee is calculated but purely used for display!
   const estimatedDriverFee = withDriver
     ? totalDays * realFees.driver_rate_per_day
     : 0;
@@ -173,7 +180,6 @@ export default function CustomerBookingPage({
   const pickupFee = pickupType === "custom" ? realFees.custom_pickup_fee : 0;
   const dropoffFee = dropoffType === "custom" ? realFees.custom_dropoff_fee : 0;
 
-  // EXCLUDE driver fee from platform Subtotal
   const subTotal = rentTotal + pickupFee + dropoffFee;
   const grandTotal = subTotal + realFees.security_deposit_default;
 
@@ -185,20 +191,27 @@ export default function CustomerBookingPage({
     setMapOpen(true);
   };
 
+  // --- 🚨 UPDATED LOGIC: Distinguish Hubs from Landmarks correctly ---
   const handleLocationSelect = (lat: number, lng: number, name?: string) => {
     const isPickup = activeMapField === "pickup";
     const setType = isPickup ? setPickupType : setDropoffType;
     const setLoc = isPickup ? setPickupLocation : setDropoffLocation;
     const setCoords = isPickup ? setPickupCoords : setDropoffCoords;
-    if (name) {
+
+    // 1. Check if the name passed back belongs to one of our Official Hubs
+    const isOfficialHub = realHubs.some((hub) => hub.name === name);
+
+    if (isOfficialHub && name) {
+      // It's an official hub (Free)
       setType("hub");
       setLoc(name);
-      setCoords(`${lat},${lng}`);
     } else {
+      // It's a custom pin, landmark, or street address (Fee applies)
       setType("custom");
-      setLoc(`Pinned Location (${lat.toFixed(4)}, ${lng.toFixed(4)})`);
-      setCoords(`${lat},${lng}`);
+      setLoc(name || `Pinned Location (${lat.toFixed(4)}, ${lng.toFixed(4)})`);
     }
+
+    setCoords(`${lat},${lng}`);
     setMapOpen(false);
   };
 
@@ -242,6 +255,8 @@ export default function CustomerBookingPage({
         throw new Error("Failed to upload the receipt to the server.");
       }
 
+      // The payload will now perfectly include the Landmark Name in `pickup_location`
+      // and the coordinates in `pickup_coords`!
       const bookingPayload = {
         car_id: car.id,
         start_date: exactStartDate.toISOString(),
@@ -437,7 +452,6 @@ export default function CustomerBookingPage({
                   />
                 </div>
 
-                {/* UPDATED DRIVER TOGGLE (No longer checks availability) */}
                 <div className="flex flex-col justify-center bg-black/40 p-4 border border-white/5 rounded-2xl transition-colors hover:border-[#64c5c3]/30 relative">
                   <div className="flex items-center justify-between w-full">
                     <div className="flex flex-col gap-1 cursor-pointer pr-4">
@@ -531,8 +545,16 @@ export default function CustomerBookingPage({
                       <Select
                         value={pickupType === "hub" ? pickupLocation : ""}
                         onValueChange={(val) => {
+                          const selectedHub = realHubs.find(
+                            (h) => h.name === val,
+                          );
                           setPickupType("hub");
                           setPickupLocation(val);
+                          if (selectedHub) {
+                            setPickupCoords(
+                              `${selectedHub.lat},${selectedHub.lng}`,
+                            );
+                          }
                         }}
                       >
                         <SelectTrigger className="h-full! rounded-xl text-[9px] md:text-[10px] font-bold uppercase tracking-widest border-white/10 bg-white/5 text-white w-full">
@@ -593,8 +615,16 @@ export default function CustomerBookingPage({
                       <Select
                         value={dropoffType === "hub" ? dropoffLocation : ""}
                         onValueChange={(val) => {
+                          const selectedHub = realHubs.find(
+                            (h) => h.name === val,
+                          );
                           setDropoffType("hub");
                           setDropoffLocation(val);
+                          if (selectedHub) {
+                            setDropoffCoords(
+                              `${selectedHub.lat},${selectedHub.lng}`,
+                            );
+                          }
                         }}
                       >
                         <SelectTrigger className="h-full! rounded-xl text-[9px] md:text-[10px] font-bold uppercase tracking-widest border-white/10 bg-white/5 text-white w-full">
@@ -771,7 +801,7 @@ export default function CustomerBookingPage({
 
       {/* --- THE PAYMENT MODAL (Wider & Scrollable) --- */}
       <Dialog open={isPaymentModalOpen} onOpenChange={setIsPaymentModalOpen}>
-        <DialogContent className="w-[95vw] sm:max-w-lg md:max-w-xl max-h-[85vh] overflow-y-auto custom-scrollbar bg-[#0a1118]/95 backdrop-blur-2xl border border-[#64c5c3]/30 p-6 md:p-8 rounded-3xl shadow-[0_0_50px_rgba(100,197,195,0.15)] text-white">
+        <DialogContent className="w-[70vw] sm:max-w-lg md:max-w-xl max-h-[85vh] overflow-y-auto custom-scrollbar bg-[#0a1118]/95 backdrop-blur-2xl border border-[#64c5c3]/30 p-6 md:p-8 rounded-3xl shadow-[0_0_50px_rgba(100,197,195,0.15)] text-white">
           <DialogHeader className="text-center shrink-0">
             <DialogTitle className="text-2xl font-black uppercase tracking-tighter text-white">
               Secure Vehicle
@@ -852,19 +882,45 @@ export default function CustomerBookingPage({
         </DialogContent>
       </Dialog>
 
-      {/* Map Dialog */}
+      {/* Map Dialog - Fixed Width using style overrides! */}
       <Dialog open={mapOpen} onOpenChange={setMapOpen}>
-        <DialogContent className="max-w-5xl bg-[#0a1118] border-white/10 p-0 overflow-hidden flex flex-col h-[85vh] rounded-3xl shadow-2xl gap-0 w-[95vw] md:w-full">
-          <DialogHeader className="p-6 md:p-8 bg-black/40 border-b border-white/5 shrink-0">
-            <DialogTitle className="text-2xl md:text-3xl font-black text-white tracking-tighter uppercase">
-              Select {activeMapField === "pickup" ? "Pick-up" : "Drop-off"} Node
-            </DialogTitle>
-            <DialogDescription className="text-[9px] md:text-[10px] font-bold uppercase tracking-widest text-gray-500 mt-2">
-              Select an official hub (Free) or pin a custom coordinate (+₱
-              {realFees.custom_pickup_fee} Logistics Fee).
-            </DialogDescription>
+        <DialogContent
+          className="gap-0 bg-[#0a1118] border-white/10 p-0 overflow-hidden flex flex-col h-[85vh] xl:h-[90vh] rounded-2xl md:rounded-3xl shadow-[0_0_50px_rgba(0,0,0,0.5)]"
+          style={{ maxWidth: "1400px", width: "95vw" }}
+        >
+          {/* Tighter padding, flex-row on desktop for better space usage */}
+          <DialogHeader className="p-4 md:p-6 bg-black/40 backdrop-blur-md border-b border-white/5 shrink-0 flex flex-col md:flex-row md:items-center justify-between gap-3 md:gap-4 text-left">
+            <div className="flex items-center gap-3">
+              <div className="bg-[#64c5c3]/10 p-2 md:p-2.5 rounded-xl border border-[#64c5c3]/20 shrink-0 hidden sm:block">
+                <MapPin className="w-5 h-5 text-[#64c5c3]" />
+              </div>
+              <div>
+                <DialogTitle className="text-lg md:text-xl font-black text-white tracking-tight uppercase mb-0.5">
+                  Select {activeMapField === "pickup" ? "Pick-up" : "Drop-off"}{" "}
+                  Node
+                </DialogTitle>
+                <DialogDescription className="text-xs font-medium text-gray-400">
+                  Select an official hub for free, or pin a custom location.
+                </DialogDescription>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 bg-white/5 border border-white/10 px-3 py-2 rounded-lg w-fit shrink-0">
+              <Info className="w-4 h-4 text-gray-500" />
+              <span className="text-[9px] md:text-[10px] font-bold text-gray-300 uppercase tracking-widest">
+                Custom Pin Fee:{" "}
+                <span className="text-[#64c5c3]">
+                  +₱
+                  {activeMapField === "pickup"
+                    ? realFees.custom_pickup_fee
+                    : realFees.custom_dropoff_fee}
+                </span>
+              </span>
+            </div>
           </DialogHeader>
-          <div className="flex-1 w-full bg-black relative">
+
+          {/* The Map Container */}
+          <div className="flex-1 w-full bg-[#050B10] relative overflow-hidden">
             <OrmocMapSelector
               hubs={realHubs}
               onLocationSelect={handleLocationSelect}
