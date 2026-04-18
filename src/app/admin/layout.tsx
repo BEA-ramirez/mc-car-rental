@@ -1,18 +1,10 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import React, { useMemo, useState } from "react"; // <-- Added useState
+import React, { useMemo, useState } from "react";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
-import {
-  Bell,
-  Settings,
-  UserCircle,
-  CarFront,
-  Search,
-  LogOut,
-  User,
-} from "lucide-react";
+import { Settings, UserCircle, LogOut, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Breadcrumb,
@@ -34,7 +26,6 @@ import CarCatalogueModal from "@/components/dashboard/car-catalogue";
 import NotificationsPopover from "@/components/topbar/notifications-popover";
 import SettingsDialog from "@/components/settings/settings-dialog";
 import LogoutDialog from "@/components/auth/logout-dialog";
-import { cn } from "@/lib/utils";
 
 export default function AdminLayout({
   children,
@@ -73,7 +64,7 @@ export default function AdminLayout({
         <header className="flex justify-between items-center py-3 px-6 border-b border-border shrink-0 bg-transparent transition-colors duration-300">
           <Breadcrumb>
             <BreadcrumbList>
-              {breadcrumbs.map((crumb, index) => {
+              {breadcrumbs.map((crumb) => {
                 if (crumb.label === "Admin") return null;
                 return (
                   <React.Fragment key={crumb.href}>

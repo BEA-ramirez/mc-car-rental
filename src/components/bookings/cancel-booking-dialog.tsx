@@ -23,7 +23,6 @@ import {
 import { AlertTriangle, Loader2, XCircle } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "../ui/badge";
-import { cn } from "@/lib/utils";
 
 import { useBookings } from "../../../hooks/use-bookings";
 

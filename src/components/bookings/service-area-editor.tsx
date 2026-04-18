@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef, useCallback } from "react";
 import {
   APIProvider,
   Map,
@@ -18,7 +18,6 @@ import {
   MousePointerClick,
   Info,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
 
 // --- DRAWING MANAGER & POLYGON INITIALIZER ---
 function DrawingManager({
@@ -34,9 +33,11 @@ function DrawingManager({
     useState<google.maps.drawing.DrawingManager | null>(null);
   const hasInitialized = useRef(false);
 
+  console.log("manager", manager);
+
   const polygonsRef = useRef<google.maps.Polygon[]>([]);
 
-  const updateParent = () => {
+  const updateParent = useCallback(() => {
     const allCoords = polygonsRef.current.map((poly) => {
       const path = poly.getPath();
       const coords = [];
@@ -46,22 +47,32 @@ function DrawingManager({
       }
       return coords;
     });
+
+    // Call your prop
     onPolygonsChange(allCoords);
-  };
 
-  const attachPolygonListeners = (poly: google.maps.Polygon) => {
-    poly.addListener("contextmenu", () => {
-      poly.setMap(null);
-      polygonsRef.current = polygonsRef.current.filter((p) => p !== poly);
-      updateParent();
-      toast.info("Boundary shape removed");
-    });
+    // Tell React to only recreate this if the onPolygonsChange prop changes
+  }, [onPolygonsChange]);
 
-    poly.getPath().addListener("set_at", updateParent);
-    poly.getPath().addListener("insert_at", updateParent);
-    poly.getPath().addListener("remove_at", updateParent);
-    poly.addListener("dragend", updateParent);
-  };
+  // 2. Wrap attachPolygonListeners in useCallback
+  const attachPolygonListeners = useCallback(
+    (poly: google.maps.Polygon) => {
+      poly.addListener("contextmenu", () => {
+        poly.setMap(null);
+        polygonsRef.current = polygonsRef.current.filter((p) => p !== poly);
+        updateParent();
+        toast.info("Boundary shape removed");
+      });
+
+      poly.getPath().addListener("set_at", updateParent);
+      poly.getPath().addListener("insert_at", updateParent);
+      poly.getPath().addListener("remove_at", updateParent);
+      poly.addListener("dragend", updateParent);
+
+      // This depends on the cached updateParent we just made above!
+    },
+    [updateParent],
+  );
 
   useEffect(() => {
     if (!map || !drawingLib) return;
@@ -131,7 +142,7 @@ function DrawingManager({
       google.maps.event.removeListener(listener);
       newManager.setMap(null);
     };
-  }, [map, drawingLib, initialPolygons]);
+  }, [map, drawingLib, initialPolygons, attachPolygonListeners, updateParent]);
 
   return null;
 }
@@ -149,7 +160,7 @@ export default function ServiceAreaEditor() {
         const savedAreas = await getServiceArea();
         setInitialPolygons(savedAreas);
         setCurrentPolygons(savedAreas);
-      } catch (error) {
+      } catch {
         toast.error("Failed to load service areas.");
       } finally {
         setIsLoading(false);

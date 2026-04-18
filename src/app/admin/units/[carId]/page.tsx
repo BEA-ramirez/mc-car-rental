@@ -2,26 +2,23 @@
 
 import React, { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
-import { format, differenceInDays } from "date-fns";
+import { differenceInDays } from "date-fns";
 import {
   Phone,
   MessageSquare,
   Clock,
   Car,
-  Settings,
-  Fuel,
-  Users,
   Briefcase,
   Search,
   Filter,
   Eye,
-  MapPin,
   Loader2,
   AlertCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useCarDetails } from "../../../../../hooks/use-units";
 import { UnitsForm } from "@/components/units/units-form";
+import Image from "next/image";
 // --- DUMMY ACTIVITY LOGS (Keep for now since car_logs table query isn't built yet) ---
 const dummyActivityLogs = [
   {
@@ -185,7 +182,7 @@ export default function AdminCarDetailsPage() {
                 </h3>
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-3">
-                    <img
+                    <Image
                       src={
                         carDetails.owner.avatar ||
                         `https://ui-avatars.com/api/?name=${carDetails.owner.name}&background=random`
@@ -325,7 +322,7 @@ export default function AdminCarDetailsPage() {
                 {/* Main Interactive Image Container - FIXED HEIGHT */}
                 <div className="w-full lg:w-1/2 h-56 lg:h-64 rounded-lg bg-muted overflow-hidden relative border border-border shrink-0 flex items-center justify-center">
                   {activeImage ? (
-                    <img
+                    <Image
                       src={activeImage}
                       alt="Car"
                       className="w-full h-full object-cover transition-opacity duration-300"
@@ -368,7 +365,7 @@ export default function AdminCarDetailsPage() {
                               : "border-white/20 opacity-60 hover:opacity-100",
                           )}
                         >
-                          <img
+                          <Image
                             src={imgSrc}
                             alt={`Thumb ${idx}`}
                             className="w-full h-full object-cover"

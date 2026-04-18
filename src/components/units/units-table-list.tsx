@@ -29,6 +29,7 @@ import {
   CarFront,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import Image from "next/image";
 
 interface UnitsTableListProps {
   units: CompleteCarType[];
@@ -112,7 +113,7 @@ export default function UnitsTableList({
                   <div className="flex items-center gap-3">
                     <div className="w-8 h-8 rounded-md bg-secondary border border-border overflow-hidden shrink-0 flex items-center justify-center">
                       {unit.images?.[0]?.image_url ? (
-                        <img
+                        <Image
                           src={unit.images[0].image_url}
                           alt="car"
                           className="w-full h-full object-cover"

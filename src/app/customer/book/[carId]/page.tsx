@@ -8,18 +8,11 @@ import { motion } from "framer-motion";
 import {
   ArrowLeft,
   MapPin,
-  CalendarDays,
-  Clock,
   ShieldCheck,
-  Smartphone,
-  Landmark,
-  Banknote,
   Car,
   ArrowRight,
   CheckCircle2,
   FileText,
-  AlertCircle,
-  CreditCard,
   Info,
 } from "lucide-react";
 
@@ -289,7 +282,7 @@ export default function CustomerBookingPage({
       await submitCustomerBooking(bookingPayload);
       setIsPaymentModalOpen(false);
       setIsSuccess(true);
-    } catch (error: any) {
+    } catch {
     } finally {
       setIsUploading(false);
     }
@@ -799,7 +792,7 @@ export default function CustomerBookingPage({
         </div>
       </div>
 
-      {/* --- THE PAYMENT MODAL (Wider & Scrollable) --- */}
+      {/* --- THE PAYMENT MODAL */}
       <Dialog open={isPaymentModalOpen} onOpenChange={setIsPaymentModalOpen}>
         <DialogContent className="w-[70vw] sm:max-w-lg md:max-w-xl max-h-[85vh] overflow-y-auto custom-scrollbar bg-[#0a1118]/95 backdrop-blur-2xl border border-[#64c5c3]/30 p-6 md:p-8 rounded-3xl shadow-[0_0_50px_rgba(100,197,195,0.15)] text-white">
           <DialogHeader className="text-center shrink-0">
@@ -817,7 +810,7 @@ export default function CustomerBookingPage({
                 Scan to Pay via GCash / Maya
               </p>
               <div className="w-32 h-32 bg-white rounded-xl p-2 mb-3 relative flex items-center justify-center">
-                <img
+                <Image
                   src="https://placehold.co/400x400?text=QR+Code"
                   alt="GCash/Maya QR Code"
                   className="w-full h-full object-contain p-2"
@@ -882,13 +875,12 @@ export default function CustomerBookingPage({
         </DialogContent>
       </Dialog>
 
-      {/* Map Dialog - Fixed Width using style overrides! */}
+      {/* Map Dialog  */}
       <Dialog open={mapOpen} onOpenChange={setMapOpen}>
         <DialogContent
           className="gap-0 bg-[#0a1118] border-white/10 p-0 overflow-hidden flex flex-col h-[85vh] xl:h-[90vh] rounded-2xl md:rounded-3xl shadow-[0_0_50px_rgba(0,0,0,0.5)]"
           style={{ maxWidth: "1400px", width: "95vw" }}
         >
-          {/* Tighter padding, flex-row on desktop for better space usage */}
           <DialogHeader className="p-4 md:p-6 bg-black/40 backdrop-blur-md border-b border-white/5 shrink-0 flex flex-col md:flex-row md:items-center justify-between gap-3 md:gap-4 text-left">
             <div className="flex items-center gap-3">
               <div className="bg-[#64c5c3]/10 p-2 md:p-2.5 rounded-xl border border-[#64c5c3]/20 shrink-0 hidden sm:block">

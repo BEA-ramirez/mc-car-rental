@@ -1,9 +1,9 @@
 import React from "react";
 import { FleetPartnerType } from "@/lib/schemas/car-owner";
 import { updatePartnerStatus } from "@/actions/helper/approve-partner";
-import { toast } from "sonner";
 import { CheckCircle, XCircle, AlertCircle } from "lucide-react";
 import { Button } from "../ui/button";
+import Image from "next/image";
 
 function FleetPartnerReview({
   selectedPartner,
@@ -14,11 +14,10 @@ function FleetPartnerReview({
 }) {
   return (
     <div className="space-y-6">
-      {/* 1. Header Profile */}
+      {/* Header Profile */}
       <div className="flex items-center gap-4 p-4 bg-muted/50 rounded-lg">
         <div className="h-16 w-16 rounded-full bg-slate-200 overflow-hidden relative">
-          {/* Use your Image component here */}
-          <img
+          <Image
             src={
               selectedPartner?.users.profile_picture_url ||
               "/default-avatar.png"

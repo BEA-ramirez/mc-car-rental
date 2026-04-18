@@ -19,7 +19,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import Link from "next/link";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -219,7 +219,7 @@ export default function NotificationsPopover() {
               <div className="px-4 py-8 text-center flex flex-col items-center">
                 <CheckCircle2 className="w-8 h-8 text-slate-300 mb-2" />
                 <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
-                  You're all caught up!
+                  You&apos;re all caught up!
                 </span>
               </div>
             ) : (

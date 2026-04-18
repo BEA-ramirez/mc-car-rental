@@ -6,8 +6,8 @@ import {
   AdminBookingInput,
   CompleteBookingType,
 } from "@/lib/schemas/booking";
+import { CreateBookingPayload } from "@/types/bookings";
 import { revalidatePath } from "next/cache";
-import { getInspectionTemplate, getContractTemplate } from "@/actions/settings";
 import { addHours } from "date-fns";
 
 export type ActionState = {
@@ -18,7 +18,9 @@ export type ActionState = {
 };
 
 // CREATE (Customer Booking Request)
-export async function createCustomerBooking(data: any): Promise<any> {
+export async function createCustomerBooking(
+  data: CreateBookingPayload,
+): Promise<ActionState> {
   const supabase = await createClient();
 
   const {
@@ -54,40 +56,37 @@ export async function createCustomerBooking(data: any): Promise<any> {
     : 0;
 
   // --- CALL THE MASTER RPC ---
-  const { data: bookingId, error } = await supabase.rpc(
-    "create_customer_booking_v2",
-    {
-      p_user_id: user.id,
-      p_car_id: data.car_id,
-      p_start_date: new Date(data.start_date).toISOString(),
-      p_end_date: new Date(data.end_date).toISOString(), // RPC will override this if 12-hr
-      p_pickup_loc: data.pickup_location,
-      p_dropoff_loc: data.dropoff_location,
-      p_pickup_type: data.pickup_type,
-      p_dropoff_type: data.dropoff_type,
-      p_pickup_price: data.pickup_price || 0,
-      p_dropoff_price: data.dropoff_price || 0,
-      p_is_with_driver: data.is_with_driver || false,
+  const { error } = await supabase.rpc("create_customer_booking_v2", {
+    p_user_id: user.id,
+    p_car_id: data.car_id,
+    p_start_date: new Date(data.start_date).toISOString(),
+    p_end_date: new Date(data.end_date).toISOString(), // RPC will override this if 12-hr
+    p_pickup_loc: data.pickup_location,
+    p_dropoff_loc: data.dropoff_location,
+    p_pickup_type: data.pickup_type,
+    p_dropoff_type: data.dropoff_type,
+    p_pickup_price: data.pickup_price || 0,
+    p_dropoff_price: data.dropoff_price || 0,
+    p_is_with_driver: data.is_with_driver || false,
 
-      // Financials
-      p_base_rate_snapshot: data.carDailyRate,
-      p_total_base_rent: baseRentTotal,
-      p_total_price: data.grand_total,
-      p_security_deposit: data.security_deposit || 0,
+    // Financials
+    p_base_rate_snapshot: data.carDailyRate,
+    p_total_base_rent: baseRentTotal,
+    p_total_price: data.grand_total,
+    p_security_deposit: data.security_deposit || 0,
 
-      // Coordinates & Promos
-      p_pickup_coordinates: data.pickup_coords || null,
-      p_dropoff_coordinates: data.dropoff_coords || null,
-      p_is_12_hour_promo: data.is12HourPromo || false,
-      p_promo_discount_amount: discountAmount,
+    // Coordinates & Promos
+    p_pickup_coordinates: data.pickup_coords || null,
+    p_dropoff_coordinates: data.dropoff_coords || null,
+    p_is_12_hour_promo: data.is12HourPromo || false,
+    p_promo_discount_amount: discountAmount,
 
-      // Payment Data
-      p_reservation_fee_paid: data.payment_details?.amount || 0,
-      p_transaction_reference:
-        data.payment_details?.transaction_reference || null,
-      p_receipt_url: data.payment_details?.receipt_url || null,
-    },
-  );
+    // Payment Data
+    p_reservation_fee_paid: data.payment_details?.amount || 0,
+    p_transaction_reference:
+      data.payment_details?.transaction_reference || null,
+    p_receipt_url: data.payment_details?.receipt_url || null,
+  });
 
   if (error) {
     console.error("RPC Error (Customer Booking):", error);
@@ -106,7 +105,7 @@ export async function createCustomerBooking(data: any): Promise<any> {
   };
 }
 
-export async function createAdminBooking(data: unknown) {
+export async function createAdminBooking(data: AdminBookingInput) {
   const supabase = await createClient();
 
   // Validate Input

@@ -6,7 +6,6 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Save, Loader2, FileText, Code, Eye, Braces } from "lucide-react";
 import { toast } from "sonner";
 import { getContractTemplate, saveContractTemplate } from "@/actions/settings";
-import { cn } from "@/lib/utils";
 
 // --- EXPANDED VARIABLES TO MATCH THE CLIENT'S DOCX ---
 const VARIABLES = [
@@ -127,7 +126,7 @@ export default function ContractTemplateBuilder() {
         const data = await getContractTemplate();
         // If data exists and isn't just whitespace, use it. Otherwise use our new default.
         setContent(data && data.trim().length > 0 ? data : DEFAULT_TEMPLATE);
-      } catch (error) {
+      } catch {
         toast.error("Failed to load contract template.");
         setContent(DEFAULT_TEMPLATE);
       } finally {
@@ -160,7 +159,7 @@ export default function ContractTemplateBuilder() {
     try {
       await saveContractTemplate(content);
       toast.success("Contract template saved successfully!");
-    } catch (error) {
+    } catch {
       toast.error("Failed to save contract template.");
     } finally {
       setIsSaving(false);

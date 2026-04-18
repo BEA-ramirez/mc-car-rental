@@ -35,7 +35,6 @@ import {
   Wrench,
   PackageOpen,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
 
 type SpecificationFormValues = z.infer<typeof carSpecificationSchema>;
 

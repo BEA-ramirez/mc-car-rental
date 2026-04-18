@@ -349,7 +349,10 @@ export async function removeBookingChargeAction(input: { chargeId: string }) {
     revalidatePath("/admin/financials/incomes");
     return { success: true, message: "Charge removed successfully." };
   } catch (err: any) {
-    return { success: false, message: "Unexpected error occurred." };
+    return {
+      success: false,
+      message: `Unexpected error occurred: ${err.message}`,
+    };
   }
 }
 
@@ -378,7 +381,10 @@ export async function voidBookingPaymentAction(input: {
     revalidatePath("/admin/financials/incomes");
     return { success: true, message: "Payment voided successfully." };
   } catch (err: any) {
-    return { success: false, message: "Unexpected error occurred." };
+    return {
+      success: false,
+      message: `Unexpected error occurred: ${err.message}`,
+    };
   }
 }
 
@@ -417,6 +423,9 @@ export async function issueBookingRefundAction(input: {
     revalidatePath(`/admin/bookings/${input.bookingId}`);
     return { success: true, message: "Refund issued successfully." };
   } catch (err: any) {
-    return { success: false, message: "Unexpected error occurred." };
+    return {
+      success: false,
+      message: `Unexpected error occurred: ${err.message}`,
+    };
   }
 }

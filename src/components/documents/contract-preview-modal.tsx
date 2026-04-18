@@ -21,6 +21,7 @@ import {
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import SignatureCanvas from "react-signature-canvas";
+import Image from "next/image";
 
 export type ContractPreview = {
   id: string; // Booking Ref
@@ -140,7 +141,7 @@ export default function ContractPreviewModal({
             {/* Overlaid Signature Image (if already signed) */}
             {isSigned && contract.signatureUrl && (
               <div className="absolute bottom-[80px] left-[10%] w-[40%] flex justify-center items-end h-24 pointer-events-none">
-                <img
+                <Image
                   src={contract.signatureUrl}
                   alt="Customer Signature"
                   // Removed dark:invert so the signature stays dark on the white paper

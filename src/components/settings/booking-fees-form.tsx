@@ -18,7 +18,6 @@ import {
   saveBookingFees,
   BookingFees,
 } from "@/actions/settings";
-import { cn } from "@/lib/utils";
 
 const DEFAULT_FEES: BookingFees = {
   rush_fee: 200,
@@ -38,7 +37,7 @@ export default function BookingFeesForm() {
       try {
         const data = await getBookingFees();
         if (data) setFees({ ...DEFAULT_FEES, ...data });
-      } catch (error) {
+      } catch {
         toast.error("Failed to load fee configurations.");
       } finally {
         setIsLoading(false);
@@ -57,7 +56,7 @@ export default function BookingFeesForm() {
     try {
       await saveBookingFees(fees);
       toast.success("Standard fees and deposits updated!");
-    } catch (error) {
+    } catch {
       toast.error("Failed to save fee configurations.");
     } finally {
       setIsSaving(false);

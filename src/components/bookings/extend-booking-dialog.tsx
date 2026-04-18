@@ -207,7 +207,7 @@ export default function ExtendBookingDialog({
               <Info className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
               <p className="text-[10px] font-medium text-blue-700 dark:text-blue-300 leading-tight">
                 The total bill will be automatically recalculated based on the
-                vehicle's locked-in base rate. You may need to collect
+                vehicle&apos;s locked-in base rate. You may need to collect
                 additional payment.
               </p>
             </div>

@@ -4,7 +4,6 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
-  Car,
   Landmark,
   CheckCircle2,
   ShieldAlert,
@@ -60,7 +59,7 @@ export default function ListVehiclePage() {
     try {
       await applyForFleetPartner(submitData);
       setIsSuccess(true);
-    } catch (error) {
+    } catch {
       // Handled by hook
     }
   };

@@ -35,7 +35,7 @@ export default function BusinessHubsManager() {
       try {
         const data = await getBusinessHubs();
         if (data) setHubs(data);
-      } catch (error) {
+      } catch {
         toast.error("Failed to load business hubs.");
       } finally {
         setIsLoading(false);
@@ -87,7 +87,7 @@ export default function BusinessHubsManager() {
     try {
       await saveBusinessHubs(hubs);
       toast.success("Business hubs updated successfully!");
-    } catch (error) {
+    } catch {
       toast.error("Failed to save business hubs.");
     } finally {
       setIsSaving(false);
@@ -221,7 +221,8 @@ export default function BusinessHubsManager() {
                 No physical hubs defined.
               </p>
               <p className="text-[10px] text-muted-foreground/70 mt-1">
-                Click 'Add Location' to drop your first pin on the map.
+                Click &apos;Add Location&apos; to drop your first pin on the
+                map.
               </p>
             </div>
           ) : (

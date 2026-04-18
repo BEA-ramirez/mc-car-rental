@@ -24,7 +24,6 @@ import {
   Users,
   FileText,
   ChartPie,
-  SwatchBook,
 } from "lucide-react";
 
 import Image from "next/image";

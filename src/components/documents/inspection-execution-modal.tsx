@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
   Dialog,
   DialogContent,
@@ -19,7 +19,7 @@ import {
   Download,
 } from "lucide-react";
 import { toast } from "sonner";
-import { useQueryClient } from "@tanstack/react-query";
+import Image from "next/image";
 import { useUpsertInspection } from "../../../hooks/use-documents";
 import { generateInspectionPDF } from "@/utils/export-pdf";
 import { cn } from "@/lib/utils";
@@ -39,7 +39,6 @@ export default function InspectionExecutionModal({
   blueprintUrl = "/default-car-outline.png",
   bookingDetails,
 }: InspectionExecutionModalProps) {
-  const queryClient = useQueryClient();
   const [checklist, setChecklist] = useState<any[]>([]);
 
   // --- CANVAS STATE (Digital Glass) ---
@@ -54,15 +53,18 @@ export default function InspectionExecutionModal({
   const existingDrawingUrl = inspection?.images?.markup_layer;
   const { saveInspection, isSaving } = useUpsertInspection();
 
-  useEffect(() => {
-    if (isOpen && inspection?.checklist_data) {
-      setChecklist(inspection.checklist_data);
-      setTimeout(initCanvas, 300);
-    }
-  }, [isOpen, inspection]);
-
   // --- CANVAS LOGIC ---
-  const initCanvas = () => {
+  const saveState = useCallback(() => {
+    if (!canvasRef.current) return;
+    const data = canvasRef.current.toDataURL();
+    const newHistory = history.slice(0, historyStep + 1);
+    newHistory.push(data);
+    setHistory(newHistory);
+    setHistoryStep(newHistory.length - 1);
+  }, [history, historyStep]);
+
+  // 2. Define initCanvas SECOND, so it can use saveState
+  const initCanvas = useCallback(() => {
     const canvas = canvasRef.current;
     const container = containerRef.current;
     if (!canvas || !container) return;
@@ -79,7 +81,7 @@ export default function InspectionExecutionModal({
     ctx.lineJoin = "round";
 
     if (existingDrawingUrl) {
-      const img = new Image();
+      const img = new window.Image();
       img.src = existingDrawingUrl;
       img.onload = () => {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -89,16 +91,15 @@ export default function InspectionExecutionModal({
     } else {
       saveState();
     }
-  };
+  }, [existingDrawingUrl, saveState]); // Now this dependency array works perfectly!
 
-  const saveState = () => {
-    if (!canvasRef.current) return;
-    const data = canvasRef.current.toDataURL();
-    const newHistory = history.slice(0, historyStep + 1);
-    newHistory.push(data);
-    setHistory(newHistory);
-    setHistoryStep(newHistory.length - 1);
-  };
+  useEffect(() => {
+    if (isOpen && inspection?.checklist_data) {
+      setChecklist(inspection.checklist_data);
+      setTimeout(initCanvas, 300);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, inspection]);
 
   const handleUndo = () => {
     if (historyStep > 0) {
@@ -119,7 +120,7 @@ export default function InspectionExecutionModal({
     const ctx = canvas?.getContext("2d");
     if (!canvas || !ctx) return;
 
-    const img = new Image();
+    const img = new window.Image();
     img.src = base64;
     img.onload = () => {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -204,7 +205,7 @@ export default function InspectionExecutionModal({
       });
       toast.success(`${inspection.type} Inspection locked and saved.`);
       onClose();
-    } catch (error) {
+    } catch {
       // Handled by hook
     }
   };
@@ -220,7 +221,7 @@ export default function InspectionExecutionModal({
         containerRef.current,
       );
       toast.success("PDF Downloaded!", { id: "pdf-toast" });
-    } catch (err) {
+    } catch {
       toast.error("Failed to generate PDF", { id: "pdf-toast" });
     }
   };
@@ -365,7 +366,7 @@ export default function InspectionExecutionModal({
                   <h2 className="text-[11px] font-black text-black uppercase tracking-widest mb-4">
                     Vehicle Damage Markup
                   </h2>
-                  <img
+                  <Image
                     src={blueprintUrl}
                     alt="Car Blueprint"
                     crossOrigin="anonymous"

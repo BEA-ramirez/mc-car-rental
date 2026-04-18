@@ -67,7 +67,7 @@ export default function CheckoutPage() {
 
       toast.success("Payment submitted successfully!");
       setIsSuccess(true);
-    } catch (error) {
+    } catch {
       toast.error("Failed to submit payment. Please try again.");
     } finally {
       setIsSubmitting(false);

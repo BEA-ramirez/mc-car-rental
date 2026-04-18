@@ -6,14 +6,13 @@ import {
   AlertCircle,
   Clock,
   ArrowRight,
-  ShieldCheck,
   Upload,
   Search,
   Filter,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { KYCTable, ContractsTable, InspectionsTable } from "./doc-tables";
 import ReviewModal, { ReviewDocument } from "./review-modal";
@@ -32,7 +31,6 @@ import {
 } from "../../../hooks/use-documents";
 import { format, differenceInDays } from "date-fns";
 import { DeleteDialog } from "../delete-dialog";
-import { cn } from "@/lib/utils";
 
 export const formatCategory = (cat: string) => {
   if (!cat) return "Unknown";
@@ -75,7 +73,7 @@ export default function DocumentsMain() {
   //kyc table pagination & filters
   const [kycPage, setKycPage] = useState(1);
   const [kycSearch, setKycSearch] = useState("");
-  const [docFilters, setDocFilters] = useState({
+  const [docFilters] = useState({
     category: "all",
     status: "all",
     file_type: "all",
@@ -413,13 +411,13 @@ export default function DocumentsMain() {
           try {
             await verifyDoc({ id, expiry });
             setReviewDoc(null);
-          } catch (error) {}
+          } catch {}
         }}
         onReject={async (id, reason) => {
           try {
             await rejectDoc({ id, reason });
             setReviewDoc(null);
-          } catch (error) {}
+          } catch {}
         }}
       />
 
@@ -458,7 +456,7 @@ export default function DocumentsMain() {
             try {
               await deleteDoc(id);
               setViewDoc(null);
-            } catch (error) {
+            } catch {
               // If it fails, keeps the modal open
             }
           }
@@ -483,7 +481,7 @@ export default function DocumentsMain() {
           try {
             await signContract({ id, signatureDataUrl });
             setContractDoc(null);
-          } catch (error) {}
+          } catch {}
         }}
       />
 

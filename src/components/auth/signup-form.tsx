@@ -15,6 +15,7 @@ import Link from "next/link";
 import { ArrowRight, User } from "lucide-react";
 
 const initialState: SignupState = {
+  success: false,
   message: null,
   errors: {},
 };

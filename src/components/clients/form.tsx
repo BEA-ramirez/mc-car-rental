@@ -2,12 +2,8 @@
 
 import {
   User,
-  Mail,
   Phone,
-  MapPin,
-  Lock,
   FileBadge,
-  CalendarDays,
   ShieldCheck,
   UploadCloud,
   Loader2,
@@ -36,11 +32,9 @@ import { useForm, FormProvider, Controller } from "react-hook-form";
 import { useState, useRef } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { clientFormSchema, type ClientFormValues } from "@/lib/schemas/client";
-import { formatDate } from "@/utils/format-date";
 import { useClients } from "../../../hooks/use-clients";
 import { getInitials } from "@/actions/helper/format-text";
 import { format } from "date-fns";
-import { cn } from "@/lib/utils";
 
 interface ClientFormProps {
   data: any;
@@ -50,7 +44,7 @@ interface ClientFormProps {
 export function ClientForm({ data: rawData, closeDialog }: ClientFormProps) {
   const isAdd = !rawData || !!rawData?.isAdd;
 
-  const { saveClient, isSaving } = useClients(null);
+  const { saveClient } = useClients(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [files, setFiles] = useState<any>({});
   const [documentsToDelete, setDocumentsToDelete] = useState<string[]>([]);
@@ -528,7 +522,7 @@ export function ClientForm({ data: rawData, closeDialog }: ClientFormProps) {
                 <div className="flex items-center gap-2 border-b border-border pb-2.5 transition-colors">
                   <IdCard className="w-4 h-4 text-muted-foreground" />
                   <h3 className="text-[10px] font-bold text-foreground uppercase tracking-widest">
-                    Driver's License
+                    Driver&apos;s License
                   </h3>
                 </div>
 

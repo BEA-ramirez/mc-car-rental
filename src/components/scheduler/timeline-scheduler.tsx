@@ -10,12 +10,9 @@ import {
   startOfDay,
   startOfWeek,
   startOfMonth,
-  endOfWeek,
   endOfMonth,
   differenceInMinutes,
   setHours,
-  isSameDay,
-  isWithinInterval,
   eachDayOfInterval,
   addHours,
   addMinutes,
@@ -26,7 +23,6 @@ import {
   Calendar as CalendarIcon,
   Clock,
   CalendarRange,
-  CalendarDays,
   Search,
   Filter,
   User,
@@ -38,7 +34,6 @@ import {
   Edit,
   CheckCircle,
   AlertCircle,
-  Copy,
   Trash,
   CheckSquare,
   Wrench,
@@ -50,7 +45,6 @@ import {
   ClockAlert,
   MoveRight,
   Check,
-  Undo2,
   ExternalLink,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -152,7 +146,7 @@ type TimelineSchedulerProps = {
   onExtendClick?: (event: SchedulerEvent) => void;
   onDispatchClick?: (event: SchedulerEvent) => void;
   isOverrideMode?: boolean;
-  onApproveClick?: (event: SchedulerEvent) => void;
+  //onApproveClick?: (event: SchedulerEvent) => void;
   onReleaseClick?: (event: SchedulerEvent) => void;
   onReturnClick?: (event: SchedulerEvent) => void;
   onNoShowClick?: (event: SchedulerEvent) => void;
@@ -186,13 +180,13 @@ export default function TimelineScheduler({
   onDeleteClick,
   onResizeEvent,
   onResizeBuffer,
-  onEarlyReturnClick,
+  onEarlyReturnClick: _onReturnClick,
   onAddMaintenance,
   onSplitEvent,
   onExtendClick,
   onDispatchClick,
   isOverrideMode = false,
-  onApproveClick,
+  //onApproveClick,
   onReleaseClick,
   onReturnClick,
   onNoShowClick,
@@ -219,7 +213,7 @@ export default function TimelineScheduler({
     };
   }, [ghostBooking]);
 
-  const [isMounted, setIsMounted] = useState(false);
+  const [, setIsMounted] = useState(false);
   const [now, setNow] = useState(new Date());
   useEffect(() => {
     setIsMounted(true);
@@ -237,7 +231,7 @@ export default function TimelineScheduler({
         if (onDateChange) onDateChange(targetDate);
       }
     }
-  }, [parsedGhostBooking?.id]);
+  }, [parsedGhostBooking?.id, currentDate, onDateChange, parsedGhostBooking]);
 
   const [openEventId, setOpenEventId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");

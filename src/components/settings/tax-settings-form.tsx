@@ -37,7 +37,7 @@ export default function TaxSettingsForm() {
       try {
         const data = await getTaxSettings();
         if (data) setTax({ ...DEFAULT_TAX, ...data });
-      } catch (error) {
+      } catch {
         toast.error("Failed to load tax settings.");
       } finally {
         setIsLoading(false);
@@ -58,7 +58,7 @@ export default function TaxSettingsForm() {
     try {
       await saveTaxSettings(tax);
       toast.success("Tax configurations updated successfully!");
-    } catch (error) {
+    } catch {
       toast.error("Failed to save tax settings.");
     } finally {
       setIsSaving(false);

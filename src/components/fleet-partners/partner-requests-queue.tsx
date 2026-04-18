@@ -20,7 +20,6 @@ import {
   ChevronRight,
   Loader2,
   Mail,
-  Handshake,
 } from "lucide-react";
 
 // Assuming you have or will create these matching the driver equivalents

@@ -19,8 +19,8 @@ import {
   saveInspectionTemplate,
   InspectionCategory,
 } from "@/actions/settings";
-import { cn } from "@/lib/utils";
 import { useFileUpload } from "../../../hooks/use-file-upload";
+import Image from "next/image";
 
 // Helper to generate quick unique IDs
 const generateId = () => Math.random().toString(36).substring(2, 9);
@@ -71,7 +71,7 @@ export default function InspectionTemplateBuilder() {
           ]);
           setBlueprintUrl("/default-car-outline.png");
         }
-      } catch (error) {
+      } catch {
         toast.error("Failed to load template.");
       } finally {
         setIsLoading(false);
@@ -162,7 +162,7 @@ export default function InspectionTemplateBuilder() {
       await saveInspectionTemplate(masterTemplatePayload);
       setCategories(cleanedCategories);
       toast.success("Inspection template saved successfully!");
-    } catch (error) {
+    } catch {
       toast.error("Failed to save template.");
     } finally {
       setIsSaving(false);
@@ -235,7 +235,7 @@ export default function InspectionTemplateBuilder() {
 
             {blueprintUrl ? (
               <div className="relative group rounded-lg overflow-hidden border border-border shadow-sm bg-white">
-                <img
+                <Image
                   src={blueprintUrl}
                   alt="Inspection Blueprint"
                   className="w-full max-w-[400px] h-auto object-contain opacity-90"

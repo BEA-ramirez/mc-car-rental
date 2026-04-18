@@ -65,8 +65,14 @@ export default function DispatchDialog({
   onOpenChange: (open: boolean) => void;
   booking: DispatchEvent | null;
 }) {
-  const bookingStart = booking ? new Date(booking.start) : new Date();
-  const bookingEnd = booking ? new Date(booking.end) : new Date();
+  const bookingStart = useMemo(() => {
+    return booking ? new Date(booking.start) : new Date();
+  }, [booking]);
+
+  const bookingEnd = useMemo(() => {
+    return booking ? new Date(booking.end) : new Date();
+  }, [booking]);
+
   const totalBookingDays = differenceInDays(bookingEnd, bookingStart) + 1;
 
   const [segments, setSegments] = useState<ShiftSegment[]>([]);
@@ -86,7 +92,6 @@ export default function DispatchDialog({
   useEffect(() => {
     if (open && booking) {
       if (booking.assignments && booking.assignments.length > 0) {
-        // If there are existing shifts, map them into the UI state
         const existingSegments = booking.assignments.map((a, i) => ({
           id: `seg-${Date.now()}-${i}`,
           start: new Date(a.shift_start),
@@ -95,7 +100,6 @@ export default function DispatchDialog({
         }));
         setSegments(existingSegments);
       } else {
-        // Default empty state
         setSegments([
           {
             id: `seg-${Date.now()}`,
@@ -106,7 +110,7 @@ export default function DispatchDialog({
         ]);
       }
     }
-  }, [open, booking]);
+  }, [open, booking, bookingStart, bookingEnd]);
 
   const coverageStatus = useMemo(() => {
     let coveredDays = 0;

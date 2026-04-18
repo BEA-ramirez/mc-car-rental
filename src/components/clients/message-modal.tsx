@@ -12,7 +12,6 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Mail, X, Send, Loader2, Info } from "lucide-react";
 import { useClients } from "../../../hooks/use-clients";
-import { cn } from "@/lib/utils";
 
 interface MessageModalProps {
   isOpen: boolean;

@@ -138,7 +138,7 @@ export function LoginForm({
         {/* Bottom Link Inside Card */}
         <Field className="relative z-10 text-center mt-4">
           <FieldDescription className="text-[8px] sm:text-[9px] text-gray-500 font-bold uppercase tracking-widest">
-            Don't have an account?{" "}
+            Don&apos;t have an account?{" "}
             <Link
               href="/auth/signup"
               className="text-[#64c5c3] hover:text-white transition-colors font-black ml-1"

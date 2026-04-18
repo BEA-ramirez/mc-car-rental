@@ -1,14 +1,9 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import ActivePartners from "./active-partners";
-import { ClientRow } from "../../../hooks/use-clients";
 import { Users, UserPlus } from "lucide-react";
 import PartnerRequestsQueue from "./partner-requests-queue";
 
-export default function FleetPartnerData({
-  carOwnerApplicants,
-}: {
-  carOwnerApplicants: ClientRow[];
-}) {
+export default function FleetPartnerData() {
   return (
     <div className="flex flex-col h-320 bg-slate-50/50">
       <Tabs

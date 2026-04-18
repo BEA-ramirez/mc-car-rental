@@ -104,7 +104,7 @@ export default function CustomerProfilePage() {
     try {
       await uploadDocument(uploadData);
       toast.dismiss(toastId);
-    } catch (error) {
+    } catch {
       toast.dismiss(toastId);
     }
   };
@@ -394,7 +394,7 @@ export default function CustomerProfilePage() {
               </div>
               <p className="text-[10px] sm:text-xs text-gray-400 font-bold mb-8 max-w-lg leading-relaxed">
                 To keep our fleet and community safe, we require a valid
-                Driver's License and one additional Government ID.
+                Driver&apos;s License and one additional Government ID.
               </p>
 
               <div className="space-y-4">
@@ -406,7 +406,7 @@ export default function CustomerProfilePage() {
                     </div>
                     <div>
                       <h4 className="text-[11px] font-bold text-white uppercase tracking-widest mb-1 flex items-center gap-3">
-                        Professional Driver's License
+                        Professional Driver&apos;s License
                       </h4>
                       {latestLicense ? (
                         <div className="mt-2 flex items-center gap-3">

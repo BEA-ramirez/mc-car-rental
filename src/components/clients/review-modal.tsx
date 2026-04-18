@@ -17,9 +17,8 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
-  FileText,
   CheckCircle,
   XCircle,
   Calendar as CalendarIcon,
@@ -33,6 +32,7 @@ import {
   ExternalLink,
   IdCard,
 } from "lucide-react";
+import Image from "next/image";
 import { cn } from "@/lib/utils";
 
 export type ReviewDocument = {
@@ -165,7 +165,7 @@ export default function ReviewModal({
                     value="license"
                     className="h-6 text-[9px] font-bold uppercase tracking-widest rounded-md data-[state=active]:bg-white/20 data-[state=active]:text-white text-white/50 transition-colors"
                   >
-                    Driver's License
+                    Driver&apos;s License
                   </TabsTrigger>
                   <TabsTrigger
                     value="secondary"
@@ -203,7 +203,7 @@ export default function ReviewModal({
                 <div className="absolute inset-0 opacity-10 bg-[linear-gradient(45deg,#fff_25%,transparent_25%,transparent_75%,#fff_75%,#fff_100%),linear-gradient(45deg,#fff_25%,transparent_25%,transparent_75%,#fff_75%,#fff_100%)] bg-[length:20px_20px] bg-[position:0_0,10px_10px]" />
 
                 {currentImageUrl ? (
-                  <img
+                  <Image
                     src={currentImageUrl}
                     alt="Document Scan"
                     className="max-w-full max-h-full object-contain rounded shadow-2xl transition-transform duration-200 ease-in-out z-10"
@@ -369,7 +369,7 @@ export default function ReviewModal({
                             }))
                           }
                         />
-                        Driver's License
+                        Driver&apos;s License
                       </label>
                       <label className="flex items-center gap-2.5 text-[11px] font-bold text-foreground cursor-pointer transition-colors hover:text-destructive">
                         <input

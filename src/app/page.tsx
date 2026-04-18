@@ -24,6 +24,7 @@ import {
   Menu,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import Image from "next/image";
 
 export default function LandingPage() {
   const router = useRouter();
@@ -151,7 +152,7 @@ export default function LandingPage() {
       <section className="relative min-h-screen flex items-center pt-24 pb-12 overflow-hidden">
         {/* Background Image */}
         <div className="absolute inset-0 z-0">
-          <img
+          <Image
             src="https://images.unsplash.com/photo-1549399542-7e3f8b79c341?q=80&w=2000"
             alt="Cool dark car background"
             className="w-full h-full object-cover opacity-40 mix-blend-luminosity"
@@ -204,7 +205,7 @@ export default function LandingPage() {
             className="flex flex-row justify-center gap-3 sm:gap-4 w-full lg:w-auto"
           >
             <div className="w-36 sm:w-48 h-56 sm:h-64 rounded-2xl overflow-hidden border border-white/10 bg-white/5 backdrop-blur-md p-2 shadow-2xl translate-y-4 lg:translate-y-8 flex flex-col">
-              <img
+              <Image
                 src="https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?q=80&w=400"
                 className="w-full h-24 sm:h-32 object-cover rounded-xl mb-2 sm:mb-3"
                 alt="Toyota Fortuner"
@@ -220,7 +221,7 @@ export default function LandingPage() {
             </div>
 
             <div className="w-36 sm:w-48 h-56 sm:h-64 rounded-2xl overflow-hidden border border-white/10 bg-white/5 backdrop-blur-md p-2 shadow-2xl -translate-y-4 lg:-translate-y-8 flex flex-col">
-              <img
+              <Image
                 src="https://images.unsplash.com/photo-1609521263047-f8f205293f24?q=80&w=400"
                 className="w-full h-24 sm:h-32 object-cover rounded-xl mb-2 sm:mb-3"
                 alt="Hatchback"
@@ -289,7 +290,7 @@ export default function LandingPage() {
       {/* ABOUT US / IMAGE BREAK */}
       <section className="py-16 sm:py-24 relative mt-8 sm:mt-12">
         <div className="absolute inset-0 z-0">
-          <img
+          <Image
             src="https://images.unsplash.com/photo-1494976388531-d1058494cdd8?q=80&w=2000"
             className="w-full h-full object-cover opacity-30"
             alt="Sleek car on road"
@@ -313,7 +314,7 @@ export default function LandingPage() {
             </h2>
             <p className="text-gray-400 text-sm sm:text-base leading-relaxed mb-6 sm:mb-8 font-medium">
               Based in Ormoc City, we are the leading car rental and travel
-              agency in the region. Whether you're on a business trip or a
+              agency in the region. Whether you&apos;re on a business trip or a
               family vacation, we offer a diverse, well-maintained fleet to
               guarantee a safe, dependable, and secure journey—always at a
               reasonable price.
@@ -467,7 +468,7 @@ export default function LandingPage() {
               <div className="rounded-3xl overflow-hidden bg-[#0a1118] border border-white/5 h-full flex flex-col shadow-lg">
                 <div className="relative h-48 sm:h-60 overflow-hidden bg-black">
                   <div className="absolute inset-0 bg-black/30 group-hover:bg-transparent transition-colors z-10" />
-                  <img
+                  <Image
                     src={car.img}
                     alt={car.name}
                     className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 opacity-80 group-hover:opacity-100"
@@ -517,7 +518,7 @@ export default function LandingPage() {
 
           <div className="relative z-10 w-full lg:w-1/2">
             <h2 className="text-3xl sm:text-4xl font-black uppercase mb-3 sm:mb-4 text-white leading-tight">
-              Got Questions? <br /> We're Here To Help!
+              Got Questions? <br /> We&apos;re Here To Help!
             </h2>
             <p className="text-gray-400 text-sm sm:text-base font-medium mb-8 sm:mb-10 w-full lg:max-w-md">
               Whether you need help with a booking, want to inquire about

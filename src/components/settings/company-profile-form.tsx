@@ -18,7 +18,6 @@ import {
   saveCompanyProfile,
   CompanyProfile,
 } from "@/actions/settings";
-import { cn } from "@/lib/utils";
 
 const DEFAULT_PROFILE: CompanyProfile = {
   name: "",
@@ -38,7 +37,7 @@ export default function CompanyProfileForm() {
       try {
         const data = await getCompanyProfile();
         if (data) setProfile(data);
-      } catch (error) {
+      } catch {
         toast.error("Failed to load company profile.");
       } finally {
         setIsLoading(false);
@@ -61,7 +60,7 @@ export default function CompanyProfileForm() {
     try {
       await saveCompanyProfile(profile);
       toast.success("Company profile updated successfully!");
-    } catch (error) {
+    } catch {
       toast.error("Failed to save company profile.");
     } finally {
       setIsSaving(false);

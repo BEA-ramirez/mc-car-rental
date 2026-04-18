@@ -24,6 +24,7 @@ import {
   ExternalLink,
   IdCard,
 } from "lucide-react";
+import Image from "next/image";
 
 export type DriverReviewDocument = {
   id: string;
@@ -133,7 +134,7 @@ export default function DriverReviewModal({
                     value="license"
                     className="h-6 text-[9px] font-bold uppercase tracking-widest rounded-[2px] data-[state=active]:bg-[#111623] data-[state=active]:text-white text-slate-500"
                   >
-                    Driver's License
+                    Driver&apos;s License
                   </TabsTrigger>
                   <TabsTrigger
                     value="secondary"
@@ -171,7 +172,7 @@ export default function DriverReviewModal({
                 <div className="absolute inset-0 opacity-20 bg-[linear-gradient(45deg,#000_25%,transparent_25%,transparent_75%,#000_75%,#000_100%),linear-gradient(45deg,#000_25%,transparent_25%,transparent_75%,#000_75%,#000_100%)] bg-size-[20px_20px] bg-position-[0_0,10px_10px]" />
 
                 {currentImageUrl ? (
-                  <img
+                  <Image
                     src={currentImageUrl}
                     alt="Document Scan"
                     className="max-w-full max-h-full object-contain rounded-sm shadow-2xl transition-transform duration-200 ease-in-out z-10"

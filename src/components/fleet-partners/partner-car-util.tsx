@@ -1,7 +1,6 @@
 "use client";
 
 import React from "react";
-import { Progress } from "@/components/ui/progress"; // Adjust path
 import { Loader2, CarFront } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { usePartnerCarUtilization } from "../../../hooks/use-fleetPartners";

@@ -1,19 +1,12 @@
 "use client";
 
 import { useState, forwardRef, useImperativeHandle } from "react";
-import Image from "next/image";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Search, Plus, Star, Loader2, Car } from "lucide-react";
 import { FleetPartnerType } from "@/lib/schemas/car-owner";
 import { useFleetPartners } from "../../../hooks/use-fleetPartners";
 import { PartnerForm } from "./partner-form";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import { toTitleCase, getInitials } from "@/actions/helper/format-text";

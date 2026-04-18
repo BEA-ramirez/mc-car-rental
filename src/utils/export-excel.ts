@@ -397,7 +397,7 @@ export async function exportClientsToExcel(filteredUsers: any[]) {
         if (!dateString) return "N/A";
         try {
           return format(new Date(dateString), "MMM dd, yyyy");
-        } catch (e) {
+        } catch {
           return "Invalid Date";
         }
       };

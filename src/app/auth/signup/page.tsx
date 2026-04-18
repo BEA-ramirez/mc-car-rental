@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { motion, Variants } from "framer-motion";
 import { SignupForm } from "@/components/auth/signup-form";
+import Image from "next/image";
 
 // --- ANIMATION VARIANTS ---
 const spotlightAnim: Variants = {
@@ -118,7 +119,7 @@ export default function SignupPage() {
 
             {/* The Car Image */}
             <div className="relative rounded-3xl overflow-hidden border border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.5)] bg-black">
-              <img
+              <Image
                 src="https://images.unsplash.com/photo-1609521263047-f8f205293f24?q=80&w=1000"
                 alt="Mazda 3 Hatchback"
                 className="w-full h-[300px] object-cover opacity-90"

@@ -955,7 +955,8 @@ export default function ClientsDataGrid() {
                   <div className="bg-card border border-border rounded-xl p-4 shadow-sm transition-colors">
                     <div className="flex items-center justify-between mb-3 border-b border-border pb-1.5">
                       <h4 className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-1.5">
-                        <FileBadge className="w-3.5 h-3.5" /> Driver's License
+                        <FileBadge className="w-3.5 h-3.5" /> Driver&apos;s
+                        License
                       </h4>
                       <Badge
                         variant="outline"

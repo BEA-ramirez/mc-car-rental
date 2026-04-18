@@ -20,7 +20,6 @@ import {
   Scissors,
   Calendar as CalendarIcon,
   Clock,
-  ArrowRight,
   AlertCircle,
 } from "lucide-react";
 import {

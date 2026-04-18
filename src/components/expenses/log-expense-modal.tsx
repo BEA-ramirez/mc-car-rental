@@ -454,7 +454,8 @@ export default function LogExpenseModal({
                     htmlFor="chargeToOwner"
                     className="text-[10px] font-bold text-amber-700 dark:text-amber-400 cursor-pointer leading-tight"
                   >
-                    Owner Chargeback: Deduct this from the owner's next payout.
+                    Owner Chargeback: Deduct this from the owner&apos;s next
+                    payout.
                   </label>
                 </div>
               )}

@@ -56,7 +56,7 @@ export default function DashboardCharts() {
     // Core Branding
     const primaryTeal = "#64c5c3";
     const emeraldGreen = "#10b981";
-    const boldBlue = "#3b82f6";
+    //const boldBlue = "#3b82f6";
     const expenseRed = "#f43f5e";
     const warningAmber = "#f59e0b";
 

@@ -3,13 +3,11 @@
 import { useState } from "react";
 import Link from "next/link";
 import {
-  Car,
   User,
   CalendarDays,
   Bell,
   CheckCircle2,
   ShieldCheck,
-  ArrowRight,
   LogOut,
   CheckCheck,
 } from "lucide-react";
@@ -28,6 +26,7 @@ import {
 } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import LogoutDialog from "@/components/auth/logout-dialog";
+import Image from "next/image";
 
 import { useUnits } from "../../../../hooks/use-units";
 import { useNotifications } from "../../../../hooks/use-notifications"; // <-- NEW HOOK
@@ -323,7 +322,7 @@ export default function CustomerFleetPage() {
               />
 
               <div className="relative rounded-3xl overflow-hidden border border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.5)] bg-black">
-                <img
+                <Image
                   src="https://images.unsplash.com/photo-1609521263047-f8f205293f24?q=80&w=1000"
                   alt="Mazda 3 Hatchback"
                   className="w-full h-[300px] object-cover opacity-90"

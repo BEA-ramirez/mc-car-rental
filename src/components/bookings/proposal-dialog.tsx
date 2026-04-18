@@ -21,7 +21,6 @@ import {
   Receipt,
 } from "lucide-react";
 import { format } from "date-fns";
-import { cn } from "@/lib/utils";
 
 type ProposalDialogProps = {
   isOpen: boolean;
@@ -170,7 +169,9 @@ export default function ProposalDialog({
               <span className="font-medium leading-relaxed">
                 The customer receives this proposal via Email/SMS. Booking
                 status becomes{" "}
-                <b className="text-foreground font-bold">"Pending Proposal"</b>{" "}
+                <b className="text-foreground font-bold">
+                  &quot;Pending Proposal&quot;
+                </b>{" "}
                 until accepted.
               </span>
             </div>

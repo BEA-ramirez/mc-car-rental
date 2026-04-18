@@ -27,7 +27,6 @@ import {
   FileText,
 } from "lucide-react";
 import { toTitleCase } from "@/actions/helper/format-text";
-import { cn } from "@/lib/utils";
 
 type PartnerReviewModalProps = {
   isOpen: boolean;
@@ -63,9 +62,9 @@ export default function PartnerReviewModal({
   if (!partner) return null;
 
   const user = partner.users || {};
-  const displayName =
-    partner.business_name ||
-    `${user.first_name || ""} ${user.last_name || ""}`.trim();
+  // const displayName =
+  //   partner.business_name ||
+  //   `${user.first_name || ""} ${user.last_name || ""}`.trim();
   const isRejectValid = rejectReason.trim() !== "";
 
   return (

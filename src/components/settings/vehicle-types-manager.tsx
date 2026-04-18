@@ -14,7 +14,6 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { getSystemSettings, updateSystemSetting } from "@/actions/settings";
-import { cn } from "@/lib/utils";
 
 // Helper to generate quick unique IDs
 const generateId = () => Math.random().toString(36).substring(2, 9);
@@ -41,7 +40,7 @@ export default function VehicleTypesManager() {
                 { id: generateId(), label: "Van", isActive: true },
               ],
         );
-      } catch (error) {
+      } catch {
         toast.error("Failed to load vehicle types.");
       } finally {
         setIsLoading(false);

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -56,7 +56,7 @@ export default function BookingIncomeBreakdownModal({
   bookingId,
   defaultAction = "none",
 }: BookingIncomeBreakdownModalProps) {
-  const getInitialTab = () => {
+  const getInitialTab = useCallback(() => {
     if (
       defaultAction === "payment" ||
       defaultAction === "charge" ||
@@ -65,7 +65,7 @@ export default function BookingIncomeBreakdownModal({
       return defaultAction;
     }
     return "ledger";
-  };
+  }, [defaultAction]);
 
   const [activeTab, setActiveTab] = useState<string>(getInitialTab());
 
@@ -155,7 +155,7 @@ export default function BookingIncomeBreakdownModal({
         setPayAmount(Math.max(0, balanceDue).toString());
       if (initial === "refund") setRefundAmount(securityDeposit.toString());
     }
-  }, [isOpen, defaultAction, balanceDue, securityDeposit]);
+  }, [isOpen, defaultAction, balanceDue, securityDeposit, getInitialTab]);
 
   const userData = folio?.booking?.users as any;
   const customerName = Array.isArray(userData)
@@ -1042,9 +1042,9 @@ export default function BookingIncomeBreakdownModal({
                                 Deduct from Invoice
                               </label>
                               <p className="text-[10px] text-muted-foreground mt-1">
-                                Check this if the refund lowers the customer's
-                                total bill (e.g. Discounts, Early Returns).
-                                Uncheck for Overpayments.
+                                Check this if the refund lowers the
+                                customer&apos;s total bill (e.g. Discounts,
+                                Early Returns). Uncheck for Overpayments.
                               </p>
                             </div>
                           </div>
@@ -1159,7 +1159,7 @@ export default function BookingIncomeBreakdownModal({
             </DialogTitle>
             <DialogDescription>
               Are you sure you want to remove this charge from the invoice? This
-              action will adjust the customer's balance immediately.
+              action will adjust the customer&apos;s balance immediately.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="mt-4">
@@ -1203,7 +1203,7 @@ export default function BookingIncomeBreakdownModal({
             </DialogTitle>
             <DialogDescription>
               Voiding a payment will reverse the cash collection in the master
-              ledger and increase the customer's balance due.
+              ledger and increase the customer&apos;s balance due.
             </DialogDescription>
           </DialogHeader>
 

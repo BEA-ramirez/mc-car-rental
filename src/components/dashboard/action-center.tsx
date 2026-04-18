@@ -259,7 +259,7 @@ export default function ActionCenter() {
       <div className="bg-card border border-border rounded-xl shadow-sm flex flex-col shrink-0 transition-colors duration-300 overflow-hidden">
         <div className="px-3 py-2 border-b border-border bg-secondary/30">
           <h3 className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">
-            Today's logistics
+            Today&apos;s logistics
           </h3>
         </div>
         <div className="p-3 grid grid-cols-2 gap-3 border-b border-border">

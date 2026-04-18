@@ -21,10 +21,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
-  DropdownMenuLabel,
-  DropdownMenuCheckboxItem,
 } from "@/components/ui/dropdown-menu";
 
 // Import components
@@ -84,7 +81,7 @@ export default function DriversMain({
         setSelectedDriver(freshDriverData);
       }
     }
-  }, [drivers]);
+  }, [drivers, selectedDriver]);
 
   // Keep state synced if currentDriverData loads asynchronously
   useEffect(() => {
@@ -120,7 +117,7 @@ export default function DriversMain({
 
       // Clean up
       setDriverToDelete(null);
-    } catch (error) {
+    } catch {
       // Handle error
     }
   };

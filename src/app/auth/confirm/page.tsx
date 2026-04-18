@@ -83,7 +83,7 @@ export default function ConfirmPage({
 
             <div className="pt-6 border-t border-white/10">
               <p className="text-[8px] sm:text-[9px] text-gray-500 uppercase tracking-widest font-bold leading-relaxed">
-                Didn't receive the email? Check your spam folder or{" "}
+                Didn&apos;t receive the email? Check your spam folder or{" "}
                 <Link
                   href="/support"
                   className="text-[#64c5c3] hover:text-white transition-colors font-black ml-1"

@@ -346,7 +346,7 @@ export async function exportClientsToPDF(filteredUsers: any[]) {
     if (!dateString) return "N/A";
     try {
       return format(new Date(dateString), "MMM dd, yyyy");
-    } catch (e) {
+    } catch {
       return "Invalid Date";
     }
   };
@@ -480,7 +480,7 @@ export const generateInvoicePDF = (folio: any) => {
       const amount = Number(c.amount);
       grandTotalCharges += amount;
 
-      let description = c.category.replace(/_/g, " ");
+      const description = c.category.replace(/_/g, " ");
       let qty = "1";
       let unitPrice = `P ${Math.abs(amount).toLocaleString()}`;
 
@@ -910,22 +910,22 @@ export const generatePayoutPDF = (details: any) => {
   doc.save(`Payout_Statement_${shortId}.pdf`);
 };
 
-const getBase64ImageFromURL = (url: string): Promise<string> => {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.crossOrigin = "Anonymous"; // Crucial for Supabase CORS
-    img.onload = () => {
-      const canvas = document.createElement("canvas");
-      canvas.width = img.width;
-      canvas.height = img.height;
-      const ctx = canvas.getContext("2d");
-      ctx?.drawImage(img, 0, 0);
-      resolve(canvas.toDataURL("image/png"));
-    };
-    img.onerror = (error) => reject(error);
-    img.src = url;
-  });
-};
+// const getBase64ImageFromURL = (url: string): Promise<string> => {
+//   return new Promise((resolve, reject) => {
+//     const img = new Image();
+//     img.crossOrigin = "Anonymous"; // Crucial for Supabase CORS
+//     img.onload = () => {
+//       const canvas = document.createElement("canvas");
+//       canvas.width = img.width;
+//       canvas.height = img.height;
+//       const ctx = canvas.getContext("2d");
+//       ctx?.drawImage(img, 0, 0);
+//       resolve(canvas.toDataURL("image/png"));
+//     };
+//     img.onerror = (error) => reject(error);
+//     img.src = url;
+//   });
+// };
 
 export const generateInspectionPDF = async (
   inspection: any,

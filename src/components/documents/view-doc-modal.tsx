@@ -12,8 +12,6 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import {
   FileText,
-  ZoomIn,
-  Download,
   User,
   ShieldCheck,
   Phone,
@@ -24,11 +22,9 @@ import {
   Trash2,
   CheckCircle,
   Clock,
-  RotateCw,
   Edit3,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import Image from "next/image";
 import { InteractiveImageViewer } from "../interactive-image-viewer";
 
 // A clean, gray placeholder with a "document" icon
@@ -67,10 +63,10 @@ export default function ViewDocumentModal({
   onDelete,
   onSaveNote,
 }: ViewDocumentModalProps) {
-  const [rotation, setRotation] = useState(0);
-  const [scale, setScale] = useState(1);
+  const [, setRotation] = useState(0);
+  const [, setScale] = useState(1);
   const [note, setNote] = useState("");
-  const [imgSrc, setImgSrc] = useState<string>(FALLBACK_IMAGE);
+  const [, setImgSrc] = useState<string>(FALLBACK_IMAGE);
 
   React.useEffect(() => {
     if (isOpen) {
@@ -171,7 +167,7 @@ export default function ViewDocumentModal({
                       Rejection Reason
                     </span>
                     <span className="text-[10px] text-destructive font-semibold leading-relaxed bg-background px-2 py-1.5 rounded-lg border border-destructive/20 shadow-sm">
-                      "{doc.rejectionReason || "No reason provided."}"
+                      &quot;{doc.rejectionReason || "No reason provided."}&quot;
                     </span>
                   </div>
                 </div>

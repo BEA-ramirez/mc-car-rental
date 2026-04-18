@@ -22,12 +22,7 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 
 // Import the action we just created
 import { cancelPendingBooking } from "@/actions/bookings";
@@ -254,7 +249,7 @@ export default function BookingCard({ booking }: BookingCardProps) {
                     </span>
                   </p>
                   <p className="text-[9px] md:text-[10px] text-amber-400/80 font-medium leading-relaxed">
-                    We've received your submitted payment. The admin is
+                    We&apos;ve received your submitted payment. The admin is
                     currently verifying your receipt. Your dates are fully
                     secured during this review!
                   </p>
@@ -507,7 +502,7 @@ export default function BookingCard({ booking }: BookingCardProps) {
                       <div className="bg-[#64c5c3]/5 border border-[#64c5c3]/20 p-4 rounded-2xl flex items-center gap-4">
                         <div className="w-12 h-12 rounded-full bg-[#050B10] border border-[#64c5c3]/30 overflow-hidden flex items-center justify-center shrink-0">
                           {booking.driver.profileUrl ? (
-                            <img
+                            <Image
                               src={booking.driver.profileUrl}
                               alt="Driver"
                               className="w-full h-full object-cover"

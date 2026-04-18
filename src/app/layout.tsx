@@ -8,7 +8,6 @@ import { createClient } from "@/utils/supabase/server";
 
 // 1. Unified Style Imports
 import "./globals.css";
-import localFont from "next/font/local";
 
 // 2. Optimized Font Configuration
 const inter = Inter({
@@ -26,21 +25,6 @@ export const metadata: Metadata = {
   title: "MC Car Rental Admin",
   description: "Management System for MC Car Rental",
 };
-
-const generalSans = localFont({
-  src: [
-    {
-      path: "./fonts/GeneralSans-Variable.woff2",
-      style: "normal",
-    },
-    {
-      path: "./fonts/GeneralSans-VariableItalic.woff2",
-      style: "italic",
-    },
-  ],
-  variable: "--font-general", // The CSS variable for Tailwind
-  display: "swap",
-});
 
 export default async function RootLayout({
   children,

@@ -19,8 +19,6 @@ import {
 } from "@/components/ui/popover";
 import {
   FileText,
-  ZoomIn,
-  Download,
   CheckCircle,
   XCircle,
   Calendar as CalendarIcon,
@@ -30,7 +28,6 @@ import {
   Mail,
   AlertCircle,
   X,
-  RotateCw,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { InteractiveImageViewer } from "../interactive-image-viewer";
@@ -68,7 +65,7 @@ export default function ReviewModal({
   const [actionMode, setActionMode] = useState<"verify" | "reject" | null>(
     null,
   );
-  const [rotation, setRotation] = useState(0);
+  const [, setRotation] = useState(0);
 
   // Reset state when modal opens/closes
   React.useEffect(() => {
@@ -244,7 +241,7 @@ export default function ReviewModal({
                     </PopoverContent>
                   </Popover>
                   <p className="text-[9px] text-emerald-600/80 dark:text-emerald-400/80 font-medium mt-2">
-                    Required for Driver's Licenses.
+                    Required for Driver&apos;s Licenses.
                   </p>
                 </div>
               )}

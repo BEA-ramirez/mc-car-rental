@@ -1,9 +1,7 @@
 "use client";
 
 import React from "react";
-import { format } from "date-fns";
-import { Users, MoreVertical, LayoutGrid, Inbox } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { LayoutGrid, Inbox } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 import ClientsOverview from "@/components/clients/clients-overview";
@@ -11,7 +9,6 @@ import ClientsDataGrid from "@/components/clients/clients-datagrid";
 import RequestsQueue from "@/components/clients/requests-queue";
 
 import { useClientsKpi } from "../../../../hooks/use-clients";
-import { cn } from "@/lib/utils";
 
 export default function ClientsPage() {
   const { data: kpiData } = useClientsKpi();

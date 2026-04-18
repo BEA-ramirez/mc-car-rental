@@ -138,7 +138,11 @@ export default function DriverScheduleTab() {
                     (b: any) => b.id === highlightedBookingId,
                   );
 
-                  const { day, modifiers, ...buttonProps } = props;
+                  const {
+                    day: _day,
+                    modifiers: _modifiers,
+                    ...buttonProps
+                  } = props;
 
                   return (
                     <td className="flex-1 flex flex-col w-full h-full p-0 relative focus-within:relative focus-within:z-20 border-r border-slate-100 last:border-r-0 bg-white">

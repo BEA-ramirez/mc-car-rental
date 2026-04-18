@@ -31,7 +31,7 @@ export default function ApplyDriverPage() {
     try {
       await applyForDriver();
       setIsSuccess(true);
-    } catch (error) {
+    } catch {
       // Error handled by hook
     }
   };
@@ -157,7 +157,7 @@ export default function ApplyDriverPage() {
                 <CheckCircle2 className="w-6 h-6 text-[#64c5c3] shrink-0" />
                 <div>
                   <h3 className="text-xs font-bold text-white uppercase tracking-widest mb-1">
-                    Professional Driver's License
+                    Professional Driver&apos;s License
                   </h3>
                   <p className="text-[10px] sm:text-xs text-[#64c5c3] font-bold uppercase tracking-widest">
                     Verified on your profile
@@ -173,8 +173,8 @@ export default function ApplyDriverPage() {
                       License Missing or Unverified
                     </h3>
                     <p className="text-[10px] sm:text-xs text-red-400 font-bold uppercase tracking-widest leading-relaxed">
-                      You must have a verified Professional Driver's License on
-                      your profile before applying.
+                      You must have a verified Professional Driver&apos;s
+                      License on your profile before applying.
                     </p>
                   </div>
                 </div>

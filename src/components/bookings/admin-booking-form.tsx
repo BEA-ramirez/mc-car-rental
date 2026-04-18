@@ -3,13 +3,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { useFormContext, useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import {
-  format,
-  differenceInDays,
-  addDays,
-  setHours,
-  setMinutes,
-} from "date-fns";
+import { format, addDays, setHours, setMinutes } from "date-fns";
 import {
   CalendarIcon,
   MapPin,
@@ -20,11 +14,7 @@ import {
   User,
   Info,
   Clock,
-  CreditCard,
-  Mail,
-  Phone,
   Edit,
-  Copy,
   Receipt,
   Car,
   CalendarDays,
@@ -293,8 +283,8 @@ export default function AdminBookingForm({
   const { createBooking, updateBooking, isCreating, isBookingUpdating } =
     useBookings();
   const { data: settings, isLoading: settingsLoading } = useBookingSettings();
-  const { data: customers = [], isLoading: usersLoading } = useCustomers();
-  const { units = [], isUnitsLoading } = useUnits();
+  const { data: customers = [] } = useCustomers();
+  const { units = [] } = useUnits();
 
   const [isFetchingEditData, setIsFetchingEditData] = useState(!!bookingId);
   const [startTime, setStartTime] = useState("08:00");
@@ -310,13 +300,18 @@ export default function AdminBookingForm({
     email: string;
   } | null>(null);
 
-  const hubs = settings?.hubs || [];
-  const fees = settings?.fees || {
-    driver_rate_per_day: 500,
-    custom_pickup_fee: 500,
-    custom_dropoff_fee: 500,
-    security_deposit_default: 3000,
-  };
+  const hubs = useMemo(() => settings?.hubs || [], [settings?.hubs]);
+
+  const fees = useMemo(() => {
+    return (
+      settings?.fees || {
+        driver_rate_per_day: 500,
+        custom_pickup_fee: 500,
+        custom_dropoff_fee: 500,
+        security_deposit_default: 3000,
+      }
+    );
+  }, [settings?.fees]);
 
   const form = useForm({
     resolver: zodResolver(AdminCreateBookingSchema),
@@ -535,6 +530,8 @@ export default function AdminBookingForm({
     fees?.security_deposit_default,
     setValue,
     bookingId,
+    fees,
+    form,
   ]);
 
   useEffect(() => {
@@ -558,7 +555,7 @@ export default function AdminBookingForm({
         setValue("end_date", expectedEnd);
       }
     }
-  }, [wStart, startTime, duration, setValue]);
+  }, [wStart, startTime, duration, setValue, form]);
 
   useEffect(() => {
     if (initialStartDate && !bookingId) {

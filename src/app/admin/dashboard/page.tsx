@@ -17,11 +17,11 @@ export default async function Dashboard() {
   }
 
   // 2. Fetch their actual profile from your users table (Optional but highly recommended)
-  const { data: profile } = await supabase
-    .from("users")
-    .select("full_name, role")
-    .eq("user_id", user.id)
-    .single();
+  // const { data: profile } = await supabase
+  //   .from("users")
+  //   .select("full_name, role")
+  //   .eq("user_id", user.id)
+  //   .single();
 
   return (
     <main className="w-full h-full">

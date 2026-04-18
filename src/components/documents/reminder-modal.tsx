@@ -11,7 +11,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Send, X, Mail, Clock, FileSignature, User } from "lucide-react";
-import { cn } from "@/lib/utils";
 
 export type ReminderContext = {
   id: string;
@@ -170,7 +169,7 @@ export default function ReminderModal({
             )}
             <p className="leading-relaxed">
               An automated log of this communication will be saved to the
-              customer's profile history upon sending.
+              customer&apos;s profile history upon sending.
             </p>
           </div>
         </div>

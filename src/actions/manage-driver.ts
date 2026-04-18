@@ -1,6 +1,5 @@
 "use server";
 import { createClient } from "@/utils/supabase/server";
-import { CompleteDriverType } from "@/lib/schemas/driver";
 import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/utils/supabase/admin";
 import { DriverFormValues, driverFormSchema } from "@/lib/schemas/driver";
@@ -9,8 +8,6 @@ import {
   sendDriverVerificationEmail,
 } from "./helper/mail";
 import { getPublicUrl } from "./helper/upload-file";
-import { success } from "zod";
-import { m } from "framer-motion";
 
 export type ActionState = {
   message: string | null;

@@ -38,7 +38,7 @@ export default function PaymentMethodsForm() {
           // Merge with defaults just in case some keys are missing
           setMethods({ ...DEFAULT_METHODS, ...data });
         }
-      } catch (error) {
+      } catch {
         toast.error("Failed to load payment methods.");
       } finally {
         setIsLoading(false);
@@ -70,7 +70,7 @@ export default function PaymentMethodsForm() {
     try {
       await savePaymentMethods(methods);
       toast.success("Payment configurations saved successfully!");
-    } catch (error) {
+    } catch {
       toast.error("Failed to save payment methods.");
     } finally {
       setIsSaving(false);

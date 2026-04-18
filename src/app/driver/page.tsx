@@ -10,7 +10,6 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { cn } from "@/lib/utils";
 
 // Mock data (you will replace this with your hooks later)
 const driverData = {

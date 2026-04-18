@@ -10,7 +10,6 @@ import {
   Wallet,
   TrendingUp,
   Percent,
-  Download,
   Loader2,
   FileText,
   ArrowRight,

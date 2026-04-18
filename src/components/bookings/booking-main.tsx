@@ -4,24 +4,19 @@ import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import TimelineScheduler, {
   SchedulerEvent,
-  SchedulerResource,
 } from "@/components/scheduler/timeline-scheduler";
-import { getSchedulerData } from "@/actions/scheduler";
-import { differenceInHours, addDays, format, addHours } from "date-fns";
+import { differenceInHours, addDays, addHours } from "date-fns";
 import PendingRequestsSidebar from "./pending-request-sidebar";
 import ProposalDialog from "@/components/bookings/proposal-dialog";
 import ResizeDialog from "@/components/bookings/resize-dialog";
 import EarlyReturnDialog from "@/components/bookings/early-return-dialog";
 import ExtendBookingDialog from "./extend-booking-dialog";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import {
   Inbox,
   PanelRightClose,
   Plus,
-  Calendar as CalendarIcon,
   Loader2,
-  Trash,
   List,
   CalendarDays,
   Banknote,
@@ -29,13 +24,11 @@ import {
   AlertTriangle,
   FileText,
   Car,
-  Key,
   ShieldAlert,
   CheckCircle2,
   X,
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
-import { Separator } from "@/components/ui/separator";
 import {
   Sheet,
   SheetContent,
@@ -89,7 +82,6 @@ export default function BookingMain() {
     processEarlyReturn,
     isProcessingEarlyReturn,
     createMaintenance,
-    isCreatingMaintenance,
     splitBooking,
     isSplittingBooking,
     reassignBooking,

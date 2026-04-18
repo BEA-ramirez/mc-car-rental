@@ -209,7 +209,7 @@ export default function RequestsQueue() {
                   <div className="flex items-center gap-4 mt-3 sm:mt-0 flex-1 justify-center">
                     <div className="flex flex-col items-center gap-1">
                       <span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">
-                        Driver's License
+                        Driver&apos;s License
                       </span>
                       <div
                         className={cn(

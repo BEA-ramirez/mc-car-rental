@@ -2,7 +2,7 @@
 
 import React from "react";
 import { format } from "date-fns";
-import { MoreHorizontal, ArrowUpRight } from "lucide-react";
+import { ArrowUpRight } from "lucide-react";
 import {
   Table,
   TableBody,

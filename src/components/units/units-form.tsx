@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
@@ -59,6 +59,7 @@ import { AlertCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { FleetPartnerType } from "@/lib/schemas/car-owner";
+import Image from "next/image";
 
 interface UnitsFormProp {
   open: boolean;
@@ -649,7 +650,7 @@ export function UnitsForm({ open, onOpenChange, initialData }: UnitsFormProp) {
                                   key={index}
                                   className="flex items-center gap-2 p-1.5 border border-border rounded-md bg-card shadow-sm group transition-colors hover:border-primary/50"
                                 >
-                                  <img
+                                  <Image
                                     src={img.image_url}
                                     alt="Unit"
                                     className="h-10 w-14 object-cover rounded shadow-sm border border-border"

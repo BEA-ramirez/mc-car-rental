@@ -10,7 +10,6 @@ import {
   AlertTriangle,
   Users,
   Cog,
-  Fuel,
   Car,
   Settings2,
 } from "lucide-react";

@@ -24,7 +24,8 @@ import { Button } from "@/components/ui/button";
 import { CompleteCarType } from "@/lib/schemas/car";
 import { cn } from "@/lib/utils";
 import { Separator } from "../ui/separator";
-import { useRouter } from "next/navigation"; // <-- IMPORT THIS
+import { useRouter } from "next/navigation";
+import Image from "next/image";
 
 interface UnitsCardProps {
   unit: CompleteCarType;
@@ -69,12 +70,11 @@ export default function UnitsCard({
   return (
     <Card className="w-full rounded-xl overflow-hidden border-border shadow-sm flex flex-col bg-card transition-all hover:shadow-md hover:border-primary/50 group cursor-default">
       {/* --- COMPACT IMAGE SECTION --- */}
-      {/* Added cursor-pointer and onClick to make the image clickable */}
       <div
         className="relative h-36 w-full bg-muted overflow-hidden shrink-0 cursor-pointer"
         onClick={handleViewDetails}
       >
-        <img
+        <Image
           src={primaryImage}
           alt={`${unit.brand} ${unit.model}`}
           className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105 opacity-90 group-hover:opacity-100"

@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import RevenueLineChart from "../charts/LineChart"; // Your Recharts wrapper
-import { ChevronDown, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { usePartnerRevenueChart } from "../../../hooks/use-fleetPartners"; // Adjust path
 
 // Define a type for the data structure returned by the RPC

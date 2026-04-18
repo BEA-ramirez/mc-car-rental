@@ -5,14 +5,12 @@ import { useParams, useRouter } from "next/navigation";
 import { format } from "date-fns";
 import {
   ArrowLeft,
-  Phone,
   Car,
   User,
   MapPin,
   Clock,
   Banknote,
   FileText,
-  ShieldCheck,
   Plus,
   AlertCircle,
   CheckCircle2,
@@ -39,6 +37,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
+import Image from "next/image";
 
 // --- EXISTING COMPONENT IMPORTS ---
 import CancelBookingDialog from "@/components/bookings/cancel-booking-dialog";
@@ -363,9 +362,11 @@ export default function AdminBookingDetailsPage() {
                 </div>
 
                 <div className="flex gap-3 items-center">
-                  <img
+                  <Image
                     src={booking.car.image}
                     alt="Car"
+                    width={64}
+                    height={48}
                     className="w-16 h-12 object-cover rounded border border-border shrink-0"
                   />
                   <div className="overflow-hidden">
@@ -422,8 +423,9 @@ export default function AdminBookingDetailsPage() {
                           Detected!
                         </p>
                         <p className="text-[9px] text-amber-600/80 font-medium leading-tight mb-2">
-                          The booking was extended, but the driver's schedule
-                          ends early. You need to assign relief coverage.
+                          The booking was extended, but the driver&apos;s
+                          schedule ends early. You need to assign relief
+                          coverage.
                         </p>
                         <Button
                           onClick={() => setIsDispatchOpen(true)}
@@ -779,13 +781,15 @@ export default function AdminBookingDetailsPage() {
                   >
                     {payment.receipt_url ? (
                       <>
-                        <img
+                        <Image
                           src={payment.receipt_url}
                           alt="Receipt"
                           className="w-full h-full object-cover opacity-90 group-hover:opacity-100 transition-all cursor-pointer group-hover:scale-105 duration-300"
                           onClick={() =>
                             window.open(payment.receipt_url, "_blank")
                           }
+                          width={240}
+                          height={160}
                         />
                         <div className="absolute bottom-0 inset-x-0 bg-background/90 backdrop-blur-md p-2.5 flex justify-between items-center border-t border-border">
                           <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">

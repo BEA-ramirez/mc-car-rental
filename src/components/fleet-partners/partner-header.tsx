@@ -6,16 +6,12 @@ import { toTitleCase } from "@/actions/helper/format-text";
 import {
   Star,
   BadgePercent,
-  Banknote,
-  BookAlert,
-  Activity,
   Edit2,
   Mail,
   Phone,
   Trash2,
   MessageSquare,
   MoreHorizontal,
-  ShieldCheck,
   Calendar,
   User,
 } from "lucide-react";

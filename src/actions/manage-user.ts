@@ -150,8 +150,8 @@ export async function createClientAction(
     email,
     valid_id_expiry_date,
     license_expiry_date,
-    license_id_url,
-    valid_id_url,
+    license_id_url: _license_id_url,
+    valid_id_url: _valid_id_url,
     ...profileData
   } = validateFields.data;
 
@@ -297,12 +297,12 @@ export async function updateClientAction(
 
   const {
     user_id,
-    password, // Usually ignored on update unless you have a specific password reset flow
+    password: _password,
     email,
     valid_id_expiry_date,
     license_expiry_date,
-    license_id_url,
-    valid_id_url,
+    license_id_url: _license_id_url,
+    valid_id_url: _valid_id_url,
     ...profileData
   } = validateFields.data;
 
@@ -344,7 +344,7 @@ export async function updateClientAction(
     );
 
     // Cleanup Deleted Documents
-    let deleteDocs = formData.get("deleted_documents");
+    const deleteDocs = formData.get("deleted_documents");
     if (deleteDocs) {
       const parsedDocs = JSON.parse(deleteDocs as string);
       if (Array.isArray(parsedDocs)) {

@@ -19,7 +19,7 @@ import {
   isWithinInterval,
   intervalToDuration,
 } from "date-fns";
-import { Clock, MapPin, CalendarDays } from "lucide-react";
+import { Clock, MapPin } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
@@ -127,7 +127,7 @@ export default function DriverSchedule() {
             const isBooked = dayBookings.length > 0;
             const isTurnover = dayBookings.length > 1;
 
-            const { day, modifiers, ...buttonProps } = props;
+            const { day: _day, modifiers: _modifiers, ...buttonProps } = props;
 
             return (
               <td className="flex-1 flex flex-col w-full h-full p-0 relative focus-within:relative focus-within:z-20 border-r border-slate-100 last:border-r-0">

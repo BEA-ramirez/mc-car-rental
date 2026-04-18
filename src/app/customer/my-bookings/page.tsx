@@ -139,8 +139,8 @@ export default function MyBookingsPage() {
                 No Trips Found
               </h3>
               <p className="text-xs md:text-sm text-gray-400 font-medium max-w-sm">
-                You don't have any reservations under the "{activeTab}"
-                category. Time to find your next drive.
+                You don&apos;t have any reservations under the &quot;{activeTab}
+                &quot; category. Time to find your next drive.
               </p>
             </motion.div>
           )}

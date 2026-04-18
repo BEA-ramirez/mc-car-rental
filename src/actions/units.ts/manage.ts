@@ -5,7 +5,6 @@ import {
   CompleteCarType,
   CarSpecificationType,
   FeatureType,
-  featureSchema,
 } from "@/lib/schemas/car";
 
 type ActionReponse = {
@@ -65,7 +64,7 @@ export async function saveUnit(data: CompleteCarType): Promise<ActionReponse> {
     return { success: false, message: parsed.error.issues[0].message };
   }
 
-  const { features, images, owner, specifications, car_id, ...carDetails } =
+  const { features, images, /*owner ,specifications,*/ car_id, ...carDetails } =
     parsed.data;
 
   try {
