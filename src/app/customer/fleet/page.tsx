@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import {
   User,
@@ -10,6 +10,7 @@ import {
   ShieldCheck,
   LogOut,
   CheckCheck,
+  Loader2,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { formatDistanceToNow } from "date-fns";
@@ -28,10 +29,14 @@ import { cn } from "@/lib/utils";
 import LogoutDialog from "@/components/auth/logout-dialog";
 import Image from "next/image";
 
-import { useUnits } from "../../../../hooks/use-units";
-import { useNotifications } from "../../../../hooks/use-notifications"; // <-- NEW HOOK
+import { useInView } from "react-intersection-observer";
+import { useCustomerFleet } from "../../../../hooks/use-customer-fleet";
+import { useNotifications } from "../../../../hooks/use-notifications";
+import { useDebounce } from "../../../../hooks/use-debounce";
 
 export default function CustomerFleetPage() {
+  const { ref, inView } = useInView();
+
   const [selectedCar, setSelectedCar] = useState<any | null>(null);
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
@@ -44,7 +49,10 @@ export default function CustomerFleetPage() {
     maxPrice: null,
   });
 
-  const { units, isUnitsLoading } = useUnits();
+  const debouncedFilters = useDebounce(filters, 500);
+
+  const { data, isLoading, fetchNextPage, hasNextPage, isFetchingNextPage } =
+    useCustomerFleet(debouncedFilters);
 
   // --- FETCH REAL NOTIFICATIONS ---
   const {
@@ -56,7 +64,9 @@ export default function CustomerFleetPage() {
   // Calculate unread count from the real data
   const unreadCount = notifications.filter((n: any) => !n.is_read).length;
 
-  const formattedCars = units.map((unit: any) => {
+  const allCars = data?.pages.flatMap((page) => page.data) || [];
+
+  const formattedCars = allCars.map((unit: any) => {
     const sortedImages = [...(unit.images || [])].sort((a: any, b: any) => {
       if (a.is_primary && !b.is_primary) return -1;
       if (!a.is_primary && b.is_primary) return 1;
@@ -83,24 +93,12 @@ export default function CustomerFleetPage() {
     };
   });
 
-  const filteredCars = formattedCars.filter((car) => {
-    if (filters.search) {
-      const searchTerm = filters.search.toLowerCase();
-      const matchesBrand = car.brand.toLowerCase().includes(searchTerm);
-      const matchesModel = car.model.toLowerCase().includes(searchTerm);
-      if (!matchesBrand && !matchesModel) return false;
+  // trigger fetch when the bottom div is visible (infinite scroll)
+  useEffect(() => {
+    if (inView && hasNextPage && !isFetchingNextPage) {
+      fetchNextPage();
     }
-    if (filters.type !== "All" && car.type !== filters.type) return false;
-    if (filters.transmission !== "Any") {
-      const carTrans = car.transmission.toLowerCase();
-      const filterTrans = filters.transmission.toLowerCase();
-      if (!carTrans.includes(filterTrans)) return false;
-    }
-    if (filters.minSeating !== null && car.seats < filters.minSeating)
-      return false;
-    if (filters.maxPrice !== null && car.price > filters.maxPrice) return false;
-    return true;
-  });
+  }, [inView, hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   const handleViewDetails = (car: any) => {
     setSelectedCar(car);
@@ -326,6 +324,8 @@ export default function CustomerFleetPage() {
                   src="https://images.unsplash.com/photo-1609521263047-f8f205293f24?q=80&w=1000"
                   alt="Mazda 3 Hatchback"
                   className="w-full h-[300px] object-cover opacity-90"
+                  width={1200}
+                  height={800}
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
               </div>
@@ -368,12 +368,12 @@ export default function CustomerFleetPage() {
           <div className="lg:col-span-9">
             <div className="flex items-center justify-between mb-8">
               <p className="text-xs font-bold text-white/50 uppercase tracking-widest">
-                {isUnitsLoading ? (
+                {isLoading ? (
                   "Searching Fleet..."
                 ) : (
                   <>
                     <span className="text-[#64c5c3]">
-                      {filteredCars.length}
+                      {formattedCars.length}
                     </span>{" "}
                     Vehicles Found
                   </>
@@ -388,36 +388,52 @@ export default function CustomerFleetPage() {
             </div>
 
             {/* Grid */}
-            {isUnitsLoading ? (
+            {isLoading ? (
               <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-6">
-                {Array.from({ length: 8 }).map((_, i) => (
+                {Array.from({ length: 9 }).map((_, i) => (
                   <CarCardSkeleton key={i} />
                 ))}
               </div>
             ) : (
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-6">
-                {filteredCars.length > 0 ? (
-                  filteredCars.map((car: any) => (
-                    <motion.div
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      key={car.id}
-                      className="h-full"
-                    >
-                      <CarCard
-                        car={car}
-                        onViewDetails={() => handleViewDetails(car)}
-                      />
-                    </motion.div>
-                  ))
-                ) : (
-                  <div className="col-span-full text-center py-24 border border-white/5 rounded-2xl bg-[#0a1118]">
-                    <p className="text-gray-500 font-bold text-sm uppercase tracking-widest">
-                      No vehicles match your refined criteria.
+              <>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-6">
+                  {formattedCars.length > 0 ? (
+                    formattedCars.map((car: any) => (
+                      <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        key={car.id}
+                        className="h-full"
+                      >
+                        <CarCard
+                          car={car}
+                          onViewDetails={() => handleViewDetails(car)}
+                        />
+                      </motion.div>
+                    ))
+                  ) : (
+                    <div className="col-span-full text-center py-24 border border-white/5 rounded-2xl bg-[#0a1118]">
+                      <p className="text-gray-500 font-bold text-sm uppercase tracking-widest">
+                        No vehicles match your refined criteria.
+                      </p>
+                    </div>
+                  )}
+                </div>
+                {/*  THE INVISIBLE TRIGGER ELEMENT */}
+                <div
+                  ref={ref}
+                  className="w-full h-24 mt-8 flex items-center justify-center"
+                >
+                  {isFetchingNextPage && (
+                    <Loader2 className="w-8 h-8 animate-spin text-[#64c5c3]" />
+                  )}
+                  {!hasNextPage && allCars.length > 0 && (
+                    <p className="text-[10px] font-bold text-white/30 uppercase tracking-widest">
+                      End of Inventory
                     </p>
-                  </div>
-                )}
-              </div>
+                  )}
+                </div>
+              </>
             )}
           </div>
         </div>
