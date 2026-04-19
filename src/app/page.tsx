@@ -46,8 +46,18 @@ export default function LandingPage() {
     <div className="min-h-screen bg-[#050B10] text-white font-sans selection:bg-[#64c5c3] selection:text-black overflow-x-hidden">
       {/* NAVIGATION (Glassmorphic) */}
       <nav className="fixed top-0 w-full z-50 bg-[#050B10]/80 backdrop-blur-xl border-b border-white/5 py-4 px-4 sm:px-6 md:px-12 flex justify-between items-center transition-all duration-300">
-        <div className="text-xl md:text-2xl font-black tracking-tighter uppercase">
-          MC Ormoc
+        <div className="flex items-center gap-2">
+          <Image
+            src="/mc-ormoc-logo.png" /* Change this to your exact filename */
+            alt="Company Logo"
+            width={60}
+            height={60}
+            priority
+            className="object-contain"
+          />
+          <div className="text-xl md:text-2xl font-black tracking-tighter uppercase">
+            MC Ormoc
+          </div>
         </div>
 
         {/* Desktop Nav Links */}
@@ -155,7 +165,8 @@ export default function LandingPage() {
           <Image
             src="https://images.unsplash.com/photo-1549399542-7e3f8b79c341?q=80&w=2000"
             alt="Cool dark car background"
-            className="w-full h-full object-cover opacity-40 mix-blend-luminosity"
+            fill
+            className="object-cover opacity-40 mix-blend-luminosity"
           />
           <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[#050B10]/80 to-[#050B10]" />
         </div>
@@ -209,6 +220,8 @@ export default function LandingPage() {
                 src="https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?q=80&w=400"
                 className="w-full h-24 sm:h-32 object-cover rounded-xl mb-2 sm:mb-3"
                 alt="Toyota Fortuner"
+                width={400}
+                height={300}
               />
               <div className="px-2 flex-1 flex flex-col justify-end pb-2">
                 <p className="text-[9px] sm:text-xs text-[#64c5c3] font-bold tracking-widest mb-1 truncate">
@@ -225,6 +238,8 @@ export default function LandingPage() {
                 src="https://images.unsplash.com/photo-1609521263047-f8f205293f24?q=80&w=400"
                 className="w-full h-24 sm:h-32 object-cover rounded-xl mb-2 sm:mb-3"
                 alt="Hatchback"
+                width={400} // 👇 ADDED
+                height={300}
               />
               <div className="px-2 flex-1 flex flex-col justify-end pb-2">
                 <p className="text-[9px] sm:text-xs text-[#64c5c3] font-bold tracking-widest mb-1 truncate">
@@ -294,6 +309,7 @@ export default function LandingPage() {
             src="https://images.unsplash.com/photo-1494976388531-d1058494cdd8?q=80&w=2000"
             className="w-full h-full object-cover opacity-30"
             alt="Sleek car on road"
+            fill
           />
           <div className="absolute inset-0 bg-gradient-to-r from-[#050B10] via-[#050B10]/90 to-transparent" />
           <div className="absolute inset-0 bg-gradient-to-t from-[#050B10] via-transparent to-[#050B10]" />
@@ -471,6 +487,7 @@ export default function LandingPage() {
                   <Image
                     src={car.img}
                     alt={car.name}
+                    fill
                     className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 opacity-80 group-hover:opacity-100"
                   />
                   <div className="absolute top-4 right-4 z-20 bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-full text-[9px] font-bold text-white border border-white/10 uppercase tracking-widest">

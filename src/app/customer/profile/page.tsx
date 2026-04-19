@@ -24,7 +24,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 import { useProfile } from "../../../../hooks/use-profile";
-import Link from "next/link";
 
 // Form zod schema
 const ProfileSchema = z.object({
@@ -192,34 +191,6 @@ export default function CustomerProfilePage() {
 
   return (
     <div className="min-h-screen bg-[#050B10] text-white font-sans selection:bg-[#64c5c3] selection:text-black pb-24">
-      {/* Top Nav (Glassmorphic) */}
-      <nav className="fixed top-0 w-full z-50 bg-[#050B10]/50 backdrop-blur-lg border-b border-white/5 transition-all duration-500">
-        <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
-          <Link
-            href="/"
-            className="flex items-center gap-2 cursor-pointer group"
-          >
-            <span className="text-2xl font-black tracking-tighter text-white group-hover:text-[#64c5c3] transition-colors duration-300">
-              MC ORMOC
-            </span>
-          </Link>
-          <div className="flex items-center gap-6">
-            <Link
-              href="/customer/fleet"
-              className="text-[10px] sm:text-xs font-bold uppercase tracking-widest text-gray-400 hover:text-[#64c5c3] transition-colors"
-            >
-              Fleet
-            </Link>
-            <Link
-              href="/customer/my-bookings"
-              className="text-[10px] sm:text-xs font-bold uppercase tracking-widest text-gray-400 hover:text-[#64c5c3] transition-colors"
-            >
-              Bookings
-            </Link>
-          </div>
-        </div>
-      </nav>
-
       {/* Profile Header */}
       <div className="relative pt-32 pb-16 px-6 overflow-hidden border-b border-white/5">
         <div className="absolute top-0 right-1/4 w-[400px] h-[400px] bg-[#64c5c3]/10 rounded-full blur-[120px] pointer-events-none -z-10" />

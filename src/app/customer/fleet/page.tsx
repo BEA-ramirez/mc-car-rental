@@ -11,8 +11,9 @@ import {
   LogOut,
   CheckCheck,
   Loader2,
+  SlidersHorizontal,
 } from "lucide-react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { formatDistanceToNow } from "date-fns";
 
 import FleetFilters, { FilterState } from "@/components/customer/fleet-filters";
@@ -25,6 +26,12 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import {
+  Sheet,
+  SheetContent,
+  SheetTrigger,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import LogoutDialog from "@/components/auth/logout-dialog";
 import Image from "next/image";
@@ -38,7 +45,8 @@ export default function CustomerFleetPage() {
   const { ref, inView } = useInView();
 
   const [selectedCar, setSelectedCar] = useState<any | null>(null);
-  const [isSheetOpen, setIsSheetOpen] = useState(false);
+  const [isDetailsSheetOpen, setIsDetailsSheetOpen] = useState(false);
+  const [isFilterSheetOpen, setIsFilterSheetOpen] = useState(false);
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
 
   const [filters, setFilters] = useState<FilterState>({
@@ -61,8 +69,17 @@ export default function CustomerFleetPage() {
     markAllAsRead,
   } = useNotifications();
 
-  // Calculate unread count from the real data
   const unreadCount = notifications.filter((n: any) => !n.is_read).length;
+
+  // Calculate active filters count for the mobile button badge
+  const activeFiltersCount = Object.entries(filters).filter(([key, value]) => {
+    if (key === "search" && value !== "") return true;
+    if (key === "type" && value !== "All") return true;
+    if (key === "transmission" && value !== "Any") return true;
+    if (key === "minSeating" && value !== null) return true;
+    if (key === "maxPrice" && value !== null) return true;
+    return false;
+  }).length;
 
   const allCars = data?.pages.flatMap((page) => page.data) || [];
 
@@ -93,7 +110,6 @@ export default function CustomerFleetPage() {
     };
   });
 
-  // trigger fetch when the bottom div is visible (infinite scroll)
   useEffect(() => {
     if (inView && hasNextPage && !isFetchingNextPage) {
       fetchNextPage();
@@ -102,25 +118,34 @@ export default function CustomerFleetPage() {
 
   const handleViewDetails = (car: any) => {
     setSelectedCar(car);
-    setIsSheetOpen(true);
+    setIsDetailsSheetOpen(true);
   };
 
   return (
-    <div className="min-h-screen bg-[#050B10] text-white font-sans selection:bg-[#64c5c3] selection:text-black">
-      {/* Top Nav (Glassmorphic) */}
+    <div className="min-h-screen bg-[#050B10] text-white font-sans selection:bg-[#64c5c3] selection:text-black pb-24 lg:pb-0 relative">
+      {/* Top Nav */}
       <nav className="fixed top-0 w-full z-50 bg-[#050B10]/50 backdrop-blur-lg border-b border-white/5 transition-all duration-500">
-        <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
-          <Link
-            href="/"
-            className="flex items-center gap-2 cursor-pointer group"
-          >
-            <span className="text-2xl font-black tracking-tighter text-white group-hover:text-[#64c5c3] transition-colors duration-300">
-              MC ORMOC
-            </span>
-          </Link>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 sm:h-20 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Image
+              src="/mc-ormoc-logo.png"
+              alt="Company Logo"
+              width={48}
+              height={48}
+              priority
+              className="object-contain sm:w-[60px] sm:h-[60px]"
+            />
+            <Link
+              href="/"
+              className="flex items-center gap-2 cursor-pointer group"
+            >
+              <span className="text-base sm:text-2xl font-black tracking-tighter text-white group-hover:text-[#64c5c3] transition-colors duration-300">
+                MC ORMOC
+              </span>
+            </Link>
+          </div>
 
-          <div className="flex items-center gap-2 sm:gap-6">
-            {/* NOTIFICATIONS POPOVER */}
+          <div className="flex items-center gap-1 sm:gap-6">
             <Popover>
               <PopoverTrigger asChild>
                 <Button
@@ -137,11 +162,11 @@ export default function CustomerFleetPage() {
               <PopoverContent
                 align="end"
                 sideOffset={12}
-                className="w-80 sm:w-96 p-0 rounded-2xl border-white/10 bg-[#0a1118]/95 backdrop-blur-2xl shadow-2xl overflow-hidden z-[100]"
+                className="w-[calc(100vw-2rem)] sm:w-96 p-0 rounded-2xl border-white/10 bg-[#0a1118]/95 backdrop-blur-2xl shadow-2xl overflow-hidden z-[100] mx-4 sm:mx-0"
               >
                 <div className="bg-white/5 border-b border-white/5 p-4 flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <h3 className="font-bold text-white text-sm uppercase tracking-wider">
+                    <h3 className="font-semibold text-white text-base sm:font-bold sm:text-sm sm:uppercase sm:tracking-wider">
                       Notifications
                     </h3>
                     {unreadCount > 0 && (
@@ -153,9 +178,10 @@ export default function CustomerFleetPage() {
                   {unreadCount > 0 && (
                     <button
                       onClick={() => markAllAsRead()}
-                      className="text-[10px] text-gray-400 hover:text-[#64c5c3] uppercase tracking-widest font-bold transition-colors flex items-center gap-1"
+                      className="text-xs sm:text-[10px] text-gray-400 hover:text-[#64c5c3] sm:uppercase tracking-widest font-medium sm:font-bold transition-colors flex items-center gap-1"
                     >
-                      <CheckCheck className="w-3 h-3" /> Mark All Read
+                      <CheckCheck className="w-3 h-3 sm:w-4 sm:h-4" />
+                      <span className="hidden sm:inline">Mark All Read</span>
                     </button>
                   )}
                 </div>
@@ -171,7 +197,7 @@ export default function CustomerFleetPage() {
                               markAsRead(notif.notification_id);
                           }}
                           className={cn(
-                            "p-5 border-b border-white/5 flex gap-4 hover:bg-white/5 transition-colors cursor-pointer",
+                            "p-4 sm:p-5 border-b border-white/5 flex gap-4 hover:bg-white/5 transition-colors cursor-pointer",
                             !notif.is_read
                               ? "bg-[#64c5c3]/10"
                               : "bg-transparent",
@@ -212,10 +238,10 @@ export default function CustomerFleetPage() {
                                 {notif.title}
                               </h4>
                             </div>
-                            <p className="text-xs text-gray-400 leading-relaxed mb-2">
+                            <p className="text-sm sm:text-xs text-gray-400 leading-relaxed mb-2">
                               {notif.message}
                             </p>
-                            <span className="text-[10px] font-bold text-[#64c5c3]/50 uppercase tracking-widest">
+                            <span className="text-xs sm:text-[10px] font-medium sm:font-bold text-[#64c5c3]/50 sm:uppercase sm:tracking-widest">
                               {formatDistanceToNow(new Date(notif.created_at), {
                                 addSuffix: true,
                               })}
@@ -225,7 +251,7 @@ export default function CustomerFleetPage() {
                       ))}
                     </div>
                   ) : (
-                    <div className="p-8 text-center text-xs font-bold text-white/40 uppercase tracking-widest flex flex-col items-center">
+                    <div className="p-8 text-center text-sm sm:text-xs font-medium sm:font-bold text-white/40 sm:uppercase sm:tracking-widest flex flex-col items-center">
                       <Bell className="w-8 h-8 mb-3 opacity-20" />
                       No new notifications
                     </div>
@@ -237,7 +263,7 @@ export default function CustomerFleetPage() {
             <Link href="/customer/my-bookings">
               <Button
                 variant="ghost"
-                className="text-white/50 hover:text-white hover:bg-white/10 rounded-full h-10 px-4 text-xs font-bold uppercase tracking-widest transition-all duration-300"
+                className="text-white/50 hover:text-white hover:bg-white/10 rounded-full h-10 px-3 sm:px-4 text-sm sm:text-xs font-medium sm:font-bold sm:uppercase sm:tracking-widest transition-all duration-300"
               >
                 <CalendarDays className="w-4 h-4 sm:mr-2" />
                 <span className="hidden sm:inline">Bookings</span>
@@ -247,7 +273,7 @@ export default function CustomerFleetPage() {
             <Link href="/customer/profile">
               <Button
                 variant="ghost"
-                className="text-white/50 hover:text-white hover:bg-white/10 rounded-full h-10 px-4 text-xs font-bold uppercase tracking-widest transition-all duration-300"
+                className="text-white/50 hover:text-white hover:bg-white/10 rounded-full h-10 px-3 sm:px-4 text-sm sm:text-xs font-medium sm:font-bold sm:uppercase sm:tracking-widest transition-all duration-300"
               >
                 <User className="w-4 h-4 sm:mr-2" />
                 <span className="hidden sm:inline">Profile</span>
@@ -257,7 +283,7 @@ export default function CustomerFleetPage() {
             <Button
               onClick={() => setIsLogoutModalOpen(true)}
               variant="ghost"
-              className="text-white/50 hover:text-white hover:bg-white/10 rounded-full h-10 px-4 text-xs font-bold uppercase tracking-widest transition-all duration-300"
+              className="text-white/50 hover:text-white hover:bg-white/10 rounded-full h-10 px-3 sm:px-4 text-sm sm:text-xs font-medium sm:font-bold sm:uppercase sm:tracking-widest transition-all duration-300"
             >
               <LogOut className="w-4 h-4 sm:mr-2" />
               <span className="hidden sm:inline">Logout</span>
@@ -267,7 +293,7 @@ export default function CustomerFleetPage() {
       </nav>
 
       {/* Hero Header Section */}
-      <div className="relative pt-32 pb-24 md:pb-32 px-6 overflow-hidden border-b border-white/5 min-h-[60vh] flex items-center">
+      <div className="relative pt-24 sm:pt-32 pb-16 md:pb-32 px-6 overflow-hidden border-b border-white/5 min-h-[40vh] md:min-h-[60vh] flex items-center">
         <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-[#64c5c3]/10 rounded-full blur-[120px] pointer-events-none -z-10" />
         <div className="absolute bottom-0 left-0 w-[300px] h-[300px] bg-blue-900/10 rounded-full blur-[100px] pointer-events-none -z-10" />
 
@@ -278,10 +304,11 @@ export default function CustomerFleetPage() {
             transition={{ duration: 0.8, ease: "easeOut" }}
             className="flex-1 w-full md:pr-8 relative z-20"
           >
-            <p className="text-[#64c5c3] font-bold tracking-widest text-sm mb-4 uppercase flex items-center gap-3">
-              <span className="w-12 h-[2px] bg-[#64c5c3]"></span> Ready to roll
+            <p className="text-[#64c5c3] font-medium sm:font-bold tracking-wide sm:tracking-widest text-sm sm:text-sm mb-4 sm:uppercase flex items-center gap-3">
+              <span className="w-8 sm:w-12 h-[2px] bg-[#64c5c3]"></span> Ready
+              to roll
             </p>
-            <h1 className="text-5xl md:text-7xl lg:text-8xl font-black uppercase tracking-tighter leading-[0.85] mb-6">
+            <h1 className="text-4xl sm:text-5xl md:text-7xl lg:text-8xl font-black uppercase tracking-tight sm:tracking-tighter leading-[0.95] sm:leading-[0.85] mb-4 sm:mb-6">
               Find Your <br />{" "}
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-white via-gray-300 to-gray-600">
                 Drive
@@ -306,19 +333,6 @@ export default function CustomerFleetPage() {
             className="flex-1 w-full relative hidden md:block"
           >
             <div className="relative w-[115%] -right-[5%]">
-              <motion.div
-                initial={{ opacity: 1, scaleX: 1, x: 0 }}
-                animate={{ opacity: 0, scaleX: 0, x: -100 }}
-                transition={{ duration: 0.8, delay: 0.8 }}
-                className="absolute top-1/2 left-0 w-full h-[2px] bg-gradient-to-r from-transparent via-[#64c5c3]/50 to-transparent -z-10 origin-left"
-              />
-              <motion.div
-                initial={{ opacity: 1, scaleX: 1, x: 0 }}
-                animate={{ opacity: 0, scaleX: 0, x: -100 }}
-                transition={{ duration: 0.8, delay: 0.9 }}
-                className="absolute top-[60%] left-10 w-3/4 h-[1px] bg-gradient-to-r from-transparent via-white/30 to-transparent -z-10 origin-left"
-              />
-
               <div className="relative rounded-3xl overflow-hidden border border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.5)] bg-black">
                 <Image
                   src="https://images.unsplash.com/photo-1609521263047-f8f205293f24?q=80&w=1000"
@@ -358,30 +372,57 @@ export default function CustomerFleetPage() {
       </div>
 
       {/* Main Content Area */}
-      <div className="max-w-7xl mx-auto px-6 py-12">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12">
-          {/* Filters Area */}
-          <div className="lg:col-span-3">
+          {/* Filters Area - Hidden on Mobile, Shows on Desktop */}
+          <div className="hidden lg:block lg:col-span-3">
             <FleetFilters filters={filters} setFilters={setFilters} />
           </div>
 
+          {/* Mobile Filter Button (Floating at bottom) */}
+          <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 lg:hidden">
+            <Sheet open={isFilterSheetOpen} onOpenChange={setIsFilterSheetOpen}>
+              <SheetTrigger asChild>
+                <Button className="bg-[#161d24]/90 backdrop-blur-xl border border-[#64c5c3]/50 text-white hover:bg-[#161d24] rounded-full shadow-[0_8px_32px_rgba(0,0,0,0.6)] px-6 h-12 text-sm font-medium tracking-wide flex items-center gap-2">
+                  <SlidersHorizontal className="w-4 h-4 text-[#64c5c3]" />
+                  Filters{" "}
+                  {activeFiltersCount > 0 && (
+                    <span className="text-[#64c5c3] font-bold">
+                      ({activeFiltersCount})
+                    </span>
+                  )}
+                </Button>
+              </SheetTrigger>
+              <SheetContent
+                side="bottom"
+                className="h-[85vh] bg-[#0a1118] border-t border-white/10 p-0 rounded-t-3xl text-white outline-none flex flex-col"
+              >
+                <SheetTitle className="sr-only">Filter Vehicles</SheetTitle>
+                <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
+                  {/* Reuse the exact same filter component */}
+                  <FleetFilters filters={filters} setFilters={setFilters} />
+                </div>
+              </SheetContent>
+            </Sheet>
+          </div>
+
           <div className="lg:col-span-9">
-            <div className="flex items-center justify-between mb-8">
-              <p className="text-xs font-bold text-white/50 uppercase tracking-widest">
+            <div className="flex items-center justify-between mb-6 sm:mb-8">
+              <p className="text-sm font-medium text-white/80 sm:text-xs sm:font-bold sm:text-white/50 sm:uppercase sm:tracking-widest">
                 {isLoading ? (
                   "Searching Fleet..."
                 ) : (
                   <>
-                    <span className="text-[#64c5c3]">
+                    <span className="text-[#64c5c3] font-bold">
                       {formattedCars.length}
                     </span>{" "}
                     Vehicles Found
                   </>
                 )}
               </p>
-              <div className="text-xs font-bold text-white/50 uppercase tracking-widest flex items-center gap-2">
+              <div className="text-sm font-medium text-white/80 sm:text-xs sm:font-bold sm:text-white/50 sm:uppercase sm:tracking-widest flex items-center gap-2">
                 Sort By:{" "}
-                <span className="text-white cursor-pointer hover:text-[#64c5c3] transition-colors">
+                <span className="text-white font-semibold sm:font-bold cursor-pointer hover:text-[#64c5c3] transition-colors">
                   Recommended
                 </span>
               </div>
@@ -412,14 +453,14 @@ export default function CustomerFleetPage() {
                       </motion.div>
                     ))
                   ) : (
-                    <div className="col-span-full text-center py-24 border border-white/5 rounded-2xl bg-[#0a1118]">
-                      <p className="text-gray-500 font-bold text-sm uppercase tracking-widest">
+                    <div className="col-span-full text-center py-16 sm:py-24 border border-white/5 rounded-2xl bg-[#0a1118]">
+                      <p className="text-gray-400 font-medium text-base sm:text-sm sm:font-bold sm:uppercase sm:tracking-widest">
                         No vehicles match your refined criteria.
                       </p>
                     </div>
                   )}
                 </div>
-                {/*  THE INVISIBLE TRIGGER ELEMENT */}
+                {/* THE INVISIBLE TRIGGER ELEMENT */}
                 <div
                   ref={ref}
                   className="w-full h-24 mt-8 flex items-center justify-center"
@@ -428,7 +469,7 @@ export default function CustomerFleetPage() {
                     <Loader2 className="w-8 h-8 animate-spin text-[#64c5c3]" />
                   )}
                   {!hasNextPage && allCars.length > 0 && (
-                    <p className="text-[10px] font-bold text-white/30 uppercase tracking-widest">
+                    <p className="text-sm font-medium text-white/40 sm:text-[10px] sm:font-bold sm:text-white/30 sm:uppercase sm:tracking-widest">
                       End of Inventory
                     </p>
                   )}
@@ -441,8 +482,8 @@ export default function CustomerFleetPage() {
 
       <CarDetailsSheet
         car={selectedCar}
-        isOpen={isSheetOpen}
-        onClose={() => setIsSheetOpen(false)}
+        isOpen={isDetailsSheetOpen}
+        onClose={() => setIsDetailsSheetOpen(false)}
       />
 
       <LogoutDialog

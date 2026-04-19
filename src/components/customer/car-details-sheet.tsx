@@ -62,7 +62,9 @@ export default function CarDetailsSheet({
   const [activeImageIndex, setActiveImageIndex] = useState(0);
 
   const { data: settings } = useBookingSettings();
-  const driverDailyRate = settings?.fees?.driver_rate_per_day || 1500;
+
+  // 👇 UPDATED: Changed key to driver_rate_per_12h and fallback to 600
+  const driver12hRate = settings?.fees?.driver_rate_per_12h || 600;
   const securityDeposit = settings?.fees?.security_deposit_default || 5000;
 
   const { data: unavailableRanges, isLoading: isDatesLoading } =
@@ -115,7 +117,10 @@ export default function CarDetailsSheet({
   }
 
   const baseRentalCost = totalDays * (car?.price || 0);
-  const estimatedDriverFee = withDriver ? totalDays * driverDailyRate : 0;
+
+  // 👇 UPDATED: Variable name swapped to match new 12h logic
+  const driver24hRate = driver12hRate * 2;
+  const estimatedDriverFee = withDriver ? totalDays * driver24hRate : 0;
   const platformTotalValue = baseRentalCost;
   const requiredDownpayment = platformTotalValue * 0.1;
 
@@ -161,10 +166,6 @@ export default function CarDetailsSheet({
 
   return (
     <Sheet open={isOpen} onOpenChange={onClose}>
-      {/* ARCHITECTURAL FIX: 
-        We remove overflow-y-auto from SheetContent and make it a fixed height (100dvh).
-        This allows absolute overlays to lock to the viewport instead of the scroll height!
-      */}
       <SheetContent
         className="w-full sm:max-w-[85vw] lg:max-w-[1100px] p-0 border-l border-white/10 bg-[#050B10] shadow-2xl [&>button]:hidden text-white flex flex-col h-[100dvh]"
         side="right"
@@ -182,7 +183,6 @@ export default function CarDetailsSheet({
           </div>
         ) : (
           <>
-            {/* --- FIXED VIEWPORT OVERLAY FOR VERIFICATION --- */}
             {showVerificationWarning && (
               <div className="absolute inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/80 backdrop-blur-md animate-in fade-in">
                 <div className="w-full max-w-md bg-[#0a1118]/95 backdrop-blur-xl border border-red-500/20 shadow-[0_0_40px_rgba(239,68,68,0.15)] rounded-3xl p-6 sm:p-8 flex flex-col items-center text-center">
@@ -235,10 +235,8 @@ export default function CarDetailsSheet({
               </div>
             )}
 
-            {/* --- SCROLLING CONTENT WRAPPER --- */}
             <div className="flex-1 overflow-y-auto custom-scrollbar relative">
               <div className="grid grid-cols-1 lg:grid-cols-12 min-h-full gap-0 relative">
-                {/* --- LEFT SIDE: THE VEHICLE SHOWCASE --- */}
                 <div className="lg:col-span-7 p-6 md:p-10 flex flex-col h-full border-r border-white/5 relative">
                   <div className="absolute top-0 left-0 w-[400px] h-[400px] bg-[#64c5c3]/5 rounded-full blur-[100px] pointer-events-none -z-10" />
 
@@ -253,7 +251,6 @@ export default function CarDetailsSheet({
                     </span>
                   </div>
 
-                  {/* THE IMAGE GALLERY */}
                   <div className="space-y-4 mb-10 relative z-10">
                     <div className="relative aspect-[16/10] w-full rounded-2xl overflow-hidden border border-white/10 bg-[#0a1118] flex items-center justify-center group shadow-2xl">
                       <Image
@@ -298,7 +295,6 @@ export default function CarDetailsSheet({
                     )}
                   </div>
 
-                  {/* Vehicle Title & Description */}
                   <div className="mb-8 relative z-10">
                     <p className="text-[11px] font-bold text-[#64c5c3] uppercase tracking-widest mb-2">
                       {car.brand}
@@ -314,7 +310,6 @@ export default function CarDetailsSheet({
                     </p>
                   </div>
 
-                  {/* Spec Pills */}
                   <div className="flex flex-wrap gap-3 mb-10 relative z-10">
                     <SpecPill
                       icon={Palette}
@@ -326,17 +321,19 @@ export default function CarDetailsSheet({
                     <SpecPill icon={MapPin} label="Ormoc Hub" />
                   </div>
 
-                  {/* Request Driver Service Toggle */}
-                  <div className="flex items-center justify-between bg-white/5 border border-white/10 p-5 rounded-2xl mb-8 transition-colors hover:border-[#64c5c3]/30 relative z-10">
+                  <div className="flex items-center justify-between bg-white/5 border border-white/10  p-5 rounded-2xl mb-8 transition-colors hover:border-[#64c5c3]/30 relative z-10">
                     <Label
                       htmlFor="with-driver"
-                      className="flex flex-col gap-1.5 cursor-pointer"
+                      className="flex flex-col gap-1.5 items-start cursor-pointer"
                     >
-                      <span className="text-sm font-semibold text-white">
-                        Request a Driver Service
+                      {/* 👇 UPDATED: Explicitly state "12h Shift" so the user knows what they are paying for */}
+                      <span className="text-sm font-semibold text-white ">
+                        Request a Driver Service (12h Shift)
                       </span>
+                      {/* 👇 UPDATED: Show the dynamic 12h price */}
                       <span className="text-xs font-medium text-gray-400">
-                        Subject to availability • Paid directly to driver
+                        ₱{driver12hRate.toLocaleString()} / 12 hrs • Paid
+                        directly to driver
                       </span>
                     </Label>
                     <Switch
@@ -347,7 +344,6 @@ export default function CarDetailsSheet({
                     />
                   </div>
 
-                  {/* Important Info Box */}
                   <div className="mt-auto pt-6 relative z-10">
                     <div className="bg-[#64c5c3]/5 border border-[#64c5c3]/20 rounded-2xl p-6">
                       <div className="flex items-center gap-2 mb-5 text-[#64c5c3]">
@@ -406,7 +402,6 @@ export default function CarDetailsSheet({
                   </div>
                 </div>
 
-                {/* --- RIGHT SIDE: THE BOOKING ENGINE --- */}
                 <div className="lg:col-span-5 p-6 md:p-10 bg-[#0a1118]/80 backdrop-blur-2xl flex flex-col justify-start h-full">
                   <div className="flex items-end justify-between mb-6 pb-6 border-b border-white/10 shrink-0">
                     <h3 className="text-xs font-medium text-gray-400 uppercase tracking-widest">
@@ -446,7 +441,6 @@ export default function CarDetailsSheet({
                     </div>
                   </div>
 
-                  {/* CALENDAR SECTION */}
                   <div className="mb-6 mt-2 space-y-4 shrink-0">
                     <Label className="text-sm font-semibold text-white flex items-center justify-between mb-3">
                       <div className="flex items-center gap-2">
@@ -521,7 +515,6 @@ export default function CarDetailsSheet({
                     )}
                   </div>
 
-                  {/* Calculations & Breakdown */}
                   <div className="space-y-4 pt-5 border-t border-white/10 mt-auto shrink-0">
                     <div className="space-y-2 mb-4">
                       <div className="flex justify-between text-sm font-medium text-gray-400">
@@ -537,9 +530,10 @@ export default function CarDetailsSheet({
                       {withDriver && (
                         <div className="flex justify-between text-sm font-medium text-yellow-500/80">
                           <span>
+                            {/* 👇 UPDATED: Changed label to reflect 12h shifts explicitly */}
                             Est. Driver Fee{" "}
                             <span className="text-xs opacity-70">
-                              (Paid directly)
+                              (12h shift/day)
                             </span>
                           </span>
                           <span className="font-semibold">
@@ -549,7 +543,6 @@ export default function CarDetailsSheet({
                       )}
                     </div>
 
-                    {/* Financial Breakdown */}
                     <div className="bg-[#050B10]/50 border border-white/10 rounded-xl p-5 mb-6">
                       <div className="flex items-end justify-between mb-4 border-b border-white/5 pb-4">
                         <p className="text-sm font-medium text-gray-400">
