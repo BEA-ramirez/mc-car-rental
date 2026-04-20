@@ -57,6 +57,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import PaymentVerificationView from "./payment-verification-tab";
 import BookingListView from "./booking-list-view";
+import { usePendingPayments } from "../../../hooks/use-payments";
 import { Input } from "../ui/input";
 
 // --- Define the Tabs ---
@@ -66,6 +67,7 @@ export default function BookingMain() {
   const router = useRouter();
   const [date, setDate] = useState(new Date());
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const { payments } = usePendingPayments();
 
   // --- NEW: View State ---
   const [activeTab, setActiveTab] = useState<ViewTab>("timeline");
@@ -164,8 +166,6 @@ export default function BookingMain() {
   const confirmedEvents = events.filter((e) => e.status !== "PENDING");
   const originalBooking =
     pendingRequests.find((e) => e.id === selectedPendingId) || null;
-
-  const pendingPaymentsCount = 3;
 
   // --- HANDLERS ---
   const handleOpenNewBooking = (
@@ -366,9 +366,9 @@ export default function BookingMain() {
             )}
           >
             <Banknote className="w-3.5 h-3.5" /> Verify Payments
-            {pendingPaymentsCount > 0 && (
+            {payments.length > 0 && (
               <span className="absolute -top-1 -right-1 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-amber-500 px-1 text-[8px] font-black text-amber-50 shadow-sm animate-pulse">
-                {pendingPaymentsCount}
+                {payments.length}
               </span>
             )}
           </button>

@@ -2,6 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { getSystemSettings } from "@/actions/settings";
+import { QUERY_KEYS } from "@/lib/query-keys";
 
 const BOOKING_KEYS = [
   "booking_fees",
@@ -13,7 +14,7 @@ const BOOKING_KEYS = [
 
 export const useBookingSettings = () => {
   return useQuery({
-    queryKey: ["settings", "booking"],
+    queryKey: QUERY_KEYS.settings.booking,
     queryFn: async () => {
       const data = await getSystemSettings(BOOKING_KEYS);
       return {

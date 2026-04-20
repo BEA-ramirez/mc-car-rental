@@ -122,6 +122,8 @@ export default function SignupPage() {
               <Image
                 src="https://images.unsplash.com/photo-1609521263047-f8f205293f24?q=80&w=1000"
                 alt="Mazda 3 Hatchback"
+                width={1000} // 👇 ADDED THIS
+                height={750} // 👇 ADDED THIS
                 className="w-full h-[300px] object-cover opacity-90"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />

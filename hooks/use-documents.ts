@@ -22,23 +22,24 @@ import {
   saveContractSignature,
   upsertInspectionChecklist,
 } from "@/actions/docs-mutations";
+import { QUERY_KEYS } from "@/lib/query-keys"; // <-- NEW IMPORT
 
 export function useKYCDocuments(page: number, search: string, filters: any) {
   return useQuery({
-    queryKey: ["documents", "kyc", "all", page, search, filters], // adding page and search tells react query to refetch when they change
+    queryKey: QUERY_KEYS.documents.kyc(page, search, filters), // <-- UPDATED
     queryFn: async () => {
       const response = await getKYCDocuments(page, search, filters);
       if (!response.success)
         throw new Error(response.message || "Failed to fetch KYC documents");
       return response;
     },
-    placeholderData: (prev) => prev, //keeps the old data on the screen while the new page loads
+    placeholderData: (prev) => prev,
   });
 }
 
 export function usePendingDocuments() {
   return useQuery({
-    queryKey: ["documents", "kyc", "pending"],
+    queryKey: QUERY_KEYS.documents.kycPending, // <-- UPDATED
     queryFn: async () => {
       const response = await getPendingDocuments();
       if (!response.success) {
@@ -53,7 +54,7 @@ export function usePendingDocuments() {
 
 export function useExpiringDocuments() {
   return useQuery({
-    queryKey: ["documents", "kyc", "expiring"],
+    queryKey: QUERY_KEYS.documents.kycExpiring, // <-- UPDATED
     queryFn: async () => {
       const response = await getExpiringDocuments();
       if (!response.success) {
@@ -68,7 +69,7 @@ export function useExpiringDocuments() {
 
 export function useContracts() {
   return useQuery({
-    queryKey: ["documents", "contracts"],
+    queryKey: QUERY_KEYS.documents.contracts, // <-- UPDATED
     queryFn: async () => {
       const response = await getContracts();
       if (!response.success)
@@ -80,7 +81,7 @@ export function useContracts() {
 
 export function useInspections() {
   return useQuery({
-    queryKey: ["documents", "inspections"],
+    queryKey: QUERY_KEYS.documents.inspections, // <-- UPDATED
     queryFn: async () => {
       const response = await getInspections();
       if (!response.success)
@@ -121,10 +122,14 @@ export function useUpsertInspection() {
     },
     onSuccess: () => {
       // Invalidate everything related to bookings and inspections
-      // This forces the UI badges (Pending -> Completed) to instantly update!
-      queryClient.invalidateQueries({ queryKey: ["documents", "inspections"] });
-      queryClient.invalidateQueries({ queryKey: ["inspections"] });
-      queryClient.invalidateQueries({ queryKey: ["bookings"] });
+      queryClient.invalidateQueries({
+        queryKey: QUERY_KEYS.documents.inspections,
+      });
+      // Removed ghost ["inspections"] key
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.bookings.all });
+      queryClient.invalidateQueries({
+        queryKey: QUERY_KEYS.bookings.detailsBase,
+      });
     },
     onError: (error) => {
       console.error("Inspection save error:", error);
@@ -141,9 +146,17 @@ export function useUpsertInspection() {
 export function useDocumentMutations() {
   const queryClient = useQueryClient();
 
-  // Helper to refresh all document-related tables on the screen
+  // --- THE MASTER RIPPLE INVALIDATOR ---
+  // A document change impacts the User's Status, the Booking's readiness, and KPIs!
   const invalidateDocs = () => {
-    queryClient.invalidateQueries({ queryKey: ["documents"] });
+    queryClient.invalidateQueries({ queryKey: QUERY_KEYS.documents.all });
+    queryClient.invalidateQueries({ queryKey: QUERY_KEYS.users.clients() }); // Admin Clients Table
+    queryClient.invalidateQueries({ queryKey: QUERY_KEYS.users.profile }); // Customer's own profile
+    queryClient.invalidateQueries({ queryKey: QUERY_KEYS.dashboard.summary }); // Verification KPIs
+    queryClient.invalidateQueries({ queryKey: QUERY_KEYS.bookings.all }); // Admin & Customer Bookings
+    queryClient.invalidateQueries({
+      queryKey: QUERY_KEYS.bookings.detailsBase,
+    }); // Specific Booking Views
   };
 
   const verifyDoc = useMutation({
@@ -289,12 +302,12 @@ export function useDocumentMutations() {
 
 export function useDropdownData() {
   const users = useQuery({
-    queryKey: ["dropdown", "users"],
+    queryKey: QUERY_KEYS.dropdowns.users, // <-- UPDATED
     queryFn: () => getAllUsersForDropdown(),
   });
 
   const bookings = useQuery({
-    queryKey: ["dropdown", "bookings"],
+    queryKey: QUERY_KEYS.dropdowns.bookings, // <-- UPDATED
     queryFn: () => getBookingsForDropdown(),
   });
 

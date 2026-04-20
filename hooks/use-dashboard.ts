@@ -7,6 +7,7 @@ import {
   getChartAnalytics,
   getQuickInsightsData,
 } from "@/actions/dashboard";
+import { QUERY_KEYS } from "@/lib/query-keys";
 
 // Internal fetchers to unpack the ActionResponse
 const fetchSummary = async () => {
@@ -36,7 +37,7 @@ const fetchQuickInsights = async () => {
 export const useDashboard = () => {
   // 1. Main Dashboard Summary (KPIs, Alerts, Logistics)
   const summaryQuery = useQuery({
-    queryKey: ["dashboard", "summary"],
+    queryKey: QUERY_KEYS.dashboard.summary,
     queryFn: fetchSummary,
     staleTime: 60 * 1000, // 1 minute cache
     refetchInterval: 5 * 60 * 1000, // Auto-poll every 5 mins
@@ -44,12 +45,13 @@ export const useDashboard = () => {
 
   // 2. Recent Bookings Table
   const recentBookingsQuery = useQuery({
-    queryKey: ["dashboard", "recent-bookings"],
+    queryKey: QUERY_KEYS.dashboard.recentBookings,
     queryFn: () => fetchRecent(6),
     staleTime: 60 * 1000,
   });
 
   // 3. Availability Checker Mutation (Triggered by button click)
+  // No invalidation needed here because it's just a search, not an update!
   const checkAvailabilityMutation = useMutation({
     mutationFn: async (params: { category: string; date: Date }) => {
       const res = await checkFleetAvailability({
@@ -84,9 +86,7 @@ export function useDashboardCharts(
   timeframe: "daily" | "weekly" | "monthly" | "yearly",
 ) {
   return useQuery({
-    // By putting 'timeframe' in the queryKey array, React Query knows to
-    // automatically re-fetch the data whenever the user changes the dropdown!
-    queryKey: ["dashboard", "charts", timeframe],
+    queryKey: QUERY_KEYS.dashboard.charts(timeframe),
     queryFn: () => fetchCharts(timeframe),
     staleTime: 5 * 60 * 1000, // Cache for 5 minutes
   });
@@ -94,7 +94,7 @@ export function useDashboardCharts(
 
 export function useQuickInsights() {
   return useQuery({
-    queryKey: ["dashboard", "quick-insights"],
+    queryKey: QUERY_KEYS.dashboard.quickInsights,
     queryFn: fetchQuickInsights,
     staleTime: 60 * 1000,
     refetchInterval: 60 * 1000, // Poll every minute so logs stay fresh!

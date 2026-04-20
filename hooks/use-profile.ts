@@ -7,12 +7,13 @@ import {
   updateCustomerDetails,
   uploadCustomerDocument,
 } from "@/actions/profile";
+import { QUERY_KEYS } from "@/lib/query-keys";
 
 export const useProfile = () => {
   const queryClient = useQueryClient();
 
   const query = useQuery({
-    queryKey: ["customer-profile"],
+    queryKey: QUERY_KEYS.users.profile,
     queryFn: async () => await getCustomerProfile(),
   });
 
@@ -24,7 +25,7 @@ export const useProfile = () => {
     },
     onSuccess: (data) => {
       toast.success(data.message);
-      queryClient.invalidateQueries({ queryKey: ["customer-profile"] });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.users.profile });
     },
     onError: (err: any) => toast.error(err.message),
   });
@@ -37,7 +38,7 @@ export const useProfile = () => {
     },
     onSuccess: (data) => {
       toast.success(data.message);
-      queryClient.invalidateQueries({ queryKey: ["customer-profile"] });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.users.profile });
     },
     onError: (err: any) => toast.error(err.message),
   });

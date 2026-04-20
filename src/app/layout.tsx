@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/sonner";
 import QueryProvider from "@/components/providers/query-provider";
 import { AuthProvider } from "@/providers/auth-provider";
 import { createClient } from "@/utils/supabase/server";
+import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 
 // 1. Unified Style Imports
 import "./globals.css";
@@ -53,6 +54,7 @@ export default async function RootLayout({
             <AuthProvider initialUser={user}>{children}</AuthProvider>
 
             <Toaster richColors position="top-right" />
+            <ReactQueryDevtools initialIsOpen={false} />
           </QueryProvider>
         </ThemeProvider>
       </body>

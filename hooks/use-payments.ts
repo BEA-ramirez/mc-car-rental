@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getPendingPayments, verifyPayment } from "@/actions/payments";
 import { toast } from "sonner";
+import { QUERY_KEYS } from "@/lib/query-keys";
 
 export function usePendingPayments() {
   const queryClient = useQueryClient();
@@ -10,7 +11,7 @@ export function usePendingPayments() {
     isLoading,
     refetch: refresh,
   } = useQuery({
-    queryKey: ["pendingPayments"],
+    queryKey: QUERY_KEYS.financials.pendingPayments,
     queryFn: async () => {
       const result = await getPendingPayments();
       if (!result.success) throw new Error("Failed to fetch pending payments");
@@ -47,14 +48,18 @@ export function usePendingPayments() {
     onSuccess: (data, variables) => {
       toast.success(data.result.message);
 
-      // Instant UI Update: Remove the verified payment from the cache directly
+      // 1. Instant UI Update: Remove from the EXACT key used in useQuery
       queryClient.setQueryData(
-        ["pendingPayments", "scheduler-data"],
-        (oldData: any[]) => {
-          if (!oldData) return [];
-          return oldData.filter((p) => p.payment_id !== variables.paymentId);
-        },
+        QUERY_KEYS.financials.pendingPayments,
+        (oldData: any[]) =>
+          oldData?.filter((p) => p.payment_id !== variables.paymentId) || [],
       );
+
+      // Background Sync: Force React Query to re-fetch the other tabs
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.bookings.all });
+      queryClient.invalidateQueries({
+        queryKey: QUERY_KEYS.financials.pendingPayments,
+      });
     },
     onError: (error) => {
       toast.error(error.message);
@@ -66,17 +71,15 @@ export function usePendingPayments() {
     paymentId: string,
     action: "approve" | "reject",
     reason?: string,
-    updatedAmount?: string | number, // <-- NEW
-    updatedRef?: string, // <-- NEW
+    updatedAmount?: string | number,
+    updatedRef?: string,
   ) => {
-    // mutateAsync allows us to await it if needed by the caller,
-    // though the onSuccess/onError callbacks above handle the UI feedback.
     await verifyMutation({
       paymentId,
       action,
       reason,
-      updatedAmount, // <-- Pass it through
-      updatedRef, // <-- Pass it through
+      updatedAmount,
+      updatedRef,
     });
   };
 

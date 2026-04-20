@@ -1,6 +1,8 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { login, LoginState } from "@/actions/login";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -12,7 +14,7 @@ import {
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import Link from "next/link";
-import { ArrowRight, User } from "lucide-react";
+import { ArrowRight, User, Loader2 } from "lucide-react";
 
 const initialState: LoginState = {
   success: false,
@@ -24,7 +26,17 @@ export function LoginForm({
   className,
   ...props
 }: React.ComponentProps<"form">) {
+  const router = useRouter();
   const [state, formAction, isPending] = useActionState(login, initialState);
+
+  useEffect(() => {
+    if (state.success && state.redirectPath) {
+      toast.success("Welcome back!");
+      router.push(state.redirectPath);
+    } else if (state.message && !state.success) {
+      toast.error(state.message);
+    }
+  }, [state, router]);
 
   return (
     <form
@@ -32,14 +44,11 @@ export function LoginForm({
       className={cn("flex flex-col w-full", className)}
       {...props}
     >
-      {/* Tightened padding to p-5 sm:p-6 for maximum compactness */}
       <FieldGroup className="border border-white/5 bg-[#0a1118]/80 backdrop-blur-2xl shadow-2xl p-5 sm:p-6 rounded-2xl sm:rounded-3xl w-full relative overflow-hidden">
-        {/* Header Area */}
         <div className="relative z-10 flex flex-col items-center gap-1.5 text-center mb-5">
           <div className="w-10 h-10 bg-[#64c5c3]/10 rounded-xl flex items-center justify-center mb-1">
             <User className="w-5 h-5 text-[#64c5c3]" />
           </div>
-          {/* Friendly, single-line title */}
           <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tighter uppercase leading-none">
             Welcome Back
           </h1>
@@ -48,13 +57,6 @@ export function LoginForm({
           </p>
         </div>
 
-        {state.message && (
-          <div className="relative z-10 p-2.5 mb-4 text-[9px] sm:text-[10px] font-bold uppercase tracking-widest text-red-400 bg-red-500/10 border border-red-500/20 rounded-xl backdrop-blur-sm text-center">
-            {state.message}
-          </div>
-        )}
-
-        {/* Inputs Area (Tighter spacing) */}
         <div className="relative z-10 space-y-3 sm:space-y-4">
           <Field className="space-y-1.5">
             <FieldLabel
@@ -69,6 +71,7 @@ export function LoginForm({
               type="email"
               placeholder="you@example.com"
               required
+              disabled={isPending}
               className={cn(
                 "h-11 rounded-xl bg-black/50 border-white/10 text-white placeholder:text-gray-600 focus-visible:ring-[#64c5c3] focus-visible:border-transparent transition-all",
                 state.errors?.email &&
@@ -103,6 +106,7 @@ export function LoginForm({
               type="password"
               placeholder="••••••••"
               required
+              disabled={isPending}
               className={cn(
                 "h-11 rounded-xl bg-black/50 border-white/10 text-white placeholder:text-gray-600 focus-visible:ring-[#64c5c3] focus-visible:border-transparent transition-all",
                 state.errors?.password &&
@@ -117,7 +121,6 @@ export function LoginForm({
           </Field>
         </div>
 
-        {/* Submit Button */}
         <Field className="relative z-10 mt-5">
           <Button
             type="submit"
@@ -125,7 +128,10 @@ export function LoginForm({
             className="w-full h-11 sm:h-12 bg-[#64c5c3] text-black hover:bg-[#52a3a1] rounded-xl font-black text-[10px] sm:text-xs uppercase tracking-widest transition-all duration-300 shadow-[0_0_15px_rgba(100,197,195,0.2)] group disabled:opacity-50 disabled:bg-[#64c5c3]"
           >
             {isPending ? (
-              "Logging in..."
+              <span className="flex items-center gap-2 sm:gap-3">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Logging in...
+              </span>
             ) : (
               <span className="flex items-center gap-2 sm:gap-3">
                 Log In{" "}
@@ -135,7 +141,6 @@ export function LoginForm({
           </Button>
         </Field>
 
-        {/* Bottom Link Inside Card */}
         <Field className="relative z-10 text-center mt-4">
           <FieldDescription className="text-[8px] sm:text-[9px] text-gray-500 font-bold uppercase tracking-widest">
             Don&apos;t have an account?{" "}

@@ -22,11 +22,14 @@ import {
 } from "@/actions/scheduler";
 import { toast } from "sonner";
 import { SchedulerEvent } from "@/components/scheduler/timeline-scheduler";
+import { QUERY_KEYS } from "@/lib/query-keys";
 
 export function useScheduler(currentDate: Date) {
   const queryClient = useQueryClient();
-  const baseQueryKey = ["scheduler-data"];
-  const currentQueryKey = [...baseQueryKey, format(currentDate, "yyyy-MM")];
+  const baseQueryKey = QUERY_KEYS.bookings.scheduler();
+  const currentQueryKey = QUERY_KEYS.bookings.scheduler(
+    format(currentDate, "yyyy-MM"),
+  );
 
   const query = useQuery({
     queryKey: currentQueryKey,
@@ -47,7 +50,7 @@ export function useScheduler(currentDate: Date) {
     },
     //runs instantly before the server is called
     onMutate: async (variables) => {
-      // Cancel any outgoing refetches (so they don't overwrite our optimistic update
+      // Cancel any outgoing refetches (so they don't overwrite our optimistic update)
       await queryClient.cancelQueries({ queryKey: baseQueryKey });
 
       // snapshot the current data in case we need to roll back
@@ -236,6 +239,12 @@ export function useScheduler(currentDate: Date) {
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: baseQueryKey });
+      queryClient.invalidateQueries({
+        queryKey: QUERY_KEYS.financials.masterLedger,
+      });
+      queryClient.invalidateQueries({
+        queryKey: QUERY_KEYS.financials.incomesDashboard,
+      });
     },
   });
 
@@ -398,7 +407,13 @@ export function useScheduler(currentDate: Date) {
       toast.success("Booking reassigned successfully!");
     },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ["scheduler-data"] });
+      queryClient.invalidateQueries({ queryKey: baseQueryKey });
+      queryClient.invalidateQueries({
+        queryKey: QUERY_KEYS.financials.masterLedger,
+      });
+      queryClient.invalidateQueries({
+        queryKey: QUERY_KEYS.financials.incomesDashboard,
+      });
     },
   });
 
@@ -436,9 +451,8 @@ export function useScheduler(currentDate: Date) {
   });
 
   const invalidateQueries = () => {
-    queryClient.invalidateQueries({ queryKey: ["bookings"] });
-    queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
-    queryClient.invalidateQueries({ queryKey: ["fleet-status"] });
+    queryClient.invalidateQueries({ queryKey: QUERY_KEYS.bookings.all });
+    queryClient.invalidateQueries({ queryKey: QUERY_KEYS.dashboard.summary });
   };
 
   // 1. Validate Handover (Checks Contract, Inspection, and Payment)

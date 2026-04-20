@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Image from "next/image";
+import { format, differenceInDays } from "date-fns";
 import {
   CheckCircle2,
   XCircle,
@@ -9,7 +10,14 @@ import {
   User,
   Car,
   Banknote,
-  Edit3,
+  CalendarDays,
+  ShieldCheck,
+  ExternalLink,
+  MapPin,
+  Clock,
+  FileText,
+  AlertCircle,
+  Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,19 +30,20 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
+import { cn } from "@/lib/utils";
 
 export default function PaymentVerificationView() {
   const { payments, isLoading, isProcessing, handleVerify } =
     usePendingPayments();
   const [search, setSearch] = useState("");
 
-  // Track edits per payment card
-  const [edits, setEdits] = useState<
-    Record<string, { ref?: string; amount?: string }>
-  >({});
+  // Verification Modal State
+  const [selectedPayment, setSelectedPayment] = useState<any | null>(null);
+  const [editRef, setEditRef] = useState("");
+  const [editAmount, setEditAmount] = useState("");
 
-  // Rejection Dialog State
-  const [rejectId, setRejectId] = useState<string | null>(null);
+  // Rejection State inside the Modal
+  const [isRejectMode, setIsRejectMode] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
 
   const filteredPayments = payments.filter(
@@ -43,238 +52,408 @@ export default function PaymentVerificationView() {
       p.booking.user.full_name?.toLowerCase().includes(search.toLowerCase()),
   );
 
-  const handleEditChange = (
-    paymentId: string,
-    field: "ref" | "amount",
-    value: string,
-  ) => {
-    setEdits((prev) => ({
-      ...prev,
-      [paymentId]: {
-        ...prev[paymentId],
-        [field]: value,
-      },
-    }));
+  const openReviewModal = (payment: any) => {
+    setSelectedPayment(payment);
+    setEditRef(payment.transaction_reference || "");
+    setEditAmount(payment.amount?.toString() || "");
+    setIsRejectMode(false);
+    setRejectReason("");
   };
 
-  const submitApprove = (paymentId: string) => {
-    const updatedRef = edits[paymentId]?.ref;
-    const updatedAmount = edits[paymentId]?.amount;
+  const closeReviewModal = () => {
+    setSelectedPayment(null);
+  };
 
-    // Pass the overridden values to the hook
-    handleVerify(paymentId, "approve", undefined, updatedAmount, updatedRef);
+  const submitApprove = () => {
+    if (!selectedPayment) return;
+    handleVerify(
+      selectedPayment.payment_id,
+      "approve",
+      undefined,
+      editAmount,
+      editRef,
+    );
+    closeReviewModal();
   };
 
   const submitReject = () => {
-    if (!rejectId || !rejectReason) return;
-    handleVerify(rejectId, "reject", rejectReason);
-    setRejectId(null);
-    setRejectReason("");
+    if (!selectedPayment || !rejectReason) return;
+    handleVerify(selectedPayment.payment_id, "reject", rejectReason);
+    closeReviewModal();
   };
 
   if (isLoading) {
     return (
-      <div className="p-12 text-center text-gray-500 animate-pulse uppercase tracking-widest text-xs font-bold">
-        Loading Queue...
+      <div className="h-full w-full flex flex-col items-center justify-center text-muted-foreground p-12">
+        <Loader2 className="w-8 h-8 animate-spin mb-4 text-primary" />
+        <p className="text-xs font-bold uppercase tracking-widest">
+          Loading Queue...
+        </p>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col h-full">
-      {/* Header & Search */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
+    <div className="flex flex-col h-full bg-card text-foreground font-sans">
+      {/* --- COMPACT HEADER & SEARCH --- */}
+      <header className="shrink-0 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
         <div>
-          <h2 className="text-xl font-black uppercase tracking-tighter text-white">
-            Payment Verification Queue
+          <h2 className="text-sm font-bold flex items-center gap-2">
+            VERIFICATION QUEUE
+            <span className="px-2 py-0.5 rounded-full bg-primary/10 border border-primary/20 text-primary text-[9px] font-medium flex items-center gap-1.5">
+              <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+              {filteredPayments.length} Pending
+            </span>
           </h2>
-          <p className="text-xs font-medium text-gray-400">
-            Review uploaded receipts and correct OCR data if needed before
-            approving.
+          <p className="text-[10px] font-medium text-muted-foreground mt-1">
+            Review and confirm pending booking reservation fees.
           </p>
         </div>
         <div className="relative w-full sm:w-64">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
           <Input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search Reference or Name..."
-            className="pl-10 bg-black/40 border-white/10 text-white placeholder:text-gray-600 rounded-xl text-xs uppercase tracking-widest h-10"
+            placeholder="Search ref or name..."
+            className="pl-8 bg-card border-border text-foreground placeholder:text-muted-foreground rounded shadow-sm text-[11px] font-medium h-8 focus-visible:ring-1 focus-visible:ring-primary"
           />
         </div>
-      </div>
+      </header>
 
-      {/* The Queue Grid */}
+      {/* --- MAIN QUEUE GRID --- */}
       {filteredPayments.length === 0 ? (
-        <div className="flex-1 border-2 border-dashed border-white/5 rounded-2xl flex flex-col items-center justify-center text-gray-500 min-h-[300px]">
-          <Banknote className="w-10 h-10 mb-3 opacity-30" />
-          <p className="text-[11px] font-bold uppercase tracking-widest">
+        <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground bg-secondary/30 rounded-xl border border-dashed border-border min-h-[300px]">
+          <CheckCircle2 className="w-8 h-8 mb-3 opacity-50 text-primary" />
+          <p className="text-[11px] font-bold uppercase tracking-widest text-foreground">
             Queue is Empty
           </p>
-          <p className="text-xs font-medium opacity-60">
-            All reservation fees have been verified.
+          <p className="text-[10px] font-medium opacity-60 mt-1">
+            All reservation fees are caught up.
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 overflow-y-auto custom-scrollbar pb-10 pr-2">
-          {filteredPayments.map((p) => {
-            const currentRef =
-              edits[p.payment_id]?.ref ?? p.transaction_reference ?? "";
-            const currentAmount = edits[p.payment_id]?.amount ?? p.amount ?? "";
-
-            return (
-              <div
-                key={p.payment_id}
-                className="bg-black/40 border border-[#64c5c3]/20 rounded-2xl p-5 flex flex-col xl:flex-row gap-5 shadow-lg relative"
-              >
-                <div className="absolute top-4 right-4 text-gray-500 opacity-50 pointer-events-none">
-                  <Edit3 className="w-4 h-4" />
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 overflow-y-auto custom-scrollbar pb-10 pr-2">
+          {filteredPayments.map((p) => (
+            <div
+              key={p.payment_id}
+              className="bg-card border border-border rounded-xl p-4 shadow-sm hover:border-primary/50 flex flex-col justify-between transition-colors group"
+            >
+              <div>
+                <div className="flex justify-between items-start mb-3 border-b border-border pb-3">
+                  <div className="bg-primary/10 text-primary p-2 rounded shrink-0">
+                    <Banknote className="w-4 h-4" />
+                  </div>
+                  <div className="text-right">
+                    <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">
+                      Amount
+                    </p>
+                    <p className="text-sm font-black text-foreground">
+                      ₱{p.amount?.toLocaleString() || "0"}
+                    </p>
+                  </div>
                 </div>
+                <div className="space-y-1 mb-4">
+                  <p className="text-xs font-bold text-foreground truncate group-hover:text-primary transition-colors">
+                    {p.booking.user?.full_name}
+                  </p>
+                  <p className="text-[10px] font-medium text-muted-foreground truncate flex items-center gap-1.5">
+                    <Car className="w-3 h-3" />
+                    {p.booking.car?.brand} {p.booking.car?.model}
+                  </p>
+                  <div className="mt-2 pt-2 border-t border-border">
+                    <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest flex justify-between items-center">
+                      <span>Ref No:</span>
+                      <span className="text-foreground font-mono bg-secondary px-1.5 py-0.5 rounded border border-border">
+                        {p.transaction_reference || "N/A"}
+                      </span>
+                    </p>
+                  </div>
+                </div>
+              </div>
+              <button
+                onClick={() => openReviewModal(p)}
+                className="w-full py-2 border border-border bg-secondary rounded text-[10px] font-medium flex items-center justify-center gap-1.5 hover:bg-primary hover:text-primary-foreground hover:border-primary transition-all"
+              >
+                <ShieldCheck className="w-3 h-3" /> Review Application
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
 
-                {/* Receipt Image */}
-                <div className="relative w-full xl:w-40 h-48 xl:h-full bg-black rounded-xl overflow-hidden border border-white/10 shrink-0 group">
+      {/* --- THE COMPREHENSIVE VERIFICATION MODAL --- */}
+      <Dialog open={!!selectedPayment} onOpenChange={closeReviewModal}>
+        {/* INCREASED WIDTH TO max-w-6xl */}
+        <DialogContent className="max-w-6xl! w-[95vw]! bg-background border border-border text-foreground rounded-2xl p-0 overflow-hidden shadow-xl">
+          {selectedPayment && (
+            <div className="grid grid-cols-1 xl:grid-cols-12 h-full max-h-[90vh]">
+              {/* Left Column: Receipt Explorer */}
+              <div className="xl:col-span-5 bg-muted relative border-r border-border flex flex-col items-center justify-center p-6 group shrink-0">
+                <div className="absolute top-4 left-4 z-10 bg-background/80 backdrop-blur-md px-2.5 py-1 rounded border border-border text-[9px] font-bold uppercase tracking-widest text-primary shadow-sm">
+                  Scanned Receipt
+                </div>
+                <div className="relative w-full h-[300px] xl:h-full max-h-[70vh]">
                   <Image
                     src={
-                      p.receipt_url ||
+                      selectedPayment.receipt_url ||
                       "https://placehold.co/400x800?text=No+Receipt"
                     }
                     alt="Receipt"
                     fill
-                    className="object-cover group-hover:object-contain transition-all duration-300 cursor-pointer"
-                    onClick={() => window.open(p.receipt_url, "_blank")}
+                    className="object-contain"
                   />
-                  <div className="absolute bottom-2 left-2 right-2 bg-black/60 backdrop-blur-md px-2 py-1 rounded text-center pointer-events-none">
-                    <p className="text-[8px] text-white uppercase tracking-widest font-bold">
-                      Click to Enlarge
-                    </p>
-                  </div>
                 </div>
+                <button
+                  onClick={() =>
+                    window.open(selectedPayment.receipt_url, "_blank")
+                  }
+                  className="absolute bottom-6 bg-background/80 border border-border hover:border-primary/50 text-foreground rounded shadow-sm text-[10px] uppercase tracking-widest font-bold px-3 py-1.5 z-10 flex items-center gap-1.5 transition-colors"
+                >
+                  <ExternalLink className="w-3.5 h-3.5" /> Open Full Screen
+                </button>
+              </div>
 
-                {/* Details & Actions */}
-                <div className="flex-1 flex flex-col justify-between pt-2 xl:pt-0">
-                  <div className="space-y-3">
-                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-                      {/* Editable Ref Input */}
-                      <div className="w-full sm:w-1/2">
-                        <Label className="text-[9px] font-bold text-gray-500 uppercase tracking-widest mb-1 block">
-                          OCR Ref No.
+              {/* Right Column: Information & Actions */}
+              <div className="xl:col-span-7 flex flex-col h-full overflow-y-auto custom-scrollbar p-6">
+                <DialogHeader className="mb-5 border-b border-border pb-4">
+                  <DialogTitle className="text-base font-bold text-foreground">
+                    Booking Verification
+                  </DialogTitle>
+                  <DialogDescription className="text-[11px] text-muted-foreground mt-1">
+                    Verify the customer details and payment accuracy before
+                    confirming the booking.
+                  </DialogDescription>
+                </DialogHeader>
+
+                <div className="flex-1 flex flex-col gap-4">
+                  {/* 1. Customer Intelligence */}
+                  <div className="bg-card border border-border rounded-xl p-4 shadow-sm shrink-0">
+                    <h3 className="text-[10px] font-semibold text-muted-foreground mb-3 flex items-center gap-1.5">
+                      <User className="w-3.5 h-3.5" /> Customer Information
+                    </h3>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="border border-border rounded p-2 bg-secondary/50 flex flex-col justify-between">
+                        <p className="text-[9px] font-medium text-muted-foreground mb-0.5">
+                          Full Name
+                        </p>
+                        <p className="text-[11px] font-bold">
+                          {selectedPayment.booking.user?.full_name}
+                        </p>
+                      </div>
+                      <div className="border border-border rounded p-2 bg-secondary/50 flex flex-col justify-between">
+                        <p className="text-[9px] font-medium text-muted-foreground mb-0.5">
+                          Contact
+                        </p>
+                        <p className="text-[11px] font-bold">
+                          {selectedPayment.booking.user?.phone_number}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="mt-3 pt-3 border-t border-border flex flex-wrap gap-1.5">
+                      <span className="text-[9px] font-medium text-muted-foreground flex items-center mr-2">
+                        Attached IDs:
+                      </span>
+                      {selectedPayment.booking.user?.documents?.map(
+                        (doc: any, i: number) => (
+                          <a
+                            key={i}
+                            href={doc.file_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-medium border bg-primary/10 text-primary border-primary/20 hover:bg-primary hover:text-primary-foreground transition-colors"
+                          >
+                            <FileText className="w-2.5 h-2.5" />{" "}
+                            {doc.category.replace("_", " ")}
+                          </a>
+                        ),
+                      )}
+                      {(!selectedPayment.booking.user?.documents ||
+                        selectedPayment.booking.user.documents.length ===
+                          0) && (
+                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-medium border bg-destructive/10 text-destructive border-destructive/20">
+                          <AlertCircle className="w-2.5 h-2.5" /> No IDs
+                          Uploaded
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* 2. Booking Logistics */}
+                  <div className="bg-card border border-border rounded-xl p-4 shadow-sm shrink-0">
+                    <div className="flex justify-between items-center mb-3">
+                      <h3 className="text-[10px] font-semibold text-muted-foreground flex items-center gap-1.5">
+                        <CalendarDays className="w-3.5 h-3.5" /> Rental
+                        Logistics
+                      </h3>
+                      {selectedPayment.booking.is_with_driver ? (
+                        <span className="px-1.5 py-0.5 rounded text-[9px] font-medium border bg-yellow-500/10 text-yellow-600 dark:text-yellow-500 border-yellow-500/20">
+                          With Driver
+                        </span>
+                      ) : (
+                        <span className="px-1.5 py-0.5 rounded text-[9px] font-medium border bg-secondary text-foreground border-border">
+                          Self-Drive
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 mb-3">
+                      <div className="border border-border rounded p-2 bg-secondary/50 col-span-2">
+                        <p className="text-[9px] font-medium text-muted-foreground mb-0.5">
+                          Assigned Vehicle
+                        </p>
+                        <p className="text-[11px] font-bold truncate">
+                          {selectedPayment.booking.car?.brand}{" "}
+                          {selectedPayment.booking.car?.model}
+                        </p>
+                      </div>
+                      <div className="border border-border rounded p-2 bg-secondary/50">
+                        <p className="text-[9px] font-medium text-muted-foreground mb-0.5">
+                          Plate No.
+                        </p>
+                        <p className="text-[11px] font-bold font-mono">
+                          {selectedPayment.booking.car?.plate_number}
+                        </p>
+                      </div>
+                      <div className="border border-border rounded p-2 bg-secondary/50">
+                        <p className="text-[9px] font-medium text-muted-foreground mb-0.5">
+                          Duration
+                        </p>
+                        <p className="text-[11px] font-bold">
+                          {differenceInDays(
+                            new Date(selectedPayment.booking.end_date),
+                            new Date(selectedPayment.booking.start_date),
+                          )}{" "}
+                          Days
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col sm:flex-row gap-2 border border-border rounded p-2 bg-secondary/30">
+                      <div className="flex-1 flex items-center gap-2 text-[10px] font-medium text-muted-foreground">
+                        <MapPin className="w-3.5 h-3.5 text-primary shrink-0" />
+                        <span className="truncate">
+                          <strong className="text-foreground">Start:</strong>{" "}
+                          {format(
+                            new Date(selectedPayment.booking.start_date),
+                            "MMM dd, yyyy - HH:mm",
+                          )}
+                        </span>
+                      </div>
+                      <div className="hidden sm:block w-[1px] bg-border" />
+                      <div className="flex-1 flex items-center gap-2 text-[10px] font-medium text-muted-foreground">
+                        <Clock className="w-3.5 h-3.5 text-primary shrink-0" />
+                        <span className="truncate">
+                          <strong className="text-foreground">End:</strong>{" "}
+                          {format(
+                            new Date(selectedPayment.booking.end_date),
+                            "MMM dd, yyyy - HH:mm",
+                          )}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 3. OCR Edit Fields */}
+                  <div className="bg-primary/5 border border-primary/20 rounded-xl p-4 shrink-0">
+                    <h3 className="text-[10px] font-semibold text-primary mb-3 flex items-center gap-1.5">
+                      <ShieldCheck className="w-3.5 h-3.5" /> Payment Integrity
+                    </h3>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-1.5">
+                        <Label className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">
+                          Captured Ref No.
                         </Label>
                         <Input
-                          value={currentRef}
-                          onChange={(e) =>
-                            handleEditChange(
-                              p.payment_id,
-                              "ref",
-                              e.target.value,
-                            )
-                          }
-                          placeholder="Ref No."
-                          className="font-mono text-xs text-[#64c5c3] bg-[#64c5c3]/10 border border-[#64c5c3]/30 focus-visible:ring-[#64c5c3] h-8 rounded-lg w-full"
+                          value={editRef}
+                          onChange={(e) => setEditRef(e.target.value)}
+                          className="bg-card border-border text-foreground focus-visible:ring-primary font-mono text-xs h-8 shadow-sm"
                         />
                       </div>
-
-                      {/* Editable Amount Input */}
-                      <div className="w-full sm:w-auto text-left sm:text-right">
-                        <Label className="text-[9px] font-bold text-gray-500 uppercase tracking-widest mb-1 block">
-                          Amount Paid
+                      <div className="space-y-1.5">
+                        <Label className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">
+                          Captured Amount
                         </Label>
-                        <div className="relative flex items-center sm:justify-end">
-                          <span className="absolute left-3 text-sm font-black text-white pointer-events-none">
+                        <div className="relative flex items-center">
+                          <span className="absolute left-2.5 text-muted-foreground font-bold text-xs">
                             ₱
                           </span>
                           <Input
                             type="number"
-                            value={currentAmount}
-                            onChange={(e) =>
-                              handleEditChange(
-                                p.payment_id,
-                                "amount",
-                                e.target.value,
-                              )
-                            }
-                            className="pl-7 text-lg font-black text-white bg-white/5 border-white/10 focus-visible:ring-[#64c5c3] h-8 w-full sm:w-32 rounded-lg text-left sm:text-right"
+                            value={editAmount}
+                            onChange={(e) => setEditAmount(e.target.value)}
+                            className="bg-card border-border text-foreground focus-visible:ring-primary font-bold text-xs h-8 pl-6 shadow-sm"
                           />
                         </div>
                       </div>
                     </div>
-
-                    <div className="grid grid-cols-2 gap-2 bg-white/5 p-3 rounded-xl border border-white/5">
-                      <div>
-                        <p className="text-[8px] text-gray-500 uppercase tracking-widest flex items-center gap-1 mb-1">
-                          <User className="w-3 h-3" /> Customer
-                        </p>
-                        <p className="text-[10px] font-bold text-white truncate">
-                          {p.booking.user?.full_name}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-[8px] text-gray-500 uppercase tracking-widest flex items-center gap-1 mb-1">
-                          <Car className="w-3 h-3" /> Vehicle
-                        </p>
-                        <p className="text-[10px] font-bold text-white truncate">
-                          {p.booking.car?.brand} {p.booking.car?.model}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Actions */}
-                  <div className="flex gap-2 mt-4 pt-4 border-t border-white/10">
-                    <Button
-                      onClick={() => submitApprove(p.payment_id)}
-                      disabled={isProcessing}
-                      className="flex-1 bg-emerald-500 hover:bg-emerald-600 text-black h-10 rounded-xl text-[10px] font-bold uppercase tracking-widest"
-                    >
-                      <CheckCircle2 className="w-4 h-4 mr-2" /> Approve
-                    </Button>
-                    <Button
-                      onClick={() => setRejectId(p.payment_id)}
-                      disabled={isProcessing}
-                      variant="outline"
-                      className="flex-1 border-red-500/50 hover:bg-red-500/10 text-red-400 h-10 rounded-xl text-[10px] font-bold uppercase tracking-widest"
-                    >
-                      <XCircle className="w-4 h-4 mr-2" /> Reject
-                    </Button>
                   </div>
                 </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
 
-      {/* Reject Reason Dialog */}
-      <Dialog open={!!rejectId} onOpenChange={() => setRejectId(null)}>
-        <DialogContent className="bg-[#0a1118] border-red-500/30 text-white rounded-3xl">
-          <DialogHeader>
-            <DialogTitle className="text-red-400 uppercase tracking-widest font-bold flex items-center gap-2">
-              <XCircle className="w-5 h-5" /> Reject Payment
-            </DialogTitle>
-            <DialogDescription className="text-xs text-gray-400">
-              This will mark the payment as failed and **cancel the booking**.
-              Please provide a reason to email the customer.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="mt-4 space-y-4">
-            <div className="space-y-2">
-              <Label className="text-[10px] uppercase tracking-widest text-gray-500">
-                Rejection Reason
-              </Label>
-              <Input
-                value={rejectReason}
-                onChange={(e) => setRejectReason(e.target.value)}
-                placeholder="e.g., Reference number not found in GCash..."
-                className="bg-black/50 border-white/10 focus-visible:border-red-500"
-              />
+                {/* Bottom Actions */}
+                <div className="pt-4 mt-4 border-t border-border shrink-0">
+                  {!isRejectMode ? (
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        onClick={() => setIsRejectMode(true)}
+                        className="flex-1 border-destructive/30 text-destructive hover:bg-destructive/10 hover:text-destructive h-10 rounded shadow-sm text-[11px] font-bold transition-colors"
+                      >
+                        <XCircle className="w-3.5 h-3.5 mr-1.5" /> Reject
+                      </Button>
+                      <Button
+                        onClick={submitApprove}
+                        disabled={isProcessing}
+                        className="flex-[2] bg-primary text-primary-foreground hover:opacity-90 h-10 rounded shadow-sm text-[11px] font-bold transition-opacity"
+                      >
+                        {isProcessing ? (
+                          <span className="flex items-center gap-2">
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />{" "}
+                            Processing...
+                          </span>
+                        ) : (
+                          <>
+                            <CheckCircle2 className="w-3.5 h-3.5 mr-1.5" />{" "}
+                            Approve & Confirm Payment
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="space-y-3 animate-in fade-in slide-in-from-bottom-2">
+                      <div className="space-y-1.5">
+                        <Label className="text-[10px] text-destructive font-bold uppercase tracking-widest flex items-center gap-1.5">
+                          <XCircle className="w-3 h-3" /> Reason for Rejection
+                        </Label>
+                        <Input
+                          value={rejectReason}
+                          onChange={(e) => setRejectReason(e.target.value)}
+                          placeholder="e.g., Reference number invalid, insufficient amount..."
+                          className="bg-destructive/5 border-destructive/30 text-foreground placeholder:text-destructive/40 focus-visible:ring-destructive h-8 text-xs shadow-sm"
+                        />
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="ghost"
+                          onClick={() => setIsRejectMode(false)}
+                          className="flex-1 hover:bg-secondary text-muted-foreground h-9 rounded text-[10px] font-bold uppercase tracking-widest"
+                        >
+                          Cancel
+                        </Button>
+                        <Button
+                          onClick={submitReject}
+                          disabled={!rejectReason || isProcessing}
+                          className="flex-[2] bg-destructive hover:bg-destructive/90 text-destructive-foreground h-9 rounded text-[10px] font-bold uppercase tracking-widest shadow-sm transition-all"
+                        >
+                          {isProcessing ? "Rejecting..." : "Confirm Rejection"}
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
-            <Button
-              onClick={submitReject}
-              disabled={!rejectReason || isProcessing}
-              className="w-full bg-red-500 hover:bg-red-600 text-white rounded-xl uppercase tracking-widest font-bold text-[10px] h-12"
-            >
-              Confirm Rejection & Cancel Booking
-            </Button>
-          </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>

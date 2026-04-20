@@ -1,3 +1,5 @@
+"use client";
+
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { CompleteDriverType } from "@/lib/schemas/driver";
@@ -17,6 +19,7 @@ import {
   saveDispatchPlan,
 } from "@/actions/dispatch";
 import { DriverFormValues } from "@/lib/schemas/driver";
+import { QUERY_KEYS } from "@/lib/query-keys"; // <-- NEW IMPORT
 
 const fetchDrivers = async () => {
   const response = await fetch("/api/drivers");
@@ -29,19 +32,27 @@ export const useDrivers = () => {
   const queryClient = useQueryClient();
 
   const query = useQuery({
-    queryKey: ["drivers"],
+    queryKey: QUERY_KEYS.drivers.all, // <-- UPDATED
     queryFn: fetchDrivers,
     staleTime: 60 * 1000,
   });
 
-  // FORM ACTION: Passes validation errors back to the component. No throwing!
+  // --- MASTER DRIVER INVALIDATOR ---
+  const invalidateDriverRipples = () => {
+    queryClient.invalidateQueries({ queryKey: QUERY_KEYS.drivers.all });
+    queryClient.invalidateQueries({ queryKey: QUERY_KEYS.drivers.schedules });
+    queryClient.invalidateQueries({ queryKey: QUERY_KEYS.dashboard.summary }); // KPI update!
+    // Optional: Wipes all cached dispatch lists so the new/deleted driver reflects immediately
+    queryClient.invalidateQueries({ queryKey: ["dispatch-availability"] });
+  };
+
   const saveMutation = useMutation({
     mutationFn: async (data: DriverFormValues) => {
       return await saveDriver(data);
     },
     onSuccess: (result) => {
       if (result.success) {
-        queryClient.invalidateQueries({ queryKey: ["drivers"] });
+        invalidateDriverRipples();
       }
     },
     onError: (error: Error) => {
@@ -49,7 +60,6 @@ export const useDrivers = () => {
     },
   });
 
-  // NORMAL ACTION: Throws error and handles its own toasts
   const deleteMutation = useMutation({
     mutationFn: async (driverId: string) => {
       const result = await deleteDriverAction(driverId);
@@ -59,8 +69,7 @@ export const useDrivers = () => {
     },
     onSuccess: (result) => {
       toast.success(result.message || "Driver deleted successfully.");
-      queryClient.invalidateQueries({ queryKey: ["driver-schedules"] });
-      queryClient.invalidateQueries({ queryKey: ["drivers"] });
+      invalidateDriverRipples();
     },
     onError: (error: Error) => {
       toast.error(error.message);
@@ -80,11 +89,10 @@ export const useDriverDispatch = (startDate?: Date, endDate?: Date) => {
   const queryClient = useQueryClient();
 
   const availabilityQuery = useQuery({
-    queryKey: [
-      "dispatch-availability",
+    queryKey: QUERY_KEYS.drivers.dispatch(
       startDate?.toISOString(),
       endDate?.toISOString(),
-    ],
+    ), // <-- UPDATED
     queryFn: async () => {
       if (!startDate || !endDate) return [];
       return await fetchDispatchAvailability(startDate, endDate);
@@ -93,22 +101,29 @@ export const useDriverDispatch = (startDate?: Date, endDate?: Date) => {
     staleTime: 0,
   });
 
-  // NORMAL ACTION: Added the success check and throw translation
   const savePlanMutation = useMutation({
     mutationFn: async (params: {
       bookingId: string;
       segments: { driverId: string; start: Date; end: Date }[];
     }) => {
       const result = await saveDispatchPlan(params.bookingId, params.segments);
-      // Ensure we translate the ActionState to a thrown error if it fails
       if (!result.success)
         throw new Error(result.message || "Failed to save dispatch plan.");
       return result;
     },
     onSuccess: (result) => {
       toast.success(result.message || "Dispatch plan saved successfully!");
-      queryClient.invalidateQueries({ queryKey: ["scheduler_data"] });
-      queryClient.invalidateQueries({ queryKey: ["dispatch-availability"] });
+
+      // --- DISPATCH RIPPLES ---
+      // Fixes the scheduler typo and updates all related booking UI!
+      queryClient.invalidateQueries({
+        queryKey: QUERY_KEYS.bookings.scheduler(),
+      });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.bookings.all }); // Updates main booking table
+      queryClient.invalidateQueries({
+        queryKey: QUERY_KEYS.bookings.detailsBase,
+      }); // Updates specific booking view
+      queryClient.invalidateQueries({ queryKey: ["dispatch-availability"] }); // Refreshes the local modal list
     },
     onError: (error: Error) => {
       toast.error(error.message);
@@ -126,7 +141,6 @@ export const useDriverDispatch = (startDate?: Date, endDate?: Date) => {
 export const useDriverApplication = () => {
   const queryClient = useQueryClient();
 
-  // NORMAL ACTION
   const saveApplicationMutation = useMutation({
     mutationFn: async () => {
       const result = await saveDriverApplication();
@@ -140,7 +154,8 @@ export const useDriverApplication = () => {
       toast.success(
         result.message || "Driver application submitted successfully!",
       );
-      queryClient.invalidateQueries({ queryKey: ["drivers"] });
+      // Fixed: Pings the admin's pending queue instead of the main list!
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.drivers.pending });
     },
     onError: (error: Error) => {
       toast.error(error.message);
@@ -155,7 +170,7 @@ export const useDriverApplication = () => {
 
 export const useDriverSchedules = () => {
   return useQuery({
-    queryKey: ["driver-schedules"],
+    queryKey: QUERY_KEYS.drivers.schedules, // <-- UPDATED
     queryFn: async () => {
       const result = await getDriverSchedulesAction();
       if (!result.success || !result.data) throw new Error(result.message);
@@ -166,7 +181,7 @@ export const useDriverSchedules = () => {
 
 export const useDriverPerformance = (driverId: string) => {
   return useQuery({
-    queryKey: ["driver-performance", driverId],
+    queryKey: QUERY_KEYS.drivers.performance(driverId), // <-- UPDATED
     queryFn: async () => {
       const result = await getDriverPerformanceAction(driverId);
       if (!result.success || !result.data) throw new Error(result.message);
@@ -179,7 +194,7 @@ export const useDriverPerformance = (driverId: string) => {
 
 export const useDriverDocuments = (driverId: string) => {
   return useQuery({
-    queryKey: ["driver-documents", driverId],
+    queryKey: QUERY_KEYS.drivers.documents(driverId), // <-- UPDATED
     queryFn: async () => {
       const result = await getDriverDocumentsAction(driverId);
       if (!result.success || !result.data) throw new Error(result.message);
@@ -194,7 +209,7 @@ export const useDriverApplications = () => {
   const queryClient = useQueryClient();
 
   const { data, isLoading, isFetching } = useQuery({
-    queryKey: ["pending-drivers"],
+    queryKey: QUERY_KEYS.drivers.pending, // <-- UPDATED
     queryFn: async () => {
       const result = await getPendingDriversAction();
       if (!result.success) throw new Error(result.message);
@@ -202,7 +217,6 @@ export const useDriverApplications = () => {
     },
   });
 
-  // NORMAL ACTION: Added toasts
   const verifyMutation = useMutation({
     mutationFn: async ({ driverId }: { driverId: string }) => {
       const result = await verifyDriverAction(driverId);
@@ -212,16 +226,17 @@ export const useDriverApplications = () => {
     },
     onSuccess: (result) => {
       toast.success(result.message || "Driver verified successfully.");
-      queryClient.invalidateQueries({ queryKey: ["pending-drivers"] });
-      queryClient.invalidateQueries({ queryKey: ["driver-schedules"] });
-      queryClient.invalidateQueries({ queryKey: ["drivers"] });
+      // Ripples: Removes from queue, adds to main, updates schedules & KPIs
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.drivers.pending });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.drivers.schedules });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.drivers.all });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.dashboard.summary });
     },
     onError: (error: Error) => {
       toast.error(error.message);
     },
   });
 
-  // NORMAL ACTION: Added toasts
   const rejectMutation = useMutation({
     mutationFn: async ({
       driverId,
@@ -237,7 +252,7 @@ export const useDriverApplications = () => {
     },
     onSuccess: (result) => {
       toast.success(result.message || "Driver rejected successfully.");
-      queryClient.invalidateQueries({ queryKey: ["pending-drivers"] });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.drivers.pending });
     },
     onError: (error: Error) => {
       toast.error(error.message);

@@ -22,7 +22,8 @@ import {
   getBookingDetailsAction,
   cancelBookingAction,
   updateBookingNoteAction,
-} from "@/actions/bookings"; // Ensure this matches filename!
+} from "@/actions/bookings";
+import { QUERY_KEYS } from "@/lib/query-keys";
 
 const fetchBookingsList = async (
   page: number,
@@ -46,10 +47,36 @@ export const useBookings = () => {
   const [filterStatus, setFilterStatus] = useState("All");
 
   const query = useQuery({
-    queryKey: ["bookings", page, limit, filterStatus],
+    queryKey: QUERY_KEYS.bookings.list(page, limit, filterStatus),
     queryFn: () => fetchBookingsList(page, limit, filterStatus),
     placeholderData: keepPreviousData,
   });
+
+  // --- THE MASTER BOOKING INVALIDATOR ---
+  const invalidateBookingRipples = (affectsFinancials = false) => {
+    // 1. Sync all Booking Tables & Dashboards
+    queryClient.invalidateQueries({ queryKey: QUERY_KEYS.bookings.all });
+    queryClient.invalidateQueries({ queryKey: QUERY_KEYS.dashboard.summary });
+    queryClient.invalidateQueries({
+      queryKey: QUERY_KEYS.dashboard.recentBookings,
+    });
+
+    // 2. Sync Car Details (Because active bookings are listed inside the car profile)
+    queryClient.invalidateQueries({ queryKey: QUERY_KEYS.fleet.detailBase });
+
+    // 3. Sync Dropdowns
+    queryClient.invalidateQueries({ queryKey: QUERY_KEYS.dropdowns.bookings });
+
+    // 4. Sync Financials (If a booking was cancelled with a refund/forfeit)
+    if (affectsFinancials) {
+      queryClient.invalidateQueries({
+        queryKey: QUERY_KEYS.financials.masterLedger,
+      });
+      queryClient.invalidateQueries({
+        queryKey: QUERY_KEYS.financials.incomesDashboard,
+      });
+    }
+  };
 
   const createMutation = useMutation({
     mutationFn: async (data: AdminBookingInput) => {
@@ -58,8 +85,7 @@ export const useBookings = () => {
       return res;
     },
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ["bookings"] });
-      queryClient.invalidateQueries({ queryKey: ["scheduler-data"] });
+      invalidateBookingRipples();
       toast.success(data.message);
     },
     onError: (err) => toast.error(err.message),
@@ -72,9 +98,8 @@ export const useBookings = () => {
       return res;
     },
     onSuccess: () => {
+      invalidateBookingRipples();
       toast.success("Status updated");
-      queryClient.invalidateQueries({ queryKey: ["bookings"] });
-      queryClient.invalidateQueries({ queryKey: ["scheduler-data"] });
     },
     onError: (err) => toast.error(err.message),
   });
@@ -86,9 +111,8 @@ export const useBookings = () => {
       return res;
     },
     onSuccess: () => {
+      invalidateBookingRipples();
       toast.success("Booking archived");
-      queryClient.invalidateQueries({ queryKey: ["bookings"] });
-      queryClient.invalidateQueries({ queryKey: ["scheduler-data"] });
     },
     onError: (err) => toast.error(err.message),
   });
@@ -106,9 +130,8 @@ export const useBookings = () => {
       return res;
     },
     onSuccess: () => {
+      invalidateBookingRipples();
       toast.success("Booking updated successfully!");
-      queryClient.invalidateQueries({ queryKey: ["bookings"] });
-      queryClient.invalidateQueries({ queryKey: ["scheduler-data"] });
     },
     onError: (err) => toast.error(err.message),
   });
@@ -120,8 +143,8 @@ export const useBookings = () => {
       return res;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["customer-bookings"] }); // Invalidate customer's personal list
-      queryClient.invalidateQueries({ queryKey: ["bookings"] }); // Invalidate admin list
+      invalidateBookingRipples();
+      toast.success("Booking created successfully!");
     },
     onError: (err) => toast.error(err.message),
   });
@@ -133,8 +156,12 @@ export const useBookings = () => {
       return res;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["customer-bookings"] });
-      queryClient.invalidateQueries({ queryKey: ["bookings"] });
+      // Instantly sync the admin verification queue!
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.bookings.all });
+      queryClient.invalidateQueries({
+        queryKey: QUERY_KEYS.financials.pendingPayments,
+      });
+      toast.success("Payment submitted successfully!");
     },
   });
 
@@ -145,13 +172,7 @@ export const useBookings = () => {
       refundAction,
       amountPaid,
       refundMethod,
-    }: {
-      bookingId: string;
-      reason: string;
-      refundAction: "forfeit" | "refund";
-      amountPaid: number;
-      refundMethod?: string;
-    }) =>
+    }: any) =>
       cancelBookingAction(
         bookingId,
         reason,
@@ -161,9 +182,9 @@ export const useBookings = () => {
       ),
     onSuccess: (data) => {
       if (data.success) {
+        // Pass true because cancellations move money (refunds/forfeits)
+        invalidateBookingRipples(true);
         toast.success(data.message);
-        queryClient.invalidateQueries({ queryKey: ["bookings"] });
-        queryClient.invalidateQueries({ queryKey: ["booking-details"] });
       } else {
         toast.error(data.message);
       }
@@ -175,8 +196,8 @@ export const useBookings = () => {
       updateBookingNoteAction(bookingId, note),
     onSuccess: (data) => {
       if (data.success) {
+        queryClient.invalidateQueries({ queryKey: QUERY_KEYS.bookings.all });
         toast.success(data.message);
-        queryClient.invalidateQueries({ queryKey: ["booking-details"] });
       } else {
         toast.error(data.message);
       }
@@ -203,7 +224,7 @@ export const useBookings = () => {
     isBookingUpdating: updateMutation.isPending,
     submitCustomerBooking: customerCreateMutation.mutateAsync,
     isSubmittingCustomerBooking: customerCreateMutation.isPending,
-    submitPayment: paymentMutation.mutateAsync, // <-- EXPORTED HERE!
+    submitPayment: paymentMutation.mutateAsync,
     isSubmittingPayment: paymentMutation.isPending,
     cancelBooking: cancelMutation.mutateAsync,
     isCancelling: cancelMutation.isPending,
@@ -214,7 +235,7 @@ export const useBookings = () => {
 
 export const useCustomerBookings = () => {
   return useQuery({
-    queryKey: ["customer-bookings"],
+    queryKey: QUERY_KEYS.bookings.customerList,
     queryFn: async () => {
       const res = await getCustomerBookings();
       if (!res.success) throw new Error(res.message);
@@ -225,13 +246,13 @@ export const useCustomerBookings = () => {
 
 export const useCarUnavailableDates = (carId: string | undefined) => {
   return useQuery({
-    queryKey: ["car-unavailable-dates", carId],
+    // Needs a fallback empty string if carId is undefined for TS
+    queryKey: QUERY_KEYS.fleet.unavailableDates(carId || ""),
     queryFn: async () => {
       if (!carId) return [];
       return await getCarUnavailableDatesAction(carId);
     },
     enabled: !!carId,
-    // Keep it relatively fresh since this is a real-time booking engine
     staleTime: 30 * 1000,
   });
 };
@@ -241,36 +262,30 @@ export const useAvailableDrivers = (
   endDate: Date | null,
 ) => {
   return useQuery({
-    // Include dates in the queryKey so it automatically refetches when dates change
-    queryKey: [
-      "driver-availability",
+    queryKey: QUERY_KEYS.drivers.availability(
       startDate?.toISOString(),
       endDate?.toISOString(),
-    ],
+    ),
     queryFn: async () => {
-      // If dates aren't selected yet, we don't need to check
       if (!startDate || !endDate) return false;
-
       return await checkDriverAvailabilityAction(
         startDate.toISOString(),
         endDate.toISOString(),
       );
     },
-    // Only run the query if BOTH dates are selected
     enabled: !!startDate && !!endDate,
-    // Keep it fresh, but don't spam the database every second
     staleTime: 30 * 1000,
   });
 };
 
 export const useBookingDetails = (bookingId: string | null | undefined) => {
   return useQuery({
-    queryKey: ["booking-details", bookingId],
+    queryKey: QUERY_KEYS.bookings.details(bookingId || ""),
     queryFn: async () => {
       const res = await getBookingDetailsAction(bookingId!);
       if (!res.success) throw new Error(res.message);
       return res.data;
     },
-    enabled: !!bookingId, // Only run if we actually have an ID
+    enabled: !!bookingId,
   });
 };

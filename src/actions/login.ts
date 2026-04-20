@@ -12,9 +12,9 @@ export type LoginState = {
     password?: string[];
   };
   message?: string | null;
+  redirectPath?: string; // 👇 Added this property
 };
 
-// needs the prevstate prop because of useFormState
 export async function login(
   prevState: LoginState,
   formData: FormData,
@@ -37,7 +37,7 @@ export async function login(
   const { email, password } = validateFields.data;
   const supabase = await createClient();
 
-  let redirectPath = "/customer/fleet"; //fallback route
+  let redirectPath = "/customer/fleet";
 
   try {
     const { data, error } = await supabase.auth.signInWithPassword({
@@ -70,8 +70,13 @@ export async function login(
     return { success: false, message: "An unexpected error occurred." };
   }
 
-  revalidatePath("/", "layout"); // clear the router cache to update the UI based on the new auth state
-  redirect(redirectPath); // navigate to the appropriate dashboard based on the user's role
+  revalidatePath("/", "layout");
+
+  return {
+    success: true,
+    redirectPath,
+    message: "Login successful!",
+  };
 }
 
 export async function logout() {

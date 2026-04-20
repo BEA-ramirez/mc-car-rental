@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { fetchMasterReportData } from "@/actions/reports";
+import { QUERY_KEYS } from "@/lib/query-keys";
 
 export function useReportsDashboard(
   startDate: Date,
@@ -7,15 +8,14 @@ export function useReportsDashboard(
   partnerId?: string,
 ) {
   return useQuery({
-    queryKey: [
-      "reports_master",
+    queryKey: QUERY_KEYS.dashboard.reportsMaster(
       startDate.toISOString(),
       endDate.toISOString(),
       partnerId,
-    ],
+    ),
     queryFn: async () => {
-      // The RPC expects an actual Date object or ISO string.
-      // We pass undefined if "all" is selected so the SQL ignores the filter.
+      // RPC expects an actual Date object or ISO string.
+      // pass undefined if "all" is selected so the SQL ignores the filter.
       const data = await fetchMasterReportData(
         startDate.toISOString(),
         endDate.toISOString(),
@@ -23,7 +23,7 @@ export function useReportsDashboard(
       );
       return data;
     },
-    // Reports don't change by the second, so we cache it aggressively
+    // Reports don't change by the second, so cache it aggressively
     // and don't refetch just because the user switches browser tabs.
     refetchOnWindowFocus: false,
     staleTime: 1000 * 60 * 5, // 5 Minutes Cache

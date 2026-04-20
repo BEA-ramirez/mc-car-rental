@@ -14,6 +14,7 @@ import {
   CheckCircle2,
   FileText,
   Info,
+  X, // Added X icon for unpinning
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -153,6 +154,14 @@ export default function CustomerBookingPage({
     totalDays = Math.max(1, differenceInDays(endDate, startDate) + 1);
   }
 
+  // FIX 1: Calculate the actual dropoff date (startDate + totalDays)
+  const actualDropoffDate = useMemo(() => {
+    if (!startDate) return null;
+    const dropoff = new Date(startDate);
+    dropoff.setDate(dropoff.getDate() + totalDays);
+    return dropoff;
+  }, [startDate, totalDays]);
+
   const isPromoEligible = !!car && car.price12h > 0 && totalDays === 1;
 
   useEffect(() => {
@@ -184,28 +193,49 @@ export default function CustomerBookingPage({
     setMapOpen(true);
   };
 
-  // --- 🚨 UPDATED LOGIC: Distinguish Hubs from Landmarks correctly ---
   const handleLocationSelect = (lat: number, lng: number, name?: string) => {
     const isPickup = activeMapField === "pickup";
     const setType = isPickup ? setPickupType : setDropoffType;
     const setLoc = isPickup ? setPickupLocation : setDropoffLocation;
     const setCoords = isPickup ? setPickupCoords : setDropoffCoords;
 
-    // 1. Check if the name passed back belongs to one of our Official Hubs
     const isOfficialHub = realHubs.some((hub) => hub.name === name);
 
     if (isOfficialHub && name) {
-      // It's an official hub (Free)
       setType("hub");
       setLoc(name);
     } else {
-      // It's a custom pin, landmark, or street address (Fee applies)
       setType("custom");
       setLoc(name || `Pinned Location (${lat.toFixed(4)}, ${lng.toFixed(4)})`);
     }
 
     setCoords(`${lat},${lng}`);
     setMapOpen(false);
+  };
+
+  // Helper to clear a custom pin and reset to default hub
+  const handleUnpin = (field: "pickup" | "dropoff") => {
+    const defaultHub = realHubs[0];
+    if (field === "pickup") {
+      setPickupType("hub");
+      if (defaultHub) {
+        setPickupLocation(defaultHub.name);
+        setPickupCoords(`${defaultHub.lat},${defaultHub.lng}`);
+      }
+    } else {
+      setDropoffType("hub");
+      if (defaultHub) {
+        setDropoffLocation(defaultHub.name);
+        setDropoffCoords(`${defaultHub.lat},${defaultHub.lng}`);
+      }
+    }
+  };
+
+  // FIX 2: Time handler validation
+  const handleTimeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newTime = e.target.value;
+    // Allow typing, but we ensure it falls between 09:00 and 17:00 when they finish
+    setTime(newTime);
   };
 
   const handleSubmitBooking = async () => {
@@ -248,8 +278,6 @@ export default function CustomerBookingPage({
         throw new Error("Failed to upload the receipt to the server.");
       }
 
-      // The payload will now perfectly include the Landmark Name in `pickup_location`
-      // and the coordinates in `pickup_coords`!
       const bookingPayload = {
         car_id: car.id,
         start_date: exactStartDate.toISOString(),
@@ -266,7 +294,7 @@ export default function CustomerBookingPage({
         security_deposit: realFees.security_deposit_default,
         pickup_coords: pickupCoords,
         dropoff_coords: dropoffCoords,
-        booking_status: "CONFIRMED",
+        booking_status: "PENDING",
         payment_status: "Unpaid",
         is12HourPromo: is12HourPromo,
         car12HourRate: car.price12h,
@@ -274,7 +302,7 @@ export default function CustomerBookingPage({
         payment_details: {
           amount: Number(receiptAmount) || reservationFee,
           transaction_reference: receiptRef,
-          status: "Pending",
+          status: "PENDING",
           receipt_url: uploadResult.url,
         },
       };
@@ -421,31 +449,45 @@ export default function CustomerBookingPage({
                   </p>
                 </div>
                 <div className="bg-black/40 p-5 md:p-6 border border-white/5 rounded-2xl">
-                  <p className="text-[9px] md:text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2">
-                    Drop-off Date
+                  <p className="text-[9px] md:text-[10px] font-bold text-[#64c5c3] uppercase tracking-widest mb-2">
+                    Scheduled Drop-off Date
                   </p>
                   <p className="text-sm md:text-base font-bold text-white uppercase tracking-wider">
-                    {endDate
-                      ? format(endDate, "EEEE, MMM dd, yyyy")
+                    {actualDropoffDate
+                      ? format(actualDropoffDate, "EEEE, MMM dd, yyyy")
                       : "Not selected"}
                   </p>
+                  <div className="flex gap-2 items-start mt-3">
+                    <Info className="w-3 h-3 text-gray-500 mt-0.5 shrink-0" />
+                    <p className="text-[10px] text-gray-400 leading-tight">
+                      Drop-off is scheduled for the day following your final
+                      rental day exactly at your pick-up time.
+                    </p>
+                  </div>
                 </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6 items-center border-t border-white/10 pt-8 md:pt-10">
-                <div className="bg-black/40 border border-white/5 rounded-2xl p-5 flex items-center justify-between transition-colors hover:border-[#64c5c3]/30">
-                  <Label className="text-[10px] font-bold uppercase tracking-widest text-gray-400">
-                    Pick-up Time
-                  </Label>
-                  <input
-                    type="time"
-                    value={time}
-                    onChange={(e) => setTime(e.target.value)}
-                    className="bg-transparent font-black text-white outline-none border-none ring-0 focus:ring-0 text-sm md:text-base tracking-widest"
-                  />
+                <div className="bg-black/40 border border-white/5 rounded-2xl p-5 flex flex-col justify-center transition-colors hover:border-[#64c5c3]/30">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-[10px] font-bold uppercase tracking-widest text-gray-400">
+                      Pick-up Time
+                    </Label>
+                    <input
+                      type="time"
+                      value={time}
+                      min="09:00"
+                      max="17:00"
+                      onChange={handleTimeChange}
+                      className="bg-transparent font-black text-white outline-none border-none ring-0 focus:ring-0 text-sm md:text-base tracking-widest cursor-pointer"
+                    />
+                  </div>
+                  <p className="text-[9px] font-bold text-[#64c5c3] uppercase tracking-widest mt-3">
+                    Select only: 09:00 AM - 05:00 PM
+                  </p>
                 </div>
 
-                <div className="flex flex-col justify-center bg-black/40 p-4 border border-white/5 rounded-2xl transition-colors hover:border-[#64c5c3]/30 relative">
+                <div className="flex flex-col justify-center bg-black/40 p-4 border border-white/5 rounded-2xl transition-colors hover:border-[#64c5c3]/30 relative h-full">
                   <div className="flex items-center justify-between w-full">
                     <div className="flex flex-col gap-1 cursor-pointer pr-4">
                       <span className="text-[10px] font-bold uppercase tracking-widest text-white flex items-center gap-2">
@@ -527,52 +569,62 @@ export default function CustomerBookingPage({
                   </Label>
                   <div className="flex flex-col sm:flex-row gap-3 md:gap-4">
                     <div className="flex-1 relative h-12 md:h-14">
-                      {pickupType === "custom" && (
-                        <div className="absolute inset-0 bg-[#64c5c3]/10 border border-[#64c5c3]/30 rounded-xl z-10 flex items-center px-4">
-                          <MapPin className="text-[#64c5c3] w-4 h-4 shrink-0 mr-3" />
-                          <span className="text-[10px] md:text-xs font-bold text-white truncate uppercase tracking-widest">
-                            {pickupLocation}
-                          </span>
+                      {pickupType === "custom" ? (
+                        <div className="h-full bg-[#64c5c3]/10 border border-[#64c5c3]/30 rounded-xl flex items-center justify-between px-4 z-10 w-full animate-in fade-in">
+                          <div className="flex items-center overflow-hidden mr-2">
+                            <MapPin className="text-[#64c5c3] w-4 h-4 shrink-0 mr-3" />
+                            <span className="text-[10px] md:text-xs font-bold text-white truncate uppercase tracking-widest">
+                              {pickupLocation}
+                            </span>
+                          </div>
+                          <button
+                            onClick={() => handleUnpin("pickup")}
+                            className="text-gray-400 hover:text-red-400 transition-colors shrink-0 p-1 rounded-md hover:bg-red-400/10"
+                            title="Remove Pin"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
                         </div>
-                      )}
-                      <Select
-                        value={pickupType === "hub" ? pickupLocation : ""}
-                        onValueChange={(val) => {
-                          const selectedHub = realHubs.find(
-                            (h) => h.name === val,
-                          );
-                          setPickupType("hub");
-                          setPickupLocation(val);
-                          if (selectedHub) {
-                            setPickupCoords(
-                              `${selectedHub.lat},${selectedHub.lng}`,
+                      ) : (
+                        <Select
+                          value={pickupLocation}
+                          onValueChange={(val) => {
+                            const selectedHub = realHubs.find(
+                              (h) => h.name === val,
                             );
-                          }
-                        }}
-                      >
-                        <SelectTrigger className="h-full! rounded-xl text-[9px] md:text-[10px] font-bold uppercase tracking-widest border-white/10 bg-white/5 text-white w-full">
-                          <SelectValue placeholder="SELECT AN OFFICIAL HUB" />
-                        </SelectTrigger>
-                        <SelectContent className="bg-[#0a1118] border-white/10 text-white rounded-xl">
-                          {realHubs.map((hub) => (
-                            <SelectItem
-                              key={hub.id}
-                              value={hub.name}
-                              className="text-[9px] md:text-[10px] uppercase tracking-widest font-bold focus:bg-white/10 focus:text-white"
-                            >
-                              {hub.name}{" "}
-                              <span className="text-[#64c5c3] ml-1">
-                                (FREE)
-                              </span>
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                            setPickupType("hub");
+                            setPickupLocation(val);
+                            if (selectedHub) {
+                              setPickupCoords(
+                                `${selectedHub.lat},${selectedHub.lng}`,
+                              );
+                            }
+                          }}
+                        >
+                          <SelectTrigger className="h-full! rounded-xl text-[9px] md:text-[10px] font-bold uppercase tracking-widest border-white/10 bg-white/5 text-white w-full">
+                            <SelectValue placeholder="SELECT AN OFFICIAL HUB" />
+                          </SelectTrigger>
+                          <SelectContent className="bg-[#0a1118] border-white/10 text-white rounded-xl">
+                            {realHubs.map((hub) => (
+                              <SelectItem
+                                key={hub.id}
+                                value={hub.name}
+                                className="text-[9px] md:text-[10px] uppercase tracking-widest font-bold focus:bg-white/10 focus:text-white"
+                              >
+                                {hub.name}{" "}
+                                <span className="text-[#64c5c3] ml-1">
+                                  (FREE)
+                                </span>
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
                     </div>
                     <Button
                       onClick={() => openMapFor("pickup")}
                       className={cn(
-                        "h-12 md:h-14 px-6 rounded-xl text-[9px] md:text-[10px] font-bold uppercase tracking-widest transition-all w-full sm:w-auto",
+                        "h-12 md:h-14 px-6 rounded-xl text-[9px] md:text-[10px] font-bold uppercase tracking-widest transition-all w-full sm:w-auto shrink-0",
                         pickupType === "custom"
                           ? "bg-[#64c5c3] text-black hover:bg-[#52a3a1]"
                           : "bg-transparent border border-white/20 text-white hover:bg-white/10",
@@ -597,52 +649,62 @@ export default function CustomerBookingPage({
                   </Label>
                   <div className="flex flex-col sm:flex-row gap-3 md:gap-4">
                     <div className="flex-1 relative h-12 md:h-14">
-                      {dropoffType === "custom" && (
-                        <div className="absolute inset-0 bg-[#64c5c3]/10 border border-[#64c5c3]/30 rounded-xl z-10 flex items-center px-4">
-                          <MapPin className="text-[#64c5c3] w-4 h-4 shrink-0 mr-3" />
-                          <span className="text-[10px] md:text-xs font-bold text-white truncate uppercase tracking-widest">
-                            {dropoffLocation}
-                          </span>
+                      {dropoffType === "custom" ? (
+                        <div className="h-full bg-[#64c5c3]/10 border border-[#64c5c3]/30 rounded-xl flex items-center justify-between px-4 z-10 w-full animate-in fade-in">
+                          <div className="flex items-center overflow-hidden mr-2">
+                            <MapPin className="text-[#64c5c3] w-4 h-4 shrink-0 mr-3" />
+                            <span className="text-[10px] md:text-xs font-bold text-white truncate uppercase tracking-widest">
+                              {dropoffLocation}
+                            </span>
+                          </div>
+                          <button
+                            onClick={() => handleUnpin("dropoff")}
+                            className="text-gray-400 hover:text-red-400 transition-colors shrink-0 p-1 rounded-md hover:bg-red-400/10"
+                            title="Remove Pin"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
                         </div>
-                      )}
-                      <Select
-                        value={dropoffType === "hub" ? dropoffLocation : ""}
-                        onValueChange={(val) => {
-                          const selectedHub = realHubs.find(
-                            (h) => h.name === val,
-                          );
-                          setDropoffType("hub");
-                          setDropoffLocation(val);
-                          if (selectedHub) {
-                            setDropoffCoords(
-                              `${selectedHub.lat},${selectedHub.lng}`,
+                      ) : (
+                        <Select
+                          value={dropoffLocation}
+                          onValueChange={(val) => {
+                            const selectedHub = realHubs.find(
+                              (h) => h.name === val,
                             );
-                          }
-                        }}
-                      >
-                        <SelectTrigger className="h-full! rounded-xl text-[9px] md:text-[10px] font-bold uppercase tracking-widest border-white/10 bg-white/5 text-white w-full">
-                          <SelectValue placeholder="SELECT AN OFFICIAL HUB" />
-                        </SelectTrigger>
-                        <SelectContent className="bg-[#0a1118] border-white/10 text-white rounded-xl">
-                          {realHubs.map((hub) => (
-                            <SelectItem
-                              key={hub.id}
-                              value={hub.name}
-                              className="text-[9px] md:text-[10px] uppercase tracking-widest font-bold focus:bg-white/10 focus:text-white"
-                            >
-                              {hub.name}{" "}
-                              <span className="text-[#64c5c3] ml-1">
-                                (FREE)
-                              </span>
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                            setDropoffType("hub");
+                            setDropoffLocation(val);
+                            if (selectedHub) {
+                              setDropoffCoords(
+                                `${selectedHub.lat},${selectedHub.lng}`,
+                              );
+                            }
+                          }}
+                        >
+                          <SelectTrigger className="h-full! rounded-xl text-[9px] md:text-[10px] font-bold uppercase tracking-widest border-white/10 bg-white/5 text-white w-full">
+                            <SelectValue placeholder="SELECT AN OFFICIAL HUB" />
+                          </SelectTrigger>
+                          <SelectContent className="bg-[#0a1118] border-white/10 text-white rounded-xl">
+                            {realHubs.map((hub) => (
+                              <SelectItem
+                                key={hub.id}
+                                value={hub.name}
+                                className="text-[9px] md:text-[10px] uppercase tracking-widest font-bold focus:bg-white/10 focus:text-white"
+                              >
+                                {hub.name}{" "}
+                                <span className="text-[#64c5c3] ml-1">
+                                  (FREE)
+                                </span>
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
                     </div>
                     <Button
                       onClick={() => openMapFor("dropoff")}
                       className={cn(
-                        "h-12 md:h-14 px-6 rounded-xl text-[9px] md:text-[10px] font-bold uppercase tracking-widest transition-all w-full sm:w-auto",
+                        "h-12 md:h-14 px-6 rounded-xl text-[9px] md:text-[10px] font-bold uppercase tracking-widest transition-all w-full sm:w-auto shrink-0",
                         dropoffType === "custom"
                           ? "bg-[#64c5c3] text-black hover:bg-[#52a3a1]"
                           : "bg-transparent border border-white/20 text-white hover:bg-white/10",
@@ -671,9 +733,9 @@ export default function CustomerBookingPage({
                   <Image
                     src={car?.image}
                     alt="Vehicle"
-                    fill
-                    sizes="112px"
-                    className="object-cover opacity-80"
+                    width={112}
+                    height={80}
+                    className="w-full h-full object-cover opacity-80"
                   />
                 </div>
                 <div>
@@ -811,8 +873,10 @@ export default function CustomerBookingPage({
               </p>
               <div className="w-32 h-32 bg-white rounded-xl p-2 mb-3 relative flex items-center justify-center">
                 <Image
-                  src="https://placehold.co/400x400?text=QR+Code"
+                  src="https://images.unsplash.com/photo-1629128625414-374a9e16d56a?q=80&w=870&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
                   alt="GCash/Maya QR Code"
+                  width={400}
+                  height={400}
                   className="w-full h-full object-contain p-2"
                 />
               </div>

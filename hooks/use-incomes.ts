@@ -18,6 +18,7 @@ import {
   getIncomeTableData,
   getIncomeWidgets,
 } from "@/actions/incomes";
+import { QUERY_KEYS } from "@/lib/query-keys";
 
 interface IncomeDashboardParams {
   tab?: string;
@@ -30,16 +31,32 @@ interface IncomeDashboardParams {
 export const useIncomes = (params?: IncomeDashboardParams) => {
   const queryClient = useQueryClient();
 
-  // Mutation: Record Payment
+  // --- THE MASTER INVALIDATOR ---
+  // Call this whenever money moves to sync the entire app instantly.
+  const invalidateFinancials = () => {
+    // No awaits! Just fire them off in the background.
+    queryClient.invalidateQueries({
+      queryKey: QUERY_KEYS.financials.incomesDashboard,
+    });
+    queryClient.invalidateQueries({
+      queryKey: QUERY_KEYS.financials.incomesWidgets,
+    });
+    queryClient.invalidateQueries({
+      queryKey: QUERY_KEYS.financials.masterLedger,
+    });
+    queryClient.invalidateQueries({ queryKey: QUERY_KEYS.bookings.folioBase });
+    queryClient.invalidateQueries({
+      queryKey: QUERY_KEYS.bookings.detailsBase,
+    });
+    queryClient.invalidateQueries({ queryKey: QUERY_KEYS.dashboard.summary });
+  };
+
+  // 1. Mutation: Record Payment
   const recordPaymentMutation = useMutation({
     mutationFn: recordBookingPayment,
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
       if (data.success) {
-        queryClient.invalidateQueries({
-          queryKey: ["incomes-dashboard"],
-        });
-        queryClient.invalidateQueries({ queryKey: ["booking-folio"] });
-        queryClient.invalidateQueries({ queryKey: ["booking-details"] });
+        await invalidateFinancials();
         toast.success(data.message);
       } else {
         toast.error(data.message);
@@ -48,16 +65,12 @@ export const useIncomes = (params?: IncomeDashboardParams) => {
     onError: (err) => toast.error("Failed to record payment: " + err.message),
   });
 
-  // Mutation: Add Charge
+  // 2. Mutation: Add Charge
   const addChargeMutation = useMutation({
     mutationFn: addBookingCharge,
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
       if (data.success) {
-        queryClient.invalidateQueries({
-          queryKey: ["incomes-dashboard"],
-        });
-        queryClient.invalidateQueries({ queryKey: ["booking-folio"] });
-        queryClient.invalidateQueries({ queryKey: ["booking-details"] });
+        await invalidateFinancials();
         toast.success(data.message);
       } else {
         toast.error(data.message);
@@ -66,12 +79,12 @@ export const useIncomes = (params?: IncomeDashboardParams) => {
     onError: (err) => toast.error("Failed to add charge: " + err.message),
   });
 
-  // 4. Mutation: Log Misc Income
+  // 3. Mutation: Log Misc Income
   const logMiscMutation = useMutation({
     mutationFn: logMiscIncome,
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
       if (data.success) {
-        queryClient.invalidateQueries({ queryKey: ["incomes-dashboard"] });
+        await invalidateFinancials();
         toast.success(data.message);
       } else {
         toast.error(data.message);
@@ -80,17 +93,12 @@ export const useIncomes = (params?: IncomeDashboardParams) => {
     onError: (err) => toast.error("Failed to log income: " + err.message),
   });
 
+  // 4. Refund Mutation
   const refundMutation = useMutation({
     mutationFn: issueBookingRefundAction,
     onSuccess: async (data) => {
       if (data.success) {
-        // Return Promise.all so the mutation waits for the refetches to finish
-        await Promise.all([
-          queryClient.invalidateQueries({ queryKey: ["incomes-dashboard"] }),
-          queryClient.invalidateQueries({ queryKey: ["booking-folio"] }),
-          queryClient.invalidateQueries({ queryKey: ["master-ledger"] }),
-          queryClient.invalidateQueries({ queryKey: ["booking-details"] }),
-        ]);
+        await invalidateFinancials();
         toast.success(data.message);
       } else {
         toast.error(data.message);
@@ -99,16 +107,12 @@ export const useIncomes = (params?: IncomeDashboardParams) => {
     onError: (err) => toast.error("Failed to refund deposit: " + err.message),
   });
 
+  // 5. Remove Charge
   const removeCharge = useMutation({
     mutationFn: removeBookingChargeAction,
     onSuccess: async (data) => {
       if (data.success) {
-        await Promise.all([
-          queryClient.invalidateQueries({ queryKey: ["incomes-dashboard"] }),
-          queryClient.invalidateQueries({ queryKey: ["booking-folio"] }),
-          queryClient.invalidateQueries({ queryKey: ["master-ledger"] }),
-          queryClient.invalidateQueries({ queryKey: ["booking-details"] }),
-        ]);
+        await invalidateFinancials();
         toast.success(data.message);
       } else {
         toast.error(data.message);
@@ -117,17 +121,12 @@ export const useIncomes = (params?: IncomeDashboardParams) => {
     onError: (err) => toast.error(`Failed to remove charge: ${err.message}`),
   });
 
-  // 5. Void Payment
+  // 6. Void Payment
   const voidPayment = useMutation({
     mutationFn: voidBookingPaymentAction,
     onSuccess: async (data) => {
       if (data.success) {
-        await Promise.all([
-          queryClient.invalidateQueries({ queryKey: ["incomes-dashboard"] }),
-          queryClient.invalidateQueries({ queryKey: ["booking-folio"] }),
-          queryClient.invalidateQueries({ queryKey: ["master-ledger"] }),
-          queryClient.invalidateQueries({ queryKey: ["booking-details"] }),
-        ]);
+        await invalidateFinancials();
         toast.success(data.message);
       } else {
         toast.error(data.message);
@@ -158,32 +157,26 @@ export const useIncomes = (params?: IncomeDashboardParams) => {
 // Hook strictly for the Folio Modal
 export const useBookingFolio = (bookingId: string | undefined | null) => {
   return useQuery({
-    queryKey: ["booking-folio", bookingId],
+    queryKey: QUERY_KEYS.bookings.folio(bookingId!),
     queryFn: () => getBookingFolio(bookingId!),
     enabled: !!bookingId,
     staleTime: 10 * 1000,
   });
 };
 
+// Income Widgets
 export function useIncomeWidgets() {
   return useQuery({
-    queryKey: ["incomes-widgets"],
+    queryKey: QUERY_KEYS.financials.incomesWidgets,
     queryFn: async () => await getIncomeWidgets(),
     staleTime: 60 * 1000,
   });
 }
 
-// 2. Hook for the Table (Fetches when URL params change)
+// Hook for the Table (Fetches when URL params change)
 export function useIncomeTable(params: any) {
   return useQuery({
-    queryKey: [
-      "incomes-table",
-      params.tab,
-      params.page,
-      params.search,
-      params.sort,
-      params.method,
-    ],
+    queryKey: QUERY_KEYS.financials.incomesTable(params),
     queryFn: async () => await getIncomeTableData(params),
     placeholderData: keepPreviousData,
     staleTime: 30 * 1000,

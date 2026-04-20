@@ -1,3 +1,5 @@
+"use client";
+
 import {
   useQuery,
   useMutation,
@@ -15,6 +17,7 @@ import {
   sendCustomEmailAction,
   getClientsKpiAction,
 } from "@/actions/manage-user";
+import { QUERY_KEYS } from "@/lib/query-keys"; // <-- NEW IMPORT
 
 export type ClientRow = Tables<"users">;
 
@@ -89,12 +92,29 @@ export const useClients = (params: FetchClientsParams | null) => {
   const queryClient = useQueryClient();
 
   const query = useQuery({
-    queryKey: ["clients", params],
+    queryKey: QUERY_KEYS.users.clients(params), // <-- UPDATED
     queryFn: () => fetchClients(params!),
     enabled: !!params,
     placeholderData: keepPreviousData,
     staleTime: 60 * 1000,
   });
+
+  // --- THE MASTER CLIENT INVALIDATOR ---
+  const invalidateClientRipples = (affectsDocumentsAndDropdowns = false) => {
+    // 1. Sync User Tables and local KPIs
+    queryClient.invalidateQueries({ queryKey: QUERY_KEYS.users.clients() }); // Fuzzy match hits all pages/filters
+    queryClient.invalidateQueries({ queryKey: QUERY_KEYS.users.clientsKpi });
+
+    // 2. Sync the Main Dashboard (Total Users & Verification KPIs)
+    queryClient.invalidateQueries({ queryKey: QUERY_KEYS.dashboard.summary });
+
+    // 3. Sync connected features if a user was created, deleted, verified, or rejected
+    if (affectsDocumentsAndDropdowns) {
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.documents.all }); // Refreshes KYC queues
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.dropdowns.users }); // Refreshes Select combo-boxes
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.users.profile }); // Refreshes customer's personal view
+    }
+  };
 
   // FORM ACTION: Returns the raw ActionState for the component to handle Zod errors
   const saveMutation = useMutation({
@@ -113,8 +133,7 @@ export const useClients = (params: FetchClientsParams | null) => {
       // Only toast and invalidate if it actually passed validation and saved
       if (result.success) {
         toast.success(result.message || "Client saved successfully.");
-        queryClient.invalidateQueries({ queryKey: ["clients"] });
-        queryClient.invalidateQueries({ queryKey: ["clients-kpi"] }); // Refresh KPIs!
+        invalidateClientRipples(true); // true = refreshes dropdowns so new user appears!
       }
     },
     onError: (error: Error) => {
@@ -133,8 +152,7 @@ export const useClients = (params: FetchClientsParams | null) => {
     },
     onSuccess: () => {
       toast.success("Client deleted successfully");
-      queryClient.invalidateQueries({ queryKey: ["clients"] });
-      queryClient.invalidateQueries({ queryKey: ["clients-kpi"] }); // Refresh KPIs!
+      invalidateClientRipples(true); // true = clears them from dropdowns & docs
     },
     onError: (error: Error) => {
       toast.error(error.message);
@@ -154,8 +172,7 @@ export const useClients = (params: FetchClientsParams | null) => {
     },
     onSuccess: (data, variables, context) => {
       toast.success(data.message, { id: context?.toastId });
-      queryClient.invalidateQueries({ queryKey: ["clients"] });
-      queryClient.invalidateQueries({ queryKey: ["clients-kpi"] }); // Refresh KPIs!
+      invalidateClientRipples(true);
     },
     onError: (error: Error, variables, context) => {
       toast.error(error.message, { id: context?.toastId });
@@ -179,8 +196,7 @@ export const useClients = (params: FetchClientsParams | null) => {
     },
     onSuccess: (data) => {
       toast.success(data.message || "Applicant verified successfully.");
-      queryClient.invalidateQueries({ queryKey: ["clients"] });
-      queryClient.invalidateQueries({ queryKey: ["clients-kpi"] });
+      invalidateClientRipples(true); // true = refreshes document queues to remove the pending items
     },
     onError: (error: Error) => {
       toast.error(error.message);
@@ -206,8 +222,7 @@ export const useClients = (params: FetchClientsParams | null) => {
     },
     onSuccess: (data) => {
       toast.success(data.message || "Applicant rejected successfully.");
-      queryClient.invalidateQueries({ queryKey: ["clients"] });
-      queryClient.invalidateQueries({ queryKey: ["clients-kpi"] });
+      invalidateClientRipples(true);
     },
     onError: (error: Error) => {
       toast.error(error.message);
@@ -251,7 +266,7 @@ export const useClients = (params: FetchClientsParams | null) => {
 
 export const useClientsKpi = () => {
   return useQuery({
-    queryKey: ["clients-kpi"],
+    queryKey: QUERY_KEYS.users.clientsKpi, // <-- UPDATED
     queryFn: async () => {
       const result = await getClientsKpiAction();
       if (!result.success || !result.data) {

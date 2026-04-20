@@ -17,12 +17,43 @@ import {
   getPayoutBreakdown,
   voidOwnerPayoutAction,
 } from "@/actions/financials";
+import { QUERY_KEYS } from "@/lib/query-keys"; // <-- NEW IMPORT
+
+interface IncomeDashboardParams {
+  tab?: string;
+  page?: number;
+  search?: string;
+  sort?: string;
+  method?: string;
+}
 
 export const useFinancials = () => {
   const queryClient = useQueryClient();
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
-  const [filterType, setFilterType] = useState("All"); // e.g., 'INCOME', 'EXPENSE'
+  const [filterType, setFilterType] = useState("All");
+
+  // --- THE MASTER EXPENSE INVALIDATOR ---
+  const invalidateExpenseRipples = (isPayout = false) => {
+    // 1. Sync global financial tables
+    queryClient.invalidateQueries({
+      queryKey: QUERY_KEYS.financials.expenseWidgets,
+    });
+    queryClient.invalidateQueries({
+      queryKey: QUERY_KEYS.financials.expenseTableBase,
+    });
+    queryClient.invalidateQueries({
+      queryKey: QUERY_KEYS.financials.masterLedger,
+    });
+    queryClient.invalidateQueries({ queryKey: QUERY_KEYS.dashboard.summary });
+
+    // 2. If it's a Payout, sync the Partner's specific history and the Bookings
+    if (isPayout) {
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.bookings.all });
+      // Fuzzy match to hit all partner payout histories
+      queryClient.invalidateQueries({ queryKey: ["partner-payout-history"] });
+    }
+  };
 
   const generatePayoutMutation = useMutation({
     mutationFn: async ({
@@ -40,10 +71,7 @@ export const useFinancials = () => {
       return res;
     },
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ["financials"] });
-      queryClient.invalidateQueries({ queryKey: ["bookings"] });
-      queryClient.invalidateQueries({ queryKey: ["expense-widgets"] });
-      queryClient.invalidateQueries({ queryKey: ["expense-table"] });
+      invalidateExpenseRipples(true); // true = it's a payout
       toast.success(data.message);
     },
     onError: (err) => toast.error(err.message),
@@ -51,12 +79,9 @@ export const useFinancials = () => {
 
   const logExpenseMutation = useMutation({
     mutationFn: logManualExpense,
-    onSuccess: async (data) => {
+    onSuccess: (data) => {
       if (data.success) {
-        await Promise.all([
-          queryClient.invalidateQueries({ queryKey: ["expense-widgets"] }),
-          queryClient.invalidateQueries({ queryKey: ["expense-table"] }),
-        ]);
+        invalidateExpenseRipples(); // false = just a manual expense
         toast.success(data.message);
       } else {
         toast.error(data.message);
@@ -67,12 +92,11 @@ export const useFinancials = () => {
 
   const markPaidMutation = useMutation({
     mutationFn: markPayoutAsPaid,
-    onSuccess: async (data) => {
+    onSuccess: (data) => {
       if (data.success) {
-        await Promise.all([
-          queryClient.invalidateQueries({ queryKey: ["expense-widgets"] }),
-          queryClient.invalidateQueries({ queryKey: ["expense-table"] }),
-        ]);
+        invalidateExpenseRipples(true);
+        // If they have the breakdown modal open, refresh it!
+        queryClient.invalidateQueries({ queryKey: ["payout-details"] });
         toast.success(data.message);
       } else {
         toast.error(data.message);
@@ -85,8 +109,7 @@ export const useFinancials = () => {
     mutationFn: voidOwnerPayoutAction,
     onSuccess: (data) => {
       if (data.success) {
-        queryClient.invalidateQueries({ queryKey: ["expense-widgets"] });
-        queryClient.invalidateQueries({ queryKey: ["expense-table"] });
+        invalidateExpenseRipples(true);
         toast.success(data.message);
       } else {
         toast.error(data.message);
@@ -96,9 +119,6 @@ export const useFinancials = () => {
   });
 
   return {
-    // financials: query.data || [],
-    // isLoading: query.isLoading,
-    // isError: query.isError,
     page,
     setPage,
     limit,
@@ -118,16 +138,16 @@ export const useFinancials = () => {
 
 export const usePayoutDetails = (payoutId: string | null) => {
   return useQuery({
-    queryKey: ["payout-details", payoutId],
+    queryKey: QUERY_KEYS.financials.payoutDetails(payoutId!),
     queryFn: () => getPayoutBreakdown(payoutId!),
-    enabled: !!payoutId, // Only fetch if a payout ID is actually provided (modal is open)
+    enabled: !!payoutId,
     staleTime: 60 * 1000,
   });
 };
 
 export function useExpenseWidgets() {
   return useQuery({
-    queryKey: ["expense-widgets"],
+    queryKey: QUERY_KEYS.financials.expenseWidgets,
     queryFn: async () => await getExpenseWidgets(),
     staleTime: 60 * 1000,
   });
@@ -140,7 +160,7 @@ export function useExpenseTable(params: {
   sort?: string;
 }) {
   return useQuery({
-    queryKey: ["expense-table", params],
+    queryKey: QUERY_KEYS.financials.expenseTable(params),
     queryFn: async () => await getExpenseTableData(params),
     placeholderData: keepPreviousData,
     staleTime: 30 * 1000,

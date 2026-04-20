@@ -52,8 +52,8 @@ export async function signup(
       email,
       password,
       options: {
-        data: { full_name: name },
-        emailRedirectTo: `${origin}/auth/callback?next=/auth/login`,
+        data: { full_name: name, role: "customer" },
+        emailRedirectTo: `${origin}/auth/callback?next=/customer/fleet`,
       },
     });
 

@@ -4,13 +4,14 @@ import {
   markNotificationAsRead,
   markAllNotificationsAsRead,
 } from "@/actions/notifications";
+import { QUERY_KEYS } from "@/lib/query-keys";
 
 export function useNotifications() {
   const queryClient = useQueryClient();
 
   // 1. Fetching Hook
   const query = useQuery({
-    queryKey: ["notifications"],
+    queryKey: QUERY_KEYS.notifications.all,
     queryFn: () => getUserNotifications(),
   });
 
@@ -19,7 +20,7 @@ export function useNotifications() {
     mutationFn: (id: string) => markNotificationAsRead(id),
     onSuccess: () => {
       // Instantly refresh the notification list in the background
-      queryClient.invalidateQueries({ queryKey: ["notifications"] });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.notifications.all });
     },
   });
 
@@ -27,7 +28,7 @@ export function useNotifications() {
   const markAllAsRead = useMutation({
     mutationFn: () => markAllNotificationsAsRead(),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["notifications"] });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.notifications.all });
     },
   });
 

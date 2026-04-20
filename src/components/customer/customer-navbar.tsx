@@ -76,15 +76,17 @@ export default function CustomerNavbar() {
               <PopoverContent
                 align="end"
                 sideOffset={12}
-                className="w-[calc(100vw-2rem)] sm:w-96 p-0 rounded-2xl border-white/10 bg-[#0a1118]/95 backdrop-blur-2xl shadow-2xl overflow-hidden z-[100] mx-4 sm:mx-0"
+                // Notice the "!" before the width classes. This forces it to override shadcn's default w-72.
+                className="!w-[280px] sm:!w-96 p-0 rounded-2xl border-white/10 bg-[#0a1118]/95 backdrop-blur-2xl shadow-2xl overflow-hidden z-[100]"
               >
-                <div className="bg-white/5 border-b border-white/5 p-4 flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <h3 className="font-semibold text-white text-base sm:font-bold sm:text-sm sm:uppercase sm:tracking-wider">
+                {/* Header - Very tight mobile padding (p-2.5) */}
+                <div className="bg-white/5 border-b border-white/5 p-2.5 sm:p-4 flex items-center justify-between">
+                  <div className="flex items-center gap-2 sm:gap-3">
+                    <h3 className="text-[13px] font-semibold text-white sm:text-sm sm:font-bold sm:uppercase sm:tracking-wider">
                       Notifications
                     </h3>
                     {unreadCount > 0 && (
-                      <span className="text-[10px] font-bold text-black bg-[#64c5c3] px-2 py-0.5 rounded-full uppercase tracking-widest">
+                      <span className="text-[9px] sm:text-[10px] font-bold text-black bg-[#64c5c3] px-2 py-0.5 rounded-full uppercase tracking-widest">
                         {unreadCount} New
                       </span>
                     )}
@@ -92,15 +94,15 @@ export default function CustomerNavbar() {
                   {unreadCount > 0 && (
                     <button
                       onClick={() => markAllAsRead()}
-                      className="text-xs sm:text-[10px] text-gray-400 hover:text-[#64c5c3] sm:uppercase tracking-widest font-medium sm:font-bold transition-colors flex items-center gap-1"
+                      className="text-[9px] font-medium text-gray-400 hover:text-[#64c5c3] sm:text-[10px] sm:font-bold sm:uppercase sm:tracking-widest transition-colors flex items-center gap-1.5"
                     >
-                      <CheckCheck className="w-3 h-3 sm:w-4 sm:h-4" />
-                      <span className="hidden sm:inline">Mark All Read</span>
+                      <CheckCheck className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                      <span>Mark All Read</span>
                     </button>
                   )}
                 </div>
 
-                <div className="max-h-[350px] overflow-y-auto custom-scrollbar">
+                <div className="max-h-[60vh] sm:max-h-[350px] overflow-y-auto custom-scrollbar">
                   {notifications.length > 0 ? (
                     <div className="flex flex-col">
                       {notifications.map((notif: any) => (
@@ -111,18 +113,19 @@ export default function CustomerNavbar() {
                               markAsRead(notif.notification_id);
                           }}
                           className={cn(
-                            "p-4 sm:p-5 border-b border-white/5 flex gap-4 hover:bg-white/5 transition-colors cursor-pointer",
+                            // Tighter item padding and gap on mobile
+                            "p-3 sm:p-5 border-b border-white/5 flex gap-2.5 sm:gap-4 hover:bg-white/5 transition-colors cursor-pointer",
                             !notif.is_read
                               ? "bg-[#64c5c3]/10"
                               : "bg-transparent",
                           )}
                         >
-                          <div className="shrink-0 mt-1">
+                          <div className="shrink-0 mt-0.5">
                             {notif.type === "booking" ||
                             notif.type === "payment" ? (
                               <CheckCircle2
                                 className={cn(
-                                  "w-5 h-5",
+                                  "w-3.5 h-3.5 sm:w-5 sm:h-5", // Extra small icon for mobile
                                   !notif.is_read
                                     ? "text-[#64c5c3]"
                                     : "text-gray-500",
@@ -131,7 +134,7 @@ export default function CustomerNavbar() {
                             ) : (
                               <ShieldCheck
                                 className={cn(
-                                  "w-5 h-5",
+                                  "w-3.5 h-3.5 sm:w-5 sm:h-5", // Extra small icon for mobile
                                   !notif.is_read
                                     ? "text-blue-400"
                                     : "text-gray-500",
@@ -140,22 +143,22 @@ export default function CustomerNavbar() {
                             )}
                           </div>
                           <div>
-                            <div className="flex justify-between items-start mb-1">
+                            <div className="flex justify-between items-start mb-0.5 sm:mb-1">
                               <h4
                                 className={cn(
-                                  "text-sm tracking-wide",
+                                  "text-[12px] sm:text-sm sm:tracking-wide",
                                   !notif.is_read
-                                    ? "font-bold text-white"
+                                    ? "font-semibold sm:font-bold text-white"
                                     : "font-medium text-gray-300",
                                 )}
                               >
                                 {notif.title}
                               </h4>
                             </div>
-                            <p className="text-sm sm:text-xs text-gray-400 leading-relaxed mb-2">
+                            <p className="text-[10px] sm:text-xs text-gray-400 leading-snug sm:leading-relaxed mb-1.5 sm:mb-2">
                               {notif.message}
                             </p>
-                            <span className="text-xs sm:text-[10px] font-medium sm:font-bold text-[#64c5c3]/50 sm:uppercase sm:tracking-widest">
+                            <span className="text-[8px] font-medium text-[#64c5c3]/60 sm:text-[10px] sm:font-bold sm:uppercase sm:tracking-widest">
                               {formatDistanceToNow(new Date(notif.created_at), {
                                 addSuffix: true,
                               })}
@@ -165,8 +168,8 @@ export default function CustomerNavbar() {
                       ))}
                     </div>
                   ) : (
-                    <div className="p-8 text-center text-sm sm:text-xs font-medium sm:font-bold text-white/40 sm:uppercase sm:tracking-widest flex flex-col items-center">
-                      <Bell className="w-8 h-8 mb-3 opacity-20" />
+                    <div className="p-6 sm:p-8 text-center text-[10px] font-medium text-white/40 sm:text-xs sm:font-bold sm:uppercase sm:tracking-widest flex flex-col items-center">
+                      <Bell className="w-5 h-5 sm:w-8 sm:h-8 mb-2 sm:mb-3 opacity-20" />
                       No new notifications
                     </div>
                   )}

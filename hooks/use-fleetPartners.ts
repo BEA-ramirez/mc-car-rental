@@ -1,3 +1,5 @@
+"use client";
+
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { FleetPartnerType } from "@/lib/schemas/car-owner";
@@ -14,6 +16,7 @@ import {
   getPartnerDocumentsAction,
   getPartnerAuditLogsAction,
 } from "@/actions/manage-partner";
+import { QUERY_KEYS } from "@/lib/query-keys"; // <-- NEW IMPORT
 
 const fetchFleetPartners = async (): Promise<FleetPartnerType[]> => {
   const response = await fetch("/api/fleet-partners");
@@ -33,7 +36,7 @@ const fetchUnassignedCarOwners = async (): Promise<any[]> => {
 export const useFleetPartners = () => {
   const queryClient = useQueryClient();
   const query = useQuery({
-    queryKey: ["fleet-partners"],
+    queryKey: QUERY_KEYS.partners.all, // <-- UPDATED
     queryFn: fetchFleetPartners,
     staleTime: 60 * 1000,
   });
@@ -54,7 +57,14 @@ export const useFleetPartners = () => {
     },
     onSuccess: () => {
       toast.success("Fleet partner deleted successfully");
-      queryClient.invalidateQueries({ queryKey: ["fleet-partners"] });
+
+      // --- THE DELETE RIPPLES ---
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.partners.all });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.dashboard.summary }); // KPI Drops
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.users.clients() }); // Role resets
+      queryClient.invalidateQueries({
+        queryKey: QUERY_KEYS.partners.unassigned,
+      }); // Cars might be orphaned
     },
     onError: (error: Error) => {
       toast.error(error.message);
@@ -65,13 +75,13 @@ export const useFleetPartners = () => {
     ...query,
     deletePartner: deleteMutation.mutate,
     refresh: () =>
-      queryClient.invalidateQueries({ queryKey: ["fleet-partners"] }),
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.partners.all }),
   };
 };
 
 export const useUnassignedCarOwners = () => {
   return useQuery({
-    queryKey: ["unassigned-car-owners"],
+    queryKey: QUERY_KEYS.partners.unassigned, // <-- UPDATED
     queryFn: fetchUnassignedCarOwners,
     staleTime: 0, // Always fetch fresh data when opening the form
   });
@@ -90,7 +100,8 @@ export const useFleetPartnerApplication = () => {
     },
     onSuccess: (data) => {
       toast.success(data.message || "Application submitted successfully.");
-      queryClient.invalidateQueries({ queryKey: ["fleet-partners"] });
+      // FIXED: Hit the pending queue, not the main list!
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.partners.pending });
     },
     onError: (error: Error) => {
       toast.error(error.message);
@@ -108,7 +119,7 @@ export const useFleetPartnerApplications = () => {
 
   // Fetch Pending Queue
   const query = useQuery({
-    queryKey: ["fleet-partners-pending"],
+    queryKey: QUERY_KEYS.partners.pending, // <-- UPDATED
     queryFn: async () => {
       const result = await getPendingFleetPartnersAction();
       if (!result.success) throw new Error("Failed to fetch pending partners");
@@ -132,8 +143,12 @@ export const useFleetPartnerApplications = () => {
     },
     onSuccess: (data) => {
       toast.success(data.message);
-      queryClient.invalidateQueries({ queryKey: ["fleet-partners-pending"] });
-      queryClient.invalidateQueries({ queryKey: ["fleet-partners"] });
+
+      // --- THE APPROVAL RIPPLES ---
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.partners.pending });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.partners.all });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.dashboard.summary }); // KPI Goes Up
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.users.clients() }); // Role is elevated to Partner
     },
     onError: (error: Error) => {
       toast.error(error.message);
@@ -157,8 +172,9 @@ export const useFleetPartnerApplications = () => {
     },
     onSuccess: (data) => {
       toast.success(data.message);
-      queryClient.invalidateQueries({ queryKey: ["fleet-partners-pending"] });
-      queryClient.invalidateQueries({ queryKey: ["fleet-partners"] });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.partners.pending });
+      // Minor ripple: just in case they were already somehow in the main list
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.partners.all });
     },
     onError: (error: Error) => {
       toast.error(error.message);
@@ -181,12 +197,13 @@ export const usePartnerRevenueChart = (
   monthsBack: number = 6,
 ) => {
   return useQuery({
-    queryKey: ["partner-revenue-chart", ownerId, monthsBack],
+    // Needs a fallback empty string for TS if undefined
+    queryKey: QUERY_KEYS.partners.revenue(ownerId || "", monthsBack),
     queryFn: async () => {
       if (!ownerId) return [];
       return await getPartnerRevenueChartData(ownerId, monthsBack);
     },
-    enabled: !!ownerId, // Only run the query if we have an ownerId
+    enabled: !!ownerId,
   });
 };
 
@@ -195,7 +212,7 @@ export const usePartnerCarUtilization = (
   daysBack: number = 30,
 ) => {
   return useQuery({
-    queryKey: ["partner-car-utilization", ownerId, daysBack],
+    queryKey: QUERY_KEYS.partners.utilization(ownerId || "", daysBack), // <-- UPDATED
     queryFn: async () => {
       if (!ownerId) return [];
       return await getPartnerCarUtilization(ownerId, daysBack);
@@ -206,7 +223,7 @@ export const usePartnerCarUtilization = (
 
 export const usePartnerFleetUnits = (ownerId: string | undefined) => {
   return useQuery({
-    queryKey: ["partner-fleet-units", ownerId],
+    queryKey: QUERY_KEYS.partners.fleetUnits(ownerId || ""), // <-- UPDATED
     queryFn: async () => {
       if (!ownerId) return [];
       return await getPartnerFleetUnits(ownerId);
@@ -217,7 +234,7 @@ export const usePartnerFleetUnits = (ownerId: string | undefined) => {
 
 export const usePartnerPayoutHistory = (ownerId: string | undefined) => {
   return useQuery({
-    queryKey: ["partner-payout-history", ownerId],
+    queryKey: QUERY_KEYS.partners.payouts(ownerId || ""), // <-- UPDATED
     queryFn: async () => {
       if (!ownerId) return [];
       return await getPartnerPayoutHistory(ownerId);
@@ -228,7 +245,7 @@ export const usePartnerPayoutHistory = (ownerId: string | undefined) => {
 
 export const usePartnerDocuments = (ownerId: string | undefined) => {
   return useQuery({
-    queryKey: ["partner-documents", ownerId],
+    queryKey: QUERY_KEYS.partners.documents(ownerId || ""), // <-- UPDATED
     queryFn: async () => {
       if (!ownerId) return [];
       return await getPartnerDocumentsAction(ownerId);
@@ -239,7 +256,7 @@ export const usePartnerDocuments = (ownerId: string | undefined) => {
 
 export const usePartnerAuditLogs = (ownerId: string | undefined) => {
   return useQuery({
-    queryKey: ["partner-audit-logs", ownerId],
+    queryKey: QUERY_KEYS.partners.auditLogs(ownerId || ""), // <-- UPDATED
     queryFn: async () => {
       if (!ownerId) return [];
       return await getPartnerAuditLogsAction(ownerId);

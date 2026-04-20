@@ -10,6 +10,7 @@ import {
 import { toast } from "sonner";
 import { CompleteCarType } from "@/lib/schemas/car";
 import { useState } from "react";
+import { QUERY_KEYS } from "@/lib/query-keys";
 
 const fetchUnits = async (): Promise<CompleteCarType[]> => {
   const response = await fetch("/api/units");
@@ -25,7 +26,7 @@ export const useUnits = (unitId?: string) => {
     const [searchQuery, setSearchQuery] = useState("");
 
     const query = useQuery({
-      queryKey: ["specifications", searchQuery],
+      queryKey: QUERY_KEYS.fleet.specifications(searchQuery),
       queryFn: () => searchSpecifications(searchQuery),
       staleTime: 60 * 1000, //cache for 1 min
     });
@@ -41,7 +42,7 @@ export const useUnits = (unitId?: string) => {
     const [searchQuery, setSearchQuery] = useState("");
 
     const query = useQuery({
-      queryKey: ["features", searchQuery],
+      queryKey: QUERY_KEYS.fleet.features(searchQuery),
       queryFn: () => searchFeatures(searchQuery),
       staleTime: 60 * 1000, //cache for 1 min
     });
@@ -54,14 +55,14 @@ export const useUnits = (unitId?: string) => {
   };
 
   const query = useQuery({
-    queryKey: ["units"],
+    queryKey: QUERY_KEYS.fleet.all,
     queryFn: fetchUnits,
     staleTime: 60 * 1000,
   });
 
   // fetch unit for editing
   const unitQuery = useQuery({
-    queryKey: ["unit", unitId],
+    queryKey: QUERY_KEYS.fleet.detail(unitId!),
     queryFn: () => getUnitById(unitId!),
     enabled: !!unitId, // only fetch if id exists
   });
@@ -72,13 +73,19 @@ export const useUnits = (unitId?: string) => {
     onSuccess: (data) => {
       if (data.success) {
         toast.success(data.message);
+
         // Invalidate the main list
-        queryClient.invalidateQueries({ queryKey: ["units"] });
+        queryClient.invalidateQueries({ queryKey: QUERY_KEYS.fleet.all });
+
         // Invalidate specific edit queries
         if (unitId) {
-          queryClient.invalidateQueries({ queryKey: ["unit", unitId] });
+          queryClient.invalidateQueries({
+            queryKey: QUERY_KEYS.fleet.detail(unitId),
+          });
         }
+
         // Also invalidate the detailed view if it was updated
+        // (Uses the base key to wipe all cached detail views)
         queryClient.invalidateQueries({ queryKey: ["car-details"] });
       } else {
         toast.error(data.message);
@@ -95,7 +102,7 @@ export const useUnits = (unitId?: string) => {
     onSuccess: (data) => {
       if (data.success) {
         toast.success(data.message);
-        queryClient.invalidateQueries({ queryKey: ["units"] });
+        queryClient.invalidateQueries({ queryKey: QUERY_KEYS.fleet.all }); // <-- UPDATED
       } else {
         toast.error(data.message);
       }
