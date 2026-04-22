@@ -476,7 +476,6 @@ export default function DocumentsMain() {
         isOpen={!!contractDoc}
         onClose={() => setContractDoc(null)}
         contract={contractDoc}
-        onDownload={(id) => console.log("Downloading contract PDF:", id)}
         onSign={async (id, signatureDataUrl) => {
           try {
             await signContract({ id, signatureDataUrl });
