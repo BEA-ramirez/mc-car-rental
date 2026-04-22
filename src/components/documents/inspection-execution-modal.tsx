@@ -63,14 +63,18 @@ export default function InspectionExecutionModal({
     setHistoryStep(newHistory.length - 1);
   }, [history, historyStep]);
 
-  // 2. Define initCanvas SECOND, so it can use saveState
   const initCanvas = useCallback(() => {
     const canvas = canvasRef.current;
     const container = containerRef.current;
     if (!canvas || !container) return;
 
-    canvas.width = container.scrollWidth;
-    canvas.height = container.scrollHeight;
+    const newWidth = container.scrollWidth;
+    const newHeight = container.scrollHeight;
+
+    if (canvas.width !== newWidth || canvas.height !== newHeight) {
+      canvas.width = newWidth;
+      canvas.height = newHeight;
+    }
 
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
@@ -88,10 +92,10 @@ export default function InspectionExecutionModal({
         ctx.drawImage(img, 0, 0);
         saveState();
       };
-    } else {
+    } else if (history.length === 0) {
       saveState();
     }
-  }, [existingDrawingUrl, saveState]); // Now this dependency array works perfectly!
+  }, [existingDrawingUrl, saveState, history.length]);
 
   useEffect(() => {
     if (isOpen && inspection?.checklist_data) {
@@ -128,7 +132,6 @@ export default function InspectionExecutionModal({
     };
   };
 
-  // Drawing Handlers
   const getCoordinates = (e: React.MouseEvent | React.TouchEvent) => {
     const canvas = canvasRef.current;
     if (!canvas) return { x: 0, y: 0 };
@@ -184,7 +187,6 @@ export default function InspectionExecutionModal({
     saveState();
   };
 
-  // --- SAVE LOGIC ---
   const handleSave = async () => {
     const scribbleDataUrl = canvasRef.current?.toDataURL("image/png");
 
@@ -210,7 +212,6 @@ export default function InspectionExecutionModal({
     }
   };
 
-  // --- EXPORT PDF DELEGATION ---
   const handleExportPDF = async () => {
     if (!containerRef.current) return;
     toast.loading("Generating Aligned PDF...", { id: "pdf-toast" });
@@ -230,67 +231,73 @@ export default function InspectionExecutionModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl p-0 h-[90vh] flex flex-col border-border bg-background shadow-2xl rounded-2xl transition-colors">
-        {/* HEADER & TOOLS */}
-        <DialogHeader className="px-4 py-3 border-b border-border bg-card shrink-0 flex flex-col gap-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center">
-                <ShieldCheck className="w-4 h-4 text-primary" />
-              </div>
-              <DialogTitle className="text-sm font-bold text-foreground tracking-tight uppercase">
-                {inspection.type} Digital Inspection
-              </DialogTitle>
+      <DialogContent className="!max-w-7xl w-[65vw]! p-0 h-[90vh] flex flex-col border-border bg-background shadow-2xl rounded-2xl transition-colors [&>button.absolute]:hidden">
+        {/* --- CLEANED HEADER --- */}
+        <DialogHeader className="px-5 py-3 border-b border-border bg-card shrink-0 flex flex-row items-center justify-between transition-colors">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center">
+              <ShieldCheck className="w-4 h-4 text-primary" />
             </div>
-            <div className="flex items-center gap-2">
-              {existingDrawingUrl && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleExportPDF}
-                  className="h-8 px-3 text-[10px] uppercase font-bold text-primary border-primary/20 bg-primary/5 hover:bg-primary/10"
-                >
-                  <Download className="w-3.5 h-3.5 mr-1.5" /> Export PDF
-                </Button>
-              )}
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={onClose}
-                className="h-8 w-8"
-              >
-                <X className="w-4 h-4" />
-              </Button>
+            <div className="flex flex-col text-left">
+              <DialogTitle className="text-sm font-bold text-foreground tracking-tight uppercase leading-none mb-1">
+                {inspection.type} Inspection
+              </DialogTitle>
+              <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest leading-none">
+                Digital Assessment Record
+              </span>
             </div>
           </div>
 
-          <div className="flex items-center gap-2 bg-secondary/50 p-1.5 rounded-lg w-max">
+          <div className="flex items-center gap-2">
+            {/* Canvas Tools Group */}
+            <div className="flex items-center bg-secondary/50 border border-border rounded-lg p-1 mr-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleUndo}
+                disabled={historyStep <= 0}
+                className="h-7 px-2.5 text-[9px] font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground"
+              >
+                <Undo className="w-3 h-3 mr-1.5" /> Undo
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleRedo}
+                disabled={historyStep >= history.length - 1}
+                className="h-7 px-2.5 text-[9px] font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground"
+              >
+                <Redo className="w-3 h-3 mr-1.5" /> Redo
+              </Button>
+              <div className="w-px h-4 bg-border mx-1" />
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={clearCanvas}
+                className="h-7 px-2.5 text-[9px] font-bold uppercase tracking-widest text-destructive hover:text-destructive hover:bg-destructive/10"
+              >
+                <Eraser className="w-3 h-3 mr-1.5" /> Clear
+              </Button>
+            </div>
+
+            {/* Export & Close Group */}
+            {existingDrawingUrl && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleExportPDF}
+                className="h-9 px-3 text-[9px] uppercase font-bold text-primary border-primary/20 bg-primary/5 hover:bg-primary/10 transition-colors shadow-none"
+              >
+                <Download className="w-3.5 h-3.5 mr-1.5" /> PDF
+              </Button>
+            )}
             <Button
               variant="ghost"
-              size="sm"
-              onClick={handleUndo}
-              disabled={historyStep <= 0}
-              className="h-7 px-2 text-[10px] uppercase"
+              size="icon"
+              onClick={onClose}
+              className="h-9 w-9 text-muted-foreground hover:text-foreground hover:bg-secondary rounded-lg transition-colors shadow-none"
             >
-              <Undo className="w-3.5 h-3.5 mr-1" /> Undo
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleRedo}
-              disabled={historyStep >= history.length - 1}
-              className="h-7 px-2 text-[10px] uppercase"
-            >
-              <Redo className="w-3.5 h-3.5 mr-1" /> Redo
-            </Button>
-            <div className="w-px h-4 bg-border mx-1" />
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={clearCanvas}
-              className="h-7 px-2 text-[10px] uppercase text-destructive hover:text-destructive"
-            >
-              <Eraser className="w-3.5 h-3.5 mr-1" /> Clear Ink
+              <X className="w-4 h-4" />
             </Button>
           </div>
         </DialogHeader>
@@ -370,7 +377,10 @@ export default function InspectionExecutionModal({
                     src={blueprintUrl}
                     alt="Car Blueprint"
                     crossOrigin="anonymous"
-                    className="w-full max-w-[450px] opacity-80"
+                    width={450}
+                    height={300}
+                    className="w-full max-w-[450px] h-auto opacity-80"
+                    onLoad={initCanvas}
                   />
                 </div>
               )}
@@ -390,16 +400,16 @@ export default function InspectionExecutionModal({
         </div>
 
         {/* FOOTER */}
-        <div className="bg-card border-t border-border p-3 shrink-0 flex gap-2 justify-end z-50">
+        <div className="bg-card border-t border-border p-4 shrink-0 flex gap-3 justify-end z-50 transition-colors">
           <Button
             variant="outline"
-            className="h-8 px-4 text-[10px] font-bold uppercase tracking-widest"
+            className="h-9 px-5 text-[10px] font-bold uppercase tracking-widest shadow-none rounded-lg hover:bg-secondary transition-colors"
             onClick={onClose}
           >
             Cancel
           </Button>
           <Button
-            className="h-8 px-5 text-[10px] font-bold uppercase tracking-widest bg-primary"
+            className="h-9 px-6 text-[10px] font-bold uppercase tracking-widest bg-primary hover:opacity-90 text-primary-foreground rounded-lg shadow-sm transition-opacity"
             onClick={handleSave}
             disabled={isSaving}
           >

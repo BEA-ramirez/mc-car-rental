@@ -937,29 +937,14 @@ export const generateInspectionPDF = async (
   const shortId = booking.id.split("-")[0].toUpperCase();
   const currentDate = format(new Date(), "MMM dd, yyyy hh:mm a");
 
-  // 1. Locate the blueprint section in the DOM
-  const blueprintEl = containerElement.querySelector(
-    "#pdf-blueprint-section",
-  ) as HTMLElement;
-
-  // CRITICAL FIX: Calculate the exact pixel offset BEFORE we call html-to-image.
-  // html-to-image temporarily alters the DOM layout, which throws off the math if done later.
-  let pixelOffset = 0;
+  // 1. Get the total dimensions of the container
   const scrollHeight = containerElement.scrollHeight;
   const scrollWidth = containerElement.scrollWidth;
-
-  if (blueprintEl) {
-    const containerRect = containerElement.getBoundingClientRect();
-    const blueprintRect = blueprintEl.getBoundingClientRect();
-    // Calculate exact distance from the top of the scrollable container to the top of the car title
-    pixelOffset =
-      blueprintRect.top - containerRect.top + containerElement.scrollTop;
-  }
 
   // 2. Create the A4 PDF Document
   const doc = new jsPDF("p", "mm", "a4");
   const pageHeight = doc.internal.pageSize.getHeight();
-  const pdfWidth = doc.internal.pageSize.getWidth() - 28; // 14mm margins
+  const pdfWidth = doc.internal.pageSize.getWidth() - 28; // 14mm margins on left and right
 
   // --- NATIVE HEADER SECTION ---
   doc.setTextColor(15, 23, 42);
@@ -1000,7 +985,7 @@ export const generateInspectionPDF = async (
 
   const startY = 52; // Where the snapshot starts printing on Page 1
 
-  // --- PIXEL-PERFECT SNAPSHOT SECTION ---
+  // --- CONTINUOUS SNAPSHOT SECTION ---
   const { toPng } = await import("html-to-image");
 
   try {
@@ -1017,47 +1002,29 @@ export const generateInspectionPDF = async (
     const ratio = imgProps.height / imgProps.width;
     const totalPdfHeight = pdfWidth * ratio;
 
-    // Map the HTML pixel offset to the PDF millimeter offset
-    const percentageDown = pixelOffset / scrollHeight;
-    const blueprintOffsetPdfY = totalPdfHeight * percentageDown;
+    // ==============================================================
+    // PAGE GENERATION (Smooth Continuous Flow)
+    // ==============================================================
 
-    // ==============================================================
-    // PAGE 1: Draw Full Image, but MASK everything below the checklist
-    // ==============================================================
+    // Draw Page 1
     doc.addImage(imgData, "PNG", 14, startY, pdfWidth, totalPdfHeight);
 
-    // Calculate where the car starts on the physical PDF paper
-    const absoluteBlueprintY = startY + blueprintOffsetPdfY;
+    // Calculate how much of the image successfully printed on Page 1
+    let printedHeight = pageHeight - startY;
+    let heightLeft = totalPdfHeight - printedHeight;
+    const topMargin = 14;
 
-    // Draw a massive solid white rectangle over the car blueprint so it becomes invisible on Page 1
-    doc.setFillColor(255, 255, 255);
-    // We start the mask 5mm higher than the car to catch any stray borders
-    doc.rect(
-      0,
-      absoluteBlueprintY - 5,
-      doc.internal.pageSize.getWidth(),
-      pageHeight,
-      "F",
-    );
-
-    // ==============================================================
-    // PAGE 2: Shift Image Up to Blueprint Start
-    // ==============================================================
-    doc.addPage();
-
-    // We want the car blueprint to start nicely near the top of Page 2 (Y = 20)
-    // So we shift the massive snapshot UP by exactly the car's offset
-    let shiftY = -blueprintOffsetPdfY + 20;
-
-    doc.addImage(imgData, "PNG", 14, shiftY, pdfWidth, totalPdfHeight);
-
-    // (Fallback) If the car blueprint and signatures somehow bleed off the bottom of Page 2, add Page 3
-    let remainingHeightOnPage2 = shiftY + totalPdfHeight;
-    while (remainingHeightOnPage2 > pageHeight) {
+    // If the image overflows Page 1, generate subsequent pages naturally
+    while (heightLeft > 0) {
       doc.addPage();
-      shiftY -= pageHeight;
-      doc.addImage(imgData, "PNG", 14, shiftY, pdfWidth, totalPdfHeight);
-      remainingHeightOnPage2 -= pageHeight;
+
+      // Shift the image UP by the exact amount we've already printed so it perfectly aligns
+      const nextYPosition = topMargin - printedHeight;
+      doc.addImage(imgData, "PNG", 14, nextYPosition, pdfWidth, totalPdfHeight);
+
+      // Update counters for the next potential loop
+      printedHeight += pageHeight - topMargin;
+      heightLeft -= pageHeight - topMargin;
     }
 
     doc.save(`${inspection.type}_Inspection_${shortId}.pdf`);

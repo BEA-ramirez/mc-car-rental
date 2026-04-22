@@ -76,6 +76,8 @@ export default function AdminBookingDetailsPage() {
     isGeneratingContract,
     startTrip,
     isStartingTrip,
+    updateContractFields,
+    isUpdatingContract,
   } = useBookingWorkflows(bookingId);
   const { signContract } = useDocumentMutations();
   const { data: folio } = useBookingFolio(bookingId);
@@ -211,11 +213,6 @@ export default function AdminBookingDetailsPage() {
   const handleStartHandoverClick = async () => {
     if (!contract) await generateContract(bookingId);
     setIsInspectionExecOpen(true);
-  };
-
-  const handlePreTripComplete = () => {
-    setIsInspectionExecOpen(false);
-    setIsContractOpen(true);
   };
 
   return (
@@ -873,12 +870,20 @@ export default function AdminBookingDetailsPage() {
             : undefined,
         }}
         onSign={handleContractSigned}
+        isUpdatingContract={isUpdatingContract}
+        onUpdateFields={async (id, dest, fuel) => {
+          await updateContractFields({
+            bookingId: id,
+            destination: dest,
+            fuelLevel: fuel,
+          });
+        }}
       />
 
       {/* Pre-Trip Modal */}
       <InspectionExecutionModal
         isOpen={isInspectionExecOpen}
-        onClose={handlePreTripComplete}
+        onClose={() => setIsInspectionExecOpen(false)}
         inspection={
           preTripInspection || {
             inspection_id: `NEW_PRETRIP_${bookingId}`,
