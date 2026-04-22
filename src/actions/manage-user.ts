@@ -238,28 +238,6 @@ export async function createClientAction(
         .eq("user_id", newUserId);
 
       if (dbError) throw dbError;
-
-      // --- NEW: Auto-Generate Operational Profiles ---
-      if (profileData.role === "driver") {
-        const { error: driverError } = await supabaseAdmin
-          .from("drivers")
-          .insert({
-            user_id: newUserId,
-            driver_status: "AVAILABLE",
-            is_verified: true, // <-- Auto-verified by Admin
-          });
-        if (driverError) throw driverError;
-      } else if (profileData.role === "car_owner") {
-        const { error: ownerError } = await supabaseAdmin
-          .from("car_owner")
-          .insert({
-            user_id: newUserId,
-            business_name: full_name || "Pending Business Name",
-            revenue_share_percentage: 70,
-            verification_status: "VERIFIED", // <-- Auto-verified by Admin
-          });
-        if (ownerError) throw ownerError;
-      }
     } catch (innerError: any) {
       // ORPHAN CLEANUP ROLLBACK
       console.error(
@@ -364,7 +342,6 @@ export async function updateClientAction(
       p_full_name: full_name,
       p_email: email || null,
       p_role: profileData.role,
-      p_account_status: profileData.account_status,
       p_phone_number: profileData.phone_number || null,
       p_address: profileData.address || null,
       p_license_number: profileData.license_number || null,
@@ -387,52 +364,6 @@ export async function updateClientAction(
       app_metadata: { role: profileData.role },
       user_metadata: { role: profileData.role }, // Keep user_metadata matching
     });
-
-    // --- NEW: Ensure Operational Profiles Exist if Role Changed ---
-    if (profileData.role === "driver") {
-      const { data: existingDriver } = await supabaseAdmin
-        .from("drivers")
-        .select("driver_id")
-        .eq("user_id", user_id)
-        .single();
-
-      if (!existingDriver) {
-        // Create new auto-verified driver
-        await supabaseAdmin.from("drivers").insert({
-          user_id: user_id,
-          driver_status: "Available",
-          is_verified: true,
-        });
-      } else {
-        // If they already exist (e.g., they were pending), force them to verified
-        await supabaseAdmin
-          .from("drivers")
-          .update({ is_verified: true })
-          .eq("user_id", user_id);
-      }
-    } else if (profileData.role === "car_owner") {
-      const { data: existingOwner } = await supabaseAdmin
-        .from("car_owner")
-        .select("car_owner_id")
-        .eq("user_id", user_id)
-        .single();
-
-      if (!existingOwner) {
-        // Create new auto-verified fleet partner
-        await supabaseAdmin.from("car_owner").insert({
-          user_id: user_id,
-          business_name: full_name || "Pending Business Name",
-          revenue_share_percentage: 70,
-          verification_status: "verified",
-        });
-      } else {
-        // If they already exist, force them to verified
-        await supabaseAdmin
-          .from("car_owner")
-          .update({ verification_status: "verified" })
-          .eq("user_id", user_id);
-      }
-    }
 
     revalidatePath("/admin/clients");
     return { success: true, message: "User updated successfully" };

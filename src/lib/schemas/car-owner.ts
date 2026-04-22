@@ -8,7 +8,6 @@ export const carOwnerSchema = z.object({
     .string()
     .min(2, { message: "Business name must be at least 2 characters." }),
 
-  verification_status: z.enum(["PENDING", "VERIFIED", "REJECTED"]),
   active_status: z.boolean(),
   owner_notes: z.string().max(500).optional().nullable(),
 
@@ -33,7 +32,7 @@ export const carOwnerSchema = z.object({
 
   // --- CONTRACT FIELD ---
   contract_expiry_date: z.coerce.date().optional().nullable(),
-  trust_score: z.number().min(0).max(5).default(0),
+  //trust_score: z.number().min(0).max(5).default(0),
 
   created_at: z.coerce.date().optional(),
   last_updated_at: z.coerce.date().optional(),

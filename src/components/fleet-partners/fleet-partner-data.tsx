@@ -1,3 +1,6 @@
+"use client";
+
+import React from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import ActivePartners from "./active-partners";
 import { Users, UserPlus } from "lucide-react";
@@ -5,24 +8,24 @@ import PartnerRequestsQueue from "./partner-requests-queue";
 
 export default function FleetPartnerData() {
   return (
-    <div className="flex flex-col h-320 bg-slate-50/50">
+    <div className="flex flex-col flex-1 h-full w-full bg-background transition-colors duration-300 min-h-0">
       <Tabs
         defaultValue="active-partners"
-        className="flex flex-col h-full min-h-0"
+        className="flex flex-col h-full min-h-0 w-full"
       >
         {/* TAB NAVIGATION */}
-        <div className=" shrink-0">
-          <TabsList className="w-full bg-white p-0.5 rounded-md mb-3 shadow-sm inline-flex">
+        <div className="shrink-0 mb-4">
+          <TabsList className="bg-secondary/50 border border-border/50 p-1 rounded-lg h-auto shadow-inner transition-colors inline-flex">
             <TabsTrigger
               value="active-partners"
-              className="uppercase py-2 text-xs font-medium px-4 rounded-[4px] data-[state=active]:bg-[#0F172A] data-[state=active]:shadow-sm data-[state=active]:text-white text-slate-500 transition-all gap-1.5"
+              className="text-[10px] font-bold uppercase tracking-widest px-4 py-1.5 rounded-md data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm text-muted-foreground transition-all flex items-center gap-1.5"
             >
               <Users className="w-3.5 h-3.5" />
               Active Partners
             </TabsTrigger>
             <TabsTrigger
               value="app-requests"
-              className="uppercase py-2 text-xs font-medium px-4 rounded-[4px] data-[state=active]:bg-[#0F172A] data-[state=active]:shadow-sm data-[state=active]:text-white text-slate-500 transition-all gap-1.5"
+              className="text-[10px] font-bold uppercase tracking-widest px-4 py-1.5 rounded-md data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm text-muted-foreground transition-all flex items-center gap-1.5"
             >
               <UserPlus className="w-3.5 h-3.5" />
               Application Requests

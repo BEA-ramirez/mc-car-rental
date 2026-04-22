@@ -107,7 +107,6 @@ export async function saveDriverApplication(): Promise<ActionState> {
     const { error } = await supabase.from("drivers").insert({
       user_id: user.id,
       driver_status: "PENDING",
-      is_verified: false,
       is_archived: false,
       created_at: new Date().toISOString(),
       last_updated_at: new Date().toISOString(),

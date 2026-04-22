@@ -41,15 +41,15 @@ export const sidebarData = {
     },
     { title: "Calendar", url: "/admin/calendar", icon: Calendar },
   ],
-  operations: [
-    { title: "Bookings", url: "/admin/bookings", icon: ListCheck },
+  users: [
     { title: "Clients", url: "/admin/clients", icon: SquareUser },
     { title: "Drivers", url: "/admin/drivers", icon: LifeBuoy },
+    { title: "Fleet Partners", url: "/admin/fleet-partners", icon: Users },
   ],
   fleet: [
+    { title: "Bookings", url: "/admin/bookings", icon: ListCheck },
     { title: "Units (Cars)", url: "/admin/units", icon: CarFront },
     { title: "Tracking", url: "/admin/tracking", icon: Route },
-    { title: "Fleet Partners", url: "/admin/fleet-partners", icon: Users },
   ],
   business: [
     {
@@ -109,7 +109,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
       <SidebarContent className="bg-sidebar pt-2 transition-all duration-200 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
         <NavMain items={sidebarData.overview} label="Overview" />
-        <NavMain items={sidebarData.operations} label="Operations" />
+        <NavMain items={sidebarData.users} label="Users" />
         <NavMain items={sidebarData.fleet} label="Fleet Management" />
         <NavMain items={sidebarData.business} label="Business Hub" />
       </SidebarContent>

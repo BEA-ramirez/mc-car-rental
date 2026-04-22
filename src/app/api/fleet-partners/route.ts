@@ -7,15 +7,16 @@ export async function GET() {
     const { data: rawData, error } = await supabase
       .from("car_owner")
       .select(
-        `*,partner_is_archived: is_archived,
+        `*, partner_is_archived: is_archived,
          users!inner(*, user_is_archived: is_archived)`,
       )
+      .eq("users.role", "car_owner") // <-- THE FIX: Only fetch official partners
       .order("created_at", { ascending: false });
 
     if (error) {
       console.error("Supabase error:", error);
       return NextResponse.json(
-        { messaege: "Failed to fetch fleet partners from database." },
+        { message: "Failed to fetch fleet partners from database." },
         { status: 500 },
       );
     }

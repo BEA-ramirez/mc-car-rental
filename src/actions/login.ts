@@ -83,6 +83,16 @@ export async function logout() {
   const supabase = await createClient();
 
   try {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (user) {
+      await supabase
+        .from("users")
+        .update({ last_active_at: new Date().toISOString() })
+        .eq("user_id", user.id);
+    }
     const { error } = await supabase.auth.signOut();
     if (error) throw error;
   } catch (error) {

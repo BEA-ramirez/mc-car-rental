@@ -86,48 +86,9 @@ function getRoleBadgeStyle(role: string) {
   }
 }
 
-function getStatusBadge(status: string) {
-  if (status === "VERIFIED" || status === "active")
-    return (
-      <Badge
-        variant="outline"
-        className="text-[8px] uppercase tracking-widest bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 px-1.5 rounded"
-      >
-        Verified
-      </Badge>
-    );
-  if (status === "SUSPENDED")
-    return (
-      <Badge
-        variant="outline"
-        className="text-[8px] uppercase tracking-widest bg-secondary text-muted-foreground border-border px-1.5 rounded"
-      >
-        Suspended
-      </Badge>
-    );
-  if (status === "REJECTED")
-    return (
-      <Badge
-        variant="outline"
-        className="text-[8px] uppercase tracking-widest bg-destructive/10 text-destructive border-destructive/20 px-1.5 rounded"
-      >
-        Rejected
-      </Badge>
-    );
-  return (
-    <Badge
-      variant="outline"
-      className="text-[8px] uppercase tracking-widest bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20 px-1.5 rounded"
-    >
-      Pending
-    </Badge>
-  );
-}
-
 export default function ClientsDataGrid() {
   const [searchQuery, setSearchQuery] = useState("");
   const debouncedSearch = useDebounce(searchQuery, 500); // Waits half a second
-  const [statusFilter, setStatusFilter] = useState<string[]>([]);
   const [roleFilter, setRoleFilter] = useState<string[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
@@ -144,7 +105,7 @@ export default function ClientsDataGrid() {
     page: currentPage,
     limit: itemsPerPage,
     search: debouncedSearch,
-    statusFilter,
+    statusFilter: [], // We removed status filtering logic
     roleFilter,
   });
 
@@ -202,16 +163,6 @@ export default function ClientsDataGrid() {
     }
   };
 
-  const handleStatusCheckedChange = (filter: string) => {
-    if (currentPage !== 1) setCurrentPage(1);
-    if (statusFilter.includes(filter)) {
-      const cleanData = statusFilter.filter((f) => f !== filter);
-      setStatusFilter(cleanData);
-    } else {
-      setStatusFilter([...statusFilter, filter]);
-    }
-  };
-
   const handleRoleCheckedChange = (filter: string) => {
     if (currentPage !== 1) setCurrentPage(1);
     if (roleFilter.includes(filter)) {
@@ -224,8 +175,6 @@ export default function ClientsDataGrid() {
 
   const handleExportExcel = async () => {
     const urlParams = new URLSearchParams({ search: searchQuery });
-    if (statusFilter.length > 0)
-      urlParams.append("status", statusFilter.join(","));
     if (roleFilter.length > 0) urlParams.append("role", roleFilter.join(","));
     urlParams.append("export", "true");
 
@@ -236,8 +185,6 @@ export default function ClientsDataGrid() {
 
   const handleExportPDF = async () => {
     const urlParams = new URLSearchParams({ search: searchQuery });
-    if (statusFilter.length > 0)
-      urlParams.append("status", statusFilter.join(","));
     if (roleFilter.length > 0) urlParams.append("role", roleFilter.join(","));
     urlParams.append("export", "true");
 
@@ -279,18 +226,18 @@ export default function ClientsDataGrid() {
                   size="sm"
                   className={cn(
                     "h-8 px-3 rounded-lg shadow-none border-border transition-colors",
-                    statusFilter.length > 0 || roleFilter.length > 0
+                    roleFilter.length > 0
                       ? "border-primary bg-primary/10 text-primary hover:bg-primary/20"
                       : "text-muted-foreground bg-secondary hover:bg-background hover:text-foreground",
                   )}
                 >
                   <Filter className="w-3.5 h-3.5 mr-1.5" />
                   <span className="text-[10px] font-bold uppercase tracking-widest">
-                    Filter
+                    Filter Roles
                   </span>
-                  {(statusFilter.length > 0 || roleFilter.length > 0) && (
+                  {roleFilter.length > 0 && (
                     <span className="ml-1.5 flex h-4 w-4 items-center justify-center rounded bg-primary text-[8px] font-bold text-primary-foreground">
-                      {statusFilter.length + roleFilter.length}
+                      {roleFilter.length}
                     </span>
                   )}
                 </Button>
@@ -299,42 +246,6 @@ export default function ClientsDataGrid() {
                 align="start"
                 className="w-48 rounded-xl border-border shadow-xl p-1 bg-popover"
               >
-                <DropdownMenuLabel className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground px-2 py-1.5">
-                  By Status
-                </DropdownMenuLabel>
-                <DropdownMenuCheckboxItem
-                  className="text-[11px] font-semibold rounded-lg cursor-pointer transition-colors focus:bg-secondary"
-                  checked={statusFilter.includes("PENDING")}
-                  onCheckedChange={() => handleStatusCheckedChange("PENDING")}
-                  onSelect={(e) => e.preventDefault()}
-                >
-                  Pending
-                </DropdownMenuCheckboxItem>
-                <DropdownMenuCheckboxItem
-                  className="text-[11px] font-semibold rounded-lg cursor-pointer transition-colors focus:bg-secondary"
-                  checked={statusFilter.includes("VERIFIED")}
-                  onCheckedChange={() => handleStatusCheckedChange("VERIFIED")}
-                  onSelect={(e) => e.preventDefault()}
-                >
-                  Verified
-                </DropdownMenuCheckboxItem>
-                <DropdownMenuCheckboxItem
-                  className="text-[11px] font-semibold rounded-lg cursor-pointer transition-colors focus:bg-secondary"
-                  checked={statusFilter.includes("REJECTED")}
-                  onCheckedChange={() => handleStatusCheckedChange("REJECTED")}
-                  onSelect={(e) => e.preventDefault()}
-                >
-                  Rejected
-                </DropdownMenuCheckboxItem>
-                <DropdownMenuCheckboxItem
-                  className="text-[11px] font-semibold rounded-lg cursor-pointer transition-colors focus:bg-secondary"
-                  checked={statusFilter.includes("SUSPENDED")}
-                  onCheckedChange={() => handleStatusCheckedChange("SUSPENDED")}
-                  onSelect={(e) => e.preventDefault()}
-                >
-                  Suspended
-                </DropdownMenuCheckboxItem>
-                <DropdownMenuSeparator className="bg-border" />
                 <DropdownMenuLabel className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground px-2 py-1.5">
                   By Role
                 </DropdownMenuLabel>
@@ -378,16 +289,13 @@ export default function ClientsDataGrid() {
                 >
                   Admin
                 </DropdownMenuCheckboxItem>
-                <DropdownMenuSeparator className="bg-border" />
-
-                {(statusFilter.length > 0 || roleFilter.length > 0) && (
+                {roleFilter.length > 0 && (
                   <>
                     <DropdownMenuSeparator className="bg-border mt-1" />
                     <DropdownMenuItem
                       className="text-[9px] font-bold uppercase tracking-widest text-destructive hover:text-destructive hover:bg-destructive/10 justify-center cursor-pointer py-2 mt-1 rounded-lg transition-colors"
                       onClick={(e) => {
                         e.preventDefault();
-                        setStatusFilter([]);
                         setRoleFilter([]);
                         setCurrentPage(1);
                       }}
@@ -486,8 +394,9 @@ export default function ClientsDataGrid() {
                   <TableHead className="h-8 text-[9px] font-bold uppercase tracking-widest text-muted-foreground">
                     Role
                   </TableHead>
+                  {/* NEW TRUST SCORE COLUMN */}
                   <TableHead className="h-8 text-[9px] font-bold uppercase tracking-widest text-muted-foreground">
-                    Status
+                    Trust Score
                   </TableHead>
                   <TableHead
                     className={cn(
@@ -601,9 +510,14 @@ export default function ClientsDataGrid() {
                           </Badge>
                         </TableCell>
 
-                        {/* STATUS */}
+                        {/* TRUST SCORE COLUMN */}
                         <TableCell className="py-2 align-middle">
-                          {getStatusBadge(user.account_status || "PENDING")}
+                          <div className="flex items-center gap-1">
+                            <span className="text-[12px]">⭐</span>
+                            <span className="text-[11px] font-bold font-mono text-foreground">
+                              {(user.trust_score || 5).toFixed(1)}
+                            </span>
+                          </div>
                         </TableCell>
 
                         {/* LAST ACTIVE */}
@@ -614,7 +528,7 @@ export default function ClientsDataGrid() {
                           )}
                         >
                           <span className="text-[10px] font-mono text-muted-foreground">
-                            2026-03-14
+                            {user.last_active_at ? new Date(user.last_active_at).toLocaleDateString() : 'New Account'}
                           </span>
                         </TableCell>
 
@@ -813,11 +727,13 @@ export default function ClientsDataGrid() {
                     <div className="grid grid-cols-2 gap-4">
                       <div className="flex flex-col gap-1">
                         <span className="text-[9px] text-muted-foreground font-bold uppercase tracking-widest">
-                          Status
+                          Account Access
                         </span>
                         <div>
-                          {getStatusBadge(
-                            selectedUser.account_status || "PENDING",
+                          {selectedUser.is_archived ? (
+                            <Badge variant="outline" className="text-[8px] uppercase tracking-widest bg-destructive/10 text-destructive border-destructive/20 px-1.5 rounded">Banned</Badge>
+                          ) : (
+                            <Badge variant="outline" className="text-[8px] uppercase tracking-widest bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 px-1.5 rounded">Active</Badge>
                           )}
                         </div>
                       </div>

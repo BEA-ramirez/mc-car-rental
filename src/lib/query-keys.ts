@@ -5,7 +5,8 @@ export const QUERY_KEYS = {
   users: {
     customers: ["users", "customers"] as const,
     profile: ["customer-profile"] as const,
-    clients: (params?: any) => ["clients", params] as const,
+    clients: (params?: any) =>
+      params ? (["clients", params] as const) : (["clients"] as const),
     clientsKpi: ["clients-kpi"] as const,
   },
 

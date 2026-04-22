@@ -19,39 +19,40 @@ interface PartnerLogsProps {
   selectedPartner: FleetPartnerType | null;
 }
 
-// Helper to pick the right icon/color based on the action type
 function getLogStyling(actionType: string) {
   const type = actionType?.toUpperCase() || "";
 
   if (type.includes("CREATE") || type.includes("ADD")) {
     return {
       icon: PlusCircle,
-      colorClass: "text-emerald-600 bg-emerald-50 border-emerald-100",
+      colorClass:
+        "text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border-emerald-500/20",
     };
   }
   if (type.includes("UPDATE") || type.includes("EDIT")) {
     return {
       icon: Edit3,
-      colorClass: "text-blue-600 bg-blue-50 border-blue-100",
+      colorClass:
+        "text-blue-600 dark:text-blue-400 bg-blue-500/10 border-blue-500/20",
     };
   }
   if (type.includes("DELETE") || type.includes("REMOVE")) {
     return {
       icon: Trash2,
-      colorClass: "text-red-600 bg-red-50 border-red-100",
+      colorClass: "text-destructive bg-destructive/10 border-destructive/20",
     };
   }
   if (type.includes("AUTH") || type.includes("VERIFY")) {
     return {
       icon: ShieldAlert,
-      colorClass: "text-amber-600 bg-amber-50 border-amber-100",
+      colorClass:
+        "text-amber-600 dark:text-amber-400 bg-amber-500/10 border-amber-500/20",
     };
   }
 
-  // Default generic action
   return {
     icon: Activity,
-    colorClass: "text-slate-600 bg-slate-100 border-slate-200",
+    colorClass: "text-muted-foreground bg-secondary border-border",
   };
 }
 
@@ -63,39 +64,39 @@ export default function PartnerLogs({ selectedPartner }: PartnerLogsProps) {
   if (!selectedPartner) return null;
 
   return (
-    <div className="flex flex-col h-full w-full bg-transparent">
+    <div className="flex flex-col h-full w-full bg-transparent transition-colors duration-300">
       {/* Header Info */}
-      <div className="flex items-center justify-between mb-4 px-1 shrink-0">
+      <div className="flex items-center justify-between mb-4 shrink-0 border-b border-border pb-2.5 transition-colors">
         <div>
-          <h3 className="text-[10px] font-bold text-slate-800 uppercase tracking-widest">
+          <h3 className="text-[10px] font-bold text-foreground uppercase tracking-widest leading-none">
             System Audit Trail
           </h3>
-          <p className="text-[10px] text-slate-500 font-medium uppercase tracking-widest mt-1">
+          <p className="text-[9px] text-muted-foreground font-bold uppercase tracking-widest mt-1.5">
             Latest 100 Account Activities
           </p>
         </div>
       </div>
 
       {/* Scrollable Timeline Area */}
-      <div className="flex-1 overflow-y-auto min-h-0 custom-scrollbar px-1 relative">
+      <div className="flex-1 overflow-y-auto min-h-0 custom-scrollbar relative">
         {isLoading ? (
-          <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/50 z-10">
-            <Loader2 className="w-6 h-6 animate-spin text-slate-400 mb-3" />
-            <span className="text-[9px] font-bold uppercase tracking-widest text-slate-500">
+          <div className="absolute inset-0 flex flex-col items-center justify-center bg-background/50 backdrop-blur-sm z-10 transition-colors">
+            <Loader2 className="w-5 h-5 animate-spin text-primary mb-2" />
+            <span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">
               Fetching Security Logs...
             </span>
           </div>
         ) : !logs || logs.length === 0 ? (
-          <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-50/50 rounded-sm border border-dashed border-slate-200 z-10">
-            <History className="w-6 h-6 text-slate-300 mb-3 opacity-50" />
-            <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
+          <div className="absolute inset-0 flex flex-col items-center justify-center bg-secondary/30 rounded-xl border border-dashed border-border z-10 transition-colors">
+            <History className="w-6 h-6 text-muted-foreground/30 mb-2 opacity-80" />
+            <span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">
               No Activity Recorded
             </span>
           </div>
         ) : (
-          <div className="flex flex-col relative pb-6 pl-4">
+          <div className="flex flex-col relative pb-4 pl-3.5">
             {/* The vertical timeline line */}
-            <div className="absolute left-[27px] top-4 bottom-6 w-px bg-slate-200" />
+            <div className="absolute left-[25.5px] top-4 bottom-4 w-px bg-border transition-colors" />
 
             {logs.map((log: any, index: number) => {
               const { icon: Icon, colorClass } = getLogStyling(log.action_type);
@@ -105,48 +106,45 @@ export default function PartnerLogs({ selectedPartner }: PartnerLogsProps) {
                 <div
                   key={log.log_id}
                   className={cn(
-                    "relative flex items-start gap-5",
-                    !isLast && "mb-6",
+                    "relative flex items-start gap-4",
+                    !isLast && "mb-5",
                   )}
                 >
                   {/* Timeline Dot/Icon */}
                   <div
                     className={cn(
-                      "w-7 h-7 rounded-full flex items-center justify-center border z-10 shrink-0",
+                      "w-6 h-6 rounded-full flex items-center justify-center border z-10 shrink-0 shadow-sm transition-colors",
                       colorClass,
                     )}
                   >
-                    <Icon className="w-3.5 h-3.5" />
+                    <Icon className="w-3 h-3" />
                   </div>
 
                   {/* Log Content Card */}
-                  <div className="flex-1 bg-white border border-slate-200 rounded-sm p-3 shadow-sm hover:border-slate-300 hover:shadow-md transition-all">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
-                      <div className="flex items-center gap-2">
-                        <span className="text-[10px] font-bold text-[#0F172A] uppercase tracking-widest px-1.5 py-0.5 bg-slate-100 rounded-sm">
+                  <div className="flex-1 bg-card border border-border rounded-xl p-2.5 shadow-sm hover:border-primary/30 transition-all">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-1.5">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-[9px] font-black text-foreground uppercase tracking-wider px-1.5 py-0.5 bg-secondary rounded border border-border">
                           {log.action_type.replace(/_/g, " ")}
                         </span>
                         {log.entity_type && (
-                          <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">
-                            Target: {log.entity_type.replace(/_/g, " ")}
+                          <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest font-mono">
+                            [{log.entity_type.replace(/_/g, " ")}]
                           </span>
                         )}
                       </div>
-                      <span className="text-[9px] text-slate-400 font-mono tracking-wide whitespace-nowrap">
-                        {format(
-                          new Date(log.created_at),
-                          "MMM dd, yyyy • HH:mm",
-                        )}
+                      <span className="text-[9px] text-muted-foreground font-mono font-bold tracking-tight uppercase">
+                        {format(new Date(log.created_at), "MMM dd • HH:mm")}
                       </span>
                     </div>
 
-                    <p className="text-xs text-slate-600 leading-relaxed font-medium">
+                    <p className="text-[11px] text-foreground/80 leading-relaxed font-medium">
                       {log.description}
                     </p>
 
-                    <div className="mt-2 pt-2 border-t border-slate-50 flex justify-end">
-                      <span className="text-[8px] text-slate-300 font-mono uppercase tracking-widest">
-                        Log ID: {log.log_id.split("-")[0]}
+                    <div className="mt-1.5 pt-1.5 border-t border-border/50 flex justify-end">
+                      <span className="text-[8px] text-muted-foreground/50 font-mono uppercase tracking-widest">
+                        LOG_{log.log_id.split("-")[0].toUpperCase()}
                       </span>
                     </div>
                   </div>

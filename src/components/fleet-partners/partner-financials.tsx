@@ -41,162 +41,165 @@ export default function PartnerFinancials({
   };
 
   return (
-    <div className="flex flex-col h-full w-full bg-transparent">
+    <div className="flex flex-col h-full w-full bg-transparent transition-colors duration-300">
       {/* --- TOP METRICS --- */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 shrink-0">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4 shrink-0">
         {/* Wallet Balance */}
-        <div className="bg-white border border-slate-200 rounded-sm p-4 shadow-sm flex flex-col justify-between relative overflow-hidden">
-          <div className="absolute top-0 left-0 w-full h-1 bg-amber-500" />
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+        <div className="bg-card border border-border rounded-xl p-3.5 shadow-sm flex flex-col justify-between transition-colors hover:border-primary/30">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest leading-none">
               Pending Wallet
             </span>
-            <Wallet className="w-4 h-4 text-slate-400" />
+            <div className="bg-amber-500/10 p-1.5 rounded-lg border border-amber-500/20 shrink-0">
+              <Wallet className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+            </div>
           </div>
-          <div className="text-xl font-bold text-[#0F172A] font-mono">
+          <div className="text-xl font-black text-foreground font-mono leading-none mb-1.5">
             {formatPHP(selectedPartner.wallet_balance || 0)}
           </div>
-          <span className="text-[9px] font-medium text-slate-400 mt-1 uppercase tracking-widest">
+          <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">
             Unsettled Revenue
           </span>
         </div>
 
         {/* Lifetime Earnings */}
-        <div className="bg-white border border-slate-200 rounded-sm p-4 shadow-sm flex flex-col justify-between relative overflow-hidden">
-          <div className="absolute top-0 left-0 w-full h-1 bg-emerald-500" />
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+        <div className="bg-card border border-border rounded-xl p-3.5 shadow-sm flex flex-col justify-between transition-colors hover:border-primary/30">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest leading-none">
               Lifetime Earnings
             </span>
-            <TrendingUp className="w-4 h-4 text-slate-400" />
+            <div className="bg-emerald-500/10 p-1.5 rounded-lg border border-emerald-500/20 shrink-0">
+              <TrendingUp className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+            </div>
           </div>
-          <div className="text-xl font-bold text-[#0F172A] font-mono">
+          <div className="text-xl font-black text-foreground font-mono leading-none mb-1.5">
             {formatPHP(selectedPartner.total_lifetime_earnings || 0)}
           </div>
-          <span className="text-[9px] font-medium text-slate-400 mt-1 uppercase tracking-widest">
+          <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">
             Total Paid Out
           </span>
         </div>
 
         {/* Revenue Share */}
-        <div className="bg-white border border-slate-200 rounded-sm p-4 shadow-sm flex flex-col justify-between relative overflow-hidden">
-          <div className="absolute top-0 left-0 w-full h-1 bg-blue-500" />
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+        <div className="bg-card border border-border rounded-xl p-3.5 shadow-sm flex flex-col justify-between transition-colors hover:border-primary/30">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest leading-none">
               Contract Terms
             </span>
-            <Percent className="w-4 h-4 text-slate-400" />
+            <div className="bg-primary/10 p-1.5 rounded-lg border border-primary/20 shrink-0">
+              <Percent className="w-3.5 h-3.5 text-primary" />
+            </div>
           </div>
-          <div className="text-xl font-bold text-[#0F172A] font-mono">
+          <div className="text-xl font-black text-foreground font-mono leading-none mb-1.5">
             {selectedPartner.revenue_share_percentage}%
           </div>
-          <span className="text-[9px] font-medium text-slate-400 mt-1 uppercase tracking-widest">
+          <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">
             Partner Revenue Share
           </span>
         </div>
       </div>
 
       {/* --- LEDGER TABLE --- */}
-      <div className="flex items-center justify-between mb-3 px-1 shrink-0">
-        <h3 className="text-[10px] font-bold text-slate-800 uppercase tracking-widest">
+      <div className="flex items-center justify-between mb-2.5 shrink-0 border-b border-border pb-2.5 transition-colors">
+        <h3 className="text-[10px] font-bold text-foreground uppercase tracking-widest leading-none">
           Settlement Ledger
         </h3>
         <Button
           variant="outline"
           size="sm"
-          className="h-7 text-[9px] font-bold uppercase tracking-widest rounded-sm border-slate-200 shadow-none"
+          className="h-7 px-3 text-[9px] font-bold uppercase tracking-widest rounded-lg border-border shadow-none bg-background text-foreground hover:bg-secondary transition-colors"
         >
           Export CSV
         </Button>
       </div>
 
-      <div className="flex-1 overflow-y-auto min-h-0 custom-scrollbar border border-slate-200 rounded-sm bg-white relative">
+      <div className="flex-1 overflow-y-auto min-h-0 custom-scrollbar border border-border rounded-xl bg-card relative transition-colors shadow-sm">
         {isLoading ? (
-          <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/50 z-10">
-            <Loader2 className="w-6 h-6 animate-spin text-slate-400 mb-3" />
-            <span className="text-[9px] font-bold uppercase tracking-widest text-slate-500">
+          <div className="absolute inset-0 flex flex-col items-center justify-center bg-background/50 backdrop-blur-sm z-10 transition-colors">
+            <Loader2 className="w-5 h-5 animate-spin text-primary mb-2" />
+            <span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">
               Loading Ledger...
             </span>
           </div>
         ) : !payouts || payouts.length === 0 ? (
-          <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-50/50 z-10">
-            <FileText className="w-6 h-6 text-slate-300 mb-3 opacity-50" />
-            <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
+          <div className="absolute inset-0 flex flex-col items-center justify-center bg-secondary/30 z-10 transition-colors border border-dashed border-border rounded-xl">
+            <FileText className="w-6 h-6 text-muted-foreground/30 mb-2 opacity-80" />
+            <span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">
               No Settlement History
             </span>
           </div>
         ) : (
-          <table className="w-full text-left text-sm whitespace-nowrap">
-            <thead className="bg-[#F8FAFC] border-b border-slate-200 sticky top-0 z-10">
+          <table className="w-full text-left text-[11px] whitespace-nowrap">
+            <thead className="bg-secondary/30 border-b border-border sticky top-0 z-10 transition-colors">
               <tr>
-                <th className="h-10 px-4 text-[9px] font-bold uppercase tracking-widest text-slate-500">
+                <th className="h-8 px-4 text-[9px] font-bold uppercase tracking-widest text-muted-foreground">
                   Period
                 </th>
-                <th className="h-10 px-4 text-[9px] font-bold uppercase tracking-widest text-slate-500">
+                <th className="h-8 px-4 text-[9px] font-bold uppercase tracking-widest text-muted-foreground">
                   Gross Revenue
                 </th>
-                <th className="h-10 px-4 text-[9px] font-bold uppercase tracking-widest text-slate-500">
+                <th className="h-8 px-4 text-[9px] font-bold uppercase tracking-widest text-muted-foreground">
                   Commission
                 </th>
-                <th className="h-10 px-4 text-[9px] font-bold uppercase tracking-widest text-[#0F172A]">
+                <th className="h-8 px-4 text-[9px] font-bold uppercase tracking-widest text-foreground">
                   Net Payout
                 </th>
-                <th className="h-10 px-4 text-[9px] font-bold uppercase tracking-widest text-slate-500">
+                <th className="h-8 px-4 text-[9px] font-bold uppercase tracking-widest text-muted-foreground">
                   Status
                 </th>
-                <th className="h-10 px-4 text-[9px] font-bold uppercase tracking-widest text-slate-500 text-right">
+                <th className="h-8 px-4 text-[9px] font-bold uppercase tracking-widest text-muted-foreground text-right">
                   Action
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-border">
               {payouts.map((payout: any) => (
                 <tr
                   key={payout.payout_id}
-                  className="hover:bg-slate-50 transition-colors group"
+                  className="hover:bg-secondary/50 transition-colors group"
                 >
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-2.5">
                     <div className="flex flex-col">
-                      <span className="text-[11px] font-bold text-[#0F172A]">
+                      <span className="text-[11px] font-bold text-foreground transition-colors">
                         {format(new Date(payout.period_start), "MMM dd")} -{" "}
                         {format(new Date(payout.period_end), "MMM dd, yyyy")}
                       </span>
-                      <span className="text-[9px] text-slate-400 font-mono mt-0.5">
+                      <span className="text-[9px] text-muted-foreground font-mono mt-0.5">
                         ID: {payout.payout_id.split("-")[0].toUpperCase()}
                       </span>
                     </div>
                   </td>
-                  <td className="px-4 py-3 text-[11px] font-mono text-slate-600">
+                  <td className="px-4 py-2.5 text-[11px] font-mono font-medium text-muted-foreground">
                     {formatPHP(payout.total_revenue)}
                   </td>
-                  <td className="px-4 py-3 text-[11px] font-mono text-red-600">
+                  <td className="px-4 py-2.5 text-[11px] font-mono font-medium text-destructive">
                     -{formatPHP(payout.commission_deducted)}
                   </td>
-                  <td className="px-4 py-3 text-[11px] font-mono font-bold text-emerald-600">
+                  <td className="px-4 py-2.5 text-[11px] font-mono font-bold text-emerald-600 dark:text-emerald-400">
                     {formatPHP(payout.net_payout)}
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-2.5">
                     <Badge
                       variant="outline"
                       className={cn(
-                        "text-[9px] font-bold h-5 px-1.5 uppercase tracking-widest rounded-[2px] shadow-none",
+                        "text-[8px] font-bold h-4 px-1.5 uppercase tracking-widest rounded shadow-none transition-colors",
                         payout.status === "PAID"
-                          ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                          ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
                           : payout.status === "PENDING"
-                            ? "bg-amber-50 text-amber-700 border-amber-200"
-                            : "bg-slate-50 text-slate-700 border-slate-200",
+                            ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20"
+                            : "bg-secondary text-muted-foreground border-border",
                       )}
                     >
                       {payout.status}
                     </Badge>
                   </td>
-                  <td className="px-4 py-3 text-right">
+                  <td className="px-4 py-2.5 text-right">
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-7 w-7 rounded-sm opacity-0 group-hover:opacity-100 transition-opacity text-slate-400 hover:text-[#0F172A]"
+                      className="h-7 w-7 rounded-lg opacity-0 group-hover:opacity-100 transition-all text-muted-foreground hover:text-foreground hover:bg-secondary"
                     >
-                      <ArrowRight className="w-4 h-4" />
+                      <ArrowRight className="w-3.5 h-3.5" />
                     </Button>
                   </td>
                 </tr>

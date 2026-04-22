@@ -16,10 +16,7 @@ export type ActionState = {
   success?: boolean;
 };
 
-export async function managePartner(
-  prevState: ActionState,
-  formData: FormData,
-): Promise<ActionState> {
+export async function managePartner(prevState: any, formData: FormData) {
   const rawData = Object.fromEntries(formData.entries());
 
   const processedData = {
@@ -28,7 +25,7 @@ export async function managePartner(
     revenue_share_percentage: Number(rawData.revenue_share_percentage),
     owner_notes: rawData.owner_notes || null,
     contract_expiry_date: rawData.contract_expiry_date
-      ? new Date(String(rawData.contract_expiry_date))
+      ? new Date(String(rawData.contract_expiry_date)).toISOString()
       : null,
   };
 
@@ -45,24 +42,68 @@ export async function managePartner(
   }
 
   const { car_owner_id, ...dataToSave } = validateFields.data;
-  const supabase = await createClient();
-  const supabaseAdmin = createAdminClient(); // <-- NEW: Instantiate admin client
+  const supabaseAdmin = createAdminClient();
   const now = new Date().toISOString();
 
   try {
     let targetUserId = dataToSave.user_id;
 
     if (car_owner_id) {
+      // --- OVERLAPPING RESERVATION CHECK (If Suspending) ---
+      if (dataToSave.active_status === false) {
+        // Fetch all cars owned by this partner
+        const { data: partnerCars } = await supabaseAdmin
+          .from("cars")
+          .select("car_id")
+          .eq("car_owner_id", car_owner_id);
+
+        if (partnerCars && partnerCars.length > 0) {
+          const carIds = partnerCars.map((c) => c.car_id);
+
+          // Check if any of these cars have active or upcoming bookings
+          const { data: activeBookings } = await supabaseAdmin
+            .from("bookings")
+            .select("booking_id")
+            .in("car_id", carIds)
+            .in("booking_status", ["PENDING", "CONFIRMED", "ONGOING"]);
+
+          if (activeBookings && activeBookings.length > 0) {
+            return {
+              success: false,
+              message:
+                "Cannot suspend partner: Their fleet has active or upcoming reservations.",
+            };
+          }
+        }
+      }
+
       // --- UPDATE EXISTING PARTNER ---
-      const { error } = await supabase
+      const { error } = await supabaseAdmin
         .from("car_owner")
         .update({ ...dataToSave, last_updated_at: now })
         .eq("car_owner_id", car_owner_id);
       if (error) throw error;
 
+      // --- CASCADE FLEET STATUS ---
+      // If suspended, cars become Unavailable. If reactivated, cars become Available.
+      const targetCarStatus = dataToSave.active_status
+        ? "Available"
+        : "Unavailable";
+      const { error: cascadeError } = await supabaseAdmin
+        .from("cars")
+        .update({ availability_status: targetCarStatus, last_updated_at: now })
+        .eq("car_owner_id", car_owner_id);
+
+      if (cascadeError) {
+        console.error(
+          "Warning: Partner updated but fleet cascade failed:",
+          cascadeError,
+        );
+      }
+
       // If user_id wasn't in the form data for the update, fetch it so we can sync the role
       if (!targetUserId) {
-        const { data: ownerRecord } = await supabase
+        const { data: ownerRecord } = await supabaseAdmin
           .from("car_owner")
           .select("user_id")
           .eq("car_owner_id", car_owner_id)
@@ -78,7 +119,7 @@ export async function managePartner(
         };
       }
 
-      const { error } = await supabase.from("car_owner").insert({
+      const { error } = await supabaseAdmin.from("car_owner").insert({
         ...dataToSave,
         created_at: now,
         last_updated_at: now,
@@ -86,16 +127,15 @@ export async function managePartner(
       if (error) throw error;
     }
 
-    // --- NEW: THE MAGIC SYNC ---
     // Guarantee this user has the car_owner role in both the DB and their Auth token
     if (targetUserId) {
-      // 1. Sync the visible role in public.users
+      // Sync the visible role in public.users
       await supabaseAdmin
         .from("users")
         .update({ role: "car_owner", last_updated_at: now })
         .eq("user_id", targetUserId);
 
-      // 2. Sync the secure Auth metadata for RLS policies
+      // Sync the secure Auth metadata for RLS policies
       const { error: authError } =
         await supabaseAdmin.auth.admin.updateUserById(targetUserId, {
           app_metadata: { role: "car_owner" },
@@ -111,6 +151,8 @@ export async function managePartner(
     }
 
     revalidatePath("/admin/fleet-partners");
+    revalidatePath("/admin/fleet"); // Revalidate fleet page since car statuses changed
+
     return {
       success: true,
       message: car_owner_id

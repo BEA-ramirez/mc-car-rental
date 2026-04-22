@@ -25,13 +25,13 @@ import { usePartnerFleetUnits } from "../../../hooks/use-fleetPartners";
 function getStatusStyle(status: string) {
   switch (status?.toLowerCase()) {
     case "available":
-      return "bg-emerald-50 text-emerald-700 border-emerald-200";
+      return "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20";
     case "rented":
-      return "bg-blue-50 text-blue-700 border-blue-200";
+      return "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20";
     case "maintenance":
-      return "bg-amber-50 text-amber-700 border-amber-200";
+      return "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20";
     default:
-      return "bg-slate-50 text-slate-600 border-slate-200";
+      return "bg-secondary text-muted-foreground border-border";
   }
 }
 
@@ -48,68 +48,68 @@ export default function PartnerUnits({
   if (!selectedPartner) return null;
 
   return (
-    <div className="flex flex-col h-full w-full bg-transparent relative">
+    <div className="flex flex-col h-full w-full bg-transparent relative transition-colors duration-300">
       {/* Header Info */}
-      <div className="flex items-center justify-between mb-4 px-1">
-        <h3 className="text-[10px] font-bold text-slate-800 uppercase tracking-widest">
+      <div className="flex items-center justify-between mb-3 shrink-0 border-b border-border pb-2.5 transition-colors">
+        <h3 className="text-[10px] font-bold text-foreground uppercase tracking-widest leading-none">
           Active Fleet Units
         </h3>
-        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+        <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">
           {fleetUnits?.length || 0} Units Total
         </span>
       </div>
 
       {/* List Area */}
-      <div className="flex-1 overflow-y-auto min-h-0 custom-scrollbar px-1 relative">
+      <div className="flex-1 overflow-y-auto min-h-0 custom-scrollbar relative">
         {isLoading ? (
-          <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/50 z-10">
-            <Loader2 className="w-6 h-6 animate-spin text-slate-400 mb-3" />
-            <span className="text-[9px] font-bold uppercase tracking-widest text-slate-500">
+          <div className="absolute inset-0 flex flex-col items-center justify-center bg-background/50 backdrop-blur-sm z-10 transition-colors">
+            <Loader2 className="w-5 h-5 animate-spin text-primary mb-2" />
+            <span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">
               Loading Fleet Data...
             </span>
           </div>
         ) : !fleetUnits || fleetUnits.length === 0 ? (
-          <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-50/50 rounded-sm border border-dashed border-slate-200 z-10">
-            <Car className="w-6 h-6 text-slate-300 mb-3 opacity-50" />
-            <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
+          <div className="absolute inset-0 flex flex-col items-center justify-center bg-secondary/30 rounded-xl border border-dashed border-border z-10 transition-colors">
+            <Car className="w-6 h-6 text-muted-foreground/30 mb-2 opacity-80" />
+            <span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">
               No Active Vehicles
             </span>
           </div>
         ) : (
-          <div className="flex flex-col gap-2 pb-6">
+          <div className="flex flex-col gap-2 pb-4">
             {fleetUnits.map((car: any) => (
               <div
                 key={car.car_id}
-                className="group flex items-center justify-between p-3 rounded-sm border border-slate-200 bg-white hover:border-slate-300 hover:shadow-sm transition-colors shrink-0"
+                className="group flex items-center justify-between p-2.5 px-3.5 rounded-xl border border-border bg-card hover:border-primary/40 hover:shadow-sm transition-all shrink-0"
               >
-                <div className="flex items-center gap-4">
+                <div className="flex items-center gap-3.5">
                   {/* Icon Container */}
-                  <div className="h-10 w-10 rounded-sm bg-slate-50 flex items-center justify-center border border-slate-200 shrink-0">
-                    <Car className="w-4 h-4 text-slate-400" />
+                  <div className="h-10 w-10 rounded-lg bg-secondary flex items-center justify-center border border-border shrink-0 transition-colors">
+                    <Car className="w-4 h-4 text-muted-foreground" />
                   </div>
 
                   {/* Info Text */}
                   <div className="flex flex-col">
                     <div className="flex items-center gap-2">
-                      <span className="text-xs font-bold text-[#0F172A] uppercase">
+                      <span className="text-[11px] font-bold text-foreground uppercase tracking-tight transition-colors">
                         {car.brand} {car.model}
                       </span>
-                      <span className="text-[10px] font-mono font-bold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200 uppercase tracking-widest">
+                      <span className="text-[9px] font-mono font-bold text-muted-foreground bg-secondary px-1.5 py-0.5 rounded border border-border uppercase tracking-widest transition-colors">
                         {car.plate_number}
                       </span>
                     </div>
-                    <div className="flex items-center gap-2 mt-1">
+                    <div className="flex items-center gap-2 mt-1.5">
                       <Badge
                         variant="outline"
                         className={cn(
-                          "text-[9px] font-bold w-fit h-4 px-1.5 uppercase tracking-widest rounded-[2px]",
+                          "text-[8px] font-bold w-fit h-4 px-1.5 uppercase tracking-widest rounded shadow-none transition-colors",
                           getStatusStyle(car.availability_status),
                         )}
                       >
                         {car.availability_status || "Unknown"}
                       </Badge>
                       {/* Optional: Add year and color to make use of the extra RPC data */}
-                      <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">
+                      <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">
                         {car.year} • {car.color}
                       </span>
                     </div>
@@ -122,25 +122,23 @@ export default function PartnerUnits({
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-7 w-7 rounded-sm shrink-0 md:opacity-0 group-hover:opacity-100 transition-opacity shadow-none text-slate-400 hover:text-[#0F172A] hover:bg-slate-100 focus:bg-slate-100 outline-none"
+                      className="h-7 w-7 rounded-lg shrink-0 lg:opacity-0 group-hover:opacity-100 transition-all shadow-none text-muted-foreground hover:text-foreground hover:bg-secondary focus:bg-secondary outline-none"
                     >
                       <MoreHorizontal className="h-4 w-4" />
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent
                     align="end"
-                    className="w-40 rounded-sm border-slate-200 shadow-xl"
+                    className="w-40 rounded-xl border-border shadow-xl bg-popover p-1"
                   >
-                    <DropdownMenuItem className="text-[10px] font-bold uppercase tracking-widest text-slate-700 cursor-pointer">
-                      <Eye className="w-3.5 h-3.5 mr-2 text-slate-400" /> View
-                      Unit
+                    <DropdownMenuItem className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground focus:bg-secondary focus:text-foreground cursor-pointer rounded-lg transition-colors py-2">
+                      <Eye className="w-3.5 h-3.5 mr-2" /> View Unit
                     </DropdownMenuItem>
-                    <DropdownMenuItem className="text-[10px] font-bold uppercase tracking-widest text-slate-700 cursor-pointer">
-                      <Settings2 className="w-3.5 h-3.5 mr-2 text-slate-400" />{" "}
-                      Edit Config
+                    <DropdownMenuItem className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground focus:bg-secondary focus:text-foreground cursor-pointer rounded-lg transition-colors py-2">
+                      <Settings2 className="w-3.5 h-3.5 mr-2" /> Edit Config
                     </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem className="text-[10px] font-bold uppercase tracking-widest text-red-600 focus:bg-red-50 focus:text-red-700 cursor-pointer">
+                    <DropdownMenuSeparator className="bg-border my-1" />
+                    <DropdownMenuItem className="text-[10px] font-bold uppercase tracking-widest text-destructive focus:bg-destructive/10 focus:text-destructive cursor-pointer rounded-lg transition-colors py-2">
                       <AlertCircle className="w-3.5 h-3.5 mr-2" /> Offboard Unit
                     </DropdownMenuItem>
                   </DropdownMenuContent>
