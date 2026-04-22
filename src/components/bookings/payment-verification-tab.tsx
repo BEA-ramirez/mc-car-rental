@@ -13,16 +13,14 @@ import {
   CalendarDays,
   ShieldCheck,
   ExternalLink,
-  MapPin,
-  Clock,
   FileText,
   AlertCircle,
   Loader2,
+  Receipt,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { usePendingPayments } from "../../../hooks/use-payments"; // Adjust path
 import {
   Dialog,
   DialogContent,
@@ -32,9 +30,15 @@ import {
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 
+// Hooks & Modals
+import { usePendingPayments } from "../../../hooks/use-payments";
+import { useDocumentMutations } from "../../../hooks/use-documents";
+import ReviewModal, { ReviewDocument } from "../documents/review-modal";
+
 export default function PaymentVerificationView() {
   const { payments, isLoading, isProcessing, handleVerify } =
     usePendingPayments();
+  const { verifyDoc, rejectDoc } = useDocumentMutations(); // Document actions
   const [search, setSearch] = useState("");
 
   // Verification Modal State
@@ -45,6 +49,9 @@ export default function PaymentVerificationView() {
   // Rejection State inside the Modal
   const [isRejectMode, setIsRejectMode] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
+
+  // Document Review State
+  const [reviewingDoc, setReviewingDoc] = useState<ReviewDocument | null>(null);
 
   const filteredPayments = payments.filter(
     (p) =>
@@ -60,8 +67,21 @@ export default function PaymentVerificationView() {
     setRejectReason("");
   };
 
-  const closeReviewModal = () => {
-    setSelectedPayment(null);
+  const closeReviewModal = () => setSelectedPayment(null);
+
+  // Helper to map DB doc to ReviewModal format
+  const handleOpenDocReview = (doc: any, user: any) => {
+    setReviewingDoc({
+      id: doc.document_id,
+      customerName: user.full_name || "Unknown",
+      customerEmail: user.email || "N/A",
+      customerPhone: user.phone_number || "N/A",
+      trustScore: user.trust_score || 5,
+      type: doc.category?.replace("_", " "),
+      uploadedAt: format(new Date(doc.created_at), "MMM dd, yyyy - HH:mm"),
+      imageUrl: doc.file_url || doc.file_path, // Map to whichever your DB uses
+      status: doc.status,
+    });
   };
 
   const submitApprove = () => {
@@ -183,7 +203,6 @@ export default function PaymentVerificationView() {
 
       {/* --- THE COMPREHENSIVE VERIFICATION MODAL --- */}
       <Dialog open={!!selectedPayment} onOpenChange={closeReviewModal}>
-        {/* INCREASED WIDTH TO max-w-6xl */}
         <DialogContent className="max-w-6xl! w-[95vw]! bg-background border border-border text-foreground rounded-2xl p-0 overflow-hidden shadow-xl">
           {selectedPayment && (
             <div className="grid grid-cols-1 xl:grid-cols-12 h-full max-h-[90vh]">
@@ -217,22 +236,21 @@ export default function PaymentVerificationView() {
               <div className="xl:col-span-7 flex flex-col h-full overflow-y-auto custom-scrollbar p-6">
                 <DialogHeader className="mb-5 border-b border-border pb-4">
                   <DialogTitle className="text-base font-bold text-foreground">
-                    Booking Verification
+                    Booking Command Center
                   </DialogTitle>
                   <DialogDescription className="text-[11px] text-muted-foreground mt-1">
-                    Verify the customer details and payment accuracy before
-                    confirming the booking.
+                    Verify documents, validate payment, and confirm the booking.
                   </DialogDescription>
                 </DialogHeader>
 
                 <div className="flex-1 flex flex-col gap-4">
-                  {/* 1. Customer Intelligence */}
+                  {/* 1. Customer Intelligence & Documents */}
                   <div className="bg-card border border-border rounded-xl p-4 shadow-sm shrink-0">
                     <h3 className="text-[10px] font-semibold text-muted-foreground mb-3 flex items-center gap-1.5">
-                      <User className="w-3.5 h-3.5" /> Customer Information
+                      <User className="w-3.5 h-3.5" /> Customer Profile & KYC
                     </h3>
-                    <div className="grid grid-cols-2 gap-2">
-                      <div className="border border-border rounded p-2 bg-secondary/50 flex flex-col justify-between">
+                    <div className="grid grid-cols-2 gap-2 mb-3">
+                      <div className="border border-border rounded p-2 bg-secondary/50">
                         <p className="text-[9px] font-medium text-muted-foreground mb-0.5">
                           Full Name
                         </p>
@@ -240,7 +258,7 @@ export default function PaymentVerificationView() {
                           {selectedPayment.booking.user?.full_name}
                         </p>
                       </div>
-                      <div className="border border-border rounded p-2 bg-secondary/50 flex flex-col justify-between">
+                      <div className="border border-border rounded p-2 bg-secondary/50">
                         <p className="text-[9px] font-medium text-muted-foreground mb-0.5">
                           Contact
                         </p>
@@ -250,51 +268,73 @@ export default function PaymentVerificationView() {
                       </div>
                     </div>
 
-                    <div className="mt-3 pt-3 border-t border-border flex flex-wrap gap-1.5">
-                      <span className="text-[9px] font-medium text-muted-foreground flex items-center mr-2">
-                        Attached IDs:
-                      </span>
-                      {selectedPayment.booking.user?.documents?.map(
-                        (doc: any, i: number) => (
-                          <a
-                            key={i}
-                            href={doc.file_url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-medium border bg-primary/10 text-primary border-primary/20 hover:bg-primary hover:text-primary-foreground transition-colors"
-                          >
-                            <FileText className="w-2.5 h-2.5" />{" "}
-                            {doc.category.replace("_", " ")}
-                          </a>
-                        ),
-                      )}
-                      {(!selectedPayment.booking.user?.documents ||
-                        selectedPayment.booking.user.documents.length ===
-                          0) && (
-                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-medium border bg-destructive/10 text-destructive border-destructive/20">
-                          <AlertCircle className="w-2.5 h-2.5" /> No IDs
-                          Uploaded
-                        </span>
-                      )}
+                    {/* INTERACTIVE DOCUMENT REVIEW */}
+                    <div className="pt-3 border-t border-border">
+                      <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest mb-2">
+                        Click to Review Documents:
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        {selectedPayment.booking.user?.documents?.map(
+                          (doc: any, i: number) => {
+                            const isVerified = doc.status === "VERIFIED";
+                            const isRejected = doc.status === "REJECTED";
+                            return (
+                              <button
+                                key={i}
+                                onClick={() =>
+                                  handleOpenDocReview(
+                                    doc,
+                                    selectedPayment.booking.user,
+                                  )
+                                }
+                                className={cn(
+                                  "inline-flex items-center gap-1.5 px-2 py-1 rounded text-[10px] font-bold border transition-all hover:opacity-80 shadow-sm",
+                                  isVerified &&
+                                    "bg-emerald-500/10 text-emerald-600 border-emerald-500/30",
+                                  isRejected &&
+                                    "bg-destructive/10 text-destructive border-destructive/30",
+                                  !isVerified &&
+                                    !isRejected &&
+                                    "bg-yellow-500/10 text-yellow-600 border-yellow-500/30", // PENDING
+                                )}
+                              >
+                                <FileText className="w-3 h-3" />
+                                {doc.category.replace("_", " ")}
+                              </button>
+                            );
+                          },
+                        )}
+                        {(!selectedPayment.booking.user?.documents ||
+                          selectedPayment.booking.user.documents.length ===
+                            0) && (
+                          <span className="inline-flex items-center gap-1 px-2 py-1 rounded text-[10px] font-bold border bg-destructive/10 text-destructive border-destructive/20">
+                            <AlertCircle className="w-3 h-3" /> No Documents
+                            Uploaded
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
 
-                  {/* 2. Booking Logistics */}
+                  {/* 2. Booking Logistics & Financials */}
                   <div className="bg-card border border-border rounded-xl p-4 shadow-sm shrink-0">
                     <div className="flex justify-between items-center mb-3">
                       <h3 className="text-[10px] font-semibold text-muted-foreground flex items-center gap-1.5">
-                        <CalendarDays className="w-3.5 h-3.5" /> Rental
-                        Logistics
+                        <CalendarDays className="w-3.5 h-3.5" /> Logistics &
+                        Financials
                       </h3>
-                      {selectedPayment.booking.is_with_driver ? (
-                        <span className="px-1.5 py-0.5 rounded text-[9px] font-medium border bg-yellow-500/10 text-yellow-600 dark:text-yellow-500 border-yellow-500/20">
-                          With Driver
-                        </span>
-                      ) : (
-                        <span className="px-1.5 py-0.5 rounded text-[9px] font-medium border bg-secondary text-foreground border-border">
-                          Self-Drive
-                        </span>
-                      )}
+                      <span
+                        className={cn(
+                          "px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-widest border",
+                          selectedPayment.booking.is_with_driver
+                            ? "bg-yellow-500/10 text-yellow-600 border-yellow-500/20"
+                            : "bg-secondary text-foreground border-border",
+                        )}
+                      >
+                        {selectedPayment.booking.is_with_driver
+                          ? "With Driver"
+                          : "Self-Drive"}
+                      </span>
                     </div>
 
                     <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 mb-3">
@@ -304,20 +344,13 @@ export default function PaymentVerificationView() {
                         </p>
                         <p className="text-[11px] font-bold truncate">
                           {selectedPayment.booking.car?.brand}{" "}
-                          {selectedPayment.booking.car?.model}
+                          {selectedPayment.booking.car?.model} (
+                          {selectedPayment.booking.car?.plate_number})
                         </p>
                       </div>
-                      <div className="border border-border rounded p-2 bg-secondary/50">
+                      <div className="border border-border rounded p-2 bg-secondary/50 col-span-2">
                         <p className="text-[9px] font-medium text-muted-foreground mb-0.5">
-                          Plate No.
-                        </p>
-                        <p className="text-[11px] font-bold font-mono">
-                          {selectedPayment.booking.car?.plate_number}
-                        </p>
-                      </div>
-                      <div className="border border-border rounded p-2 bg-secondary/50">
-                        <p className="text-[9px] font-medium text-muted-foreground mb-0.5">
-                          Duration
+                          Rental Duration
                         </p>
                         <p className="text-[11px] font-bold">
                           {differenceInDays(
@@ -325,39 +358,81 @@ export default function PaymentVerificationView() {
                             new Date(selectedPayment.booking.start_date),
                           )}{" "}
                           Days
+                          <span className="text-muted-foreground font-normal ml-1">
+                            (
+                            {format(
+                              new Date(selectedPayment.booking.start_date),
+                              "MMM dd",
+                            )}{" "}
+                            -{" "}
+                            {format(
+                              new Date(selectedPayment.booking.end_date),
+                              "MMM dd",
+                            )}
+                            )
+                          </span>
                         </p>
                       </div>
                     </div>
 
-                    <div className="flex flex-col sm:flex-row gap-2 border border-border rounded p-2 bg-secondary/30">
-                      <div className="flex-1 flex items-center gap-2 text-[10px] font-medium text-muted-foreground">
-                        <MapPin className="w-3.5 h-3.5 text-primary shrink-0" />
-                        <span className="truncate">
-                          <strong className="text-foreground">Start:</strong>{" "}
-                          {format(
-                            new Date(selectedPayment.booking.start_date),
-                            "MMM dd, yyyy - HH:mm",
-                          )}
-                        </span>
-                      </div>
-                      <div className="hidden sm:block w-[1px] bg-border" />
-                      <div className="flex-1 flex items-center gap-2 text-[10px] font-medium text-muted-foreground">
-                        <Clock className="w-3.5 h-3.5 text-primary shrink-0" />
-                        <span className="truncate">
-                          <strong className="text-foreground">End:</strong>{" "}
-                          {format(
-                            new Date(selectedPayment.booking.end_date),
-                            "MMM dd, yyyy - HH:mm",
-                          )}
-                        </span>
-                      </div>
-                    </div>
+                    {/* FINANCIAL SUMMARY GRID */}
+                    {(() => {
+                      // Cleanly extract the math variables
+                      const totalPrice =
+                        selectedPayment.booking.total_price || 0;
+                      const securityDeposit =
+                        selectedPayment.booking.security_deposit || 0;
+                      const actualBilled = Math.max(
+                        0,
+                        totalPrice - securityDeposit,
+                      );
+                      const reqDownpayment = actualBilled * 0.1;
+                      const amountPaid = selectedPayment.amount || 0;
+
+                      return (
+                        <div className="grid grid-cols-4 gap-2 pt-3 border-t border-border">
+                          <div className="bg-secondary/30 border border-border rounded p-2 text-center">
+                            <p className="text-[8px] font-bold text-muted-foreground uppercase tracking-widest mb-0.5">
+                              Rental Billed
+                            </p>
+                            <p className="text-xs font-black text-foreground">
+                              ₱{actualBilled.toLocaleString()}
+                            </p>
+                          </div>
+                          <div className="bg-secondary/30 border border-border rounded p-2 text-center">
+                            <p className="text-[8px] font-bold text-muted-foreground uppercase tracking-widest mb-0.5">
+                              Sec. Deposit
+                            </p>
+                            <p className="text-xs font-black text-foreground">
+                              ₱{securityDeposit.toLocaleString()}
+                            </p>
+                          </div>
+                          <div className="bg-primary/5 border border-primary/20 rounded p-2 text-center">
+                            <p className="text-[8px] font-bold text-primary uppercase tracking-widest mb-0.5">
+                              Downpayment (10%)
+                            </p>
+                            <p className="text-xs font-black text-primary">
+                              ₱{reqDownpayment.toLocaleString()}
+                            </p>
+                          </div>
+                          <div className="bg-emerald-500/10 border border-emerald-500/20 rounded p-2 text-center">
+                            <p className="text-[8px] font-bold text-emerald-600 uppercase tracking-widest mb-0.5">
+                              Amount Paid
+                            </p>
+                            <p className="text-xs font-black text-emerald-600">
+                              ₱{amountPaid.toLocaleString()}
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    })()}
                   </div>
 
                   {/* 3. OCR Edit Fields */}
-                  <div className="bg-primary/5 border border-primary/20 rounded-xl p-4 shrink-0">
-                    <h3 className="text-[10px] font-semibold text-primary mb-3 flex items-center gap-1.5">
-                      <ShieldCheck className="w-3.5 h-3.5" /> Payment Integrity
+                  <div className="bg-card border border-border rounded-xl p-4 shrink-0">
+                    <h3 className="text-[10px] font-semibold text-muted-foreground mb-3 flex items-center gap-1.5">
+                      <Receipt className="w-3.5 h-3.5" /> Validate Receipt
+                      Details
                     </h3>
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-1.5">
@@ -367,7 +442,7 @@ export default function PaymentVerificationView() {
                         <Input
                           value={editRef}
                           onChange={(e) => setEditRef(e.target.value)}
-                          className="bg-card border-border text-foreground focus-visible:ring-primary font-mono text-xs h-8 shadow-sm"
+                          className="bg-secondary/50 border-border text-foreground font-mono text-xs h-8 shadow-none"
                         />
                       </div>
                       <div className="space-y-1.5">
@@ -382,7 +457,7 @@ export default function PaymentVerificationView() {
                             type="number"
                             value={editAmount}
                             onChange={(e) => setEditAmount(e.target.value)}
-                            className="bg-card border-border text-foreground focus-visible:ring-primary font-bold text-xs h-8 pl-6 shadow-sm"
+                            className="bg-secondary/50 border-border text-foreground font-bold text-xs h-8 pl-6 shadow-none"
                           />
                         </div>
                       </div>
@@ -400,6 +475,7 @@ export default function PaymentVerificationView() {
                         className="flex-1 border-destructive/30 text-destructive hover:bg-destructive/10 hover:text-destructive h-10 rounded shadow-sm text-[11px] font-bold transition-colors"
                       >
                         <XCircle className="w-3.5 h-3.5 mr-1.5" /> Reject
+                        Booking
                       </Button>
                       <Button
                         onClick={submitApprove}
@@ -456,6 +532,25 @@ export default function PaymentVerificationView() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* --- RENDER THE EXTERNAL REVIEW MODAL --- */}
+      <ReviewModal
+        isOpen={!!reviewingDoc}
+        onClose={() => setReviewingDoc(null)}
+        document={reviewingDoc}
+        onVerify={async (id, expiry) => {
+          try {
+            await verifyDoc({ id, expiry });
+            setReviewingDoc(null);
+          } catch {}
+        }}
+        onReject={async (id, reason) => {
+          try {
+            await rejectDoc({ id, reason });
+            setReviewingDoc(null);
+          } catch {}
+        }}
+      />
     </div>
   );
 }

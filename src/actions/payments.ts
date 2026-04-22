@@ -19,10 +19,10 @@ export async function getPendingPayments() {
         car:cars (brand, model, plate_number),
         user:users (
           full_name, email, phone_number,
-          documents (category, file_path)
+          documents (document_id, category, file_path, status, created_at) 
         )
       )
-    `,
+    `, // 👆 ADDED THE MISSING COLUMNS HERE
     )
     .eq("status", "PENDING")
     .order("paid_at", { ascending: false });
@@ -54,7 +54,7 @@ export async function getPendingPayments() {
     }),
   );
 
-  return { success: true, data };
+  return { success: true, data: paymentsWithUrls };
 }
 
 export async function verifyPayment(

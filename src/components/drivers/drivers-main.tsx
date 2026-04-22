@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import {
   Search,
   Plus,
@@ -128,9 +128,9 @@ export default function DriversMain({
   if (isDriverMode) {
     if (!selectedDriver) {
       return (
-        <div className="flex flex-col items-center justify-center min-h-screen p-6 bg-slate-50">
-          <Loader2 className="w-8 h-8 animate-spin text-slate-400 mb-4" />
-          <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">
+        <div className="flex flex-col items-center justify-center min-h-screen p-6 bg-background transition-colors duration-300">
+          <Loader2 className="w-8 h-8 animate-spin text-primary mb-4" />
+          <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
             Loading Your Profile...
           </p>
         </div>
@@ -139,8 +139,8 @@ export default function DriversMain({
 
     return (
       // Mobile-native layout: No fixed heights, natural body scrolling, no borders
-      <div className="flex flex-col w-full min-h-screen bg-slate-50 pb-20">
-        <div className="bg-white shadow-sm border-b border-slate-200">
+      <div className="flex flex-col w-full min-h-screen bg-background pb-20 transition-colors duration-300">
+        <div className="bg-card shadow-sm border-b border-border transition-colors">
           <DriverProfileHeader
             driver={selectedDriver}
             isSelfView={true}
@@ -153,22 +153,22 @@ export default function DriversMain({
 
         <div className="px-4 pt-6">
           <Tabs defaultValue="sched" className="flex flex-col w-full">
-            <TabsList className="bg-white shadow-sm border border-slate-200 h-11 p-1 flex justify-start w-full rounded-md mb-6 overflow-x-auto custom-scrollbar">
+            <TabsList className="bg-secondary/50 shadow-inner border border-border/50 h-9 p-1 flex justify-start w-full rounded-lg mb-5 overflow-x-auto custom-scrollbar transition-colors">
               <TabsTrigger
                 value="sched"
-                className="flex-1 rounded-sm px-4 text-[11px] font-bold text-slate-500 data-[state=active]:text-slate-900 data-[state=active]:bg-slate-100 data-[state=active]:shadow-none uppercase tracking-widest whitespace-nowrap"
+                className="flex-1 rounded-md px-3 text-[10px] font-bold text-muted-foreground data-[state=active]:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm uppercase tracking-widest whitespace-nowrap transition-all"
               >
                 Schedule
               </TabsTrigger>
               <TabsTrigger
                 value="performance"
-                className="flex-1 rounded-sm px-4 text-[11px] font-bold text-slate-500 data-[state=active]:text-slate-900 data-[state=active]:bg-slate-100 data-[state=active]:shadow-none uppercase tracking-widest whitespace-nowrap"
+                className="flex-1 rounded-md px-3 text-[10px] font-bold text-muted-foreground data-[state=active]:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm uppercase tracking-widest whitespace-nowrap transition-all"
               >
                 Wallet
               </TabsTrigger>
               <TabsTrigger
                 value="docs"
-                className="flex-1 rounded-sm px-4 text-[11px] font-bold text-slate-500 data-[state=active]:text-slate-900 data-[state=active]:bg-slate-100 data-[state=active]:shadow-none uppercase tracking-widest whitespace-nowrap"
+                className="flex-1 rounded-md px-3 text-[10px] font-bold text-muted-foreground data-[state=active]:text-foreground data-[state=active]:bg-background data-[state=active]:shadow-sm uppercase tracking-widest whitespace-nowrap transition-all"
               >
                 Docs
               </TabsTrigger>
@@ -199,19 +199,19 @@ export default function DriversMain({
   // VIEW 2: ADMIN MASTER MANAGEMENT
   // ==========================================
   return (
-    <div className="flex flex-col md:flex-row w-full min-h-150 md:h-200 bg-white border border-slate-200 rounded-sm shadow-sm overflow-hidden">
+    <div className="flex flex-col md:flex-row w-full min-h-[600px] md:h-full bg-card border border-border rounded-xl shadow-sm overflow-hidden transition-colors duration-300">
       {/* LEFT SIDEBAR: ROSTER */}
-      <div className="w-full md:w-70 flex flex-col border-b md:border-b-0 md:border-r border-slate-200 bg-slate-50/50 shrink-0 z-10 h-full md:h-full">
+      <div className="w-full md:w-[280px] flex flex-col border-b md:border-b-0 md:border-r border-border bg-secondary/30 shrink-0 z-10 h-full transition-colors">
         {/* Sidebar Header & Search */}
-        <div className="p-4 pb-5 border-b border-slate-200 bg-white flex flex-col gap-3 shrink-0">
+        <div className="p-3 border-b border-border bg-card flex flex-col gap-2.5 shrink-0 transition-colors">
           <div className="flex items-center justify-between">
-            <h2 className="text-[11px] font-bold text-slate-800 uppercase tracking-widest">
+            <h2 className="text-[10px] font-bold text-foreground uppercase tracking-widest">
               Driver Roster
             </h2>
             <Button
               size="icon"
               variant="ghost"
-              className="h-7 w-7 rounded-sm hover:bg-slate-100 text-slate-600 shadow-none"
+              className="h-7 w-7 rounded-lg hover:bg-secondary text-muted-foreground hover:text-foreground shadow-none transition-colors"
               onClick={() => {
                 setDriverToEdit(null); // Null means "Create Mode"
                 setOpenDialog(true);
@@ -222,10 +222,10 @@ export default function DriversMain({
             </Button>
           </div>
           <div className="relative">
-            <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-slate-400" />
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
             <Input
               placeholder="Search name or ID..."
-              className="pl-8 h-9 text-xs bg-slate-50 border-slate-200 focus-visible:ring-1 rounded-sm shadow-none"
+              className="pl-8 h-8 text-[11px] font-medium bg-secondary border-border focus-visible:ring-1 focus-visible:ring-primary rounded-lg shadow-none transition-colors text-foreground"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
@@ -233,14 +233,14 @@ export default function DriversMain({
         </div>
 
         {/* Scrollable Driver List */}
-        <div className="flex-1 overflow-y-auto custom-scrollbar bg-[#F8FAFC]">
-          <div className="p-2.5 space-y-1">
+        <div className="flex-1 overflow-y-auto custom-scrollbar bg-background transition-colors">
+          <div className="p-2 space-y-1">
             {isDriversLoading ? (
-              <div className="flex flex-col items-center justify-center py-10 text-slate-400 gap-2">
-                <Loader2 className="w-4 h-4 animate-spin text-slate-500" />
+              <div className="flex flex-col items-center justify-center py-10 text-muted-foreground gap-2">
+                <Loader2 className="w-4 h-4 animate-spin text-primary" />
               </div>
             ) : filteredDrivers.length === 0 ? (
-              <div className="py-12 text-center text-[10px] uppercase tracking-widest text-slate-500 font-bold">
+              <div className="py-10 text-center text-[9px] uppercase tracking-widest text-muted-foreground font-bold">
                 No drivers found
               </div>
             ) : (
@@ -251,18 +251,18 @@ export default function DriversMain({
                     key={driver.driver_id}
                     onClick={() => setSelectedDriver(driver)}
                     className={cn(
-                      "group flex items-center justify-between gap-3 p-3 rounded-sm cursor-pointer transition-colors border shrink-0",
+                      "group flex items-center justify-between gap-3 p-2 rounded-lg cursor-pointer transition-all border shrink-0",
                       isActive
-                        ? "bg-[#0F172A] border-[#0F172A] shadow-sm"
-                        : "bg-white border-slate-200 hover:border-slate-300 hover:shadow-sm",
+                        ? "bg-primary/10 border-primary/20 shadow-sm"
+                        : "bg-card border-border hover:border-primary/50 hover:shadow-sm hover:bg-secondary/50",
                     )}
                   >
-                    <div className="flex items-center gap-3 min-w-0 flex-1">
+                    <div className="flex items-center gap-2.5 min-w-0 flex-1">
                       <div className="relative shrink-0">
                         <Avatar
                           className={cn(
-                            "h-10 w-10 border rounded-sm",
-                            isActive ? "border-slate-700" : "border-slate-200",
+                            "h-8 w-8 border rounded-lg transition-colors bg-secondary",
+                            isActive ? "border-primary/30" : "border-border",
                           )}
                         >
                           <AvatarImage
@@ -273,10 +273,10 @@ export default function DriversMain({
                           />
                           <AvatarFallback
                             className={cn(
-                              "text-[10px] font-bold rounded-sm",
+                              "text-[9px] font-bold rounded-lg transition-colors",
                               isActive
-                                ? "bg-slate-800 text-slate-200"
-                                : "bg-slate-100 text-slate-600",
+                                ? "bg-primary text-primary-foreground"
+                                : "bg-secondary text-foreground",
                             )}
                           >
                             {getInitials(driver.profiles?.full_name || "D")}
@@ -286,21 +286,23 @@ export default function DriversMain({
                         {/* Status Indicator Dot */}
                         <div
                           className={cn(
-                            "absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full border-2",
+                            "absolute -bottom-1 -right-1 w-3 h-3 rounded-full border-2 transition-colors",
                             driver.driver_status === "Available"
                               ? "bg-emerald-500"
                               : driver.driver_status === "On Trip"
                                 ? "bg-blue-500"
                                 : "bg-amber-500",
-                            isActive ? "border-[#0F172A]" : "border-white",
+                            isActive
+                              ? "border-background"
+                              : "border-card group-hover:border-secondary",
                           )}
                         />
                       </div>
                       <div className="flex-1 min-w-0 flex flex-col justify-center">
                         <span
                           className={cn(
-                            "text-xs font-bold truncate mb-0.5",
-                            isActive ? "text-white" : "text-[#0F172A]",
+                            "text-[11px] font-bold truncate mb-0.5 transition-colors",
+                            isActive ? "text-primary" : "text-foreground",
                           )}
                         >
                           {toTitleCase(driver.profiles?.full_name || "Unknown")}
@@ -308,8 +310,10 @@ export default function DriversMain({
                         <div className="flex items-center gap-2">
                           <span
                             className={cn(
-                              "text-[10px] font-mono truncate uppercase tracking-widest",
-                              isActive ? "text-slate-400" : "text-slate-500",
+                              "text-[9px] font-mono truncate uppercase tracking-widest transition-colors",
+                              isActive
+                                ? "text-primary/70"
+                                : "text-muted-foreground",
                             )}
                           >
                             {driver.display_id}
@@ -319,7 +323,6 @@ export default function DriversMain({
                     </div>
 
                     {/* ACTION MENU */}
-                    {/* Added onClick={(e) => e.stopPropagation()} to the parent wrapper of the dropdown menu to catch bubbled events before they hit the row */}
                     <div onClick={(e) => e.stopPropagation()}>
                       <DropdownMenu modal={false}>
                         <DropdownMenuTrigger asChild>
@@ -327,21 +330,21 @@ export default function DriversMain({
                             variant="ghost"
                             size="icon"
                             className={cn(
-                              "h-7 w-7 rounded-sm shrink-0 md:opacity-0 group-hover:opacity-100 transition-opacity shadow-none",
+                              "h-6 w-6 rounded-md shrink-0 lg:opacity-0 group-hover:opacity-100 transition-all shadow-none",
                               isActive
-                                ? "text-slate-400 hover:text-white hover:bg-slate-800"
-                                : "text-slate-400 hover:text-[#0F172A] hover:bg-slate-100",
+                                ? "text-primary hover:text-primary hover:bg-primary/20"
+                                : "text-muted-foreground hover:text-foreground hover:bg-secondary",
                             )}
                           >
-                            <MoreVertical className="w-4 h-4" />
+                            <MoreVertical className="w-3.5 h-3.5" />
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent
                           align="start"
-                          className="w-24 rounded-sm border-slate-200 shadow-xl"
+                          className="w-24 rounded-lg border-border shadow-xl bg-popover p-1"
                         >
                           <DropdownMenuItem
-                            className="text-[10px] font-bold uppercase tracking-widest text-red-600 focus:bg-red-50 focus:text-red-700 cursor-pointer"
+                            className="text-[10px] font-bold uppercase tracking-widest text-destructive focus:bg-destructive/10 focus:text-destructive cursor-pointer rounded-md transition-colors"
                             onClick={(e) => {
                               e.stopPropagation();
                               e.preventDefault();
@@ -364,14 +367,14 @@ export default function DriversMain({
       </div>
 
       {/* RIGHT PANEL: DETAILS */}
-      <div className="flex-1 min-w-0 flex flex-col bg-white overflow-hidden min-h-125">
+      <div className="flex-1 min-w-0 flex flex-col bg-background overflow-hidden min-h-[500px] transition-colors">
         {!selectedDriver ? (
-          <div className="flex-1 flex flex-col items-center justify-center text-slate-400 bg-slate-50/50 p-6 text-center">
-            <Briefcase className="w-16 h-16 mb-4 opacity-20" />
-            <h3 className="text-sm font-bold text-slate-600 uppercase tracking-widest">
+          <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground bg-secondary/20 p-6 text-center transition-colors">
+            <Briefcase className="w-12 h-12 mb-3 opacity-20" />
+            <h3 className="text-[11px] font-bold text-foreground uppercase tracking-widest">
               No Driver Selected
             </h3>
-            <p className="text-xs text-slate-400 mt-2 max-w-xs">
+            <p className="text-[10px] font-medium text-muted-foreground/70 mt-1 max-w-xs">
               Select a driver from the roster to view their dispatch schedule.
             </p>
           </div>
@@ -388,24 +391,24 @@ export default function DriversMain({
 
             <Tabs
               defaultValue="sched"
-              className="flex flex-col flex-1 min-h-0 w-full px-4 sm:px-8 pt-4 sm:pt-6"
+              className="flex flex-col flex-1 min-h-0 w-full px-4 sm:px-6 pt-4"
             >
-              <TabsList className="bg-transparent border-b border-slate-200 h-10 p-0 flex justify-start w-full rounded-none mb-4 sm:mb-6 shrink-0 overflow-x-auto custom-scrollbar">
+              <TabsList className="bg-transparent border-b border-border h-9 p-0 flex justify-start w-full rounded-none mb-4 shrink-0 overflow-x-auto custom-scrollbar transition-colors">
                 <TabsTrigger
                   value="sched"
-                  className="rounded-none border-b-2 border-transparent data-[state=active]:border-slate-900 data-[state=active]:bg-transparent data-[state=active]:shadow-none px-4 py-2 text-[11px] font-bold text-slate-500 data-[state=active]:text-slate-900 uppercase tracking-widest whitespace-nowrap"
+                  className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-3 py-1.5 text-[10px] font-bold text-muted-foreground data-[state=active]:text-foreground uppercase tracking-widest whitespace-nowrap transition-all"
                 >
                   Schedule & Dispatch
                 </TabsTrigger>
                 <TabsTrigger
                   value="performance"
-                  className="rounded-none border-b-2 border-transparent data-[state=active]:border-slate-900 data-[state=active]:bg-transparent data-[state=active]:shadow-none px-4 py-2 text-[11px] font-bold text-slate-500 data-[state=active]:text-slate-900 uppercase tracking-widest whitespace-nowrap"
+                  className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-3 py-1.5 text-[10px] font-bold text-muted-foreground data-[state=active]:text-foreground uppercase tracking-widest whitespace-nowrap transition-all"
                 >
                   Performance & Wallet
                 </TabsTrigger>
                 <TabsTrigger
                   value="docs"
-                  className="rounded-none border-b-2 border-transparent data-[state=active]:border-slate-900 data-[state=active]:bg-transparent data-[state=active]:shadow-none px-4 py-2 text-[11px] font-bold text-slate-500 data-[state=active]:text-slate-900 uppercase tracking-widest whitespace-nowrap"
+                  className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-3 py-1.5 text-[10px] font-bold text-muted-foreground data-[state=active]:text-foreground uppercase tracking-widest whitespace-nowrap transition-all"
                 >
                   Compliance Docs
                 </TabsTrigger>
@@ -413,7 +416,7 @@ export default function DriversMain({
 
               <TabsContent
                 value="sched"
-                className="flex-1 min-h-0 overflow-hidden outline-none m-0 pb-4 sm:pb-6 flex flex-col"
+                className="flex-1 min-h-0 overflow-hidden outline-none m-0 pb-4 flex flex-col"
               >
                 <DispatchCalendar
                   bookings={driverSpecificSchedules}
@@ -424,7 +427,7 @@ export default function DriversMain({
 
               <TabsContent
                 value="performance"
-                className="flex-1 min-h-0 overflow-y-auto custom-scrollbar outline-none m-0 pb-4 sm:pb-6 flex flex-col"
+                className="flex-1 min-h-0 overflow-y-auto custom-scrollbar outline-none m-0 pb-4 flex flex-col"
               >
                 <DriverPerformanceTab
                   driverId={selectedDriver.driver_id || ""}
@@ -433,7 +436,7 @@ export default function DriversMain({
 
               <TabsContent
                 value="docs"
-                className="flex-1 min-h-0 overflow-y-auto custom-scrollbar outline-none m-0 pb-4 sm:pb-6 flex flex-col"
+                className="flex-1 min-h-0 overflow-y-auto custom-scrollbar outline-none m-0 pb-4 flex flex-col"
               >
                 <DriverDocsTab driverId={selectedDriver.driver_id || ""} />
               </TabsContent>
@@ -445,7 +448,7 @@ export default function DriversMain({
       <DriverForm
         open={openDialog}
         onOpenChange={setOpenDialog}
-        initialData={driverToEdit} // UPDATED
+        initialData={driverToEdit}
       />
       <DeleteDialog
         isOpen={openDeleteDialog}
@@ -455,7 +458,7 @@ export default function DriversMain({
         }}
         onConfirm={() => handleDeleteDriver()}
         title="Delete Driver"
-        description={`Are you sure you want to delete ${driverToDelete?.profiles?.full_name || "this driver"}?`} // Added dynamic name for better UX
+        description={`Are you sure you want to delete ${driverToDelete?.profiles?.full_name || "this driver"}?`}
         isDeleting={isDeleting}
       />
     </div>

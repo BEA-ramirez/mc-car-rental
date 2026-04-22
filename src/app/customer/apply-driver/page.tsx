@@ -47,9 +47,8 @@ export default function ApplyDriverPage() {
 
   const documents = profile?.documents || [];
   const latestLicense = documents.find((d: any) => d.category === "license_id");
-  const hasVerifiedLicense = latestLicense?.status === "VERIFIED";
+  const hasLicenseUploaded = !!latestLicense;
 
-  // --- SUCCESS STATE UI ---
   if (isSuccess) {
     return (
       <div className="min-h-screen bg-[#050B10] flex flex-col items-center justify-center p-6 selection:bg-[#64c5c3] selection:text-black">
@@ -152,7 +151,7 @@ export default function ApplyDriverPage() {
 
           <div className="space-y-4 md:space-y-6 mb-10 md:mb-12">
             {/* Dynamic License Check */}
-            {hasVerifiedLicense ? (
+            {hasLicenseUploaded ? (
               <div className="flex items-start gap-4 p-5 md:p-6 rounded-2xl bg-[#64c5c3]/5 border border-[#64c5c3]/20 transition-all hover:border-[#64c5c3]/40">
                 <CheckCircle2 className="w-6 h-6 text-[#64c5c3] shrink-0" />
                 <div>
@@ -160,7 +159,9 @@ export default function ApplyDriverPage() {
                     Professional Driver&apos;s License
                   </h3>
                   <p className="text-[10px] sm:text-xs text-[#64c5c3] font-bold uppercase tracking-widest">
-                    Verified on your profile
+                    {latestLicense.status === "VERIFIED"
+                      ? "Verified on your profile"
+                      : "Uploaded and pending admin review"}
                   </p>
                 </div>
               </div>
@@ -170,11 +171,11 @@ export default function ApplyDriverPage() {
                   <AlertCircle className="w-6 h-6 text-red-500 shrink-0" />
                   <div>
                     <h3 className="text-xs font-bold text-white uppercase tracking-widest mb-1">
-                      License Missing or Unverified
+                      License Document Missing
                     </h3>
                     <p className="text-[10px] sm:text-xs text-red-400 font-bold uppercase tracking-widest leading-relaxed">
-                      You must have a verified Professional Driver&apos;s
-                      License on your profile before applying.
+                      You must upload your Professional Driver&apos;s License to
+                      your profile before applying.
                     </p>
                   </div>
                 </div>
@@ -209,14 +210,14 @@ export default function ApplyDriverPage() {
                 id="terms"
                 checked={agreed}
                 onCheckedChange={(c) => setAgreed(c as boolean)}
-                disabled={!hasVerifiedLicense}
+                disabled={!hasLicenseUploaded}
                 className="mt-1 border-white/20 data-[state=checked]:bg-[#64c5c3] data-[state=checked]:border-[#64c5c3] data-[state=checked]:text-black rounded disabled:opacity-30"
               />
               <Label
                 htmlFor="terms"
                 className={cn(
                   "text-[9px] md:text-[10px] leading-relaxed font-bold uppercase tracking-widest",
-                  hasVerifiedLicense
+                  hasLicenseUploaded
                     ? "text-gray-400 cursor-pointer"
                     : "text-gray-600 cursor-not-allowed",
                 )}
@@ -233,7 +234,7 @@ export default function ApplyDriverPage() {
             <Button
               size="lg"
               onClick={handleSubmit}
-              disabled={!agreed || isApplying || !hasVerifiedLicense}
+              disabled={!agreed || isApplying || !hasLicenseUploaded}
               className="w-full bg-[#64c5c3] text-black hover:bg-[#52a3a1] rounded-xl h-14 md:h-16 font-black text-[10px] md:text-xs uppercase tracking-widest shadow-[0_0_20px_rgba(100,197,195,0.2)] transition-all duration-500 group disabled:opacity-40 disabled:bg-[#64c5c3] disabled:shadow-none"
             >
               {isApplying ? (

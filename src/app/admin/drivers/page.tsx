@@ -13,23 +13,23 @@ export default function DriversPage() {
   const { data: allSchedules = [], isLoading } = useDriverSchedules();
 
   return (
-    <div className="flex flex-col w-full p-4 lg:p-6 bg-[#F8FAFC] min-h-screen min-w-0">
+    <div className="flex flex-col w-full p-4 lg:p-5 bg-background min-h-screen min-w-0 transition-colors duration-300">
       {/* PAGE HEADER & TABS NAVIGATION */}
       <Tabs
         defaultValue="active-fleet"
         className="w-full flex flex-col min-w-0"
       >
-        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-6">
-          <TabsList className="bg-white border border-slate-200 p-1 rounded-sm h-auto shrink-0 shadow-sm">
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-5">
+          <TabsList className="bg-secondary/50 border border-border/50 p-1 rounded-lg h-auto shrink-0 shadow-inner transition-colors">
             <TabsTrigger
               value="active-fleet"
-              className="text-xs font-bold uppercase tracking-widest px-4 py-2 rounded-sm data-[state=active]:bg-[#0F172A] data-[state=active]:text-white transition-all flex items-center gap-2"
+              className="text-[10px] font-bold uppercase tracking-widest px-4 py-1.5 rounded-md data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm text-muted-foreground transition-all flex items-center gap-1.5"
             >
               <Users className="w-3.5 h-3.5" /> Active Fleet
             </TabsTrigger>
             <TabsTrigger
               value="applications"
-              className="text-xs font-bold uppercase tracking-widest px-4 py-2 rounded-sm data-[state=active]:bg-[#0F172A] data-[state=active]:text-white transition-all flex items-center gap-2"
+              className="text-[10px] font-bold uppercase tracking-widest px-4 py-1.5 rounded-md data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm text-muted-foreground transition-all flex items-center gap-1.5"
             >
               <FileText className="w-3.5 h-3.5" /> Applications
             </TabsTrigger>
@@ -41,12 +41,12 @@ export default function DriversPage() {
           value="active-fleet"
           className="flex flex-col min-w-0 outline-none m-0"
         >
-          <div className="w-full bg-white border border-slate-200 shadow-sm rounded-sm p-4 lg:p-6 min-w-0">
-            <div className="mb-4">
-              <h2 className="text-lg font-bold text-[#0F172A] tracking-tight">
+          <div className="w-full bg-card border border-border shadow-sm rounded-xl p-4 lg:p-5 min-w-0 transition-colors">
+            <div className="mb-4 border-b border-border pb-3">
+              <h2 className="text-sm font-bold text-foreground tracking-tight uppercase">
                 Fleet Dispatch Overview
               </h2>
-              <p className="text-xs text-slate-500 font-medium ">
+              <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-widest mt-1">
                 Master schedule of all verified drivers and active assignments.
               </p>
             </div>
@@ -61,12 +61,12 @@ export default function DriversPage() {
 
         {/* TAB 2: APPLICATIONS QUEUE */}
         <TabsContent value="applications" className="min-w-0 outline-none m-0">
-          <div className="w-full bg-white border border-slate-200 shadow-sm rounded-sm p-4 lg:p-6 min-w-0">
-            <div className="mb-4">
-              <h2 className="text-lg font-bold text-[#0F172A] tracking-tight">
+          <div className="w-full bg-card border border-border shadow-sm rounded-xl p-4 lg:p-5 min-w-0 transition-colors">
+            <div className="mb-4 border-b border-border pb-3">
+              <h2 className="text-sm font-bold text-foreground tracking-tight uppercase">
                 Driver Application Queue
               </h2>
-              <p className="text-xs text-slate-500 font-medium ">
+              <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-widest mt-1">
                 Review submitted documents for new driver applicants.
               </p>
             </div>
@@ -76,7 +76,7 @@ export default function DriversPage() {
       </Tabs>
 
       {/* THE DRIVER MANAGEMENT COMPONENT (Always visible below tabs) */}
-      <div className="w-full min-w-0 mt-6">
+      <div className="w-full min-w-0 mt-5">
         <DriversMain schedules={allSchedules} isSchedulesLoading={isLoading} />
       </div>
     </div>

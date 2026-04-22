@@ -277,10 +277,10 @@ export async function sendBookingVerificationEmail(
   name: string,
   status: "approve" | "reject",
   details: BookingEmailDetails,
-  reason?: string
+  reason?: string,
 ) {
   const isApproved = status === "approve";
-  
+
   const subject = isApproved
     ? "Booking Confirmed: Your Vehicle is Secured! 🎉"
     : "Action Required: Booking Payment Unsuccessful";
@@ -300,9 +300,11 @@ export async function sendBookingVerificationEmail(
       <p style="font-size: 16px;">Hi ${name},</p>
       
       <p style="font-size: 16px; line-height: 1.5;">
-        ${isApproved 
-          ? "Great news! We have successfully verified your reservation fee. Your booking is now fully confirmed and your vehicle is secured for your selected dates." 
-          : "We encountered an issue while verifying the reservation fee for your recent booking request."}
+        ${
+          isApproved
+            ? "Great news! We have successfully verified your reservation fee. Your booking is now fully confirmed and your vehicle is secured for your selected dates."
+            : "We encountered an issue while verifying the reservation fee for your recent booking request."
+        }
       </p>
       
       <div style="background-color: ${bgLight}; border-left: 4px solid ${themeColor}; padding: 16px; margin: 24px 0; border-radius: 0 4px 4px 0;">
@@ -316,13 +318,17 @@ export async function sendBookingVerificationEmail(
         </ul>
       </div>
 
-      ${!isApproved && reason ? `
+      ${
+        !isApproved && reason
+          ? `
       <p style="font-size: 16px; line-height: 1.5;"><strong>Reason for Rejection:</strong><br/>
       <span style="color: #475569;">${reason}</span></p>
       <p style="font-size: 16px; line-height: 1.5;">Because the payment could not be verified, this booking has been cancelled. If you believe this was a mistake, please place a new booking and ensure the GCash/Maya reference number is correct.</p>
-      ` : `
+      `
+          : `
       <p style="font-size: 16px; line-height: 1.5;">Please prepare your remaining balance and your original physical IDs for verification during the vehicle handover. Drive safely!</p>
-      `}
+      `
+      }
 
       <div style="text-align: center; margin: 32px 0;">
         <a href="${process.env.NEXT_PUBLIC_APP_URL}/customer/my-bookings" style="background-color: #0f172a; color: #ffffff; text-decoration: none; padding: 12px 28px; border-radius: 6px; font-weight: 600; font-size: 16px; display: inline-block;">
@@ -345,4 +351,40 @@ export async function sendBookingVerificationEmail(
     console.error("Failed to send booking verification email:", error);
     return { success: false, error };
   }
+}
+
+export async function sendAdminBookingNotification(
+  adminEmails: string[],
+  customerName: string,
+  dates: string,
+) {
+  if (!adminEmails || adminEmails.length === 0) return;
+
+  const mailOptions = {
+    from: `"MC Ormoc Car Rental System" <${process.env.SMTP_FROM_EMAIL}>`,
+    to: adminEmails.join(", "), // Sends to all admins/staff at once
+    subject: "New Booking Request Awaiting Verification",
+    html: `
+    <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; background-color: #ffffff; padding: 30px; border: 1px solid #e2e8f0; border-radius: 8px; color: #334155;">
+      <h2 style="color: #0f172a; border-bottom: 2px solid #f1f5f9; padding-bottom: 15px; margin-top: 0;">MC Ormoc Car Rental</h2>
+      
+      <p style="font-size: 16px;">Hello Team,</p>
+      
+      <p style="font-size: 16px; line-height: 1.5;">A new booking request has just been submitted and is awaiting payment verification and approval.</p>
+      
+      <div style="background-color: #f8fafc; border-left: 4px solid #2563eb; padding: 16px; margin: 24px 0; border-radius: 0 4px 4px 0;">
+        <p style="margin: 0 0 8px 0; font-size: 16px;"><strong>Customer:</strong> ${customerName}</p>
+        <p style="margin: 0; font-size: 16px;"><strong>Rental Dates:</strong> ${dates}</p>
+      </div>
+
+      <p style="font-size: 16px; line-height: 1.5;">Please review the attached payment receipt and approve or reject the booking accordingly.</p>
+      
+      <div style="text-align: center; margin: 32px 0;">
+        <a href="${process.env.NEXT_PUBLIC_APP_URL}/admin/bookings" style="background-color: #2563eb; color: #ffffff; text-decoration: none; padding: 12px 28px; border-radius: 6px; font-weight: 600; font-size: 16px; display: inline-block;">Review Booking</a>
+      </div>
+    </div>
+  `,
+  };
+
+  await transporter.sendMail(mailOptions);
 }

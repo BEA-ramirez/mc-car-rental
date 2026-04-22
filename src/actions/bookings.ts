@@ -9,6 +9,7 @@ import {
 import { CreateBookingPayload } from "@/types/bookings";
 import { revalidatePath } from "next/cache";
 import { addHours } from "date-fns";
+import { sendAdminBookingNotification } from "./helper/mail";
 
 export type ActionState = {
   success?: boolean;
@@ -94,6 +95,36 @@ export async function createCustomerBooking(
       success: false,
       message: error.message || "Failed to submit booking request.",
     };
+  }
+
+  try {
+    // Get the emails of all Admins and Staff
+    const { data: adminUsers } = await supabase
+      .from("users")
+      .select("email")
+      .in("role", ["ADMIN", "STAFF"]);
+
+    const adminEmails = adminUsers
+      ?.map((u) => u.email)
+      .filter(Boolean) as string[];
+
+    // Format dates and get Customer name
+    const formattedDates = `${startDate.toLocaleDateString()} to ${endDate.toLocaleDateString()}`;
+    const customerName = user.user_metadata?.full_name || "A Customer";
+
+    // Fire and forget the email (No 'await' so the user doesn't wait for SMTP)
+    if (adminEmails && adminEmails.length > 0) {
+      sendAdminBookingNotification(
+        adminEmails,
+        customerName,
+        formattedDates,
+      ).catch((err) =>
+        console.error("Failed to send admin booking email:", err),
+      );
+    }
+  } catch (err) {
+    // catch this silently. A failed email shouldn't tell the user their booking failed
+    console.error("Email notification block failed:", err);
   }
 
   revalidatePath("/customer/my-bookings");

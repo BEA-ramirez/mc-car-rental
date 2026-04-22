@@ -169,6 +169,9 @@ export function useDocumentMutations() {
     onSuccess: (data) => {
       toast.success(data.message || "Document verified successfully.");
       invalidateDocs();
+      queryClient.invalidateQueries({
+        queryKey: QUERY_KEYS.financials.pendingPayments,
+      });
     },
     onError: (error) => toast.error(`Verification failed: ${error.message}`),
   });
@@ -185,6 +188,9 @@ export function useDocumentMutations() {
         data.message || "Document rejected. Customer will be notified.",
       );
       invalidateDocs();
+      queryClient.invalidateQueries({
+        queryKey: QUERY_KEYS.financials.pendingPayments,
+      });
     },
     onError: (error) => toast.error(`Rejection failed: ${error.message}`),
   });
@@ -199,6 +205,9 @@ export function useDocumentMutations() {
     onSuccess: (data) => {
       toast.warning(data.message || "Document approval revoked.");
       invalidateDocs();
+      queryClient.invalidateQueries({
+        queryKey: QUERY_KEYS.financials.pendingPayments,
+      });
     },
     onError: (error) => toast.error(`Revocation failed: ${error.message}`),
   });

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
@@ -132,15 +132,16 @@ function DriverForm({ open, onOpenChange, initialData }: DriverFormProp) {
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-112.5 p-0 overflow-hidden border-slate-200 shadow-xl rounded-sm bg-white">
-        <DialogHeader className="px-5 py-4 border-b border-slate-200 bg-[#F8FAFC]">
-          <DialogTitle className="text-sm font-bold text-[#0F172A] tracking-tight">
+      <DialogContent className="sm:max-w-[450px] p-0 overflow-hidden border-border shadow-2xl rounded-2xl bg-background transition-colors duration-300">
+        {/* HEADER */}
+        <DialogHeader className="px-5 py-4 border-b border-border bg-card shrink-0 transition-colors">
+          <DialogTitle className="text-sm font-bold text-foreground tracking-tight uppercase leading-none mb-1">
             {initialData ? "Manage Driver Profile" : "Add New Driver"}
           </DialogTitle>
-          <DialogDescription className="text-xs text-slate-500">
+          <DialogDescription className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest leading-none">
             {initialData
-              ? "Update operational status and verification."
-              : "Select a registered user to promote them to the driver fleet."}
+              ? "Update operational status and verification"
+              : "Select a registered user to promote them"}
           </DialogDescription>
         </DialogHeader>
 
@@ -149,14 +150,14 @@ function DriverForm({ open, onOpenChange, initialData }: DriverFormProp) {
             onSubmit={form.handleSubmit(onSubmit)}
             className="flex flex-col"
           >
-            <div className="p-5 space-y-5">
+            <div className="p-5 space-y-4">
               {!initialData ? (
                 <FormField
                   control={form.control}
                   name="user_id"
                   render={({ field }) => (
-                    <FormItem className="flex flex-col">
-                      <FormLabel className="text-xs font-bold text-slate-700">
+                    <FormItem className="flex flex-col space-y-1.5">
+                      <FormLabel className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">
                         Link Customer Account
                       </FormLabel>
                       <Popover
@@ -169,8 +170,8 @@ function DriverForm({ open, onOpenChange, initialData }: DriverFormProp) {
                               variant="outline"
                               role="combobox"
                               className={cn(
-                                "w-full justify-between h-9 text-xs rounded-sm border-slate-200 shadow-none",
-                                !field.value && "text-slate-400",
+                                "w-full justify-between h-8 text-[11px] font-semibold rounded-lg border-border bg-secondary shadow-none hover:bg-secondary/80 focus:ring-1 focus:ring-primary transition-colors",
+                                !field.value && "text-muted-foreground",
                               )}
                             >
                               {field.value
@@ -178,18 +179,18 @@ function DriverForm({ open, onOpenChange, initialData }: DriverFormProp) {
                                     (u) => u.user_id === field.value,
                                   )?.full_name
                                 : "Search users..."}
-                              <ChevronsUpDown className="ml-2 h-3 w-3 shrink-0 opacity-50" />
+                              <ChevronsUpDown className="ml-2 h-3.5 w-3.5 shrink-0 opacity-50" />
                             </Button>
                           </FormControl>
                         </PopoverTrigger>
-                        <PopoverContent className="w-102.5 p-0 border-slate-200 rounded-sm shadow-md">
+                        <PopoverContent className="w-[410px] p-0 border-border rounded-xl shadow-xl bg-popover">
                           <Command>
                             <CommandInput
                               placeholder="Search name or email..."
-                              className="h-9 text-xs"
+                              className="h-9 text-[11px] font-medium border-none focus:ring-0"
                             />
-                            <CommandList>
-                              <CommandEmpty className="text-xs py-3 text-center text-slate-500">
+                            <CommandList className="custom-scrollbar">
+                              <CommandEmpty className="text-[10px] font-bold uppercase tracking-widest py-4 text-center text-muted-foreground">
                                 {isLoadingUsers
                                   ? "Loading..."
                                   : "No eligible users found."}
@@ -200,21 +201,21 @@ function DriverForm({ open, onOpenChange, initialData }: DriverFormProp) {
                                     key={user.user_id}
                                     value={user.full_name}
                                     onSelect={() => onSelectUser(user.user_id)}
-                                    className="text-xs cursor-pointer"
+                                    className="text-[11px] font-semibold cursor-pointer rounded-lg aria-selected:bg-secondary transition-colors px-3 py-2"
                                   >
                                     <Check
                                       className={cn(
                                         "mr-2 h-3.5 w-3.5",
                                         user.user_id === field.value
-                                          ? "opacity-100 text-[#0F172A]"
+                                          ? "opacity-100 text-primary"
                                           : "opacity-0",
                                       )}
                                     />
                                     <div className="flex flex-col">
-                                      <span className="font-medium text-[#0F172A]">
+                                      <span className="text-foreground">
                                         {user.full_name}
                                       </span>
-                                      <span className="text-[10px] text-slate-500">
+                                      <span className="text-[9px] font-mono text-muted-foreground mt-0.5">
                                         {user.email}
                                       </span>
                                     </div>
@@ -225,33 +226,33 @@ function DriverForm({ open, onOpenChange, initialData }: DriverFormProp) {
                           </Command>
                         </PopoverContent>
                       </Popover>
-                      <FormMessage className="text-[10px]" />
+                      <FormMessage className="text-[9px] font-bold uppercase tracking-widest" />
                     </FormItem>
                   )}
                 />
               ) : (
-                <div className="bg-slate-50 p-3 border border-slate-100 rounded-sm">
+                <div className="bg-secondary/30 p-3 border border-border rounded-xl transition-colors">
                   <input type="hidden" {...form.register("user_id")} />
 
-                  <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">
+                  <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest mb-1">
                     Driver Identity
                   </p>
-                  <p className="text-xs font-bold text-[#0F172A]">
+                  <p className="text-[11px] font-bold text-foreground uppercase">
                     {initialData.profiles?.full_name}
                   </p>
-                  <p className="text-[10px] text-slate-500">
+                  <p className="text-[10px] font-mono text-muted-foreground mt-0.5">
                     {initialData.profiles?.email}
                   </p>
                 </div>
               )}
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-4 pt-1">
                 <FormField
                   control={form.control}
                   name="driver_status"
                   render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-xs font-bold text-slate-700">
+                    <FormItem className="space-y-1.5">
+                      <FormLabel className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">
                         Operational Status
                       </FormLabel>
                       <Select
@@ -259,32 +260,44 @@ function DriverForm({ open, onOpenChange, initialData }: DriverFormProp) {
                         value={field.value}
                       >
                         <FormControl>
-                          <SelectTrigger className="h-9 w-full text-xs rounded-sm border-slate-200 shadow-none focus:ring-1 focus:ring-[#0F172A]">
+                          <SelectTrigger className="h-8 w-full text-[11px] font-semibold rounded-lg border-border bg-secondary shadow-none focus:ring-1 focus:ring-primary transition-colors text-foreground">
                             <SelectValue placeholder="Status" />
                           </SelectTrigger>
                         </FormControl>
-                        <SelectContent className="border-slate-200 rounded-sm">
-                          <SelectItem value="Pending" className="text-xs">
+                        <SelectContent className="border-border rounded-xl shadow-xl bg-popover">
+                          <SelectItem
+                            value="Pending"
+                            className="text-[11px] font-semibold focus:bg-secondary"
+                          >
                             Pending
                           </SelectItem>
-                          <SelectItem value="Available" className="text-xs">
+                          <SelectItem
+                            value="Available"
+                            className="text-[11px] font-semibold focus:bg-secondary"
+                          >
                             Available
                           </SelectItem>
-                          <SelectItem value="On Trip" className="text-xs">
+                          <SelectItem
+                            value="On Trip"
+                            className="text-[11px] font-semibold focus:bg-secondary"
+                          >
                             On Trip
                           </SelectItem>
-                          <SelectItem value="Off Duty" className="text-xs">
+                          <SelectItem
+                            value="Off Duty"
+                            className="text-[11px] font-semibold focus:bg-secondary"
+                          >
                             Off Duty
                           </SelectItem>
                           <SelectItem
                             value="Suspended"
-                            className="text-xs text-red-600 focus:text-red-700"
+                            className="text-[11px] font-semibold text-destructive focus:bg-destructive/10 focus:text-destructive"
                           >
                             Suspended
                           </SelectItem>
                         </SelectContent>
                       </Select>
-                      <FormMessage className="text-[10px]" />
+                      <FormMessage className="text-[9px] font-bold uppercase tracking-widest" />
                     </FormItem>
                   )}
                 />
@@ -293,9 +306,9 @@ function DriverForm({ open, onOpenChange, initialData }: DriverFormProp) {
                   control={form.control}
                   name="is_verified"
                   render={({ field }) => (
-                    <FormItem className="flex flex-row items-center justify-between rounded-sm border border-slate-200 p-3 shadow-none bg-white h-9 mt-6">
+                    <FormItem className="flex flex-row items-center justify-between rounded-lg border border-border p-2 bg-secondary/30 h-13 mt-5 transition-colors">
                       <div className="space-y-0.5">
-                        <FormLabel className="text-xs font-bold text-slate-700 m-0">
+                        <FormLabel className="text-[10px] font-bold text-foreground uppercase tracking-widest m-0 leading-none">
                           Verified
                         </FormLabel>
                       </div>
@@ -303,7 +316,7 @@ function DriverForm({ open, onOpenChange, initialData }: DriverFormProp) {
                         <Switch
                           checked={field.value}
                           onCheckedChange={field.onChange}
-                          className="data-[state=checked]:bg-emerald-500"
+                          className="data-[state=checked]:bg-emerald-500 scale-90"
                         />
                       </FormControl>
                     </FormItem>
@@ -312,9 +325,9 @@ function DriverForm({ open, onOpenChange, initialData }: DriverFormProp) {
               </div>
 
               {form.watch("is_verified") && !initialData?.is_verified && (
-                <div className="flex items-start gap-2 p-3 bg-amber-50 border border-amber-200 rounded-sm mt-4">
-                  <ShieldAlert className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-                  <p className="text-[10px] text-amber-800 font-medium leading-relaxed">
+                <div className="flex items-start gap-2 p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg mt-2 transition-colors">
+                  <ShieldAlert className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                  <p className="text-[9px] text-amber-600/90 dark:text-amber-400/90 font-bold uppercase tracking-widest leading-relaxed">
                     <strong>Manual Override:</strong> Verifying a driver here
                     bypasses the Application Queue. Ensure all documents have
                     been physically verified.
@@ -323,11 +336,12 @@ function DriverForm({ open, onOpenChange, initialData }: DriverFormProp) {
               )}
             </div>
 
-            <DialogFooter className="px-5 py-3 bg-[#F8FAFC] border-t border-slate-200 flex sm:justify-end gap-2 shrink-0">
+            {/* FOOTER */}
+            <DialogFooter className="px-5 py-3 bg-card border-t border-border flex sm:justify-end gap-2 shrink-0 transition-colors">
               <Button
                 type="button"
                 variant="outline"
-                className="h-8 text-xs font-bold rounded-sm border-slate-200 text-slate-600 hover:bg-slate-100 shadow-none"
+                className="h-8 px-4 text-[10px] font-bold uppercase tracking-widest rounded-lg border-border text-foreground hover:bg-secondary shadow-none transition-colors"
                 onClick={() => handleOpenChange(false)}
               >
                 Cancel
@@ -335,7 +349,7 @@ function DriverForm({ open, onOpenChange, initialData }: DriverFormProp) {
               <Button
                 type="submit"
                 disabled={isSaving}
-                className="h-8 text-xs font-bold rounded-sm bg-[#0F172A] hover:bg-slate-800 text-white shadow-none"
+                className="h-8 px-5 min-w-[140px] text-[10px] font-bold uppercase tracking-widest rounded-lg bg-primary hover:opacity-90 text-primary-foreground shadow-sm transition-opacity"
               >
                 {isSaving && (
                   <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
