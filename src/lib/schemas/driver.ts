@@ -5,7 +5,6 @@ export const driverFormSchema = z.object({
   driver_id: z.string().optional(),
   user_id: z.string().min(1, "You must select a user account"),
   driver_status: z.string().min(5, "Status is required").toUpperCase(),
-  is_verified: z.boolean(),
 });
 
 export type DriverFormValues = z.infer<typeof driverFormSchema>;

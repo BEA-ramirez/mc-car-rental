@@ -147,11 +147,11 @@ export default function DriverPerformanceTab({
             </div>
           ) : (
             <div className="flex flex-col divide-y divide-border">
-              {ledger.map((txn: any) => {
+              {ledger.map((txn: any, index: number) => {
                 const isPositive = Number(txn.amount) > 0;
                 return (
                   <div
-                    key={txn.transaction_id}
+                    key={index || txn.transaction_id}
                     className="p-3 flex items-center justify-between hover:bg-secondary/50 transition-colors"
                   >
                     <div className="flex items-center gap-3">

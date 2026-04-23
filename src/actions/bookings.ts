@@ -830,7 +830,7 @@ export async function checkDriverAvailabilityAction(
 export async function getBookingDetailsAction(bookingId: string) {
   const supabase = await createClient();
 
-  if (!bookingId || !bookingId.includes("-")) {
+  if (!bookingId) {
     return { success: false, data: null, message: "Invalid Booking ID" };
   }
 
@@ -849,7 +849,8 @@ export async function getBookingDetailsAction(bookingId: string) {
         driver_id,
         shift_start,
         shift_end,
-        status
+        status,
+        drivers ( users ( full_name ) )
       ),
       payments:booking_payments(amount, status),
       contracts:booking_contracts(is_signed),
@@ -898,7 +899,14 @@ export async function getBookingDetailsAction(bookingId: string) {
     logs: sortedLogs,
 
     // <-- NEW: Passed to the payload so the frontend can detect Dispatch Gaps!
-    booking_driver_assignments: booking.booking_driver_assignments || [],
+    assignments: (booking.booking_driver_assignments || []).map((a: any) => ({
+      id: a.assignment_id,
+      driver_id: a.driver_id,
+      driver_name: a.drivers?.users?.full_name || "Unknown Driver",
+      shift_start: a.shift_start,
+      shift_end: a.shift_end,
+      status: a.status,
+    })),
 
     customer: {
       id: booking.customer?.user_id,

@@ -16,7 +16,6 @@ export type ActionState = {
 };
 
 export async function saveDriver(data: DriverFormValues): Promise<ActionState> {
-  // server-side validation
   const validatedFields = driverFormSchema.safeParse(data);
 
   if (!validatedFields.success) {
@@ -30,7 +29,6 @@ export async function saveDriver(data: DriverFormValues): Promise<ActionState> {
   try {
     const validData = validatedFields.data;
 
-    // Safety check: user_id is absolutely required
     if (!validData.user_id) {
       return {
         success: false,
@@ -39,13 +37,12 @@ export async function saveDriver(data: DriverFormValues): Promise<ActionState> {
     }
 
     const supabase = await createClient();
-    const supabaseAdmin = createAdminClient(); // <-- NEW: Import and create the Admin Client
+    const supabaseAdmin = createAdminClient();
 
-    // 1. Save operational data and update public.users via RPC
+    // Save operational data and update public.users via RPC
     const { error } = await supabase.rpc("save_driver_v1", {
       p_user_id: validData.user_id,
       p_driver_status: validData.driver_status || "PENDING",
-      p_is_verified: validData.is_verified || false,
     });
 
     if (error) {
@@ -56,13 +53,13 @@ export async function saveDriver(data: DriverFormValues): Promise<ActionState> {
       };
     }
 
-    // 2. --- NEW: Sync Auth Metadata for RLS ---
-    // This explicitly tells Supabase Auth that this user is now a driver
+    // Sync Auth Metadata for RLS
+    // This perfectly ensures that Supabase Auth matches the public.users role
     const { error: authError } = await supabaseAdmin.auth.admin.updateUserById(
       validData.user_id,
       {
         app_metadata: { role: "driver" },
-        user_metadata: { role: "driver" }, // Keep user_metadata matching just in case
+        user_metadata: { role: "driver" },
       },
     );
 
@@ -71,14 +68,11 @@ export async function saveDriver(data: DriverFormValues): Promise<ActionState> {
         "Warning: Driver saved in DB, but Auth metadata sync failed:",
         authError,
       );
-      // We log this, but don't fail the whole request since the DB update succeeded.
     }
 
-    // Optional: Add a revalidatePath here if you need the UI to refresh immediately
-    // revalidatePath("/admin/drivers");
     return {
       success: true,
-      message: "Driver saved successfully!",
+      message: "Driver saved and promoted successfully!",
     };
   } catch (error) {
     console.error("Save Driver Error:", error);
@@ -167,7 +161,13 @@ export async function getDriverSchedulesAction() {
           end: new Date(assignment.shift_end),
           car: car ? `${car.brand} ${car.model}` : "Unassigned Vehicle",
           plate: car?.plate_number || "N/A",
+
+          // --- UPDATED LOCATION DATA ---
           location: booking?.pickup_location || "Unknown Location",
+          dropoffLocation: booking?.dropoff_location || "Unknown Location",
+          pickupCoordinates: booking?.pickup_coordinates || null,
+          dropoffCoordinates: booking?.dropoff_coordinates || null,
+
           status: assignment.status,
           customer: customer
             ? {

@@ -29,7 +29,6 @@ import DriverProfileHeader from "./driver-profile-header";
 import DispatchCalendar, {
   ScheduleBooking,
 } from "@/components/drivers/dispatch-calendar";
-import DriverPerformanceTab from "./driver-performance-tab";
 import DriverDocsTab from "./driver-docs-tab";
 import DriverForm from "./driver-form";
 import { DeleteDialog } from "../delete-dialog";
@@ -180,10 +179,6 @@ export default function DriversMain({
                 isLoading={isSchedulesLoading}
                 mode="specific"
               />
-            </TabsContent>
-
-            <TabsContent value="performance" className="m-0 outline-none">
-              <DriverPerformanceTab driverId={selectedDriver.driver_id || ""} />
             </TabsContent>
 
             <TabsContent value="docs" className="m-0 outline-none">
@@ -401,12 +396,6 @@ export default function DriversMain({
                   Schedule & Dispatch
                 </TabsTrigger>
                 <TabsTrigger
-                  value="performance"
-                  className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-3 py-1.5 text-[10px] font-bold text-muted-foreground data-[state=active]:text-foreground uppercase tracking-widest whitespace-nowrap transition-all"
-                >
-                  Performance & Wallet
-                </TabsTrigger>
-                <TabsTrigger
                   value="docs"
                   className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-3 py-1.5 text-[10px] font-bold text-muted-foreground data-[state=active]:text-foreground uppercase tracking-widest whitespace-nowrap transition-all"
                 >
@@ -422,15 +411,6 @@ export default function DriversMain({
                   bookings={driverSpecificSchedules}
                   isLoading={isSchedulesLoading}
                   mode="specific"
-                />
-              </TabsContent>
-
-              <TabsContent
-                value="performance"
-                className="flex-1 min-h-0 overflow-y-auto custom-scrollbar outline-none m-0 pb-4 flex flex-col"
-              >
-                <DriverPerformanceTab
-                  driverId={selectedDriver.driver_id || ""}
                 />
               </TabsContent>
 

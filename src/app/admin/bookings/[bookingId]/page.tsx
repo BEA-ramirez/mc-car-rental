@@ -125,7 +125,7 @@ export default function AdminBookingDetailsPage() {
 
   // --- DISPATCH GAP DETECTION ---
   // Find the latest shift end date among all assignments
-  const latestShiftEnd = booking?.booking_driver_assignments?.reduce(
+  const latestShiftEnd = booking?.assignments?.reduce(
     (latest: Date, assignment: any) => {
       const shiftEnd = new Date(assignment.shift_end);
       return shiftEnd > latest ? shiftEnd : latest;
@@ -169,7 +169,7 @@ export default function AdminBookingDetailsPage() {
     start: booking.start_date,
     end: booking.end_date,
     resourceId: booking.car.id,
-    assignments: booking.booking_driver_assignments,
+    assignments: booking?.assignments,
   };
 
   // --- INSPECTION LOGIC & PARSING ---
@@ -391,28 +391,41 @@ export default function AdminBookingDetailsPage() {
                   Chauffeur / Driver
                 </h3>
 
-                {booking.driver ? (
+                {booking.assignments && booking.assignments.length > 0 ? (
                   <div className="flex flex-col gap-3">
-                    {/* STATE 1: Driver is assigned (But check for gaps!) */}
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-secondary border border-border flex items-center justify-center shrink-0">
-                        <UserCircle className="w-5 h-5 text-primary" />
-                      </div>
-                      <div className="flex-1 overflow-hidden">
-                        <p className="text-xs font-bold truncate">
-                          {booking.driver.name}
-                        </p>
-                        <Button
-                          variant="link"
-                          onClick={() => setIsDispatchOpen(true)}
-                          className="h-5 p-0 text-[10px] text-primary"
-                        >
-                          Manage Dispatch
-                        </Button>
-                      </div>
+                    {/* NEW: Dynamic Shift List */}
+                    <div className="space-y-2 max-h-[160px] overflow-y-auto custom-scrollbar pr-1">
+                      {booking.assignments.map(
+                        (assignment: any, index: number) => (
+                          <div
+                            key={assignment.id || index}
+                            className="flex items-center gap-3 p-2 bg-secondary/30 rounded-lg border border-border"
+                          >
+                            <div className="w-8 h-8 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
+                              <UserCircle className="w-4 h-4 text-primary" />
+                            </div>
+                            <div className="flex-1 overflow-hidden">
+                              <p className="text-[11px] font-bold truncate text-foreground">
+                                {assignment.driver_name}
+                              </p>
+                              <p className="text-[9px] text-muted-foreground font-mono mt-0.5">
+                                {format(
+                                  new Date(assignment.shift_start),
+                                  "MMM dd, ha",
+                                )}{" "}
+                                -{" "}
+                                {format(
+                                  new Date(assignment.shift_end),
+                                  "MMM dd, ha",
+                                )}
+                              </p>
+                            </div>
+                          </div>
+                        ),
+                      )}
                     </div>
 
-                    {/* NEW STATE: GAP DETECTED WARNING */}
+                    {/* GAP DETECTED WARNING */}
                     {hasDispatchGap && (
                       <div className="p-2 border border-dashed border-amber-500/40 rounded-lg bg-amber-500/10 mt-1 animate-in fade-in">
                         <p className="text-[9px] font-bold text-amber-600 dark:text-amber-500 mb-1.5 flex items-center gap-1.5">
@@ -424,15 +437,23 @@ export default function AdminBookingDetailsPage() {
                           schedule ends early. You need to assign relief
                           coverage.
                         </p>
-                        <Button
-                          onClick={() => setIsDispatchOpen(true)}
-                          size="sm"
-                          className="h-6 text-[8px] font-bold uppercase tracking-widest w-full bg-amber-500 hover:bg-amber-600 text-white shadow-none"
-                        >
-                          Fix Dispatch Gap
-                        </Button>
                       </div>
                     )}
+
+                    <Button
+                      variant="outline"
+                      onClick={() => setIsDispatchOpen(true)}
+                      className={cn(
+                        "h-7 p-0 text-[10px] w-full shadow-none",
+                        hasDispatchGap
+                          ? "bg-amber-500 hover:bg-amber-600 text-white border-transparent"
+                          : "bg-card hover:bg-secondary text-foreground",
+                      )}
+                    >
+                      {hasDispatchGap
+                        ? "Fix Dispatch Gap"
+                        : "Manage Dispatch Shifts"}
+                    </Button>
                   </div>
                 ) : booking.is_with_driver ? (
                   /* STATE 2: Customer requested a driver, but none is assigned at all */

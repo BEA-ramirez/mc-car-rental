@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/accordion";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   format,
   isSameDay,
@@ -38,11 +39,13 @@ import {
   ChevronLeft,
   ChevronRight,
   Car,
+  Navigation,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 export interface ScheduleBooking {
-  id: string;
+  id: string; // This is now the ASSIGNMENT ID, not the booking ID
   driver_id: string;
   driver_name: string;
   start: Date;
@@ -50,6 +53,9 @@ export interface ScheduleBooking {
   car: string;
   plate: string;
   location: string;
+  dropoffLocation?: string;
+  pickupCoordinates?: string | null;
+  dropoffCoordinates?: string | null;
   status: string;
   customer: {
     name: string;
@@ -59,7 +65,7 @@ export interface ScheduleBooking {
 }
 
 interface DispatchCalendarProps {
-  bookings: ScheduleBooking[];
+  bookings: ScheduleBooking[]; // These are technically "Assignments" now
   isLoading: boolean;
   mode: "global" | "specific";
 }
@@ -102,6 +108,31 @@ export default function DispatchCalendar({
     );
   };
 
+  const monthlyAgendaBookings = useMemo(() => {
+    return bookings
+      .filter(
+        (b) =>
+          isSameMonth(b.start, currentDate) || isSameMonth(b.end, currentDate),
+      )
+      .sort((a, b) => b.start.getTime() - a.start.getTime());
+  }, [bookings, currentDate]);
+
+  const handleOpenMap = (
+    coords?: string | null,
+    fallbackTextAddress?: string,
+  ) => {
+    if (coords) {
+      window.open(`https://maps.google.com/?q=${coords}`, "_blank");
+    } else if (fallbackTextAddress) {
+      window.open(
+        `https://maps.google.com/?q=${encodeURIComponent(fallbackTextAddress)}`,
+        "_blank",
+      );
+    } else {
+      toast.error("No location data available to map.");
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center h-[400px] lg:h-[600px] bg-card border border-border rounded-xl transition-colors">
@@ -113,14 +144,10 @@ export default function DispatchCalendar({
     );
   }
 
-  const sortedBookings = [...bookings].sort(
-    (a, b) => a.start.getTime() - b.start.getTime(),
-  );
-
   return (
-    <div className="bg-card border border-border rounded-xl shadow-sm flex flex-col lg:flex-row overflow-hidden min-w-0 h-full transition-colors">
+    <div className="bg-card border border-border rounded-xl shadow-sm flex flex-col lg:flex-row overflow-hidden min-w-0 h-[600px] transition-colors">
       {/* --- CALENDAR SECTION --- */}
-      <div className="w-full lg:w-[70%] border-b lg:border-b-0 lg:border-r border-border flex flex-col bg-background min-h-[400px] transition-colors">
+      <div className="w-full lg:w-[70%] border-b lg:border-b-0 lg:border-r border-border flex flex-col bg-background h-full transition-colors">
         {/* Calendar Header */}
         <div className="h-[60px] px-3 sm:px-4 border-b border-border bg-secondary/30 flex justify-between items-center shrink-0 transition-colors">
           <div className="flex items-center gap-2 sm:gap-4">
@@ -132,7 +159,6 @@ export default function DispatchCalendar({
             </h3>
             <div className="h-4 w-px bg-border hidden sm:block" />
 
-            {/* Native Selectors for Mobile Ease */}
             <div className="flex items-center bg-background border border-border rounded-lg px-2 py-1 shadow-sm transition-colors">
               <select
                 value={currentDate.getMonth()}
@@ -288,7 +314,6 @@ export default function DispatchCalendar({
                     </PopoverTrigger>
 
                     {isBooked ? (
-                      // CRITICAL FIX: w-[calc(100vw-24px)] prevents horizontal overflow on small mobile screens
                       <PopoverContent
                         className="w-[calc(100vw-24px)] sm:w-80 p-0 shadow-xl border-border rounded-xl bg-card overflow-hidden transition-colors"
                         align="start"
@@ -383,15 +408,64 @@ export default function DispatchCalendar({
                                         </div>
                                       </div>
                                     </div>
-                                    <div className="flex items-start gap-2 pt-3 border-t border-border">
-                                      <MapPin className="w-3.5 h-3.5 text-muted-foreground mt-0.5 shrink-0" />
-                                      <div className="text-[10px] pr-2">
-                                        <p className="font-bold text-muted-foreground uppercase tracking-widest mb-0.5">
-                                          Destination
-                                        </p>
-                                        <p className="font-semibold text-foreground leading-tight">
-                                          {booking.location}
-                                        </p>
+
+                                    <div className="flex flex-col gap-2.5 pt-3 border-t border-border">
+                                      <div className="flex items-start gap-2 w-full">
+                                        <MapPin className="w-3.5 h-3.5 text-muted-foreground mt-0.5 shrink-0" />
+                                        <div className="text-[10px] flex-1">
+                                          <p className="font-bold text-muted-foreground uppercase tracking-widest mb-0.5">
+                                            Pickup Location
+                                          </p>
+                                          <div className="flex items-start justify-between gap-2">
+                                            <p className="font-semibold text-foreground leading-tight">
+                                              {booking.location}
+                                            </p>
+                                            <Button
+                                              variant="secondary"
+                                              size="icon"
+                                              className="h-6 w-6 shrink-0 rounded bg-primary/10 text-primary hover:bg-primary/20 border border-primary/20 shadow-none"
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleOpenMap(
+                                                  booking.pickupCoordinates,
+                                                  booking.location,
+                                                );
+                                              }}
+                                              title="Open Pickup in Maps"
+                                            >
+                                              <Navigation className="w-3 h-3" />
+                                            </Button>
+                                          </div>
+                                        </div>
+                                      </div>
+
+                                      <div className="flex items-start gap-2 w-full">
+                                        <MapPin className="w-3.5 h-3.5 text-muted-foreground mt-0.5 shrink-0" />
+                                        <div className="text-[10px] flex-1">
+                                          <p className="font-bold text-muted-foreground uppercase tracking-widest mb-0.5">
+                                            Dropoff Location
+                                          </p>
+                                          <div className="flex items-start justify-between gap-2">
+                                            <p className="font-semibold text-foreground leading-tight">
+                                              {booking.dropoffLocation || "N/A"}
+                                            </p>
+                                            <Button
+                                              variant="secondary"
+                                              size="icon"
+                                              className="h-6 w-6 shrink-0 rounded bg-amber-500/10 text-amber-600 hover:bg-amber-500/20 border border-amber-500/20 shadow-none"
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleOpenMap(
+                                                  booking.dropoffCoordinates,
+                                                  booking.dropoffLocation,
+                                                );
+                                              }}
+                                              title="Open Dropoff in Maps"
+                                            >
+                                              <Navigation className="w-3 h-3" />
+                                            </Button>
+                                          </div>
+                                        </div>
                                       </div>
                                     </div>
                                   </div>
@@ -415,93 +489,96 @@ export default function DispatchCalendar({
       </div>
 
       {/* --- AGENDA LIST SECTION --- */}
-      <div className="w-full lg:w-[30%] flex flex-col bg-card min-w-0 border-t lg:border-t-0 lg:border-l border-border transition-colors">
-        {/* Agenda Header */}
+      <div className="w-full lg:w-[30%] flex flex-col bg-card min-w-0 border-t lg:border-t-0 lg:border-l border-border h-full transition-colors">
         <div className="h-[60px] px-3 sm:px-4 border-b border-border bg-secondary/30 shrink-0 flex items-center justify-between transition-colors">
           <h3 className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
             <Activity className="w-3.5 h-3.5" />
-            {mode === "global" ? "Fleet Agenda" : "Driver Agenda"}
+            {format(currentDate, "MMMM")} Agenda
           </h3>
           <Badge
             variant="outline"
             className="text-[9px] bg-background text-muted-foreground border-border shadow-none font-bold uppercase rounded-md transition-colors"
           >
-            {sortedBookings.length} Total
+            {monthlyAgendaBookings.length} Shifts
           </Badge>
         </div>
 
-        {/* Agenda List */}
-        <div className="flex-1 min-h-[300px] overflow-y-auto custom-scrollbar bg-background p-3 sm:p-4 space-y-3 transition-colors">
-          {sortedBookings.length === 0 ? (
-            <div className="p-8 text-center text-[9px] font-bold uppercase tracking-widest text-muted-foreground border border-dashed border-border rounded-xl transition-colors">
-              No active assignments.
-            </div>
-          ) : (
-            sortedBookings.map((b) => {
-              const isSelected = highlightedBookingId === b.id;
-              return (
-                <div
-                  key={b.id}
-                  onClick={() =>
-                    setHighlightedBookingId(isSelected ? null : b.id)
-                  }
-                  className={cn(
-                    "p-3.5 border rounded-xl transition-all cursor-pointer select-none bg-card shrink-0",
-                    isSelected
-                      ? "bg-primary/5 border-primary shadow-sm ring-1 ring-primary"
-                      : "border-border hover:border-primary/50 hover:shadow-sm",
-                  )}
-                >
-                  <div className="flex justify-between items-start mb-3">
-                    <div className="flex flex-col min-w-0 pr-2">
-                      <span className="font-bold text-[11px] text-foreground truncate">
-                        {mode === "global" ? b.driver_name : b.car}
-                      </span>
-                      <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest mt-1 truncate flex items-center gap-1.5">
-                        <Car className="w-3 h-3 shrink-0" />
-                        <span className="font-mono bg-secondary px-1.5 rounded border border-border">
-                          {b.plate}
-                        </span>
-                      </span>
-                    </div>
-                    <Badge
-                      variant="outline"
+        {/* THE FIX: min-h-0 wrapper forces ScrollArea to adhere to parent bounds and not stretch! */}
+        <div className="flex-1 min-h-0 overflow-hidden">
+          <ScrollArea className="h-full w-full bg-background custom-scrollbar">
+            <div className="p-3 sm:p-4 space-y-3">
+              {monthlyAgendaBookings.length === 0 ? (
+                <div className="p-8 text-center text-[9px] font-bold uppercase tracking-widest text-muted-foreground border border-dashed border-border rounded-xl transition-colors">
+                  No assignments for {format(currentDate, "MMMM")}.
+                </div>
+              ) : (
+                monthlyAgendaBookings.map((b) => {
+                  const isSelected = highlightedBookingId === b.id;
+                  return (
+                    <div
+                      key={b.id}
+                      onClick={() =>
+                        setHighlightedBookingId(isSelected ? null : b.id)
+                      }
                       className={cn(
-                        "text-[8px] h-4 px-1.5 uppercase font-bold tracking-widest shrink-0 rounded shadow-none border",
-                        b.status === "ACTIVE"
-                          ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
-                          : "bg-secondary text-muted-foreground border-border",
+                        "p-3.5 border rounded-xl transition-all cursor-pointer select-none bg-card shrink-0",
+                        isSelected
+                          ? "bg-primary/5 border-primary shadow-sm ring-1 ring-primary"
+                          : "border-border hover:border-primary/50 hover:shadow-sm",
                       )}
                     >
-                      {b.status}
-                    </Badge>
-                  </div>
+                      <div className="flex justify-between items-start mb-3">
+                        <div className="flex flex-col min-w-0 pr-2">
+                          <span className="font-bold text-[11px] text-foreground truncate">
+                            {mode === "global" ? b.driver_name : b.car}
+                          </span>
+                          <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest mt-1 truncate flex items-center gap-1.5">
+                            <Car className="w-3 h-3 shrink-0" />
+                            <span className="font-mono bg-secondary px-1.5 rounded border border-border">
+                              {b.plate}
+                            </span>
+                          </span>
+                        </div>
+                        <Badge
+                          variant="outline"
+                          className={cn(
+                            "text-[8px] h-4 px-1.5 uppercase font-bold tracking-widest shrink-0 rounded shadow-none border",
+                            b.status === "ACTIVE"
+                              ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
+                              : "bg-secondary text-muted-foreground border-border",
+                          )}
+                        >
+                          {b.status}
+                        </Badge>
+                      </div>
 
-                  <div
-                    className={cn(
-                      "space-y-1.5 text-[9px] font-bold uppercase tracking-widest p-2.5 rounded-lg border transition-colors",
-                      isSelected
-                        ? "bg-background border-primary/20"
-                        : "bg-secondary/50 border-border",
-                    )}
-                  >
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="text-muted-foreground">Start</span>
-                      <span className="font-mono text-foreground">
-                        {format(b.start, "MMM dd, HH:mm")}
-                      </span>
+                      <div
+                        className={cn(
+                          "space-y-1.5 text-[9px] font-bold uppercase tracking-widest p-2.5 rounded-lg border transition-colors",
+                          isSelected
+                            ? "bg-background border-primary/20"
+                            : "bg-secondary/50 border-border",
+                        )}
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-muted-foreground">Start</span>
+                          <span className="font-mono text-foreground">
+                            {format(b.start, "MMM dd, HH:mm")}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-muted-foreground">End</span>
+                          <span className="font-mono text-foreground">
+                            {format(b.end, "MMM dd, HH:mm")}
+                          </span>
+                        </div>
+                      </div>
                     </div>
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="text-muted-foreground">End</span>
-                      <span className="font-mono text-foreground">
-                        {format(b.end, "MMM dd, HH:mm")}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              );
-            })
-          )}
+                  );
+                })
+              )}
+            </div>
+          </ScrollArea>
         </div>
       </div>
     </div>

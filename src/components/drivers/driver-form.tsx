@@ -21,8 +21,8 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { useDrivers } from "../../../hooks/use-drivers";
-import { useUnassignedCarOwners } from "../../../hooks/use-fleetPartners";
-import { Check, ChevronsUpDown, Loader2, ShieldAlert } from "lucide-react";
+import { useUnassignedCarOwners } from "../../../hooks/use-fleetPartners"; // You might want to rename this hook later to useUnassignedCustomers!
+import { Check, ChevronsUpDown, Loader2 } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -43,7 +43,6 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import { CompleteDriverType } from "@/lib/schemas/driver";
 import { DriverFormValues, driverFormSchema } from "@/lib/schemas/driver";
@@ -66,7 +65,6 @@ function DriverForm({ open, onOpenChange, initialData }: DriverFormProp) {
     defaultValues: {
       user_id: "",
       driver_status: "Pending",
-      is_verified: false,
     },
   });
 
@@ -77,13 +75,11 @@ function DriverForm({ open, onOpenChange, initialData }: DriverFormProp) {
           driver_id: initialData.driver_id,
           user_id: initialData.user_id,
           driver_status: initialData.driver_status || "Pending",
-          is_verified: initialData.is_verified || false,
         });
       } else {
         form.reset({
           user_id: "",
           driver_status: "Pending",
-          is_verified: false,
         });
       }
     }
@@ -109,7 +105,7 @@ function DriverForm({ open, onOpenChange, initialData }: DriverFormProp) {
       } else {
         toast.error(result.message || "Failed to save driver.");
       }
-      return; // Stop execution
+      return;
     }
 
     toast.success(result.message);
@@ -122,7 +118,6 @@ function DriverForm({ open, onOpenChange, initialData }: DriverFormProp) {
     onOpenChange(isOpen);
   };
 
-  // DEBUG TOOL: If save ever does "nothing" again, check your browser console!
   if (Object.keys(form.formState.errors).length > 0) {
     console.log(
       "Silent Form Errors Blocked Submission:",
@@ -140,7 +135,7 @@ function DriverForm({ open, onOpenChange, initialData }: DriverFormProp) {
           </DialogTitle>
           <DialogDescription className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest leading-none">
             {initialData
-              ? "Update operational status and verification"
+              ? "Update operational status"
               : "Select a registered user to promote them"}
           </DialogDescription>
         </DialogHeader>
@@ -233,7 +228,6 @@ function DriverForm({ open, onOpenChange, initialData }: DriverFormProp) {
               ) : (
                 <div className="bg-secondary/30 p-3 border border-border rounded-xl transition-colors">
                   <input type="hidden" {...form.register("user_id")} />
-
                   <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest mb-1">
                     Driver Identity
                   </p>
@@ -246,7 +240,7 @@ function DriverForm({ open, onOpenChange, initialData }: DriverFormProp) {
                 </div>
               )}
 
-              <div className="grid grid-cols-2 gap-4 pt-1">
+              <div className="grid grid-cols-1 gap-4 pt-1">
                 <FormField
                   control={form.control}
                   name="driver_status"
@@ -301,39 +295,7 @@ function DriverForm({ open, onOpenChange, initialData }: DriverFormProp) {
                     </FormItem>
                   )}
                 />
-
-                <FormField
-                  control={form.control}
-                  name="is_verified"
-                  render={({ field }) => (
-                    <FormItem className="flex flex-row items-center justify-between rounded-lg border border-border p-2 bg-secondary/30 h-13 mt-5 transition-colors">
-                      <div className="space-y-0.5">
-                        <FormLabel className="text-[10px] font-bold text-foreground uppercase tracking-widest m-0 leading-none">
-                          Verified
-                        </FormLabel>
-                      </div>
-                      <FormControl>
-                        <Switch
-                          checked={field.value}
-                          onCheckedChange={field.onChange}
-                          className="data-[state=checked]:bg-emerald-500 scale-90"
-                        />
-                      </FormControl>
-                    </FormItem>
-                  )}
-                />
               </div>
-
-              {form.watch("is_verified") && !initialData?.is_verified && (
-                <div className="flex items-start gap-2 p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg mt-2 transition-colors">
-                  <ShieldAlert className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
-                  <p className="text-[9px] text-amber-600/90 dark:text-amber-400/90 font-bold uppercase tracking-widest leading-relaxed">
-                    <strong>Manual Override:</strong> Verifying a driver here
-                    bypasses the Application Queue. Ensure all documents have
-                    been physically verified.
-                  </p>
-                </div>
-              )}
             </div>
 
             {/* FOOTER */}
