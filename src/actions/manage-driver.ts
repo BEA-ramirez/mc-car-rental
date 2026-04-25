@@ -289,9 +289,9 @@ export async function getPendingDriversAction() {
   try {
     const supabase = await createClient();
 
-    // Call the RPC
+    // Call the updated RPC version v1
     const { data: pendingDrivers, error } = await supabase.rpc(
-      "get_pending_drivers",
+      "get_pending_drivers_v1",
     );
 
     if (error) {
@@ -299,12 +299,11 @@ export async function getPendingDriversAction() {
       return { success: false, message: "Failed to load driver applications." };
     }
 
-    // Format the data for the UI
     const formattedData = (pendingDrivers || []).map((driver: any) => {
       const profile = driver.users;
       const userDocs = profile?.documents || [];
 
-      // Find specific docs embedded by the RPC
+      // Find specific docs and extract their status
       const licenseDoc = userDocs.find((d: any) => d.category === "license_id");
       const validIdDoc = userDocs.find((d: any) => d.category === "valid_id");
 
@@ -317,13 +316,18 @@ export async function getPendingDriversAction() {
         trust_score: profile?.trust_score || 5.0,
         profile_picture_url: profile?.profile_picture_url,
         created_at: driver.created_at,
-        // Resolve public URLs safely
+
+        // License Data
         license_id_url: licenseDoc?.file_path
           ? getPublicUrl(licenseDoc.file_path)
           : null,
+        license_status: licenseDoc?.status || "PENDING",
+
+        // Valid ID Data
         valid_id_url: validIdDoc?.file_path
           ? getPublicUrl(validIdDoc.file_path)
           : null,
+        valid_id_status: validIdDoc?.status || "PENDING",
       };
     });
 

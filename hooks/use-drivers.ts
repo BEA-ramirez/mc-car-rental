@@ -116,6 +116,7 @@ export const useDriverDispatch = (startDate?: Date, endDate?: Date) => {
 
       // --- DISPATCH RIPPLES ---
       // Fixes the scheduler typo and updates all related booking UI!
+      queryClient.invalidateQueries({ queryKey: ["scheduler-data"] });
       queryClient.invalidateQueries({
         queryKey: QUERY_KEYS.bookings.scheduler(),
       });

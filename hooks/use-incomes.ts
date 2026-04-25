@@ -38,6 +38,7 @@ export const useIncomes = (params?: IncomeDashboardParams) => {
     queryClient.invalidateQueries({
       queryKey: QUERY_KEYS.financials.incomesDashboard,
     });
+    queryClient.invalidateQueries({ queryKey: ["incomes-table"] });
     queryClient.invalidateQueries({
       queryKey: QUERY_KEYS.financials.incomesWidgets,
     });
@@ -56,7 +57,7 @@ export const useIncomes = (params?: IncomeDashboardParams) => {
     mutationFn: recordBookingPayment,
     onSuccess: async (data) => {
       if (data.success) {
-        await invalidateFinancials();
+        invalidateFinancials();
         toast.success(data.message);
       } else {
         toast.error(data.message);
@@ -70,7 +71,7 @@ export const useIncomes = (params?: IncomeDashboardParams) => {
     mutationFn: addBookingCharge,
     onSuccess: async (data) => {
       if (data.success) {
-        await invalidateFinancials();
+        invalidateFinancials();
         toast.success(data.message);
       } else {
         toast.error(data.message);
@@ -84,7 +85,8 @@ export const useIncomes = (params?: IncomeDashboardParams) => {
     mutationFn: logMiscIncome,
     onSuccess: async (data) => {
       if (data.success) {
-        await invalidateFinancials();
+        invalidateFinancials();
+
         toast.success(data.message);
       } else {
         toast.error(data.message);
@@ -98,7 +100,7 @@ export const useIncomes = (params?: IncomeDashboardParams) => {
     mutationFn: issueBookingRefundAction,
     onSuccess: async (data) => {
       if (data.success) {
-        await invalidateFinancials();
+        invalidateFinancials();
         toast.success(data.message);
       } else {
         toast.error(data.message);

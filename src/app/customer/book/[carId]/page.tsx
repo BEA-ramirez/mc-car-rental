@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo, use } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
-import { format, differenceInDays } from "date-fns";
+import { format, addHours, parse } from "date-fns";
 import { motion } from "framer-motion";
 import {
   ArrowLeft,
@@ -14,7 +14,7 @@ import {
   CheckCircle2,
   FileText,
   Info,
-  X, // Added X icon for unpinning
+  X,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -62,13 +62,12 @@ export default function CustomerBookingPage({
 
   const realFees = useMemo(() => {
     const defaultFees = {
-      driver_rate_per_day: 1500,
-      custom_pickup_fee: 500,
-      custom_dropoff_fee: 500,
-      security_deposit_default: 5000,
+      driver_rate_per_12h: 600,
     };
     return { ...defaultFees, ...(settings?.fees || {}) };
   }, [settings]);
+
+  const MINIMUM_DOWNPAYMENT = 500;
 
   const car = useMemo(() => {
     if (!unit) return null;
@@ -77,12 +76,17 @@ export default function CustomerBookingPage({
       if (!a.is_primary && b.is_primary) return 1;
       return 0;
     });
+
+    const rate24h = Number(unit.rental_rate_per_day) || 0;
+    const rawRate12h = Number(unit.rental_rate_per_12h) || 0;
+
     return {
       id: unit.car_id,
       brand: unit.brand,
       model: unit.model,
-      price: Number(unit.rental_rate_per_day) || 0,
-      price12h: Number(unit.rental_rate_per_12h) || 0,
+      price24h: rate24h,
+      price12h: rawRate12h > 0 ? rawRate12h : rate24h, // Fallback if missing
+      has12hRate: rawRate12h > 0,
       image:
         sortedImages.length > 0
           ? sortedImages[0].image_url
@@ -91,23 +95,22 @@ export default function CustomerBookingPage({
   }, [unit]);
 
   const [startDate, setStartDate] = useState<Date | null>(null);
-  const [endDate, setEndDate] = useState<Date | null>(null);
-  const [time, setTime] = useState("09:00");
+  const [startTime, setStartTime] = useState("09:00");
+  const [bookingHours, setBookingHours] = useState<number>(24);
   const [withDriver, setWithDriver] = useState(false);
+
   const [pickupType, setPickupType] = useState<"hub" | "custom">("hub");
   const [pickupLocation, setPickupLocation] = useState("");
   const [pickupCoords, setPickupCoords] = useState<string | null>(null);
+
   const [dropoffType, setDropoffType] = useState<"hub" | "custom">("hub");
   const [dropoffLocation, setDropoffLocation] = useState("");
   const [dropoffCoords, setDropoffCoords] = useState<string | null>(null);
-
-  const [is12HourPromo, setIs12HourPromo] = useState(false);
 
   const [mapOpen, setMapOpen] = useState(false);
   const [activeMapField, setActiveMapField] = useState<
     "pickup" | "dropoff" | null
   >(null);
-
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
 
   const [isSuccess, setIsSuccess] = useState(false);
@@ -116,32 +119,39 @@ export default function CustomerBookingPage({
 
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
   const [receiptRef, setReceiptRef] = useState("");
-  const [receiptAmount, setReceiptAmount] = useState("");
+  const [receiptAmount, setReceiptAmount] = useState(MINIMUM_DOWNPAYMENT); // Initialize with minimum
 
   const handleReceiptScan = (file: File, ref: string, amount: string) => {
     setReceiptFile(file);
     setReceiptRef(ref);
-    setReceiptAmount(amount);
+    // Parse the amount from the scanner (it could be full payment or custom downpayment)
+    const scannedVal = Number(amount);
+    if (!isNaN(scannedVal) && scannedVal > 0) {
+      setReceiptAmount(scannedVal);
+    }
   };
 
   useEffect(() => {
     const fromParam = searchParams.get("from");
-    const toParam = searchParams.get("to");
+    const hoursParam = searchParams.get("hours");
     const driverParam = searchParams.get("driver") === "true";
-    if (fromParam) setStartDate(new Date(fromParam));
-    if (toParam) setEndDate(new Date(toParam));
+
+    if (fromParam) {
+      const parsedDate = new Date(fromParam);
+      setStartDate(parsedDate);
+      setStartTime(format(parsedDate, "HH:mm"));
+    }
+    if (hoursParam) setBookingHours(Number(hoursParam));
     setWithDriver(driverParam);
   }, [searchParams]);
 
   useEffect(() => {
     if (realHubs.length > 0) {
       const defaultHub = realHubs[0];
-
       if (!pickupLocation) {
         setPickupLocation(defaultHub.name);
         setPickupCoords(`${defaultHub.lat},${defaultHub.lng}`);
       }
-
       if (!dropoffLocation) {
         setDropoffLocation(defaultHub.name);
         setDropoffCoords(`${defaultHub.lat},${defaultHub.lng}`);
@@ -149,44 +159,28 @@ export default function CustomerBookingPage({
     }
   }, [realHubs, pickupLocation, dropoffLocation]);
 
-  let totalDays = 1;
-  if (startDate && endDate) {
-    totalDays = Math.max(1, differenceInDays(endDate, startDate) + 1);
-  }
+  // Exact Time Calculation
+  const exactStart = startDate ? parse(startTime, "HH:mm", startDate) : null;
+  const exactEnd = exactStart ? addHours(exactStart, bookingHours) : null;
 
-  // FIX 1: Calculate the actual dropoff date (startDate + totalDays)
-  const actualDropoffDate = useMemo(() => {
-    if (!startDate) return null;
-    const dropoff = new Date(startDate);
-    dropoff.setDate(dropoff.getDate() + totalDays);
-    return dropoff;
-  }, [startDate, totalDays]);
+  // --- PRICING ENGINE ---
+  const fullDays = Math.floor(bookingHours / 24);
+  const remainingHalfDays = bookingHours % 24 === 12 ? 1 : 0;
 
-  const isPromoEligible = !!car && car.price12h > 0 && totalDays === 1;
-
-  useEffect(() => {
-    if (!isPromoEligible && is12HourPromo) {
-      setIs12HourPromo(false);
-    }
-  }, [isPromoEligible, is12HourPromo]);
-
-  const baseRentTotal = car ? totalDays * car.price : 0;
-  const promoDiscount =
-    is12HourPromo && isPromoEligible ? car!.price - car!.price12h : 0;
-  const rentTotal = baseRentTotal - promoDiscount;
-
-  const estimatedDriverFee = withDriver
-    ? totalDays * realFees.driver_rate_per_day
+  const baseRentalCost = car
+    ? fullDays * car.price24h + remainingHalfDays * car.price12h
     : 0;
 
-  const pickupFee = pickupType === "custom" ? realFees.custom_pickup_fee : 0;
-  const dropoffFee = dropoffType === "custom" ? realFees.custom_dropoff_fee : 0;
+  const driverCost = withDriver
+    ? (fullDays * 2 + remainingHalfDays) * realFees.driver_rate_per_12h
+    : 0;
 
-  const subTotal = rentTotal + pickupFee + dropoffFee;
-  const grandTotal = subTotal + realFees.security_deposit_default;
+  const platformTotalValue = baseRentalCost; // Strict exclusion of driver fee
+  const balanceDue = platformTotalValue - receiptAmount;
 
-  const reservationFee = Math.round(subTotal * 0.1);
-  const balanceDue = grandTotal - reservationFee;
+  // Detect if a custom location was selected to display TBD notice
+  const requiresLogisticsFee =
+    pickupType === "custom" || dropoffType === "custom";
 
   const openMapFor = (field: "pickup" | "dropoff") => {
     setActiveMapField(field);
@@ -213,7 +207,6 @@ export default function CustomerBookingPage({
     setMapOpen(false);
   };
 
-  // Helper to clear a custom pin and reset to default hub
   const handleUnpin = (field: "pickup" | "dropoff") => {
     const defaultHub = realHubs[0];
     if (field === "pickup") {
@@ -231,18 +224,17 @@ export default function CustomerBookingPage({
     }
   };
 
-  // FIX 2: Time handler validation
-  const handleTimeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newTime = e.target.value;
-    // Allow typing, but we ensure it falls between 09:00 and 17:00 when they finish
-    setTime(newTime);
-  };
-
   const handleSubmitBooking = async () => {
-    if (!startDate || !endDate || !car || !agreedToTerms) return;
+    if (!exactStart || !exactEnd || !car || !agreedToTerms) return;
 
     if (!receiptFile) {
       alert("Please upload your payment receipt to secure the booking.");
+      return;
+    }
+
+    // THE FIX: Validate the amount entered in the Receipt Scanner
+    if (receiptAmount < MINIMUM_DOWNPAYMENT) {
+      alert(`Minimum downpayment of ₱${MINIMUM_DOWNPAYMENT} is required.`);
       return;
     }
 
@@ -259,14 +251,6 @@ export default function CustomerBookingPage({
         throw new Error("You must be logged in to upload a receipt.");
       }
 
-      const [hours, minutes] = time.split(":").map(Number);
-
-      const exactStartDate = new Date(startDate);
-      exactStartDate.setHours(hours, minutes, 0, 0);
-
-      const exactEndDate = new Date(exactStartDate);
-      exactEndDate.setDate(exactStartDate.getDate() + totalDays);
-
       const uploadResult = await uploadFile(
         receiptFile,
         "documents",
@@ -280,27 +264,32 @@ export default function CustomerBookingPage({
 
       const bookingPayload = {
         car_id: car.id,
-        start_date: exactStartDate.toISOString(),
-        end_date: exactEndDate.toISOString(),
+        start_date: exactStart.toISOString(),
+        end_date: exactEnd.toISOString(),
         pickup_location: pickupLocation,
         dropoff_location: dropoffLocation,
         pickup_type: pickupType,
         dropoff_type: dropoffType,
-        pickup_price: pickupFee,
-        dropoff_price: dropoffFee,
+        pickup_price: 0,
+        dropoff_price: 0,
         is_with_driver: withDriver,
-        daily_rate: car.price,
-        grand_total: grandTotal,
-        security_deposit: realFees.security_deposit_default,
+
+        // Send explicit hours to prevent server miscalculation
+        booking_hours: bookingHours,
+
+        // Send the exact rates the user agreed to
+        carDailyRate: car.price24h,
+        car12HourRate: car.price12h,
+
+        base_rate_snapshot: platformTotalValue,
+        grand_total: platformTotalValue,
+        security_deposit: 0,
         pickup_coords: pickupCoords,
         dropoff_coords: dropoffCoords,
         booking_status: "PENDING",
-        payment_status: "Unpaid",
-        is12HourPromo: is12HourPromo,
-        car12HourRate: car.price12h,
-        carDailyRate: car.price,
+        payment_status: "UNPAID",
         payment_details: {
-          amount: Number(receiptAmount) || reservationFee,
+          amount: receiptAmount, // From the ReceiptScanner component
           transaction_reference: receiptRef,
           status: "PENDING",
           receipt_url: uploadResult.url,
@@ -365,29 +354,39 @@ export default function CustomerBookingPage({
           <p className="text-gray-400 text-xs uppercase tracking-widest leading-relaxed mb-8">
             Your booking is confirmed. We are now manually verifying your{" "}
             <strong className="text-white">
-              ₱{reservationFee.toLocaleString()}
+              ₱{receiptAmount.toLocaleString()}
             </strong>{" "}
             receipt.
           </p>
 
-          <div className="bg-black/40 border border-white/5 rounded-2xl p-5 mb-8 text-left">
-            <div className="flex items-center gap-2 mb-2">
+          <div className="bg-black/40 border border-white/5 rounded-2xl p-5 mb-8 text-left space-y-3">
+            <div className="flex items-center gap-2 mb-1">
               <FileText className="w-4 h-4 text-[#64c5c3]" />
               <p className="text-[10px] font-bold text-[#64c5c3] uppercase tracking-widest">
                 Next Steps
               </p>
             </div>
-            <p className="text-[10px] sm:text-xs text-gray-400 leading-relaxed font-medium mb-3">
+
+            <p className="text-[10px] sm:text-xs text-gray-400 leading-relaxed font-medium">
               Your remaining balance of{" "}
               <strong className="text-white">
-                ₱{balanceDue.toLocaleString()}
+                ₱{Math.max(0, balanceDue).toLocaleString()}
               </strong>{" "}
-              (including deposit) will be collected during vehicle handover.
+              will be collected during vehicle handover.
             </p>
-            <p className="text-[10px] sm:text-xs text-gray-400 leading-relaxed font-medium">
-              You can track your itinerary and payment status via your{" "}
-              <strong className="text-white">Customer Dashboard</strong>.
-            </p>
+
+            {requiresLogisticsFee && (
+              <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg flex gap-2">
+                <Info className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+                <p className="text-[10px] text-amber-500/90 leading-tight">
+                  <strong className="text-amber-500 block mb-1">
+                    Custom Logistics Fee Pending
+                  </strong>
+                  Since you selected a custom location, our staff will review
+                  the distance and update your final bill with the delivery fee.
+                </p>
+              </div>
+            )}
           </div>
 
           <Button
@@ -424,7 +423,7 @@ export default function CustomerBookingPage({
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12">
           {/* LEFT COLUMN: Forms */}
           <div className="lg:col-span-7 xl:col-span-8 space-y-8 md:space-y-12">
-            {/* 1. Schedule & Driver */}
+            {/* 1. Schedule Recap */}
             <section className="bg-[#0a1118]/80 backdrop-blur-xl rounded-2xl md:rounded-3xl p-6 md:p-10 shadow-2xl border border-white/5 relative overflow-hidden">
               <div className="absolute top-0 right-0 w-64 h-64 bg-[#64c5c3]/5 rounded-full blur-[80px] pointer-events-none -z-10" />
 
@@ -433,119 +432,51 @@ export default function CustomerBookingPage({
                   <span className="text-sm font-black">01</span>
                 </div>
                 <h2 className="text-lg md:text-xl font-black text-white tracking-wider uppercase">
-                  Schedule & Chauffeur
+                  Schedule Review
                 </h2>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6 mb-8 md:mb-10">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6 mb-8">
                 <div className="bg-black/40 p-5 md:p-6 border border-white/5 rounded-2xl">
                   <p className="text-[9px] md:text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2">
-                    Pick-up Date
+                    Scheduled Pick-up
                   </p>
                   <p className="text-sm md:text-base font-bold text-white uppercase tracking-wider">
-                    {startDate
-                      ? format(startDate, "EEEE, MMM dd, yyyy")
+                    {exactStart
+                      ? format(exactStart, "MMM dd, yyyy - hh:mm a")
                       : "Not selected"}
                   </p>
                 </div>
                 <div className="bg-black/40 p-5 md:p-6 border border-white/5 rounded-2xl">
                   <p className="text-[9px] md:text-[10px] font-bold text-[#64c5c3] uppercase tracking-widest mb-2">
-                    Scheduled Drop-off Date
+                    Scheduled Return
                   </p>
                   <p className="text-sm md:text-base font-bold text-white uppercase tracking-wider">
-                    {actualDropoffDate
-                      ? format(actualDropoffDate, "EEEE, MMM dd, yyyy")
+                    {exactEnd
+                      ? format(exactEnd, "MMM dd, yyyy - hh:mm a")
                       : "Not selected"}
                   </p>
-                  <div className="flex gap-2 items-start mt-3">
-                    <Info className="w-3 h-3 text-gray-500 mt-0.5 shrink-0" />
-                    <p className="text-[10px] text-gray-400 leading-tight">
-                      Drop-off is scheduled for the day following your final
-                      rental day exactly at your pick-up time.
-                    </p>
-                  </div>
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6 items-center border-t border-white/10 pt-8 md:pt-10">
-                <div className="bg-black/40 border border-white/5 rounded-2xl p-5 flex flex-col justify-center transition-colors hover:border-[#64c5c3]/30">
-                  <div className="flex items-center justify-between">
-                    <Label className="text-[10px] font-bold uppercase tracking-widest text-gray-400">
-                      Pick-up Time
-                    </Label>
-                    <input
-                      type="time"
-                      value={time}
-                      min="09:00"
-                      max="17:00"
-                      onChange={handleTimeChange}
-                      className="bg-transparent font-black text-white outline-none border-none ring-0 focus:ring-0 text-sm md:text-base tracking-widest cursor-pointer"
-                    />
+              <div className="flex flex-col justify-center bg-black/40 p-5 border border-white/5 rounded-2xl relative">
+                <div className="flex items-center justify-between w-full">
+                  <div className="flex flex-col gap-1 pr-4">
+                    <span className="text-xs font-bold uppercase tracking-widest text-white flex items-center gap-2">
+                      Driver Service Requested
+                    </span>
+                    <span className="text-[10px] font-bold text-gray-400 tracking-widest uppercase mt-1">
+                      ₱{realFees.driver_rate_per_12h.toLocaleString()} / 12h
+                      Shift • Paid directly to driver
+                    </span>
                   </div>
-                  <p className="text-[9px] font-bold text-[#64c5c3] uppercase tracking-widest mt-3">
-                    Select only: 09:00 AM - 05:00 PM
-                  </p>
-                </div>
-
-                <div className="flex flex-col justify-center bg-black/40 p-4 border border-white/5 rounded-2xl transition-colors hover:border-[#64c5c3]/30 relative h-full">
-                  <div className="flex items-center justify-between w-full">
-                    <div className="flex flex-col gap-1 cursor-pointer pr-4">
-                      <span className="text-[10px] font-bold uppercase tracking-widest text-white flex items-center gap-2">
-                        Request a Driver Service
-                      </span>
-                      <span className="text-[9px] font-bold text-gray-400 tracking-widest uppercase mt-1">
-                        Subject to availability • Paid directly to driver
-                      </span>
-                    </div>
-                    <Switch
-                      checked={withDriver}
-                      onCheckedChange={setWithDriver}
-                      className="data-[state=checked]:bg-[#64c5c3] shrink-0"
-                    />
-                  </div>
+                  <Switch
+                    checked={withDriver}
+                    disabled
+                    className="data-[state=checked]:bg-[#64c5c3] shrink-0 opacity-50 cursor-not-allowed"
+                  />
                 </div>
               </div>
-
-              {/* 12-HOUR PROMO CHECKBOX */}
-              {isPromoEligible && (
-                <div className="mt-6 border-t border-white/10 pt-6 animate-in fade-in slide-in-from-top-4 duration-500">
-                  <div
-                    onClick={() => setIs12HourPromo(!is12HourPromo)}
-                    className={cn(
-                      "flex items-start gap-4 p-5 border rounded-2xl cursor-pointer transition-all duration-300",
-                      is12HourPromo
-                        ? "bg-[#64c5c3]/10 border-[#64c5c3]/40 shadow-[0_0_20px_rgba(100,197,195,0.1)]"
-                        : "bg-[#64c5c3]/5 border-[#64c5c3]/20 hover:border-[#64c5c3]/30",
-                    )}
-                  >
-                    <div className="relative flex items-center justify-center mt-0.5 shrink-0">
-                      <input
-                        type="checkbox"
-                        className="peer appearance-none w-5 h-5 border-2 border-[#64c5c3]/50 rounded text-[#64c5c3] checked:bg-[#64c5c3] checked:border-[#64c5c3] transition-all outline-none cursor-pointer"
-                        checked={is12HourPromo}
-                        onChange={(e) => setIs12HourPromo(e.target.checked)}
-                      />
-                      <CheckCircle2
-                        className="w-3.5 h-3.5 text-black absolute opacity-0 peer-checked:opacity-100 pointer-events-none"
-                        strokeWidth={4}
-                      />
-                    </div>
-                    <div className="flex flex-col">
-                      <label className="text-sm font-bold text-[#64c5c3] uppercase tracking-wider cursor-pointer">
-                        Avail 12-Hour Rental Promo
-                      </label>
-                      <span className="text-[10px] sm:text-xs text-gray-400 mt-1 leading-relaxed">
-                        Commit to returning the vehicle exactly within 12 hours
-                        of pick-up to secure the special discounted rate of{" "}
-                        <strong className="text-white">
-                          ₱{car.price12h.toLocaleString()}
-                        </strong>
-                        .
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              )}
             </section>
 
             {/* 2. Location Logistics */}
@@ -635,9 +566,9 @@ export default function CustomerBookingPage({
                     </Button>
                   </div>
                   {pickupType === "custom" && (
-                    <p className="text-[8px] md:text-[9px] font-bold text-[#64c5c3] uppercase tracking-widest mt-4 flex items-center gap-2">
-                      <ShieldCheck className="w-3.5 h-3.5" /> + ₱
-                      {realFees.custom_pickup_fee} Service Fee Applied
+                    <p className="text-[8px] md:text-[9px] font-bold text-amber-500 uppercase tracking-widest mt-4 flex items-center gap-2">
+                      <Info className="w-3.5 h-3.5" /> Additional Logistics fee
+                      (Min. ₱100) will be added upon review.
                     </p>
                   )}
                 </div>
@@ -715,9 +646,9 @@ export default function CustomerBookingPage({
                     </Button>
                   </div>
                   {dropoffType === "custom" && (
-                    <p className="text-[8px] md:text-[9px] font-bold text-[#64c5c3] uppercase tracking-widest mt-4 flex items-center gap-2">
-                      <ShieldCheck className="w-3.5 h-3.5" /> + ₱
-                      {realFees.custom_dropoff_fee} Service Fee Applied
+                    <p className="text-[8px] md:text-[9px] font-bold text-amber-500 uppercase tracking-widest mt-4 flex items-center gap-2">
+                      <Info className="w-3.5 h-3.5" /> Additional Logistics fee
+                      (Min. ₱100) will be added upon review.
                     </p>
                   )}
                 </div>
@@ -750,64 +681,51 @@ export default function CustomerBookingPage({
 
               <div className="p-6 md:p-8 space-y-6">
                 <h4 className="text-[9px] md:text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-4">
-                  Pricing Breakdown
+                  Cost Breakdown
                 </h4>
-                <div className="space-y-4 text-[10px] md:text-[11px] font-bold uppercase tracking-widest">
-                  <div className="flex justify-between text-gray-400">
-                    <span>Vehicle ({totalDays} days)</span>
-                    <span className="text-white">
-                      ₱{baseRentTotal.toLocaleString()}
-                    </span>
-                  </div>
 
-                  {is12HourPromo && isPromoEligible && (
-                    <div className="flex justify-between text-[#64c5c3] bg-[#64c5c3]/10 p-2 rounded-lg border border-[#64c5c3]/20 animate-in fade-in zoom-in duration-300">
-                      <span>12-Hour Promo Applied</span>
-                      <span>- ₱{promoDiscount.toLocaleString()}</span>
+                <div className="space-y-4 text-[10px] md:text-[11px] font-bold uppercase tracking-widest">
+                  {fullDays > 0 && (
+                    <div className="flex justify-between text-gray-400">
+                      <span>
+                        {fullDays} {fullDays === 1 ? "day" : "days"} × ₱
+                        {car?.price24h.toLocaleString()}
+                      </span>
+                      <span className="text-white">
+                        ₱{(fullDays * (car?.price24h || 0)).toLocaleString()}
+                      </span>
+                    </div>
+                  )}
+
+                  {remainingHalfDays > 0 && (
+                    <div className="flex justify-between text-gray-400">
+                      <span>12 hrs × ₱{car?.price12h.toLocaleString()}</span>
+                      <span className="text-white">
+                        ₱{(car?.price12h || 0).toLocaleString()}
+                      </span>
                     </div>
                   )}
 
                   {withDriver && (
-                    <div className="flex justify-between text-yellow-500/70">
-                      <span>Est. Driver Fee (Paid Directly)</span>
-                      <span>₱{estimatedDriverFee.toLocaleString()}</span>
+                    <div className="flex justify-between text-yellow-500/70 border-t border-white/10 pt-4 border-dashed">
+                      <span>Driver Fee (Paid Directly)</span>
+                      <span>₱{driverCost.toLocaleString()}</span>
                     </div>
                   )}
 
-                  {pickupFee > 0 && (
-                    <div className="flex justify-between text-gray-400">
-                      <span>Logistics Pick-up</span>
-                      <span className="text-[#64c5c3]">
-                        ₱{pickupFee.toLocaleString()}
+                  {requiresLogisticsFee && (
+                    <div className="flex justify-between text-amber-500/80 bg-amber-500/5 p-2 rounded-md border border-amber-500/10">
+                      <span className="flex items-center gap-1.5">
+                        <Info className="w-3 h-3" /> Logistics Delivery
                       </span>
-                    </div>
-                  )}
-                  {dropoffFee > 0 && (
-                    <div className="flex justify-between text-gray-400">
-                      <span>Logistics Drop-off</span>
-                      <span className="text-[#64c5c3]">
-                        ₱{dropoffFee.toLocaleString()}
-                      </span>
+                      <span>TBD (Min. ₱100)</span>
                     </div>
                   )}
 
-                  <div className="flex justify-between text-gray-400 border-t border-white/10 pt-4 border-dashed">
-                    <span>Platform Subtotal</span>
+                  <div className="flex justify-between text-gray-400 border-t border-white/10 pt-4 border-solid">
+                    <span className="text-[#64c5c3]">Platform Subtotal</span>
                     <span className="text-white">
-                      ₱{subTotal.toLocaleString()}
-                    </span>
-                  </div>
-
-                  <div className="flex justify-between text-gray-500">
-                    <span className="flex items-center gap-2">
-                      Refundable Deposit{" "}
-                      <ShieldCheck className="w-3 h-3 text-gray-600" />
-                    </span>
-                    <span className="text-gray-400">
-                      ₱
-                      {Number(
-                        realFees.security_deposit_default || 5000,
-                      ).toLocaleString()}
+                      ₱{platformTotalValue.toLocaleString()}
                     </span>
                   </div>
                 </div>
@@ -819,19 +737,19 @@ export default function CustomerBookingPage({
                     Platform Booking Value
                   </p>
                   <p className="text-xl font-black text-gray-300 tracking-tighter leading-none">
-                    ₱{grandTotal.toLocaleString()}
+                    ₱{platformTotalValue.toLocaleString()}
                   </p>
                 </div>
 
                 <div className="flex items-end justify-between mb-6">
                   <p className="text-[10px] md:text-[11px] font-black text-[#64c5c3] uppercase tracking-widest flex items-center gap-2">
-                    Due Now{" "}
+                    Min. Due Now{" "}
                     <span className="text-[8px] bg-[#64c5c3]/20 px-1.5 py-0.5 rounded text-[#64c5c3]">
-                      (10% Fee)
+                      Fixed Lock Fee
                     </span>
                   </p>
                   <p className="text-3xl md:text-4xl font-black text-[#64c5c3] tracking-tighter leading-none">
-                    ₱{reservationFee.toLocaleString()}
+                    ₱{MINIMUM_DOWNPAYMENT.toLocaleString()}
                   </p>
                 </div>
 
@@ -854,20 +772,20 @@ export default function CustomerBookingPage({
         </div>
       </div>
 
-      {/* --- THE PAYMENT MODAL */}
+      {/* --- THE PAYMENT MODAL --- */}
       <Dialog open={isPaymentModalOpen} onOpenChange={setIsPaymentModalOpen}>
-        <DialogContent className="w-[70vw] sm:max-w-lg md:max-w-xl max-h-[85vh] overflow-y-auto custom-scrollbar bg-[#0a1118]/95 backdrop-blur-2xl border border-[#64c5c3]/30 p-6 md:p-8 rounded-3xl shadow-[0_0_50px_rgba(100,197,195,0.15)] text-white">
-          <DialogHeader className="text-center shrink-0">
+        <DialogContent className="w-[90vw] sm:max-w-lg md:max-w-xl max-h-[90vh] overflow-y-auto custom-scrollbar bg-[#0a1118]/95 backdrop-blur-2xl border border-[#64c5c3]/30 p-6 md:p-8 rounded-3xl shadow-[0_0_50px_rgba(100,197,195,0.15)] text-white">
+          <DialogHeader className="text-center shrink-0 border-b border-white/10 pb-4 mb-4">
             <DialogTitle className="text-2xl font-black uppercase tracking-tighter text-white">
               Secure Vehicle
             </DialogTitle>
-            <DialogDescription className="text-[10px] font-bold uppercase tracking-widest text-[#64c5c3] mt-2">
-              Amount Due: ₱{reservationFee.toLocaleString()}
+            <DialogDescription className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mt-2">
+              Platform Total: ₱{platformTotalValue.toLocaleString()}
             </DialogDescription>
           </DialogHeader>
 
-          <div className="flex flex-col gap-6 mt-4">
-            <div className="p-5 bg-black/40 border border-[#64c5c3]/20 rounded-2xl text-center flex flex-col items-center shrink-0">
+          <div className="flex flex-col gap-6">
+            <div className="p-5 bg-black/40 border border-white/5 rounded-2xl text-center flex flex-col items-center shrink-0">
               <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-3">
                 Scan to Pay via GCash / Maya
               </p>
@@ -891,7 +809,7 @@ export default function CustomerBookingPage({
             <div className="shrink-0">
               <ReceiptScanner
                 onScanComplete={handleReceiptScan}
-                expectedAmount={reservationFee}
+                expectedAmount={MINIMUM_DOWNPAYMENT}
               />
             </div>
 
@@ -908,13 +826,14 @@ export default function CustomerBookingPage({
                   strokeWidth={4}
                 />
               </div>
-              <p className="text-[9px] text-gray-400 font-medium leading-relaxed">
+              <p className="text-[10px] text-gray-400 font-medium leading-relaxed">
                 I agree to pay the{" "}
                 <strong className="text-white">
-                  non-refundable 10% Reservation Fee
+                  non-refundable Reservation Fee
                 </strong>{" "}
                 to secure this vehicle. I understand this will be deducted from
-                my final balance.
+                my final balance, and additional logistics fees may apply if I
+                chose a custom delivery location.
               </p>
             </label>
 
@@ -925,7 +844,8 @@ export default function CustomerBookingPage({
                 isSubmittingCustomerBooking ||
                 isUploading ||
                 !agreedToTerms ||
-                !receiptFile
+                !receiptFile ||
+                receiptAmount < MINIMUM_DOWNPAYMENT
               }
               className="w-full shrink-0 bg-[#64c5c3] text-black hover:bg-[#52a3a1] h-14 rounded-xl font-black text-[10px] uppercase tracking-widest shadow-[0_0_20px_rgba(100,197,195,0.2)] transition-all duration-500 disabled:opacity-40 disabled:bg-[#64c5c3] disabled:cursor-not-allowed"
             >
@@ -965,12 +885,7 @@ export default function CustomerBookingPage({
               <Info className="w-4 h-4 text-gray-500" />
               <span className="text-[9px] md:text-[10px] font-bold text-gray-300 uppercase tracking-widest">
                 Custom Pin Fee:{" "}
-                <span className="text-[#64c5c3]">
-                  +₱
-                  {activeMapField === "pickup"
-                    ? realFees.custom_pickup_fee
-                    : realFees.custom_dropoff_fee}
-                </span>
+                <span className="text-[#64c5c3]">TBD (Min. ₱100)</span>
               </span>
             </div>
           </DialogHeader>

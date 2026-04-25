@@ -408,25 +408,29 @@ export const generateInvoicePDF = (folio: any) => {
   const safeStatus = booking.booking_status || booking.status || "UNKNOWN";
   const currentDate = format(new Date(), "MMM dd, yyyy");
 
-  // Calculate Duration for display purposes
+  // Calculate Duration perfectly matching the UI Block Math
   const startDate = new Date(booking.start_date || Date.now());
   const endDate = new Date(booking.end_date || Date.now());
+  const hours = differenceInHours(endDate, startDate);
+  const days = Math.floor(hours / 24);
+  const remHours = hours % 24;
 
-  const totalHours = differenceInHours(endDate, startDate);
-  const is12Hour = totalHours <= 12;
-  const days = Math.max(1, Math.ceil(totalHours / 24));
-  const durationLabel = is12Hour ? "12 Hours" : `${days} Day(s)`;
+  let durationLabel = "";
+  if (days > 0 && remHours > 0)
+    durationLabel = `${days} Day(s) & ${remHours} Hr(s)`;
+  else if (days > 0) durationLabel = `${days} Day(s)`;
+  else durationLabel = `${hours} Hr(s)`;
 
   // --- 1. HEADER SECTION ---
   doc.setTextColor(15, 23, 42);
   doc.setFontSize(22);
   doc.setFont("helvetica", "bold");
-  doc.text("MC ORMOC CAR RENTAL", 14, 22);
+  doc.text("SEFFNE TRANSPORT SERVICES INC.", 14, 22);
 
   doc.setFontSize(10);
   doc.setFont("helvetica", "normal");
   doc.setTextColor(100, 116, 139);
-  doc.text("Brgy. Cogon, Ormoc City", 14, 28);
+  doc.text("Purok 2, Brgy. San Pablo, Ormoc City", 14, 28);
   doc.text("Leyte 6541, Philippines", 14, 33);
   doc.text("Phone: 09958930398", 14, 38);
 
@@ -480,13 +484,50 @@ export const generateInvoicePDF = (folio: any) => {
       const amount = Number(c.amount);
       grandTotalCharges += amount;
 
-      const description = c.category.replace(/_/g, " ");
+      let description = c.category.replace(/_/g, " ");
       let qty = "1";
       let unitPrice = `P ${Math.abs(amount).toLocaleString()}`;
 
-      if (c.category === "BASE_RATE") {
-        qty = durationLabel;
-        unitPrice = `P ${Number(booking.base_rate_snapshot || 0).toLocaleString()}`;
+      // Handle the new Block Math Rates properly with safe fallbacks
+      if (c.category === "BASE_RATE_24H" || c.category === "BASE_RATE") {
+        description = "Base Rental (24H Block)";
+        const rate24 = Number(
+          booking.rate_snapshot_24h ||
+            booking.base_rate_snapshot ||
+            car?.rental_rate_per_day ||
+            0,
+        );
+
+        unitPrice = `P ${rate24.toLocaleString()}`;
+
+        // Safely calculate quantity to prevent infinite decimals
+        if (rate24 > 0) {
+          const rawQty = amount / rate24;
+          qty = Number.isInteger(rawQty)
+            ? rawQty.toString()
+            : parseFloat(rawQty.toFixed(2)).toString();
+        }
+      } else if (c.category === "BASE_RATE_12H") {
+        description = "Base Rental (12H Block)";
+        const rate12 = Number(
+          booking.rate_snapshot_12h || car?.rental_rate_per_12h || 0,
+        );
+
+        unitPrice = `P ${rate12.toLocaleString()}`;
+
+        if (rate12 > 0) {
+          const rawQty = amount / rate12;
+          qty = Number.isInteger(rawQty)
+            ? rawQty.toString()
+            : parseFloat(rawQty.toFixed(2)).toString();
+        }
+      } else if (c.category === "DELIVERY_FEE") {
+        description = "Custom Location Delivery Fee";
+      }
+
+      // If description exists, append it
+      if (c.description && !c.category.includes("BASE_RATE")) {
+        description += ` - ${c.description}`;
       }
 
       chargeRows.push([
@@ -571,7 +612,7 @@ export const generateInvoicePDF = (folio: any) => {
   currentY = (doc as any).lastAutoTable.finalY + 15;
 
   // --- 5. TOTALS, VAT & BALANCE DUE ---
-  // VAT Calculation (Assuming 12% standard rate)
+  // INCLUSIVE VAT CALCULATION (12%)
   const vatRate = 0.12;
   const vatableSales = grandTotalCharges / (1 + vatRate);
   const vatAmount = grandTotalCharges - vatableSales;
@@ -590,7 +631,7 @@ export const generateInvoicePDF = (folio: any) => {
     { align: "right" },
   );
 
-  doc.text("VAT (12%):", 130, currentY + 6);
+  doc.text("VAT (12% Inclusive):", 130, currentY + 6);
   doc.text(
     `P ${vatAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
     195,
@@ -636,7 +677,7 @@ export const generateInvoicePDF = (folio: any) => {
   doc.setFont("helvetica", "italic");
   doc.setFontSize(9);
   doc.setTextColor(148, 163, 184);
-  doc.text("This document is not valid for claiming input taxes.", 105, 275, {
+  doc.text("Prices shown are VAT Inclusive.", 105, 275, {
     align: "center",
   });
   doc.text("Thank you for your business!", 105, 280, { align: "center" });
@@ -672,12 +713,12 @@ export const generatePayoutPDF = (details: any) => {
   doc.setTextColor(15, 23, 42);
   doc.setFontSize(22);
   doc.setFont("helvetica", "bold");
-  doc.text("MC ORMOC CAR RENTAL", 14, 22);
+  doc.text("SEFFNE TRANSPORT SERVICES INC.", 14, 22);
 
   doc.setFontSize(10);
   doc.setFont("helvetica", "normal");
   doc.setTextColor(100, 116, 139);
-  doc.text("Brgy. Cogon, Ormoc City", 14, 28);
+  doc.text("Purok 2, Brgy. San Pablo, Ormoc City", 14, 28);
   doc.text("Leyte 6541, Philippines", 14, 33);
   doc.text("Phone: 09958930398", 14, 38);
 
@@ -950,12 +991,12 @@ export const generateInspectionPDF = async (
   doc.setTextColor(15, 23, 42);
   doc.setFontSize(20);
   doc.setFont("helvetica", "bold");
-  doc.text("MC ORMOC CAR RENTAL", 14, 22);
+  doc.text("SEFFNE TRANSPORT SERVICES INC.", 14, 22);
 
   doc.setFontSize(9);
   doc.setFont("helvetica", "normal");
   doc.setTextColor(100, 116, 139);
-  doc.text("Brgy. Cogon, Ormoc City", 14, 27);
+  doc.text("Purok 2, Brgy. San Pablo, Ormoc City", 14, 27);
   doc.text("Leyte 6541, Philippines", 14, 32);
 
   doc.setFontSize(16);

@@ -23,7 +23,6 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   X,
-  Download,
   User,
   Receipt,
   Car,
@@ -36,12 +35,19 @@ import {
   CheckCircle2,
   Trash2,
   Ban,
+  MapPin,
+  ExternalLink,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { format, differenceInHours } from "date-fns";
 
 import { useIncomes, useBookingFolio } from "../../../hooks/use-incomes";
+
+// --- CONSTANTS ---
+// Exact coordinates for MC CAR RENTAL - ORMOC (Main Company)
+const MAIN_COMPANY_COORDS = "11.0286546,124.6040217";
+const MAIN_COMPANY_PLACE_ID = "ChIJiXQCjCzxBzMRYXf8Lsr03L4";
 
 type BookingIncomeBreakdownModalProps = {
   isOpen: boolean;
@@ -113,7 +119,7 @@ export default function BookingIncomeBreakdownModal({
   }>({ isOpen: false, paymentId: null, reason: "" });
 
   const basePrice = Number(folio?.booking?.total_price || 0);
-  const securityDeposit = Number(folio?.booking?.security_deposit || 0);
+
   const totalPaid =
     folio?.payments?.reduce(
       (sum: number, p: any) =>
@@ -122,19 +128,36 @@ export default function BookingIncomeBreakdownModal({
     ) || 0;
   const balanceDue = basePrice - totalPaid;
 
+  // FORMAT DURATION (Block Math Logic)
   const getDurationString = () => {
     if (!folio?.booking?.start_date || !folio?.booking?.end_date) return "";
     const start = new Date(folio.booking.start_date);
     const end = new Date(folio.booking.end_date);
     const hours = differenceInHours(end, start);
 
-    if (hours <= 12) {
-      return "12 Hours";
-    }
-    const days = Math.ceil(hours / 24);
-    return `${days} Day${days > 1 ? "s" : ""}`;
+    const days = Math.floor(hours / 24);
+    const remHours = hours % 24;
+
+    if (days > 0 && remHours > 0)
+      return `${days} Day${days > 1 ? "s" : ""} & ${remHours} Hr${remHours > 1 ? "s" : ""}`;
+    if (days > 0) return `${days} Day${days > 1 ? "s" : ""}`;
+    return `${hours} Hr${hours > 1 ? "s" : ""}`;
   };
   const durationText = getDurationString();
+
+  // LOGISTICS CHECKER
+  const isCustomLogistics =
+    folio?.booking?.pickup_type === "custom" ||
+    folio?.booking?.dropoff_type === "custom";
+  const hasDeliveryCharge = folio?.charges?.some(
+    (c: any) => c.category === "DELIVERY_FEE",
+  );
+  const showLogisticsWarning = isCustomLogistics && !hasDeliveryCharge;
+
+  const customTypes = [];
+  if (folio?.booking?.pickup_type === "custom") customTypes.push("Pickup");
+  if (folio?.booking?.dropoff_type === "custom") customTypes.push("Drop-off");
+  const customTypesText = customTypes.join(" and ");
 
   useEffect(() => {
     if (isOpen) {
@@ -153,9 +176,8 @@ export default function BookingIncomeBreakdownModal({
 
       if (initial === "payment")
         setPayAmount(Math.max(0, balanceDue).toString());
-      if (initial === "refund") setRefundAmount(securityDeposit.toString());
     }
-  }, [isOpen, defaultAction, balanceDue, securityDeposit, getInitialTab]);
+  }, [isOpen, defaultAction, balanceDue, getInitialTab]);
 
   const userData = folio?.booking?.users as any;
   const customerName = Array.isArray(userData)
@@ -170,7 +192,6 @@ export default function BookingIncomeBreakdownModal({
   const handleTabChange = (val: string) => {
     setActiveTab(val);
     if (val === "payment") setPayAmount(Math.max(0, balanceDue).toString());
-    if (val === "refund") setRefundAmount(securityDeposit.toString());
   };
 
   const handleRecordPayment = async () => {
@@ -196,6 +217,8 @@ export default function BookingIncomeBreakdownModal({
       description: chargeDesc || "Added manually",
     });
     setActiveTab("ledger");
+    setChargeAmount("");
+    setChargeDesc("");
   };
 
   const handleIssueRefund = async () => {
@@ -209,13 +232,12 @@ export default function BookingIncomeBreakdownModal({
       description: refundDesc || "Refund",
       method: refundMethod,
       reference: refundRef || "N/A",
-      deductFromInvoice: isDeductFromInvoice, // Pass checkbox state
+      deductFromInvoice: isDeductFromInvoice,
     });
 
     setActiveTab("ledger");
   };
 
-  // --- CORRECTION HANDLERS ---
   const handleConfirmRemoveCharge = async () => {
     if (!removeChargeDialog.chargeId) return;
     await removeCharge({ chargeId: removeChargeDialog.chargeId });
@@ -237,10 +259,47 @@ export default function BookingIncomeBreakdownModal({
       0,
     ) || 0;
 
+  // --- MAPS ROUTING LOGIC ---
+  const openGoogleMapsRoute = (type: "pickup" | "dropoff") => {
+    const isCustom =
+      type === "pickup"
+        ? folio?.booking?.pickup_type === "custom"
+        : folio?.booking?.dropoff_type === "custom";
+
+    const destination =
+      type === "pickup"
+        ? folio?.booking?.pickup_coordinates || folio?.booking?.pickup_location
+        : folio?.booking?.dropoff_coordinates ||
+          folio?.booking?.dropoff_location;
+
+    if (!destination) return;
+
+    if (isCustom) {
+      // Draws route from Main Company to Customer
+      const originName = encodeURIComponent("MC CAR RENTAL - ORMOC");
+      window.open(
+        `https://www.google.com/maps/dir/?api=1&origin=${originName}&origin_place_id=${MAIN_COMPANY_PLACE_ID}&destination=${encodeURIComponent(destination)}`,
+        "_blank",
+      );
+    } else {
+      // Drops pin at the location
+      window.open(
+        `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(destination)}`,
+        "_blank",
+      );
+    }
+  };
+
+  const handleWarningCheckDistance = () => {
+    if (folio?.booking?.pickup_type === "custom") openGoogleMapsRoute("pickup");
+    else if (folio?.booking?.dropoff_type === "custom")
+      openGoogleMapsRoute("dropoff");
+  };
+
   return (
     <>
       <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent className="max-w-6xl xl:max-w-[1000px] gap-0! p-0 overflow-hidden border-border bg-background shadow-2xl rounded-2xl flex flex-col h-[85vh] max-h-[800px] transition-colors duration-300 [&>button.absolute]:hidden">
+        <DialogContent className="max-w-6xl xl:max-w-[1000px] gap-0! p-0 overflow-hidden border-border bg-background shadow-2xl rounded-2xl flex flex-col h-[95vh] max-h-[800px] transition-colors duration-300 [&>button.absolute]:hidden">
           {/* --- COMPACT HEADER --- */}
           <DialogHeader className="px-4 py-3 border-b border-border bg-card shrink-0 flex flex-row items-center justify-between transition-colors">
             <div className="flex items-center gap-3">
@@ -290,7 +349,7 @@ export default function BookingIncomeBreakdownModal({
             <div className="w-[320px] bg-background border-r border-border flex flex-col shrink-0 z-10 transition-colors">
               <div className="flex-1 min-h-0 overflow-hidden">
                 <ScrollArea className="h-full w-full custom-scrollbar">
-                  <div className="p-4 space-y-6">
+                  <div className="p-4 space-y-4">
                     {isLoading ? (
                       <div className="flex justify-center py-10">
                         <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
@@ -321,9 +380,12 @@ export default function BookingIncomeBreakdownModal({
                           <div className="flex flex-col">
                             <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest mb-0.5 flex items-center gap-1.5">
                               <CalendarDays className="w-3 h-3" /> Contract
-                              Dates
+                              Duration
                             </span>
-                            <span className="text-[10px] font-medium text-foreground">
+                            <span className="text-[11px] font-bold text-foreground mb-1">
+                              {durationText}
+                            </span>
+                            <span className="text-[10px] font-medium text-muted-foreground">
                               {folio?.booking?.start_date &&
                                 format(
                                   new Date(folio.booking.start_date),
@@ -335,6 +397,77 @@ export default function BookingIncomeBreakdownModal({
                                   new Date(folio.booking.end_date),
                                   "MMM dd, yyyy • hh:mm a",
                                 )}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Logistics Details Card */}
+                        <div className="bg-card border border-border p-3 rounded-xl shadow-sm transition-colors">
+                          <h4 className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest mb-3 border-b border-border pb-1.5 flex items-center gap-1.5">
+                            <MapPin className="w-3 h-3" /> Logistics Routing
+                          </h4>
+
+                          {/* Pickup Block */}
+                          <div className="flex flex-col mb-4">
+                            <div className="flex justify-between items-center mb-1.5">
+                              <div className="flex items-center gap-1.5">
+                                <button
+                                  onClick={() => openGoogleMapsRoute("pickup")}
+                                  className="bg-primary/10 hover:bg-primary/20 text-primary p-1 rounded transition-colors"
+                                  title="View Map"
+                                >
+                                  <ExternalLink className="w-3 h-3" />
+                                </button>
+                                <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">
+                                  Pickup
+                                </span>
+                              </div>
+                              <Badge
+                                variant="outline"
+                                className={cn(
+                                  "text-[8px] px-1 py-0 uppercase border bg-transparent",
+                                  folio?.booking?.pickup_type === "custom"
+                                    ? "text-amber-600 border-amber-600/30"
+                                    : "text-emerald-600 border-emerald-600/30",
+                                )}
+                              >
+                                {folio?.booking?.pickup_type || "HUB"}
+                              </Badge>
+                            </div>
+                            <span className="text-[10px] font-semibold text-foreground leading-tight">
+                              {folio?.booking?.pickup_location}
+                            </span>
+                          </div>
+
+                          {/* Dropoff Block */}
+                          <div className="flex flex-col">
+                            <div className="flex justify-between items-center mb-1.5">
+                              <div className="flex items-center gap-1.5">
+                                <button
+                                  onClick={() => openGoogleMapsRoute("dropoff")}
+                                  className="bg-primary/10 hover:bg-primary/20 text-primary p-1 rounded transition-colors"
+                                  title="View Map"
+                                >
+                                  <ExternalLink className="w-3 h-3" />
+                                </button>
+                                <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">
+                                  Drop-off
+                                </span>
+                              </div>
+                              <Badge
+                                variant="outline"
+                                className={cn(
+                                  "text-[8px] px-1 py-0 uppercase border bg-transparent",
+                                  folio?.booking?.dropoff_type === "custom"
+                                    ? "text-amber-600 border-amber-600/30"
+                                    : "text-emerald-600 border-emerald-600/30",
+                                )}
+                              >
+                                {folio?.booking?.dropoff_type || "HUB"}
+                              </Badge>
+                            </div>
+                            <span className="text-[10px] font-semibold text-foreground leading-tight">
+                              {folio?.booking?.dropoff_location}
                             </span>
                           </div>
                         </div>
@@ -451,6 +584,43 @@ export default function BookingIncomeBreakdownModal({
                         </div>
                       ) : (
                         <>
+                          {/* SMART LOGISTICS WARNING BANNER */}
+                          {showLogisticsWarning && (
+                            <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4 flex items-start gap-3">
+                              <MapPin className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+                              <div className="w-full">
+                                <h4 className="text-[11px] font-bold text-amber-600 uppercase tracking-widest mb-1">
+                                  Action Required: Custom Logistics Fee
+                                </h4>
+                                <p className="text-[11px] text-muted-foreground font-medium leading-relaxed mb-3">
+                                  This booking requested a custom{" "}
+                                  <strong>{customTypesText}</strong> location.
+                                  Please calculate the distance and add a
+                                  Delivery Fee.
+                                </p>
+                                <div className="flex gap-2">
+                                  <Button
+                                    variant="outline"
+                                    onClick={handleWarningCheckDistance}
+                                    size="sm"
+                                    className="h-8 text-[9px] font-bold uppercase tracking-widest border-amber-500/30 text-amber-600 hover:bg-amber-500/10 shadow-none flex-1"
+                                  >
+                                    <ExternalLink className="w-3 h-3 mr-1.5" />{" "}
+                                    Check Distance
+                                  </Button>
+                                  <Button
+                                    onClick={() => handleTabChange("charge")}
+                                    size="sm"
+                                    className="h-8 text-[9px] font-bold uppercase tracking-widest bg-amber-600 text-white hover:bg-amber-700 shadow-none flex-1"
+                                  >
+                                    <Plus className="w-3 h-3 mr-1.5" /> Add
+                                    Delivery Fee
+                                  </Button>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+
                           {/* ITEM CHARGES SECTION */}
                           <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden transition-colors">
                             <div className="bg-secondary/50 border-b border-border px-3 py-2.5">
@@ -459,10 +629,9 @@ export default function BookingIncomeBreakdownModal({
                               </h4>
                             </div>
                             <div>
-                              <div className="grid grid-cols-[1.5fr_2fr_1fr_1fr_32px] p-2 px-3 border-b border-border bg-secondary text-[9px] font-bold text-muted-foreground uppercase tracking-widest transition-colors">
+                              <div className="grid grid-cols-[1.5fr_2fr_1fr_32px] p-2 px-3 border-b border-border bg-secondary text-[9px] font-bold text-muted-foreground uppercase tracking-widest transition-colors">
                                 <div>Category</div>
                                 <div>Description</div>
-                                <div className="text-right">Breakdown</div>
                                 <div className="text-right text-foreground">
                                   Subtotal
                                 </div>
@@ -473,7 +642,7 @@ export default function BookingIncomeBreakdownModal({
                                 {folio?.charges?.map((charge: any) => (
                                   <div
                                     key={charge.charge_id}
-                                    className="grid grid-cols-[1.5fr_2fr_1fr_1fr_32px] p-2.5 px-3 items-center hover:bg-secondary/50 transition-colors"
+                                    className="grid grid-cols-[1.5fr_2fr_1fr_32px] p-2.5 px-3 items-center hover:bg-secondary/50 transition-colors"
                                   >
                                     <span
                                       className={cn(
@@ -486,36 +655,11 @@ export default function BookingIncomeBreakdownModal({
                                       )}
                                     >
                                       {charge.category.replace(/_/g, " ")}
-                                      {charge.category === "BASE_RATE" &&
-                                        durationText && (
-                                          <span className="text-[8px] font-mono text-muted-foreground bg-secondary px-1 py-0.5 rounded border border-border whitespace-nowrap">
-                                            {durationText}
-                                          </span>
-                                        )}
                                     </span>
 
                                     <span className="text-[10px] font-medium text-muted-foreground truncate pr-4">
                                       {charge.description}
                                     </span>
-
-                                    <div className="flex flex-col items-end justify-center">
-                                      {charge.category === "BASE_RATE" &&
-                                      folio?.booking?.base_rate_snapshot ? (
-                                        <span className="text-[9px] font-medium text-muted-foreground whitespace-nowrap">
-                                          {durationText} × ₱
-                                          {Number(
-                                            folio.booking.base_rate_snapshot,
-                                          ).toLocaleString()}
-                                        </span>
-                                      ) : (
-                                        <span className="text-[10px] font-medium text-muted-foreground whitespace-nowrap">
-                                          {charge.amount < 0 ? "- ₱ " : "+ ₱ "}
-                                          {Math.abs(
-                                            Number(charge.amount),
-                                          ).toLocaleString()}
-                                        </span>
-                                      )}
-                                    </div>
 
                                     <div className="text-[11px] font-bold font-mono text-right text-foreground border-l border-border pl-3 ml-3 flex items-center justify-end h-full">
                                       {charge.amount < 0 ? "- ₱ " : "₱ "}
@@ -524,11 +668,11 @@ export default function BookingIncomeBreakdownModal({
                                       ).toLocaleString()}
                                     </div>
 
-                                    {/* Delete Charge Action */}
+                                    {/* Delete Charge Action (Protected) */}
                                     <div className="flex justify-end pl-2">
                                       {![
-                                        "BASE_RATE",
-                                        "SECURITY_DEPOSIT",
+                                        "BASE_RATE_24H",
+                                        "BASE_RATE_12H",
                                       ].includes(charge.category) && (
                                         <Button
                                           variant="ghost"
@@ -549,8 +693,8 @@ export default function BookingIncomeBreakdownModal({
                                 ))}
 
                                 {(folio?.charges?.length ?? 0) > 0 && (
-                                  <div className="grid grid-cols-[1.5fr_2fr_1fr_1fr_32px] p-3 items-center bg-secondary/20 transition-colors border-t-2 border-border">
-                                    <div className="col-span-3 text-right pr-4 text-[10px] font-bold text-foreground uppercase tracking-widest">
+                                  <div className="grid grid-cols-[1.5fr_2fr_1fr_32px] p-3 items-center bg-secondary/20 transition-colors border-t-2 border-border">
+                                    <div className="col-span-2 text-right pr-4 text-[10px] font-bold text-foreground uppercase tracking-widest">
                                       Total Charges
                                     </div>
                                     <div className="text-[12px] font-black font-mono text-right text-foreground border-l border-border pl-3 ml-3 flex items-center justify-end">
@@ -711,7 +855,7 @@ export default function BookingIncomeBreakdownModal({
                               type="text"
                               value={payTitle}
                               onChange={(e) => setPayTitle(e.target.value)}
-                              placeholder="e.g., 10% Downpayment, Final Handover Balance"
+                              placeholder="e.g., Downpayment, Final Handover Balance"
                               className="h-8 text-[11px] font-semibold bg-secondary border-border rounded-lg focus-visible:ring-emerald-500 shadow-none transition-colors"
                             />
                           </div>
@@ -829,12 +973,24 @@ export default function BookingIncomeBreakdownModal({
                                 onValueChange={(val) => {
                                   setChargeCat(val);
                                   if (val !== "CUSTOM") setCustomChargeCat("");
+
+                                  if (val === "DELIVERY_FEE") {
+                                    setChargeDesc(
+                                      `Delivery to ${folio?.booking?.pickup_type === "custom" ? folio.booking.pickup_location : folio?.booking?.dropoff_location}`,
+                                    );
+                                  }
                                 }}
                               >
                                 <SelectTrigger className="h-8 w-full! text-[11px] font-semibold bg-secondary border-border rounded-lg focus:ring-amber-500 shadow-none transition-colors">
                                   <SelectValue placeholder="Select" />
                                 </SelectTrigger>
                                 <SelectContent className="rounded-xl border-border bg-popover shadow-xl">
+                                  <SelectItem
+                                    value="DELIVERY_FEE"
+                                    className="text-[11px] font-medium"
+                                  >
+                                    Delivery Fee
+                                  </SelectItem>
                                   <SelectItem
                                     value="DAMAGE_FEE"
                                     className="text-[11px] font-medium"
@@ -920,7 +1076,7 @@ export default function BookingIncomeBreakdownModal({
                         <div className="bg-indigo-500/10 border-b border-border px-4 py-3 flex items-center gap-2">
                           <Undo2 className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
                           <h3 className="text-[10px] font-bold text-foreground uppercase tracking-widest">
-                            Issue Refund
+                            Issue Refund / Discount
                           </h3>
                         </div>
                         <div className="p-4">
@@ -951,26 +1107,12 @@ export default function BookingIncomeBreakdownModal({
                                 onValueChange={(val) => {
                                   setRefundCat(val);
                                   if (val !== "CUSTOM") setCustomRefundCat("");
-
-                                  if (val === "DEPOSIT_REFUND") {
-                                    setRefundAmount(securityDeposit.toString());
-                                    setRefundDesc("Security Deposit Refund");
-                                    setIsDeductFromInvoice(true); // Default to true for deposits
-                                  } else {
-                                    setRefundDesc("");
-                                  }
                                 }}
                               >
                                 <SelectTrigger className="h-8 w-full! text-[11px] font-semibold bg-secondary border-border rounded-lg focus:ring-indigo-500 shadow-none transition-colors">
                                   <SelectValue placeholder="Select" />
                                 </SelectTrigger>
                                 <SelectContent className="rounded-xl border-border bg-popover shadow-xl">
-                                  <SelectItem
-                                    value="DEPOSIT_REFUND"
-                                    className="text-[11px] font-medium"
-                                  >
-                                    Security Deposit
-                                  </SelectItem>
                                   <SelectItem
                                     value="OVERPAYMENT"
                                     className="text-[11px] font-medium"
@@ -1042,9 +1184,8 @@ export default function BookingIncomeBreakdownModal({
                                 Deduct from Invoice
                               </label>
                               <p className="text-[10px] text-muted-foreground mt-1">
-                                Check this if the refund lowers the
-                                customer&apos;s total bill (e.g. Discounts,
-                                Early Returns). Uncheck for Overpayments.
+                                Check this if the refund lowers the customer's
+                                total bill (e.g. Discounts, Early Returns).
                               </p>
                             </div>
                           </div>
@@ -1135,9 +1276,6 @@ export default function BookingIncomeBreakdownModal({
             >
               Close
             </Button>
-            <Button className="h-8 px-5 text-[10px] font-bold uppercase tracking-widest bg-primary text-primary-foreground hover:opacity-90 rounded-lg shadow-sm transition-opacity">
-              <Download className="w-3.5 h-3.5 mr-2" /> Download PDF
-            </Button>
           </div>
         </DialogContent>
       </Dialog>
@@ -1159,7 +1297,7 @@ export default function BookingIncomeBreakdownModal({
             </DialogTitle>
             <DialogDescription>
               Are you sure you want to remove this charge from the invoice? This
-              action will adjust the customer&apos;s balance immediately.
+              action will adjust the customer's balance immediately.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="mt-4">
@@ -1203,7 +1341,7 @@ export default function BookingIncomeBreakdownModal({
             </DialogTitle>
             <DialogDescription>
               Voiding a payment will reverse the cash collection in the master
-              ledger and increase the customer&apos;s balance due.
+              ledger and increase the customer's balance due.
             </DialogDescription>
           </DialogHeader>
 

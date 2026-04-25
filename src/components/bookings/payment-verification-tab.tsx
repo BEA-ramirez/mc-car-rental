@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Image from "next/image";
-import { format, differenceInDays } from "date-fns";
+import { format, differenceInHours } from "date-fns";
 import {
   CheckCircle2,
   XCircle,
@@ -14,9 +14,9 @@ import {
   ShieldCheck,
   ExternalLink,
   FileText,
-  AlertCircle,
   Loader2,
   Receipt,
+  AlertCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -100,6 +100,18 @@ export default function PaymentVerificationView() {
     if (!selectedPayment || !rejectReason) return;
     handleVerify(selectedPayment.payment_id, "reject", rejectReason);
     closeReviewModal();
+  };
+
+  // Helper to format block-math duration cleanly
+  const formatDuration = (start: string | Date, end: string | Date) => {
+    const hours = differenceInHours(new Date(end), new Date(start));
+    const days = Math.floor(hours / 24);
+    const remHours = hours % 24;
+
+    if (days > 0 && remHours > 0)
+      return `${days} day${days > 1 ? "s" : ""} and ${remHours} hr${remHours > 1 ? "s" : ""}`;
+    if (days > 0) return `${days} day${days > 1 ? "s" : ""}`;
+    return `${hours} hr${hours > 1 ? "s" : ""}`;
   };
 
   if (isLoading) {
@@ -353,11 +365,10 @@ export default function PaymentVerificationView() {
                           Rental Duration
                         </p>
                         <p className="text-[11px] font-bold">
-                          {differenceInDays(
-                            new Date(selectedPayment.booking.end_date),
-                            new Date(selectedPayment.booking.start_date),
-                          )}{" "}
-                          Days
+                          {formatDuration(
+                            selectedPayment.booking.start_date,
+                            selectedPayment.booking.end_date,
+                          )}
                           <span className="text-muted-foreground font-normal ml-1">
                             (
                             {format(
@@ -375,22 +386,15 @@ export default function PaymentVerificationView() {
                       </div>
                     </div>
 
-                    {/* FINANCIAL SUMMARY GRID */}
+                    {/* FINANCIAL SUMMARY GRID (Updated) */}
                     {(() => {
-                      // Cleanly extract the math variables
-                      const totalPrice =
+                      const actualBilled =
                         selectedPayment.booking.total_price || 0;
-                      const securityDeposit =
-                        selectedPayment.booking.security_deposit || 0;
-                      const actualBilled = Math.max(
-                        0,
-                        totalPrice - securityDeposit,
-                      );
-                      const reqDownpayment = actualBilled * 0.1;
+                      const reqDownpayment = 500; // Fixed per requirement
                       const amountPaid = selectedPayment.amount || 0;
 
                       return (
-                        <div className="grid grid-cols-4 gap-2 pt-3 border-t border-border">
+                        <div className="grid grid-cols-3 gap-2 pt-3 border-t border-border">
                           <div className="bg-secondary/30 border border-border rounded p-2 text-center">
                             <p className="text-[8px] font-bold text-muted-foreground uppercase tracking-widest mb-0.5">
                               Rental Billed
@@ -399,17 +403,9 @@ export default function PaymentVerificationView() {
                               ₱{actualBilled.toLocaleString()}
                             </p>
                           </div>
-                          <div className="bg-secondary/30 border border-border rounded p-2 text-center">
-                            <p className="text-[8px] font-bold text-muted-foreground uppercase tracking-widest mb-0.5">
-                              Sec. Deposit
-                            </p>
-                            <p className="text-xs font-black text-foreground">
-                              ₱{securityDeposit.toLocaleString()}
-                            </p>
-                          </div>
                           <div className="bg-primary/5 border border-primary/20 rounded p-2 text-center">
                             <p className="text-[8px] font-bold text-primary uppercase tracking-widest mb-0.5">
-                              Downpayment (10%)
+                              Req. Downpayment
                             </p>
                             <p className="text-xs font-black text-primary">
                               ₱{reqDownpayment.toLocaleString()}

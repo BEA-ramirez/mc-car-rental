@@ -107,6 +107,8 @@ export default function CustomerFleetPage() {
       price: Number(unit.rental_rate_per_day) || 0,
       images: imageUrls,
       features: unit.features || [],
+      rental_rate_per_12h: unit.rental_rate_per_12h || 0,
+      rental_rate_per_day: unit.rental_rate_per_day || 0,
     };
   });
 

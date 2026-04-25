@@ -3,8 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { differenceInDays, format, startOfDay } from "date-fns";
-import { DateRange } from "react-day-picker";
+import { format, startOfDay, addHours, parse } from "date-fns";
 import {
   X,
   Users,
@@ -17,9 +16,9 @@ import {
   ArrowRight,
   Loader2,
   CheckCircle2,
-  Sparkles,
   Info,
   Palette,
+  Clock,
 } from "lucide-react";
 
 import {
@@ -32,9 +31,9 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Calendar } from "@/components/ui/calendar";
+import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
-// Make sure these paths match your folder structure exactly!
 import { useBookingSettings } from "../../../hooks/use-settings";
 import { useCarUnavailableDates } from "../../../hooks/use-bookings";
 import { checkCustomerProfileStatus } from "@/actions/verify-profile";
@@ -63,16 +62,33 @@ export default function CarDetailsSheet({
 
   const { data: settings } = useBookingSettings();
 
-  // 👇 UPDATED: Changed key to driver_rate_per_12h and fallback to 600
+  // Settings & Fixed Rates
   const driver12hRate = settings?.fees?.driver_rate_per_12h || 600;
-  const securityDeposit = settings?.fees?.security_deposit_default || 5000;
+  const fixedDownpayment = 500;
+
+  // Car Rates
+  const car24hRate = Number(car?.rental_rate_per_day || car?.price || 0);
+  const raw12hRate = Number(
+    car?.rental_rate_per_12h || car?.rental_rate_per_12hr || 0,
+  );
+  const has12hRate = raw12hRate > 0;
+  const car12hRate = has12hRate ? raw12hRate : car24hRate; // Fallback
 
   const { data: unavailableRanges, isLoading: isDatesLoading } =
     useCarUnavailableDates(car?.id);
 
-  const [date, setDate] = useState<DateRange | undefined>(undefined);
+  // --- STRICT TIME-BASED STATE ---
+  const [startDate, setStartDate] = useState<Date | undefined>(undefined);
+  const [startTime, setStartTime] = useState<string>("09:00");
+
+  const hourStep = has12hRate ? 12 : 24;
+  const [bookingHours, setBookingHours] = useState<number>(24);
+
   const [withDriver, setWithDriver] = useState(false);
   const [dateError, setDateError] = useState<string | null>(null);
+  const [partialDayWarning, setPartialDayWarning] = useState<string | null>(
+    null,
+  );
 
   // Verification States
   const [isVerifying, setIsVerifying] = useState(false);
@@ -84,48 +100,124 @@ export default function CarDetailsSheet({
       setActiveImageIndex(0);
       setWithDriver(false);
       setDateError(null);
-      setDate(undefined);
+      setPartialDayWarning(null);
+      setStartDate(undefined);
+      setStartTime("09:00");
+      setBookingHours(24);
       setShowVerificationWarning(false);
     }
   }, [isOpen, car]);
 
+  // Calculate Exact Start and End Timestamps
+  const exactStart = startDate ? parse(startTime, "HH:mm", startDate) : null;
+  const exactEnd = exactStart ? addHours(exactStart, bookingHours) : null;
+
+  // --- EXACT TIME OVERLAP & WARNING CHECKER ---
   useEffect(() => {
-    if (date?.from && date?.to && unavailableRanges?.length > 0) {
-      const hasOverlap = unavailableRanges.some((range: any) => {
-        const bookedStart = startOfDay(new Date(range.unavailable_from));
-        const bookedEnd = startOfDay(new Date(range.unavailable_to));
-        return date.from! <= bookedEnd && date.to! >= bookedStart;
-      });
+    setPartialDayWarning(null);
+    setDateError(null);
 
-      if (hasOverlap) {
-        setDateError(
-          "Your selected range overlaps with an existing booking. Please select different dates.",
-        );
-      } else {
-        setDateError(null);
+    if (unavailableRanges?.length > 0) {
+      // 1. Partial Day Warning (Analyzes specific hours available on the selected day)
+      if (startDate) {
+        const targetStart = startOfDay(startDate);
+        const targetEnd = addHours(targetStart, 24);
+
+        // Find bookings that intersect with this specific day
+        const dayBookings = unavailableRanges.filter((range: any) => {
+          const bStart = new Date(range.unavailable_from);
+          const bEnd = new Date(range.unavailable_to);
+          return bStart < targetEnd && bEnd > targetStart;
+        });
+
+        if (dayBookings.length > 0) {
+          const messages = dayBookings
+            .map((b: any) => {
+              const bStart = new Date(b.unavailable_from);
+              const bEnd = new Date(b.unavailable_to);
+
+              // If it covers the whole day, the grey-out logic handles it
+              if (bStart <= targetStart && bEnd >= targetEnd) return null;
+
+              if (
+                bEnd > targetStart &&
+                bEnd <= targetEnd &&
+                bStart <= targetStart
+              ) {
+                return `available starting at ${format(bEnd, "h:mm a")}`;
+              }
+              if (
+                bStart >= targetStart &&
+                bStart < targetEnd &&
+                bEnd >= targetEnd
+              ) {
+                return `available only until ${format(bStart, "h:mm a")}`;
+              }
+              if (bStart >= targetStart && bEnd <= targetEnd) {
+                return `unavailable from ${format(bStart, "h:mm a")} to ${format(bEnd, "h:mm a")}`;
+              }
+              return null;
+            })
+            .filter(Boolean);
+
+          if (messages.length > 0) {
+            setPartialDayWarning(
+              `Note: On this date, the unit is ${messages.join(" and ")}.`,
+            );
+          }
+        }
       }
-    } else {
-      setDateError(null);
+
+      // 2. Strict Overlap Validation (Prevents Checkout)
+      if (exactStart && exactEnd) {
+        const hasOverlap = unavailableRanges.some((range: any) => {
+          const bookedStart = new Date(range.unavailable_from);
+          const bookedEnd = new Date(range.unavailable_to);
+          return exactStart < bookedEnd && exactEnd > bookedStart;
+        });
+
+        if (hasOverlap) {
+          setDateError(
+            "Your selected schedule conflicts with an existing booking. Please adjust your hours or start time.",
+          );
+        }
+      }
     }
-  }, [date, unavailableRanges]);
+  }, [startDate, exactStart, exactEnd, unavailableRanges]);
 
-  let totalDays = 0;
-  if (date?.from && date?.to) {
-    totalDays = Math.abs(differenceInDays(date.to, date.from)) + 1;
-  } else if (date?.from) {
-    totalDays = 1;
-  }
+  const handleHoursChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let val = parseInt(e.target.value);
+    if (isNaN(val)) val = hourStep;
 
-  const baseRentalCost = totalDays * (car?.price || 0);
+    const snappedValue = Math.max(
+      hourStep,
+      Math.round(val / hourStep) * hourStep,
+    );
+    setBookingHours(snappedValue);
+  };
 
-  // 👇 UPDATED: Variable name swapped to match new 12h logic
-  const driver24hRate = driver12hRate * 2;
-  const estimatedDriverFee = withDriver ? totalDays * driver24hRate : 0;
+  const formatDurationText = (hrs: number) => {
+    const d = Math.floor(hrs / 24);
+    const h = hrs % 24;
+    if (d > 0 && h > 0) return `${d} day${d > 1 ? "s" : ""} and ${h} hrs`;
+    if (d > 0) return `${d} day${d > 1 ? "s" : ""}`;
+    return `${h} hrs`;
+  };
+
+  // --- PRICING ENGINE ---
+  const fullDays = Math.floor(bookingHours / 24);
+  const remainingHalfDays = bookingHours % 24 === 12 ? 1 : 0;
+
+  const baseRentalCost = fullDays * car24hRate + remainingHalfDays * car12hRate;
+
+  const driverCost = withDriver
+    ? (fullDays * 2 + remainingHalfDays) * driver12hRate
+    : 0;
+
   const platformTotalValue = baseRentalCost;
-  const requiredDownpayment = platformTotalValue * 0.1;
 
   const handleProceedToBooking = async () => {
-    if (!car || !date?.from || !date?.to || dateError) return;
+    if (!car || !exactStart || !exactEnd || dateError) return;
 
     setIsVerifying(true);
 
@@ -139,10 +231,10 @@ export default function CarDetailsSheet({
         return;
       }
 
-      const fromStr = date.from.toISOString();
-      const toStr = date.to.toISOString();
+      const fromStr = exactStart.toISOString();
+      const toStr = exactEnd.toISOString();
       router.push(
-        `/customer/book/${car.id}?from=${fromStr}&to=${toStr}&driver=${withDriver}`,
+        `/customer/book/${car.id}?from=${fromStr}&to=${toStr}&driver=${withDriver}&hours=${bookingHours}`,
       );
       onClose();
     } catch (error) {
@@ -151,14 +243,19 @@ export default function CarDetailsSheet({
     }
   };
 
+  // Grey out days ONLY if the entire 24h block is covered by bookings
   const isDateDisabled = (targetDate: Date) => {
     if (startOfDay(targetDate) < startOfDay(new Date())) return true;
+
+    const targetStart = startOfDay(targetDate);
+    const targetEnd = addHours(targetStart, 24);
+
     if (unavailableRanges && unavailableRanges.length > 0) {
       return unavailableRanges.some((range: any) => {
-        const bookedStart = startOfDay(new Date(range.unavailable_from));
-        const bookedEnd = startOfDay(new Date(range.unavailable_to));
-        const current = startOfDay(targetDate);
-        return current >= bookedStart && current <= bookedEnd;
+        const bookedStart = new Date(range.unavailable_from);
+        const bookedEnd = new Date(range.unavailable_to);
+        // If a booking starts before/at 00:00 and ends after/at 23:59, the whole day is dead.
+        return bookedStart <= targetStart && bookedEnd >= targetEnd;
       });
     }
     return false;
@@ -189,16 +286,13 @@ export default function CarDetailsSheet({
                   <div className="w-14 h-14 bg-red-500/10 rounded-full flex items-center justify-center mb-5 border border-red-500/20">
                     <ShieldCheck className="w-7 h-7 text-red-400" />
                   </div>
-
                   <h3 className="text-xl font-bold text-white mb-2">
                     Verification Required
                   </h3>
-
                   <p className="text-sm text-gray-400 font-medium mb-6 leading-relaxed">
                     To ensure the safety of our fleet, you must complete your
                     profile and upload your IDs before booking. You are missing:
                   </p>
-
                   <div className="w-full bg-red-500/5 rounded-xl p-4 mb-8 text-left border border-red-500/10">
                     <ul className="space-y-3">
                       {missingFields.map((field, idx) => (
@@ -212,7 +306,6 @@ export default function CarDetailsSheet({
                       ))}
                     </ul>
                   </div>
-
                   <div className="flex gap-3 w-full">
                     <Button
                       variant="ghost"
@@ -237,6 +330,7 @@ export default function CarDetailsSheet({
 
             <div className="flex-1 overflow-y-auto custom-scrollbar relative">
               <div className="grid grid-cols-1 lg:grid-cols-12 min-h-full gap-0 relative">
+                {/* --- LEFT COL: CAR VISUALS --- */}
                 <div className="lg:col-span-7 p-6 md:p-10 flex flex-col h-full border-r border-white/5 relative">
                   <div className="absolute top-0 left-0 w-[400px] h-[400px] bg-[#64c5c3]/5 rounded-full blur-[100px] pointer-events-none -z-10" />
 
@@ -304,9 +398,7 @@ export default function CarDetailsSheet({
                     </h1>
                     <p className="text-sm text-gray-400 font-medium leading-relaxed max-w-2xl">
                       Experience superior comfort and reliable capability.
-                      Perfect for navigating the city or exploring scenic
-                      routes. Meticulously maintained for your safety and
-                      enjoyment.
+                      Meticulously maintained for your safety and enjoyment.
                     </p>
                   </div>
 
@@ -326,13 +418,11 @@ export default function CarDetailsSheet({
                       htmlFor="with-driver"
                       className="flex flex-col gap-1.5 items-start cursor-pointer"
                     >
-                      {/* 👇 UPDATED: Explicitly state "12h Shift" so the user knows what they are paying for */}
                       <span className="text-sm font-semibold text-white ">
-                        Request a Driver Service (12h Shift)
+                        Request a Driver Service
                       </span>
-                      {/* 👇 UPDATED: Show the dynamic 12h price */}
                       <span className="text-xs font-medium text-gray-400">
-                        ₱{driver12hRate.toLocaleString()} / 12 hrs • Paid
+                        ₱{driver12hRate.toLocaleString()} / 12h Shift • Paid
                         directly to driver
                       </span>
                     </Label>
@@ -360,40 +450,41 @@ export default function CarDetailsSheet({
                           </div>
                           <div>
                             <p className="text-sm font-semibold text-white mb-1">
-                              10% Reservation Fee
+                              Fixed Reservation Downpayment
                             </p>
                             <p className="text-sm text-gray-400 leading-relaxed font-medium">
-                              A{" "}
+                              A flat rate of{" "}
                               <span className="text-[#64c5c3]">
-                                10% down payment
+                                ₱{fixedDownpayment}
                               </span>{" "}
-                              is required at checkout to instantly lock your
-                              dates. This is{" "}
+                              is required at checkout. This downpayment is{" "}
+                              <span className="text-white">
+                                strictly non-refundable
+                              </span>{" "}
+                              as it instantly locks the unit and covers the
+                              opportunity cost of turning away other customers.
+                              It will be{" "}
                               <span className="text-white">fully deducted</span>{" "}
-                              from your final balance. It is strictly
-                              non-refundable if cancelled.
+                              from your final balance.
                             </p>
                           </div>
                         </div>
 
                         <div className="flex gap-3 items-start">
                           <div className="bg-[#050B10] p-1.5 rounded-lg border border-white/10 shrink-0 mt-0.5">
-                            <ShieldCheck className="w-4 h-4 text-[#64c5c3]" />
+                            <Clock className="w-4 h-4 text-[#64c5c3]" />
                           </div>
                           <div>
                             <p className="text-sm font-semibold text-white mb-1">
-                              Refundable Security Deposit
+                              Flexible Extensions
                             </p>
                             <p className="text-sm text-gray-400 leading-relaxed font-medium">
-                              A standard deposit of{" "}
+                              Need more time? Extensions over 4 hours
+                              automatically upgrade to a{" "}
                               <span className="text-white">
-                                ₱{securityDeposit.toLocaleString()}
-                              </span>{" "}
-                              is collected upon vehicle turnover. It is{" "}
-                              <span className="text-[#64c5c3]">
-                                100% refundable
-                              </span>{" "}
-                              upon safe return.
+                                discounted 12-hour block rate
+                              </span>
+                              .
                             </p>
                           </div>
                         </div>
@@ -402,142 +493,192 @@ export default function CarDetailsSheet({
                   </div>
                 </div>
 
+                {/* --- RIGHT COL: SCHEDULER & PRICING --- */}
                 <div className="lg:col-span-5 p-6 md:p-10 bg-[#0a1118]/80 backdrop-blur-2xl flex flex-col justify-start h-full">
                   <div className="flex items-end justify-between mb-6 pb-6 border-b border-white/10 shrink-0">
                     <h3 className="text-xs font-medium text-gray-400 uppercase tracking-widest">
-                      Daily Rate
+                      Rental Rates
                     </h3>
-                    <p className="text-4xl font-black text-white tracking-tighter">
-                      ₱{(car.price || 0).toLocaleString()}
-                      <span className="text-xs font-medium text-gray-400 uppercase tracking-widest ml-2">
-                        / day
-                      </span>
-                    </p>
-                  </div>
-
-                  <div className="mb-8 shrink-0">
-                    <div className="bg-[#64c5c3]/5 border border-[#64c5c3]/20 rounded-2xl p-5">
-                      <div className="flex items-center gap-2 mb-4 text-[#64c5c3]">
-                        <Sparkles className="w-4 h-4" />
-                        <h3 className="text-sm font-semibold">Key Features</h3>
-                      </div>
-
-                      <div className="flex flex-wrap gap-2.5">
-                        {car.features && car.features.length > 0 ? (
-                          car.features.map((feat: any, idx: number) => (
-                            <span
-                              key={idx}
-                              className="px-3 py-1.5 bg-white/5 border border-white/10 rounded-lg text-xs font-medium text-gray-300"
-                            >
-                              {feat.name}
-                            </span>
-                          ))
-                        ) : (
-                          <span className="text-sm font-medium text-gray-500 italic">
-                            No special features documented.
-                          </span>
-                        )}
-                      </div>
+                    <div className="text-right">
+                      <p className="text-3xl font-black text-white tracking-tighter">
+                        ₱{car24hRate.toLocaleString()}{" "}
+                        <span className="text-sm font-medium text-gray-400 uppercase tracking-widest">
+                          / 24h
+                        </span>
+                      </p>
+                      {has12hRate && (
+                        <p className="text-[10px] text-[#64c5c3] mt-1 font-bold tracking-widest uppercase">
+                          12h Rate: ₱{car12hRate.toLocaleString()}
+                        </p>
+                      )}
                     </div>
                   </div>
 
-                  <div className="mb-6 mt-2 space-y-4 shrink-0">
+                  {/* SCHEDULER */}
+                  <div className="mb-6 space-y-4 shrink-0">
                     <Label className="text-sm font-semibold text-white flex items-center justify-between mb-3">
                       <div className="flex items-center gap-2">
                         <CalendarDays className="w-4 h-4 text-[#64c5c3]" />{" "}
-                        Select Dates
+                        Schedule
                       </div>
                     </Label>
 
                     <div className="bg-black/40 border border-white/10 rounded-2xl p-4 flex flex-col items-center shadow-inner relative">
-                      {dateError && (
-                        <div className="absolute -top-12 left-0 right-0 bg-red-500/10 border border-red-500/20 text-red-400 text-xs font-semibold p-2.5 rounded-lg flex items-center justify-center gap-2 text-center z-20">
-                          <AlertCircle className="w-4 h-4" /> Overlapping dates
-                          selected
-                        </div>
-                      )}
-
                       <Calendar
                         mode="range"
                         defaultMonth={new Date()}
-                        selected={date}
-                        onSelect={setDate}
-                        numberOfMonths={1}
+                        selected={{
+                          from: exactStart || startDate,
+                          to: exactEnd || startDate,
+                        }}
+                        onSelect={(range, selectedDay) =>
+                          setStartDate(selectedDay)
+                        }
                         disabled={isDateDisabled}
                         className={cn(
-                          "w-full max-w-70 md:max-w-none text-white font-medium transition-opacity",
+                          "w-full text-white font-medium transition-opacity",
                           isDatesLoading
                             ? "opacity-50 pointer-events-none"
                             : "opacity-100",
                         )}
                         classNames={{
+                          table: "w-full border-collapse space-y-1",
+                          head_row: "flex w-full justify-between mt-2",
+                          head_cell:
+                            "text-[10px] font-bold text-gray-500 uppercase tracking-widest w-9 text-center",
+                          row: "flex w-full justify-between mt-2",
+                          cell: "h-9 w-9 text-center relative p-0 focus-within:relative focus-within:z-20",
+                          day: "h-9 w-9 p-0 font-normal hover:bg-white/10 rounded-lg cursor-pointer flex items-center justify-center transition-colors",
                           day_selected:
-                            "bg-[#64c5c3] text-black hover:bg-[#52a3a1] hover:text-black focus:bg-[#64c5c3] focus:text-black rounded-lg font-bold transition-colors",
+                            "bg-[#64c5c3] text-black hover:bg-[#52a3a1] font-bold rounded-lg",
                           day_today:
                             "bg-white/5 text-[#64c5c3] border border-[#64c5c3]/30 rounded-lg",
                           day_range_middle:
                             "bg-[#64c5c3]/20 text-white rounded-none hover:bg-[#64c5c3]/30",
-                          range_middle:
-                            "bg-[#64c5c3]/20 text-white rounded-none",
-                          head_cell:
-                            "text-[10px] font-bold text-gray-500 uppercase tracking-widest",
-                          nav_button_previous:
-                            "hover:bg-white/10 rounded-lg text-gray-400 transition-colors",
-                          nav_button_next:
-                            "hover:bg-white/10 rounded-lg text-gray-400 transition-colors",
-                          day: "h-10 w-10 text-center text-sm p-0 hover:bg-white/10 hover:text-white rounded-lg transition-colors cursor-pointer",
-                          caption_label:
-                            "text-sm font-bold text-white tracking-wider uppercase",
                           day_disabled:
                             "text-gray-700 opacity-50 cursor-not-allowed bg-black/50 line-through decoration-gray-600/50",
                         }}
                       />
 
                       <div className="flex items-center gap-1.5 mt-4 pt-3 border-t border-white/5 w-full justify-center">
-                        <Info className="w-3.5 h-3.5 text-gray-500" />
-                        <span className="text-xs font-medium text-gray-500">
-                          Greyed-out dates are unavailable
+                        <Info className="w-3.5 h-3.5 text-gray-500 shrink-0" />
+                        <span className="text-[10px] font-medium text-gray-500 uppercase tracking-widest text-center">
+                          Select a start date. Fully booked dates are greyed
+                          out.
                         </span>
                       </div>
                     </div>
 
-                    {date?.from && date?.to && !dateError && (
-                      <div className="bg-white/5 border border-white/10 rounded-xl p-3.5 flex justify-between items-center mt-3">
-                        <p className="text-xs font-medium text-gray-400 uppercase tracking-widest">
+                    <div className="grid grid-cols-2 gap-3 mt-4">
+                      <div className="space-y-2">
+                        <Label className="text-[10px] text-gray-400 uppercase tracking-widest font-bold">
+                          Start Time
+                        </Label>
+                        <Input
+                          type="time"
+                          value={startTime}
+                          onChange={(e) => setStartTime(e.target.value)}
+                          className="bg-white/5 border-white/10 text-white shadow-none focus-visible:ring-[#64c5c3]"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-[10px] text-gray-400 uppercase tracking-widest font-bold">
                           Duration
+                        </Label>
+                        <div className="relative">
+                          <Input
+                            type="number"
+                            min={hourStep}
+                            step={hourStep}
+                            value={bookingHours}
+                            onChange={handleHoursChange}
+                            onBlur={handleHoursChange}
+                            className="bg-white/5 border-white/10 text-white shadow-none focus-visible:ring-[#64c5c3] pr-12"
+                          />
+                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-gray-500 pointer-events-none">
+                            HRS
+                          </span>
+                        </div>
+                        <p className="text-[10px] font-bold text-[#64c5c3] uppercase tracking-widest mt-1">
+                          = {formatDurationText(bookingHours)}
                         </p>
-                        <p className="text-sm font-semibold text-[#64c5c3]">
-                          {totalDays} {totalDays === 1 ? "day" : "days"} (
-                          {format(date.from, "MMM dd")} -{" "}
-                          {format(date.to, "MMM dd")})
+                      </div>
+                    </div>
+
+                    {/* THE FIX: Removed the !dateError check so the Info message always shows! */}
+                    {partialDayWarning && (
+                      <div className="bg-amber-500/10 border border-amber-500/20 text-amber-400 text-[10px] font-semibold p-3 rounded-lg flex items-start gap-2 mt-2">
+                        <Info className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                        {partialDayWarning}
+                      </div>
+                    )}
+
+                    {dateError && (
+                      <div className="bg-red-500/10 border border-red-500/20 text-red-400 text-[10px] font-semibold p-3 rounded-lg flex items-start gap-2 mt-2">
+                        <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                        {dateError}
+                      </div>
+                    )}
+
+                    {exactStart && exactEnd && !dateError && (
+                      <div className="bg-white/5 border border-[#64c5c3]/30 rounded-xl p-4 flex flex-col gap-2 mt-4">
+                        <p className="text-[10px] font-bold text-[#64c5c3] uppercase tracking-widest">
+                          Schedule Confirmation
                         </p>
+                        <div className="flex justify-between text-xs text-white font-medium">
+                          <span className="text-gray-400">Pickup:</span>
+                          <span>
+                            {format(exactStart, "MMM dd, yyyy - hh:mm a")}
+                          </span>
+                        </div>
+                        <div className="flex justify-between text-xs text-white font-medium">
+                          <span className="text-gray-400">Return:</span>
+                          <span>
+                            {format(exactEnd, "MMM dd, yyyy - hh:mm a")}
+                          </span>
+                        </div>
                       </div>
                     )}
                   </div>
 
                   <div className="space-y-4 pt-5 border-t border-white/10 mt-auto shrink-0">
-                    <div className="space-y-2 mb-4">
-                      <div className="flex justify-between text-sm font-medium text-gray-400">
-                        <span>
-                          Base Rate (₱{(car.price || 0).toLocaleString()} ×{" "}
-                          {totalDays || 0} days)
-                        </span>
-                        <span className="text-white font-semibold">
-                          ₱{baseRentalCost.toLocaleString()}
-                        </span>
+                    {/* --- THE RECEIPT BREAKDOWN --- */}
+                    <div className="space-y-2 mb-4 bg-white/5 rounded-xl p-4 border border-white/10">
+                      <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2">
+                        Cost Breakdown
+                      </p>
+
+                      {fullDays > 0 && (
+                        <div className="flex justify-between text-sm font-medium text-gray-400">
+                          <span>
+                            {fullDays} {fullDays === 1 ? "day" : "days"} × ₱
+                            {car24hRate.toLocaleString()}
+                          </span>
+                          <span className="text-white font-semibold">
+                            ₱{(fullDays * car24hRate).toLocaleString()}
+                          </span>
+                        </div>
+                      )}
+
+                      {remainingHalfDays > 0 && (
+                        <div className="flex justify-between text-sm font-medium text-gray-400">
+                          <span>12 hrs × ₱{car12hRate.toLocaleString()}</span>
+                          <span className="text-white font-semibold">
+                            ₱{car12hRate.toLocaleString()}
+                          </span>
+                        </div>
+                      )}
+
+                      <div className="flex justify-between text-sm font-bold text-[#64c5c3] pt-2 border-t border-white/10 mt-2">
+                        <span>Total Rental Fee</span>
+                        <span>₱{baseRentalCost.toLocaleString()}</span>
                       </div>
 
                       {withDriver && (
-                        <div className="flex justify-between text-sm font-medium text-yellow-500/80">
-                          <span>
-                            {/* 👇 UPDATED: Changed label to reflect 12h shifts explicitly */}
-                            Est. Driver Fee{" "}
-                            <span className="text-xs opacity-70">
-                              (12h shift/day)
-                            </span>
-                          </span>
+                        <div className="flex justify-between text-sm font-medium text-yellow-500/80 pt-2">
+                          <span>Driver Fee (Paid separately)</span>
                           <span className="font-semibold">
-                            ₱{estimatedDriverFee.toLocaleString()}
+                            ₱{driverCost.toLocaleString()}
                           </span>
                         </div>
                       )}
@@ -546,7 +687,7 @@ export default function CarDetailsSheet({
                     <div className="bg-[#050B10]/50 border border-white/10 rounded-xl p-5 mb-6">
                       <div className="flex items-end justify-between mb-4 border-b border-white/5 pb-4">
                         <p className="text-sm font-medium text-gray-400">
-                          Platform Rental Value
+                          Platform Total
                         </p>
                         <p className="text-2xl font-bold text-white tracking-tight">
                           ₱{platformTotalValue.toLocaleString()}
@@ -554,23 +695,26 @@ export default function CarDetailsSheet({
                       </div>
                       <div className="flex items-center justify-between">
                         <p className="text-sm font-semibold text-[#64c5c3]">
-                          10% Required Now
+                          Required to Book Now
                         </p>
                         <p className="text-xl font-bold text-[#64c5c3] tracking-tight">
-                          ₱{requiredDownpayment.toLocaleString()}
+                          ₱{fixedDownpayment.toLocaleString()}
                         </p>
                       </div>
                       <p className="text-xs text-gray-500 font-medium mt-2 text-right">
                         Balance due at pickup: ₱
-                        {(platformTotalValue * 0.9).toLocaleString()}
+                        {(
+                          platformTotalValue - fixedDownpayment
+                        ).toLocaleString()}
                       </p>
                     </div>
 
                     <Button
                       onClick={handleProceedToBooking}
                       disabled={
-                        !date?.from ||
-                        !date?.to ||
+                        !exactStart ||
+                        !exactEnd ||
+                        bookingHours < hourStep ||
                         isDatesLoading ||
                         !!dateError ||
                         isVerifying
@@ -582,10 +726,12 @@ export default function CarDetailsSheet({
                           <Loader2 className="w-4 h-4 mr-2 animate-spin" />{" "}
                           Verifying Profile...
                         </>
-                      ) : !date?.from || !date?.to ? (
-                        "Select Dates"
+                      ) : !exactStart ? (
+                        "Select Start Date"
+                      ) : bookingHours < hourStep ? (
+                        `Minimum ${hourStep} Hours Required`
                       ) : dateError ? (
-                        "Invalid Dates"
+                        "Time Slot Unavailable"
                       ) : (
                         <>
                           Proceed to Checkout{" "}
@@ -593,11 +739,6 @@ export default function CarDetailsSheet({
                         </>
                       )}
                     </Button>
-
-                    <div className="flex items-center gap-2 justify-center text-[10px] text-gray-500 font-bold uppercase tracking-widest mt-4">
-                      <ShieldCheck className="w-4 h-4 text-[#64c5c3]" /> Secure
-                      Booking Protocol
-                    </div>
                   </div>
                 </div>
               </div>

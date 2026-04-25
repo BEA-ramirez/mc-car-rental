@@ -120,16 +120,17 @@ export function useUpsertInspection() {
       }
       return response;
     },
-    onSuccess: () => {
-      // Invalidate everything related to bookings and inspections
+    onSuccess: (data, variables) => {
       queryClient.invalidateQueries({
         queryKey: QUERY_KEYS.documents.inspections,
       });
-      // Removed ghost ["inspections"] key
-      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.bookings.all });
+      queryClient.invalidateQueries({
+        queryKey: QUERY_KEYS.bookings.workflowDocs(variables.bookingId),
+      });
       queryClient.invalidateQueries({
         queryKey: QUERY_KEYS.bookings.detailsBase,
       });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.bookings.all });
     },
     onError: (error) => {
       console.error("Inspection save error:", error);
@@ -151,12 +152,13 @@ export function useDocumentMutations() {
   const invalidateDocs = () => {
     queryClient.invalidateQueries({ queryKey: QUERY_KEYS.documents.all });
     queryClient.invalidateQueries({ queryKey: QUERY_KEYS.users.clients() }); // Admin Clients Table
+
     queryClient.invalidateQueries({ queryKey: QUERY_KEYS.users.profile }); // Customer's own profile
     queryClient.invalidateQueries({ queryKey: QUERY_KEYS.dashboard.summary }); // Verification KPIs
     queryClient.invalidateQueries({ queryKey: QUERY_KEYS.bookings.all }); // Admin & Customer Bookings
     queryClient.invalidateQueries({
       queryKey: QUERY_KEYS.bookings.detailsBase,
-    }); // Specific Booking Views
+    });
   };
 
   const verifyDoc = useMutation({
@@ -281,7 +283,10 @@ export function useDocumentMutations() {
       if (!result.success) throw new Error(result.message);
       return result;
     },
-    onSuccess: (data) => {
+    onSuccess: (data, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: QUERY_KEYS.bookings.workflowDocs(variables.id),
+      });
       toast.success(data.message || "Contract successfully executed!");
       invalidateDocs();
     },

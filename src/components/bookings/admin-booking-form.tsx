@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { useFormContext, useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { format, addDays, setHours, setMinutes } from "date-fns";
+import { format, addHours, parse, startOfDay } from "date-fns";
 import {
   CalendarIcon,
   MapPin,
@@ -19,9 +19,11 @@ import {
   Car,
   CalendarDays,
   Loader2,
-  CheckCircle2,
+  AlertCircle,
+  X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 // UI Components
 import { Button } from "@/components/ui/button";
@@ -73,13 +75,18 @@ import {
   AdminBookingInput,
 } from "@/lib/schemas/booking";
 import { useRouter } from "next/navigation";
-import { useBookings } from "../../../hooks/use-bookings";
+import {
+  useBookings,
+  useCarUnavailableDates,
+} from "../../../hooks/use-bookings";
 import { useBookingSettings } from "../../../hooks/use-settings";
 import { useCustomers } from "../../../hooks/use-users";
 import { useUnits } from "../../../hooks/use-units";
 import { createClient } from "@/utils/supabase/client";
 
-// --- TYPES & EXTRACTED COMPONENTS (Unchanged) ---
+// --- TYPES & CONSTANTS ---
+const FIXED_DOWNPAYMENT = 500;
+
 type LocationFieldProps = {
   type: "pickup" | "dropoff";
   hubs: any[];
@@ -97,6 +104,7 @@ type AdminBookingFormProps = {
   onCancel?: () => void;
 };
 
+// --- EXTRACTED COMPONENTS ---
 const LocationField = ({
   type,
   hubs,
@@ -144,7 +152,7 @@ const LocationField = ({
                     ? fees.custom_pickup_fee
                     : fees.custom_dropoff_fee,
                 );
-                setValue(coordsField, null);
+                setValue(coordsField, undefined as any);
               }
             }}
           />
@@ -167,7 +175,7 @@ const LocationField = ({
                   defaultValue={field.value}
                 >
                   <FormControl>
-                    <SelectTrigger className="h-8 text-[11px] font-medium w-full bg-secondary border-border focus:ring-1 focus:ring-primary shadow-none rounded-lg transition-colors">
+                    <SelectTrigger className="h-9 text-[11px] font-medium w-full bg-secondary border-border focus:ring-1 focus:ring-primary shadow-none rounded-lg transition-colors">
                       <SelectValue placeholder="Select hub" />
                     </SelectTrigger>
                   </FormControl>
@@ -200,14 +208,14 @@ const LocationField = ({
                     <Input
                       {...field}
                       placeholder="Enter specific address..."
-                      className="h-8 text-[11px] font-medium flex-1 bg-secondary border-border focus-visible:ring-primary shadow-none rounded-lg transition-colors"
+                      className="h-9 text-[11px] font-medium flex-1 bg-secondary border-border focus-visible:ring-primary shadow-none rounded-lg transition-colors"
                     />
                     <Button
                       type="button"
                       size="icon"
                       variant="outline"
                       className={cn(
-                        "h-8 w-8 shrink-0 border-border rounded-lg shadow-none transition-colors",
+                        "h-9 w-9 shrink-0 border-border rounded-lg shadow-none transition-colors",
                         watch(coordsField)
                           ? "bg-primary/10 border-primary/30"
                           : "bg-card hover:bg-secondary",
@@ -220,7 +228,7 @@ const LocationField = ({
                     >
                       <MapPin
                         className={cn(
-                          "h-3.5 w-3.5",
+                          "h-4 w-4",
                           watch(coordsField)
                             ? "text-primary"
                             : "text-muted-foreground",
@@ -240,14 +248,14 @@ const LocationField = ({
                   <FormLabel className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">
                     Delivery Fee
                   </FormLabel>
-                  <div className="flex items-center w-24">
-                    <span className="mr-1.5 text-[10px] font-bold text-muted-foreground">
+                  <div className="flex items-center w-32">
+                    <span className="mr-2 text-[10px] font-bold text-muted-foreground">
                       ₱
                     </span>
                     <Input
                       type="number"
                       {...field}
-                      className="h-7 text-right text-[11px] font-bold bg-secondary border-border shadow-none rounded-md transition-colors"
+                      className="h-8 text-right text-[11px] font-medium font-mono bg-secondary border-border shadow-none rounded-md transition-colors"
                       onChange={(e) =>
                         field.onChange(parseFloat(e.target.value) || 0)
                       }
@@ -287,8 +295,7 @@ export default function AdminBookingForm({
   const { units = [] } = useUnits();
 
   const [isFetchingEditData, setIsFetchingEditData] = useState(!!bookingId);
-  const [startTime, setStartTime] = useState("08:00");
-  const [duration, setDuration] = useState(initialDuration || 1);
+  const [startTime, setStartTime] = useState("09:00");
   const [mapOpen, setMapOpen] = useState(false);
   const [activeMapField, setActiveMapField] = useState<
     "pickup" | "dropoff" | null
@@ -305,31 +312,37 @@ export default function AdminBookingForm({
   const fees = useMemo(() => {
     return (
       settings?.fees || {
-        driver_rate_per_day: 500,
+        driver_rate_per_day: 1500,
+        driver_rate_per_12h: 600,
         custom_pickup_fee: 500,
         custom_dropoff_fee: 500,
-        security_deposit_default: 3000,
       }
     );
   }, [settings?.fees]);
 
+  const defaultHubCoords = hubs[0]
+    ? `${hubs[0].lat},${hubs[0].lng}`
+    : undefined;
+
   const form = useForm({
     resolver: zodResolver(AdminCreateBookingSchema),
     defaultValues: {
+      user_id: "",
       pickup_type: "hub",
       pickup_location: hubs[0]?.name || "Main Garage",
+      pickup_coordinates: defaultHubCoords,
       pickup_price: 0,
       dropoff_type: "hub",
       dropoff_location: hubs[0]?.name || "Main Garage",
+      dropoff_coordinates: defaultHubCoords,
       dropoff_price: 0,
       with_driver: false,
-      driver_fee_per_day: fees.driver_rate_per_day,
+      driver_fee_per_day: fees.driver_rate_per_12h,
       discount_amount: 0,
-      security_deposit: fees.security_deposit_default,
       additional_charges: [],
       car_id: initialCarId || "",
       start_date: initialStartDate || undefined,
-      is_12_hour_promo: false, // <-- NEW DEFAULT
+      booking_hours: initialDuration || 24,
     },
   });
 
@@ -340,7 +353,6 @@ export default function AdminBookingForm({
 
   const { watch, setValue, control, reset } = form;
 
-  // Watchers
   const wStart = watch("start_date");
   const wCarId = watch("car_id");
   const wCustomRate = watch("custom_daily_rate");
@@ -349,51 +361,166 @@ export default function AdminBookingForm({
   const wDiscount = watch("discount_amount");
   const wPayment = watch("initial_payment");
   const wWithDriver = watch("with_driver");
-  const wDriverFee = watch("driver_fee_per_day");
+  const wDriverFee12h = watch("driver_fee_per_day");
   const wExtras = watch("additional_charges");
-  const wSecurityDeposit = watch("security_deposit");
-  const w12HourPromo = watch("is_12_hour_promo"); // <-- NEW WATCHER
+  const wHours = watch("booking_hours");
 
-  // Calculations
   const selectedCar = units.find((c) => c.car_id === wCarId);
-  const price12h = Number(selectedCar?.rental_rate_per_12h || 0);
-  const dailyRate = wCustomRate || selectedCar?.rental_rate_per_day || 0;
+  const car24hRate = Number(selectedCar?.rental_rate_per_day || 0);
+  const raw12hRate = Number(selectedCar?.rental_rate_per_12h || 0);
+  const has12hRate = raw12hRate > 0;
+  const car12hRate = has12hRate ? raw12hRate : car24hRate;
+  const hourStep = has12hRate ? 12 : 24;
 
-  const days = duration > 0 ? duration : 1;
-  const isPromoEligible = price12h > 0 && days === 1 && !wCustomRate;
+  const { data: unavailableRanges, isLoading: isDatesLoading } =
+    useCarUnavailableDates(wCarId);
 
-  // Auto-disable promo if they change to > 1 day or use a custom rate
+  const [dateError, setDateError] = useState<string | null>(null);
+  const [partialDayWarning, setPartialDayWarning] = useState<string | null>(
+    null,
+  );
+
+  const exactStart = wStart ? parse(startTime, "HH:mm", wStart) : null;
+  const exactEnd = exactStart ? addHours(exactStart, wHours || 24) : null;
+
   useEffect(() => {
-    if (!isPromoEligible && w12HourPromo) {
-      setValue("is_12_hour_promo", false);
+    setPartialDayWarning(null);
+    setDateError(null);
+
+    if (bookingId) return;
+
+    if (unavailableRanges?.length > 0) {
+      if (wStart) {
+        const targetStart = startOfDay(wStart);
+        const targetEnd = addHours(targetStart, 24);
+
+        const dayBookings = unavailableRanges.filter((range: any) => {
+          const bStart = new Date(range.unavailable_from);
+          const bEnd = new Date(range.unavailable_to);
+          return bStart < targetEnd && bEnd > targetStart;
+        });
+
+        if (dayBookings.length > 0) {
+          const messages = dayBookings
+            .map((b: any) => {
+              const bStart = new Date(b.unavailable_from);
+              const bEnd = new Date(b.unavailable_to);
+              if (bStart <= targetStart && bEnd >= targetEnd) return null;
+              if (
+                bEnd > targetStart &&
+                bEnd <= targetEnd &&
+                bStart <= targetStart
+              ) {
+                return `available starting at ${format(bEnd, "h:mm a")}`;
+              }
+              if (
+                bStart >= targetStart &&
+                bStart < targetEnd &&
+                bEnd >= targetEnd
+              ) {
+                return `available only until ${format(bStart, "h:mm a")}`;
+              }
+              if (bStart >= targetStart && bEnd <= targetEnd) {
+                return `unavailable from ${format(bStart, "h:mm a")} to ${format(bEnd, "h:mm a")}`;
+              }
+              return null;
+            })
+            .filter(Boolean);
+
+          if (messages.length > 0) {
+            setPartialDayWarning(
+              `Note: On this date, the unit is ${messages.join(" and ")}.`,
+            );
+          }
+        }
+      }
+
+      if (exactStart && exactEnd) {
+        const hasOverlap = unavailableRanges.some((range: any) => {
+          const bookedStart = new Date(range.unavailable_from);
+          const bookedEnd = new Date(range.unavailable_to);
+          return exactStart < bookedEnd && exactEnd > bookedStart;
+        });
+
+        if (hasOverlap) {
+          setDateError("Schedule conflicts with an existing booking.");
+        }
+      }
     }
-  }, [isPromoEligible, w12HourPromo, setValue]);
+  }, [wStart, exactStart, exactEnd, unavailableRanges, bookingId]);
 
-  const rentTotal = days * dailyRate;
+  const isDateDisabled = (targetDate: Date) => {
+    if (startOfDay(targetDate) < startOfDay(new Date())) return true;
 
-  // Apply the 12h promo logically as a discount
-  const promoDiscount =
-    w12HourPromo && isPromoEligible ? dailyRate - price12h : 0;
+    const targetStart = startOfDay(targetDate);
+    const targetEnd = addHours(targetStart, 24);
 
-  const driverTotal = wWithDriver ? days * (wDriverFee || 0) : 0;
-  // Calculate extras, specifically excluding any accidental deposit duplicates
+    if (unavailableRanges && unavailableRanges.length > 0) {
+      let totalOverlapHours = 0;
+
+      unavailableRanges.forEach((range: any) => {
+        const bStart = new Date(range.unavailable_from);
+        const bEnd = new Date(range.unavailable_to);
+
+        if (bStart < targetEnd && bEnd > targetStart) {
+          const overlapStart = bStart > targetStart ? bStart : targetStart;
+          const overlapEnd = bEnd < targetEnd ? bEnd : targetEnd;
+          const overlapHours =
+            (overlapEnd.getTime() - overlapStart.getTime()) / (1000 * 60 * 60);
+
+          totalOverlapHours += overlapHours;
+        }
+      });
+
+      if (24 - totalOverlapHours < hourStep) {
+        return true;
+      }
+    }
+    return false;
+  };
+
+  const handleHoursChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let val = parseInt(e.target.value);
+    if (isNaN(val)) val = hourStep;
+    const snappedValue = Math.max(
+      hourStep,
+      Math.round(val / hourStep) * hourStep,
+    );
+    setValue("booking_hours", snappedValue, { shouldValidate: true });
+  };
+
+  const formatDurationText = (hrs: number) => {
+    const d = Math.floor(hrs / 24);
+    const h = hrs % 24;
+    if (d > 0 && h > 0) return `${d} day${d > 1 ? "s" : ""} and ${h} hrs`;
+    if (d > 0) return `${d} day${d > 1 ? "s" : ""}`;
+    return `${h} hrs`;
+  };
+
+  // --- PRICING ENGINE ---
+  const fullDays = Math.floor((wHours || 24) / 24);
+  const remainingHalfDays = (wHours || 24) % 24 === 12 ? 1 : 0;
+
+  const active24hRate = wCustomRate || car24hRate;
+  const active12hRate = wCustomRate ? active24hRate / 2 : car12hRate;
+
+  const baseRentalCost =
+    fullDays * active24hRate + remainingHalfDays * active12hRate;
+
+  const driverCost = wWithDriver
+    ? (fullDays * 2 + remainingHalfDays) * (wDriverFee12h || 600)
+    : 0;
+
   const extrasTotal =
-    wExtras?.reduce((acc, curr) => {
-      if (curr.category === "SECURITY_DEPOSIT") return acc;
-      return acc + (curr.amount || 0);
-    }, 0) || 0;
+    wExtras?.reduce((acc, curr) => acc + (curr.amount || 0), 0) || 0;
 
-  const subTotal =
-    rentTotal +
+  const platformTotalValue =
+    baseRentalCost +
     (wPickupPrice || 0) +
     (wDropoffPrice || 0) +
-    driverTotal +
-    extrasTotal;
-
-  // Ensure the promo discount is subtracted from totalPayable
-  const totalPayable =
-    subTotal - promoDiscount - (wDiscount || 0) + (wSecurityDeposit || 0);
-  const balanceDue = totalPayable - (wPayment?.amount || 0);
+    extrasTotal -
+    (wDiscount || 0);
+  const balanceDue = platformTotalValue - (wPayment?.amount || 0);
 
   // --- FETCH EDIT DATA ---
   useEffect(() => {
@@ -427,30 +554,29 @@ export default function AdminBookingForm({
         const startDate = new Date(booking.start_date);
         const endDate = new Date(booking.end_date);
 
-        // --- DETECT IF IT WAS A 12 HOUR PROMO ---
-        const diffHours =
-          (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60);
-        const is12HourPromo = diffHours === 12;
-        const diffDays = Math.max(1, Math.ceil(diffHours / 24)); // 12h becomes 1 day
+        const diffHours = Math.round(
+          (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60),
+        );
 
         setStartTime(format(startDate, "HH:mm"));
-        setDuration(diffDays);
 
-        let driverFee = fees.driver_rate_per_day;
+        let driverFee = fees.driver_rate_per_12h;
         let discount = 0;
         const extras: any[] = [];
 
         charges?.forEach((c) => {
           if (c.category === "DRIVER_FEE") {
-            driverFee = c.amount / diffDays;
+            const shifts =
+              Math.floor(diffHours / 24) * 2 + (diffHours % 24 === 12 ? 1 : 0);
+            driverFee =
+              shifts > 0 ? c.amount / shifts : fees.driver_rate_per_12h;
           } else if (c.category === "DISCOUNT") {
             discount = Math.abs(c.amount);
           } else if (
-            c.category !== "BASE_RATE" &&
+            !c.category.includes("BASE_RATE") &&
             c.category !== "DELIVERY_FEE" &&
             c.category !== "PICKUP_FEE" &&
-            c.category !== "PROMO_DISCOUNT" &&
-            c.category !== "SECURITY_DEPOSIT" // Ignore promo discount, handled by state
+            c.category !== "SECURITY_DEPOSIT"
           ) {
             extras.push({
               category: c.category,
@@ -463,15 +589,14 @@ export default function AdminBookingForm({
         const car = units.find((c) => c.car_id === booking.car_id);
         const isCustomRate =
           car &&
-          Number(booking.base_rate_snapshot) !==
+          Number(booking.rate_snapshot_24h || booking.base_rate_snapshot) !==
             Number(car.rental_rate_per_day);
 
         reset({
           user_id: booking.user_id,
           car_id: booking.car_id,
           start_date: startDate,
-          end_date: endDate,
-          is_12_hour_promo: is12HourPromo, // <-- INJECTED HERE
+          booking_hours: diffHours,
 
           pickup_type: booking.pickup_type as "hub" | "custom",
           pickup_location: booking.pickup_location,
@@ -486,10 +611,9 @@ export default function AdminBookingForm({
           with_driver: booking.is_with_driver,
           driver_fee_per_day: driverFee,
 
-          security_deposit: Number(booking.security_deposit),
           discount_amount: discount,
           custom_daily_rate: isCustomRate
-            ? Number(booking.base_rate_snapshot)
+            ? Number(booking.rate_snapshot_24h || booking.base_rate_snapshot)
             : undefined,
 
           additional_charges: extras,
@@ -504,58 +628,7 @@ export default function AdminBookingForm({
     }
 
     fetchEditData();
-  }, [bookingId, fees.driver_rate_per_day, replace, reset, units]);
-
-  // --- EFFECTS (Unchanged) ---
-  useEffect(() => {
-    if (!fees || bookingId) return;
-    const { dirtyFields } = form.formState;
-    const currentDriverFee = form.getValues("driver_fee_per_day");
-    const currentDeposit = form.getValues("security_deposit");
-
-    if (
-      !dirtyFields.driver_fee_per_day &&
-      currentDriverFee !== fees.driver_rate_per_day
-    ) {
-      setValue("driver_fee_per_day", fees.driver_rate_per_day);
-    }
-    if (
-      !dirtyFields.security_deposit &&
-      currentDeposit !== fees.security_deposit_default
-    ) {
-      setValue("security_deposit", fees.security_deposit_default);
-    }
-  }, [
-    fees?.driver_rate_per_day,
-    fees?.security_deposit_default,
-    setValue,
-    bookingId,
-    fees,
-    form,
-  ]);
-
-  useEffect(() => {
-    if (wStart && duration > 0) {
-      const [hours, mins] = startTime.split(":").map(Number);
-      const currentStart = new Date(wStart);
-      const expectedStart = setMinutes(
-        setHours(new Date(currentStart), hours),
-        mins,
-      );
-      const expectedEnd = addDays(expectedStart, duration);
-
-      if (currentStart.getTime() !== expectedStart.getTime()) {
-        setValue("start_date", expectedStart);
-      }
-      const currentEndVal = form.getValues("end_date");
-      if (
-        !currentEndVal ||
-        new Date(currentEndVal).getTime() !== expectedEnd.getTime()
-      ) {
-        setValue("end_date", expectedEnd);
-      }
-    }
-  }, [wStart, startTime, duration, setValue, form]);
+  }, [bookingId, fees.driver_rate_per_12h, replace, reset, units]);
 
   useEffect(() => {
     if (initialStartDate && !bookingId) {
@@ -565,11 +638,25 @@ export default function AdminBookingForm({
 
   async function onSubmit(data: AdminBookingInput) {
     try {
-      if (bookingId) {
-        await updateBooking({ id: bookingId, data });
-      } else {
-        await createBooking(data);
+      if (exactStart && exactEnd) {
+        data.start_date = exactStart;
       }
+
+      const finalData = {
+        ...data,
+        carDailyRate: active24hRate,
+        car12HourRate: active12hRate,
+        base_rate_snapshot: platformTotalValue,
+        grand_total: platformTotalValue,
+        security_deposit: 0,
+      };
+
+      if (bookingId) {
+        await updateBooking({ id: bookingId, data: finalData });
+      } else {
+        await createBooking(finalData);
+      }
+
       if (onSuccess) onSuccess();
       else router.push("/admin/bookings");
     } catch (error) {
@@ -577,7 +664,6 @@ export default function AdminBookingForm({
     }
   }
 
-  const today = useMemo(() => new Date(new Date().setHours(0, 0, 0, 0)), []);
   const isSaving = isCreating || isBookingUpdating;
 
   if (settingsLoading || isFetchingEditData)
@@ -593,7 +679,12 @@ export default function AdminBookingForm({
   return (
     <Form {...form}>
       <form
-        onSubmit={form.handleSubmit(onSubmit)}
+        onSubmit={form.handleSubmit(onSubmit, (errors) => {
+          console.error("Validation Errors:", errors);
+          toast.error(
+            "Please fill in all required fields (Customer, Vehicle, Dates).",
+          );
+        })}
         className="flex flex-col h-full bg-background font-sans transition-colors duration-300"
       >
         {/* --- FORMAL HEADER --- */}
@@ -633,7 +724,7 @@ export default function AdminBookingForm({
               type="submit"
               size="sm"
               className="h-8 text-[10px] font-bold uppercase tracking-widest bg-primary text-primary-foreground hover:opacity-90 rounded-lg shadow-sm px-4 transition-opacity"
-              disabled={isSaving}
+              disabled={isSaving || !!dateError}
             >
               {isSaving && (
                 <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
@@ -655,13 +746,13 @@ export default function AdminBookingForm({
               {/* SECTION 1: ENTITIES */}
               <div className="bg-card border border-border rounded-xl p-4 shadow-sm space-y-4 transition-colors">
                 <div className="flex items-center gap-2 mb-1">
-                  <User className="w-4 h-4 text-primary" />
+                  <User className="w-3.5 h-3.5 text-primary" />
                   <h3 className="text-xs font-bold text-foreground tracking-tight uppercase">
                     Parties Involved
                   </h3>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-1">
+                  <div className="space-y-1.5">
                     <label className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">
                       Customer Profile
                     </label>
@@ -677,7 +768,7 @@ export default function AdminBookingForm({
                                   variant="outline"
                                   role="combobox"
                                   className={cn(
-                                    "w-full justify-between h-8 text-[11px] bg-secondary border-border hover:bg-background focus:ring-1 focus:ring-primary rounded-lg shadow-none transition-colors",
+                                    "w-full justify-between h-9 text-[11px] bg-secondary border-border hover:bg-background focus:ring-1 focus:ring-primary rounded-lg shadow-sm transition-colors",
                                     !field.value && "text-muted-foreground",
                                   )}
                                 >
@@ -721,9 +812,11 @@ export default function AdminBookingForm({
                                     {customers.map((user) => (
                                       <CommandItem
                                         key={user.user_id}
-                                        value={user.full_name || ""}
+                                        value={`${user.full_name || ""} ${user.email || ""}`}
                                         onSelect={() =>
-                                          setValue("user_id", user.user_id)
+                                          setValue("user_id", user.user_id, {
+                                            shouldValidate: true,
+                                          })
                                         }
                                         className="py-2 cursor-pointer transition-colors focus:bg-secondary"
                                       >
@@ -756,93 +849,101 @@ export default function AdminBookingForm({
                     />
                   </div>
 
-                  <div className="space-y-1">
+                  <div className="space-y-1.5">
                     <label className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">
                       Assigned Vehicle
                     </label>
                     <FormField
                       control={control}
                       name="car_id"
-                      render={({ field }) => (
-                        <FormItem className="flex flex-col">
-                          <Popover>
-                            <PopoverTrigger asChild>
-                              <FormControl>
-                                <Button
-                                  variant="outline"
-                                  role="combobox"
-                                  className={cn(
-                                    "w-full justify-between h-8 text-[11px] bg-secondary border-border hover:bg-background focus:ring-1 focus:ring-primary rounded-lg shadow-none transition-colors",
-                                    !field.value && "text-muted-foreground",
-                                  )}
-                                >
-                                  <div className="flex items-center truncate">
-                                    <CarFront className="mr-2 h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                                    <span
-                                      className={cn(
-                                        "truncate font-semibold",
-                                        field.value ? "text-foreground" : "",
-                                      )}
-                                    >
-                                      {field.value
-                                        ? units.find(
-                                            (c) => c.car_id === field.value,
-                                          )?.brand
-                                        : "Select unit from fleet..."}
-                                    </span>
-                                  </div>
-                                </Button>
-                              </FormControl>
-                            </PopoverTrigger>
-                            <PopoverContent
-                              className="w-[300px] p-0 border-border shadow-xl rounded-lg bg-popover"
-                              align="start"
-                            >
-                              <Command>
-                                <CommandInput
-                                  placeholder="Search unit..."
-                                  className="text-[11px] h-9 font-medium"
-                                />
-                                <CommandList className="custom-scrollbar">
-                                  <CommandEmpty className="text-[10px] py-4 text-center text-muted-foreground font-semibold">
-                                    No vehicle found.
-                                  </CommandEmpty>
-                                  <CommandGroup>
-                                    {units.map((car) => (
-                                      <CommandItem
-                                        key={car.car_id}
-                                        value={car.brand}
-                                        onSelect={() =>
-                                          setValue("car_id", car.car_id || "")
-                                        }
-                                        className="py-2 cursor-pointer transition-colors focus:bg-secondary"
+                      render={({ field }) => {
+                        const selectedVehicle = units.find(
+                          (c) => c.car_id === field.value,
+                        );
+
+                        return (
+                          <FormItem className="flex flex-col">
+                            <Popover>
+                              <PopoverTrigger asChild>
+                                <FormControl>
+                                  <Button
+                                    variant="outline"
+                                    role="combobox"
+                                    className={cn(
+                                      "w-full justify-between h-9 text-[11px] bg-secondary border-border hover:bg-background focus:ring-1 focus:ring-primary rounded-lg shadow-sm transition-colors",
+                                      !field.value && "text-muted-foreground",
+                                    )}
+                                  >
+                                    <div className="flex items-center truncate">
+                                      <CarFront className="mr-2 h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                                      <span
+                                        className={cn(
+                                          "truncate font-semibold",
+                                          field.value ? "text-foreground" : "",
+                                        )}
                                       >
-                                        <Check
-                                          className={cn(
-                                            "mr-2 h-3.5 w-3.5",
-                                            car.car_id === field.value
-                                              ? "opacity-100 text-primary"
-                                              : "opacity-0",
-                                          )}
-                                        />
-                                        <div className="flex flex-col overflow-hidden">
-                                          <span className="text-[11px] font-bold text-foreground truncate">
-                                            {car.brand}
-                                          </span>
-                                          <span className="text-[9px] font-bold font-mono text-muted-foreground truncate uppercase tracking-widest mt-0.5">
-                                            {car.plate_number}
-                                          </span>
-                                        </div>
-                                      </CommandItem>
-                                    ))}
-                                  </CommandGroup>
-                                </CommandList>
-                              </Command>
-                            </PopoverContent>
-                          </Popover>
-                          <FormMessage className="text-[9px]" />
-                        </FormItem>
-                      )}
+                                        {field.value && selectedVehicle
+                                          ? `${selectedVehicle.brand} ${selectedVehicle.model} - ${selectedVehicle.plate_number}`
+                                          : "Select unit from fleet..."}
+                                      </span>
+                                    </div>
+                                  </Button>
+                                </FormControl>
+                              </PopoverTrigger>
+                              <PopoverContent
+                                className="w-[300px] p-0 border-border shadow-xl rounded-lg bg-popover"
+                                align="start"
+                              >
+                                <Command>
+                                  <CommandInput
+                                    placeholder="Search unit..."
+                                    className="text-[11px] h-9 font-medium"
+                                  />
+                                  <CommandList className="custom-scrollbar">
+                                    <CommandEmpty className="text-[10px] py-4 text-center text-muted-foreground font-semibold">
+                                      No vehicle found.
+                                    </CommandEmpty>
+                                    <CommandGroup>
+                                      {units.map((car) => (
+                                        <CommandItem
+                                          key={car.car_id}
+                                          value={`${car.brand} ${car.plate_number}`}
+                                          onSelect={() =>
+                                            setValue(
+                                              "car_id",
+                                              car.car_id || "",
+                                              { shouldValidate: true },
+                                            )
+                                          }
+                                          className="py-2 cursor-pointer transition-colors focus:bg-secondary"
+                                        >
+                                          <Check
+                                            className={cn(
+                                              "mr-2 h-3.5 w-3.5",
+                                              car.car_id === field.value
+                                                ? "opacity-100 text-primary"
+                                                : "opacity-0",
+                                            )}
+                                          />
+                                          <div className="flex flex-col overflow-hidden">
+                                            <span className="text-[11px] font-bold text-foreground truncate">
+                                              {`${car.brand} ${car.model}`}
+                                            </span>
+                                            <span className="text-[9px] font-bold font-mono text-muted-foreground truncate uppercase tracking-widest mt-0.5">
+                                              {car.plate_number}
+                                            </span>
+                                          </div>
+                                        </CommandItem>
+                                      ))}
+                                    </CommandGroup>
+                                  </CommandList>
+                                </Command>
+                              </PopoverContent>
+                            </Popover>
+                            <FormMessage className="text-[9px]" />
+                          </FormItem>
+                        );
+                      }}
                     />
                   </div>
                 </div>
@@ -852,14 +953,16 @@ export default function AdminBookingForm({
               <div className="bg-card border border-border rounded-xl p-4 shadow-sm space-y-4 transition-colors">
                 <div className="flex items-center justify-between mb-1">
                   <div className="flex items-center gap-2">
-                    <Clock className="w-4 h-4 text-primary" />
+                    <Clock className="w-3.5 h-3.5 text-primary" />
                     <h3 className="text-xs font-bold text-foreground tracking-tight uppercase">
                       Rental Period
                     </h3>
                   </div>
                   <div className="flex items-center gap-1.5 text-[9px] font-bold bg-secondary border border-border px-2 py-0.5 rounded uppercase tracking-widest text-muted-foreground">
-                    <span>Duration:</span>
-                    <span className="text-foreground">{duration * 24} hrs</span>
+                    <span>Block Match:</span>
+                    <span className="text-foreground">
+                      {formatDurationText(wHours || 24)}
+                    </span>
                   </div>
                 </div>
 
@@ -868,7 +971,7 @@ export default function AdminBookingForm({
                     control={control}
                     name="start_date"
                     render={({ field }) => (
-                      <FormItem className="flex flex-col space-y-1">
+                      <FormItem className="flex flex-col space-y-1.5">
                         <FormLabel className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">
                           Start Date
                         </FormLabel>
@@ -877,7 +980,7 @@ export default function AdminBookingForm({
                             <Button
                               variant={"outline"}
                               className={cn(
-                                "w-full pl-3 text-left font-semibold h-8 bg-secondary border-border hover:bg-background text-[11px] rounded-lg shadow-none transition-colors",
+                                "w-full pl-3 text-left font-semibold h-9 bg-secondary border-border hover:bg-background text-[11px] rounded-lg shadow-sm transition-colors",
                                 !field.value && "text-muted-foreground",
                               )}
                             >
@@ -894,15 +997,17 @@ export default function AdminBookingForm({
                             align="start"
                           >
                             <Calendar
-                              mode="range"
-                              selected={{
-                                from: field.value,
-                                to: addDays(field.value, duration - 1),
+                              mode="single"
+                              selected={field.value}
+                              onSelect={(selectedDay) => {
+                                if (selectedDay) {
+                                  field.onChange(selectedDay);
+                                  setValue("start_date", selectedDay, {
+                                    shouldValidate: true,
+                                  });
+                                }
                               }}
-                              onSelect={(_, selectedDay) => {
-                                if (selectedDay) field.onChange(selectedDay);
-                              }}
-                              disabled={(date) => date < today}
+                              disabled={isDateDisabled}
                               initialFocus
                               className="bg-card text-foreground"
                             />
@@ -913,7 +1018,7 @@ export default function AdminBookingForm({
                     )}
                   />
 
-                  <FormItem className="space-y-1">
+                  <FormItem className="space-y-1.5">
                     <FormLabel className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">
                       Start Time
                     </FormLabel>
@@ -922,65 +1027,54 @@ export default function AdminBookingForm({
                         type="time"
                         value={startTime}
                         onChange={(e) => setStartTime(e.target.value)}
-                        className="pl-8 h-8 text-[11px] font-semibold bg-secondary border-border hover:bg-background focus-visible:ring-primary rounded-lg shadow-none transition-colors"
+                        className="pl-8 h-9 text-[11px] font-semibold bg-secondary border-border hover:bg-background focus-visible:ring-primary rounded-lg shadow-sm transition-colors"
                       />
-                      <Clock className="absolute left-2.5 top-2 h-3.5 w-3.5 text-muted-foreground" />
+                      <Clock className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
                     </div>
                   </FormItem>
 
-                  <FormItem className="space-y-1">
-                    <FormLabel className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">
-                      Duration (Days)
-                    </FormLabel>
-                    <Input
-                      type="number"
-                      min={1}
-                      value={duration}
-                      onChange={(e) =>
-                        setDuration(parseInt(e.target.value) || 1)
-                      }
-                      className="h-8 text-[11px] font-semibold bg-secondary border-border hover:bg-background focus-visible:ring-primary rounded-lg shadow-none transition-colors"
-                    />
-                  </FormItem>
+                  <FormField
+                    control={control}
+                    name="booking_hours"
+                    render={({ field }) => (
+                      <FormItem className="space-y-1.5">
+                        <FormLabel className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest flex justify-between">
+                          Duration
+                          <span className="text-primary opacity-70">
+                            Steps of {hourStep}h
+                          </span>
+                        </FormLabel>
+                        <div className="relative">
+                          <Input
+                            type="number"
+                            min={hourStep}
+                            step={hourStep}
+                            {...field}
+                            onChange={handleHoursChange}
+                            onBlur={handleHoursChange}
+                            className="h-9 text-[11px] font-semibold bg-secondary border-border hover:bg-background focus-visible:ring-primary rounded-lg shadow-sm transition-colors pr-10"
+                          />
+                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[9px] font-bold text-muted-foreground">
+                            HRS
+                          </span>
+                        </div>
+                      </FormItem>
+                    )}
+                  />
                 </div>
 
-                {/* --- PROMO CHECKBOX SECTION --- */}
-                {isPromoEligible && (
-                  <div className="mt-4 pt-4 border-t border-border">
-                    <div
-                      onClick={() =>
-                        setValue("is_12_hour_promo", !w12HourPromo)
-                      }
-                      className={cn(
-                        "flex items-start gap-3 p-4 border rounded-xl cursor-pointer transition-all duration-300",
-                        w12HourPromo
-                          ? "bg-primary/10 border-primary/40 shadow-sm"
-                          : "bg-secondary/50 border-border hover:border-primary/30",
-                      )}
-                    >
-                      <div className="relative flex items-center justify-center mt-0.5 shrink-0">
-                        <input
-                          type="checkbox"
-                          className="peer appearance-none w-4 h-4 border-2 border-primary/50 rounded text-primary checked:bg-primary checked:border-primary transition-all outline-none cursor-pointer"
-                          checked={w12HourPromo}
-                          readOnly
-                        />
-                        <CheckCircle2
-                          className="w-3 h-3 text-primary-foreground absolute opacity-0 peer-checked:opacity-100 pointer-events-none"
-                          strokeWidth={4}
-                        />
-                      </div>
-                      <div className="flex flex-col">
-                        <label className="text-xs font-bold text-primary uppercase tracking-wider cursor-pointer">
-                          Apply 12-Hour Rental Promo
-                        </label>
-                        <span className="text-[10px] text-muted-foreground mt-0.5 leading-relaxed">
-                          Locks the system calendar to exactly 12 hours from
-                          pick-up and applies the discounted rate of ₱
-                          {price12h.toLocaleString()}.
-                        </span>
-                      </div>
-                    </div>
+                {/* WARNING BLOCKS */}
+                {partialDayWarning && (
+                  <div className="bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 text-[10px] font-semibold p-2.5 rounded-lg flex items-start gap-2 mt-2">
+                    <Info className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                    {partialDayWarning}
+                  </div>
+                )}
+
+                {dateError && (
+                  <div className="bg-destructive/10 border border-destructive/20 text-destructive text-[10px] font-semibold p-2.5 rounded-lg flex items-start gap-2 mt-2">
+                    <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                    {dateError}
                   </div>
                 )}
               </div>
@@ -988,7 +1082,7 @@ export default function AdminBookingForm({
               {/* SECTION 3: LOGISTICS */}
               <div className="bg-card border border-border rounded-xl p-4 shadow-sm space-y-4 transition-colors">
                 <div className="flex items-center gap-2 mb-1">
-                  <Car className="w-4 h-4 text-primary" />
+                  <Car className="w-3.5 h-3.5 text-primary" />
                   <h3 className="text-xs font-bold text-foreground tracking-tight uppercase">
                     Location Logistics
                   </h3>
@@ -1011,7 +1105,7 @@ export default function AdminBookingForm({
                 </div>
               </div>
 
-              {/* SECTION 4: ADD-ONS & EXTRAS (Moved to Left Side) */}
+              {/* SECTION 4: ADD-ONS & EXTRAS */}
               <div className="bg-card border border-border rounded-xl p-4 shadow-sm space-y-3 transition-colors">
                 <div className="flex items-center justify-between mb-1">
                   <div className="flex items-center gap-2">
@@ -1042,7 +1136,7 @@ export default function AdminBookingForm({
                             e.target.value,
                           )
                         }
-                        className="h-7 text-[11px] font-semibold bg-background border-border shadow-none focus-visible:ring-1 focus-visible:ring-primary px-2"
+                        className="h-7 text-[11px] font-medium bg-background border-border shadow-none focus-visible:ring-1 focus-visible:ring-primary px-2"
                         placeholder="Item name"
                       />
                       <span className="text-[10px] font-bold text-muted-foreground">
@@ -1058,7 +1152,7 @@ export default function AdminBookingForm({
                             isNaN(val) ? 0 : val,
                           );
                         }}
-                        className="h-7 text-[11px] text-right w-20 bg-background border-border shadow-none focus-visible:ring-1 focus-visible:ring-primary px-2 font-bold text-foreground font-mono"
+                        className="h-7 text-[11px] text-right w-30 bg-background border-border shadow-none focus-visible:ring-1 focus-visible:ring-primary px-2 font-medium text-foreground font-mono"
                       />
                       <Button
                         type="button"
@@ -1134,75 +1228,81 @@ export default function AdminBookingForm({
 
                 {/* Line Items */}
                 <div className="p-4 space-y-4 bg-background flex-1 transition-colors">
-                  {/* Base Rate */}
                   <div className="space-y-2">
-                    <div className="flex justify-between items-start">
-                      <div className="flex flex-col">
-                        <span className="text-[11px] font-bold text-foreground">
-                          Vehicle rental
+                    {/* 24h Blocks */}
+                    {fullDays > 0 && (
+                      <div className="flex justify-between items-start">
+                        <div className="flex flex-col">
+                          <span className="text-[11px] font-bold text-foreground">
+                            Base Rental (24H Blocks)
+                          </span>
+                          <span className="text-[9px] font-medium text-muted-foreground mt-0.5">
+                            {fullDays} days x ₱{active24hRate.toLocaleString()}
+                          </span>
+                        </div>
+                        <span className="text-xs font-semibold text-foreground font-mono">
+                          ₱ {(fullDays * active24hRate).toLocaleString()}
                         </span>
-                        <span className="text-[9px] font-medium text-muted-foreground mt-0.5">
-                          {days} days x ₱{dailyRate.toLocaleString()}
-                        </span>
-                      </div>
-                      <span className="text-xs font-black text-foreground font-mono">
-                        ₱ {rentTotal.toLocaleString()}
-                      </span>
-                    </div>
-
-                    <div className="flex items-center gap-2 pt-1">
-                      <Switch
-                        checked={!!wCustomRate}
-                        onCheckedChange={(c) =>
-                          setValue(
-                            "custom_daily_rate",
-                            c
-                              ? selectedCar?.rental_rate_per_day || 1000
-                              : undefined,
-                          )
-                        }
-                        className="scale-75 origin-left data-[state=checked]:bg-primary"
-                      />
-                      <span className="text-[9px] text-muted-foreground font-bold uppercase tracking-wider">
-                        Override daily rate
-                      </span>
-                    </div>
-
-                    {wCustomRate && (
-                      <div className="animate-in slide-in-from-top-1">
-                        <Input
-                          type="number"
-                          className="h-7 text-right text-[11px] font-bold max-w-[120px] bg-secondary border-border shadow-none rounded-md transition-colors"
-                          value={wCustomRate}
-                          onChange={(e) =>
-                            setValue(
-                              "custom_daily_rate",
-                              parseFloat(e.target.value),
-                            )
-                          }
-                        />
                       </div>
                     )}
+
+                    {/* 12h Blocks */}
+                    {remainingHalfDays > 0 && (
+                      <div className="flex justify-between items-start pt-1">
+                        <div className="flex flex-col">
+                          <span className="text-[11px] font-bold text-foreground">
+                            Base Rental (12H Block)
+                          </span>
+                          <span className="text-[9px] font-medium text-muted-foreground mt-0.5">
+                            1 shift x ₱{active12hRate.toLocaleString()}
+                          </span>
+                        </div>
+                        <span className="text-xs font-semibold text-foreground font-mono">
+                          ₱ {active12hRate.toLocaleString()}
+                        </span>
+                      </div>
+                    )}
+
+                    <div className="flex items-center justify-between pt-2 border-t border-border mt-2">
+                      <div className="flex items-center gap-2">
+                        <Switch
+                          checked={!!wCustomRate}
+                          onCheckedChange={(c) =>
+                            setValue(
+                              "custom_daily_rate",
+                              c ? car24hRate || 1000 : undefined,
+                            )
+                          }
+                          className="scale-75 origin-left data-[state=checked]:bg-primary"
+                        />
+                        <span className="text-[9px] text-muted-foreground font-bold uppercase tracking-wider">
+                          Override daily rate
+                        </span>
+                      </div>
+                      {wCustomRate && (
+                        <div className="animate-in slide-in-from-top-1 flex items-center gap-1.5">
+                          <span className="text-[10px] font-bold text-muted-foreground">
+                            ₱
+                          </span>
+                          <Input
+                            type="number"
+                            className="h-7 w-28 px-2 text-right text-[11px] font-medium font-mono bg-secondary border-border shadow-none rounded-md transition-colors"
+                            value={wCustomRate}
+                            onChange={(e) =>
+                              setValue(
+                                "custom_daily_rate",
+                                parseFloat(e.target.value),
+                              )
+                            }
+                          />
+                        </div>
+                      )}
+                    </div>
                   </div>
 
                   <Separator className="bg-border" />
 
-                  {/* --- PROMO DISPLAY --- */}
-                  {w12HourPromo && isPromoEligible && (
-                    <>
-                      <div className="flex justify-between items-center text-primary bg-primary/10 p-2 rounded-lg border border-primary/20">
-                        <span className="text-[10px] font-bold uppercase tracking-widest">
-                          12H Promo Applied
-                        </span>
-                        <span className="text-xs font-black font-mono">
-                          - ₱ {promoDiscount.toLocaleString()}
-                        </span>
-                      </div>
-                      <Separator className="bg-border" />
-                    </>
-                  )}
-
-                  {/* Driver */}
+                  {/* Driver Fee (Visually Isolated) */}
                   <div className="space-y-2.5">
                     <div className="flex justify-between items-center">
                       <div className="flex items-center gap-2">
@@ -1212,19 +1312,19 @@ export default function AdminBookingForm({
                           className="scale-75 origin-left data-[state=checked]:bg-primary"
                         />
                         <span className="text-[11px] font-bold text-foreground">
-                          Include driver
+                          Include Driver Service
                         </span>
                       </div>
                       {wWithDriver && (
-                        <span className="text-xs font-black text-foreground font-mono">
-                          ₱ {driverTotal.toLocaleString()}
+                        <span className="text-xs font-semibold text-yellow-600 dark:text-yellow-500 font-mono">
+                          ₱ {driverCost.toLocaleString()}
                         </span>
                       )}
                     </div>
                     {wWithDriver && (
                       <div className="flex items-center justify-between pl-9 animate-in slide-in-from-top-1">
                         <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">
-                          Fee per day
+                          Fee per 12h Shift
                         </span>
                         <div className="flex items-center gap-1.5">
                           <span className="text-[10px] font-bold text-muted-foreground">
@@ -1232,8 +1332,8 @@ export default function AdminBookingForm({
                           </span>
                           <Input
                             type="number"
-                            className="w-16 h-7 text-right px-2 text-[11px] font-bold bg-secondary border-border shadow-none rounded-md transition-colors"
-                            value={wDriverFee}
+                            className="w-24 h-7 text-right px-2 text-[11px] font-medium font-mono bg-secondary border-border shadow-none rounded-md transition-colors"
+                            value={wDriverFee12h}
                             onChange={(e) =>
                               setValue(
                                 "driver_fee_per_day",
@@ -1254,7 +1354,7 @@ export default function AdminBookingForm({
                       {(wPickupPrice || 0) > 0 && (
                         <div className="flex justify-between items-center text-foreground">
                           <span className="font-semibold">Pickup fee</span>
-                          <span className="font-black font-mono">
+                          <span className="font-semibold font-mono">
                             ₱ {wPickupPrice?.toLocaleString()}
                           </span>
                         </div>
@@ -1262,7 +1362,7 @@ export default function AdminBookingForm({
                       {(wDropoffPrice || 0) > 0 && (
                         <div className="flex justify-between items-center text-foreground">
                           <span className="font-semibold">Dropoff fee</span>
-                          <span className="font-black font-mono">
+                          <span className="font-semibold font-mono">
                             ₱ {wDropoffPrice?.toLocaleString()}
                           </span>
                         </div>
@@ -1271,30 +1371,26 @@ export default function AdminBookingForm({
                   )}
 
                   {/* Breakdown of Add-ons */}
-                  {wExtras &&
-                    wExtras.filter((e) => e.category !== "SECURITY_DEPOSIT")
-                      .length > 0 && (
-                      <div className="space-y-1.5 pt-1.5 animate-in slide-in-from-top-1">
-                        <div className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest mb-1">
-                          Add-ons
-                        </div>
-                        {wExtras
-                          .filter((e) => e.category !== "SECURITY_DEPOSIT")
-                          .map((extra, idx) => (
-                            <div
-                              key={idx}
-                              className="flex justify-between items-center text-[10px] text-foreground"
-                            >
-                              <span className="font-medium truncate pr-2">
-                                • {extra.category || "Unnamed Item"}
-                              </span>
-                              <span className="font-mono font-bold shrink-0">
-                                ₱ {extra.amount?.toLocaleString()}
-                              </span>
-                            </div>
-                          ))}
+                  {wExtras && wExtras.length > 0 && (
+                    <div className="space-y-1.5 pt-1.5 animate-in slide-in-from-top-1">
+                      <div className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest mb-1">
+                        Add-ons
                       </div>
-                    )}
+                      {wExtras.map((extra, idx) => (
+                        <div
+                          key={idx}
+                          className="flex justify-between items-center text-[10px] text-foreground"
+                        >
+                          <span className="font-medium truncate pr-2">
+                            • {extra.category || "Unnamed Item"}
+                          </span>
+                          <span className="font-mono font-semibold shrink-0">
+                            ₱ {extra.amount?.toLocaleString()}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
 
                   {/* Discount */}
                   <div className="flex justify-between items-center pt-1.5">
@@ -1302,12 +1398,12 @@ export default function AdminBookingForm({
                       Discount
                     </span>
                     <div className="flex items-center gap-1.5">
-                      <span className="text-[10px] font-bold text-muted-foreground">
+                      <span className="text-[10px] font-bold text-destructive">
                         - ₱
                       </span>
                       <Input
                         type="number"
-                        className="w-16 h-7 text-right text-destructive font-black font-mono border-destructive/30 focus-visible:ring-destructive bg-destructive/5 shadow-none rounded-md"
+                        className="w-24 h-7 text-right px-2 text-[11px] font-medium font-mono text-destructive bg-destructive/5 border-destructive/20 shadow-none rounded-md focus-visible:ring-destructive"
                         value={wDiscount}
                         onChange={(e) =>
                           setValue(
@@ -1319,41 +1415,7 @@ export default function AdminBookingForm({
                     </div>
                   </div>
 
-                  {/* Deposit */}
-                  <div className="bg-amber-500/10 p-2.5 rounded-lg border border-amber-500/20 flex justify-between items-center mt-3 transition-colors">
-                    <div className="flex items-center gap-1.5 text-[11px]">
-                      <span className="font-bold text-amber-600 dark:text-amber-400">
-                        Security deposit
-                      </span>
-                      <Popover>
-                        <PopoverTrigger>
-                          <Info className="h-3 w-3 text-amber-500 hover:text-amber-600 transition-colors" />
-                        </PopoverTrigger>
-                        <PopoverContent className="text-[9px] uppercase tracking-widest w-48 p-2 font-bold border-amber-500/20 shadow-xl bg-card">
-                          Refundable holding amount required before vehicle
-                          release.
-                        </PopoverContent>
-                      </Popover>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-[10px] font-bold text-amber-600/70">
-                        ₱
-                      </span>
-                      <Input
-                        type="number"
-                        className="w-16 h-7 text-right text-[11px] font-black font-mono bg-background border-amber-500/30 text-amber-700 dark:text-amber-300 shadow-none rounded-md"
-                        value={wSecurityDeposit}
-                        onChange={(e) =>
-                          setValue(
-                            "security_deposit",
-                            parseFloat(e.target.value) || 0,
-                          )
-                        }
-                      />
-                    </div>
-                  </div>
-
-                  <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest pt-2.5 border-t border-border mt-1">
+                  <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-widest pt-2.5 border-t border-border mt-1">
                     <span
                       className={cn(
                         balanceDue > 0
@@ -1363,7 +1425,7 @@ export default function AdminBookingForm({
                     >
                       Remaining Balance
                     </span>
-                    <span className="text-xs font-mono">
+                    <span className="text-xs font-mono font-semibold">
                       ₱ {Math.max(0, balanceDue).toLocaleString()}
                     </span>
                   </div>
@@ -1373,10 +1435,10 @@ export default function AdminBookingForm({
                 <div className="bg-card border-t border-border p-0 transition-colors">
                   <div className="flex justify-between items-end px-4 py-3 bg-primary text-primary-foreground">
                     <span className="text-[10px] font-bold uppercase tracking-widest opacity-90">
-                      Grand Total
+                      Platform Total
                     </span>
-                    <span className="text-2xl font-black leading-none font-mono">
-                      ₱ {totalPayable.toLocaleString()}
+                    <span className="text-xl font-bold leading-none font-mono">
+                      ₱ {platformTotalValue.toLocaleString()}
                     </span>
                   </div>
 
@@ -1389,7 +1451,9 @@ export default function AdminBookingForm({
                         onCheckedChange={(c) =>
                           setValue(
                             "initial_payment",
-                            c ? { amount: 1000, method: "Cash" } : undefined,
+                            c
+                              ? { amount: FIXED_DOWNPAYMENT, method: "Cash" }
+                              : undefined,
                           )
                         }
                         className="border-muted-foreground data-[state=checked]:bg-primary data-[state=checked]:border-primary rounded"
@@ -1398,7 +1462,7 @@ export default function AdminBookingForm({
                         htmlFor="pay"
                         className="text-[10px] font-bold text-foreground uppercase tracking-widest cursor-pointer select-none"
                       >
-                        Record initial payment now
+                        Record Initial Downpayment Now
                       </label>
                     </div>
 
@@ -1412,7 +1476,7 @@ export default function AdminBookingForm({
                             <Input
                               type="number"
                               placeholder="Amount"
-                              className="h-8 text-[11px] pl-6 font-black font-mono text-foreground bg-secondary border-border shadow-none rounded-md transition-colors"
+                              className="h-9 text-[12px] pl-6 font-semibold font-mono text-foreground bg-secondary border-border shadow-none rounded-md transition-colors"
                               value={wPayment.amount}
                               onChange={(e) =>
                                 setValue(
@@ -1428,7 +1492,7 @@ export default function AdminBookingForm({
                               setValue("initial_payment.method", v)
                             }
                           >
-                            <SelectTrigger className="h-8 text-[11px] font-bold w-[90px] bg-secondary border-border shadow-none rounded-md transition-colors">
+                            <SelectTrigger className="h-9 text-[11px] font-bold w-[90px] bg-secondary border-border shadow-none rounded-md transition-colors">
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent className="bg-popover border-border rounded-md shadow-xl">
@@ -1471,16 +1535,26 @@ export default function AdminBookingForm({
 
       {/* Map Dialog */}
       <Dialog open={mapOpen} onOpenChange={setMapOpen}>
-        <DialogContent className="max-w-4xl w-[95vw] h-[80vh] p-0 overflow-hidden flex flex-col rounded-2xl border-border bg-background shadow-2xl transition-colors duration-300">
-          <DialogHeader className="p-4 bg-card border-b border-border z-10 shadow-sm shrink-0 transition-colors">
-            <DialogTitle className="text-sm font-bold text-foreground uppercase tracking-widest">
-              Select {activeMapField === "pickup" ? "Pick-up" : "Drop-off"}{" "}
-              Location
-            </DialogTitle>
-            <p className="text-[10px] font-medium text-muted-foreground mt-1">
-              Click a blue pin to use a Hub (Free), or click anywhere else on
-              the map to set a Custom Delivery Location.
-            </p>
+        <DialogContent className="max-w-5xl gap-0 w-[95vw] h-[80vh] p-0 overflow-hidden flex flex-col rounded-2xl border-border bg-background shadow-2xl transition-colors duration-300 [&>button.absolute]:hidden">
+          <DialogHeader className="p-4 bg-card border-b border-border z-10 shadow-sm shrink-0 flex flex-row items-center justify-between transition-colors">
+            <div>
+              <DialogTitle className="text-sm font-bold text-foreground uppercase tracking-widest">
+                Select {activeMapField === "pickup" ? "Pick-up" : "Drop-off"}{" "}
+                Location
+              </DialogTitle>
+              <p className="text-[10px] font-medium text-muted-foreground mt-1">
+                Click a blue pin to use a Hub (Free), or click anywhere else on
+                the map to set a Custom Delivery Location.
+              </p>
+            </div>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setMapOpen(false)}
+              className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-secondary rounded-md"
+            >
+              <X className="w-4 h-4" />
+            </Button>
           </DialogHeader>
           <div className="flex-1 relative h-full bg-muted">
             <OrmocMapSelector
@@ -1488,13 +1562,33 @@ export default function AdminBookingForm({
               onLocationSelect={(lat, lng, name) => {
                 const field =
                   activeMapField === "pickup" ? "pickup" : "dropoff";
-                if (name) {
-                  setValue(`${field}_type`, "hub");
-                  setValue(`${field}_location`, name);
-                  setValue(`${field}_price`, 0);
+
+                // FIX: Check if name is an official hub!
+                const isOfficialHub = hubs.some((h: any) => h.name === name);
+
+                if (isOfficialHub && name) {
+                  setValue(`${field}_type`, "hub", { shouldValidate: true });
+                  setValue(`${field}_location`, name, { shouldValidate: true });
+                  setValue(`${field}_price`, 0, { shouldValidate: true });
+
+                  const matchedHub = hubs.find((h: any) => h.name === name);
+                  if (matchedHub) {
+                    setValue(
+                      `${field}_coordinates`,
+                      `${matchedHub.lat},${matchedHub.lng}`,
+                      { shouldValidate: true },
+                    );
+                  }
                 } else {
-                  setValue(`${field}_type`, "custom");
-                  setValue(`${field}_coordinates`, `${lat},${lng}`);
+                  setValue(`${field}_type`, "custom", { shouldValidate: true });
+                  setValue(
+                    `${field}_location`,
+                    name || `Custom Pin (${lat.toFixed(4)}, ${lng.toFixed(4)})`,
+                    { shouldValidate: true },
+                  );
+                  setValue(`${field}_coordinates`, `${lat},${lng}`, {
+                    shouldValidate: true,
+                  });
                 }
                 setMapOpen(false);
               }}

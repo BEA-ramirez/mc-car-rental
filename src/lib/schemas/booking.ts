@@ -82,16 +82,15 @@ export const AdminCreateBookingSchema = z.object({
 
   // When
   start_date: z.date(),
-  end_date: z.date(),
 
   // Where (Split Logic)
-  pickup_type: z.enum(["hub", "custom"]),
+  pickup_type: z.string().optional(), // Will be conditionally required in validation
   pickup_location: z.string().min(1, "Pickup location is required"),
   pickup_coordinates: z.string().optional().nullable(),
   pickup_price: z.number().default(0),
 
   is_12_hour_promo: z.boolean().optional().default(false),
-  dropoff_type: z.enum(["hub", "custom"]),
+  dropoff_type: z.string().optional(), // Will be conditionally required in validation
   dropoff_location: z.string().min(1, "Dropoff location is required"),
   dropoff_coordinates: z.string().optional().nullable(),
   dropoff_price: z.number().default(0),
@@ -103,6 +102,7 @@ export const AdminCreateBookingSchema = z.object({
   custom_daily_rate: z.number().optional(),
   discount_amount: z.number().default(0),
   security_deposit: z.number().default(0),
+  booking_hours: z.number().min(12), // For accurate pricing of promos like 12-hour
 
   // Dynamic Extras (e.g., Child Seat)
   additional_charges: z.array(ExtraChargeSchema).optional(),

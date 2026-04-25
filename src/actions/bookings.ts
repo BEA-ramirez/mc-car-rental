@@ -6,9 +6,8 @@ import {
   AdminBookingInput,
   CompleteBookingType,
 } from "@/lib/schemas/booking";
-import { CreateBookingPayload } from "@/types/bookings";
 import { revalidatePath } from "next/cache";
-import { addHours } from "date-fns";
+import { addHours, format } from "date-fns";
 import { sendAdminBookingNotification } from "./helper/mail";
 
 export type ActionState = {
@@ -19,9 +18,7 @@ export type ActionState = {
 };
 
 // CREATE (Customer Booking Request)
-export async function createCustomerBooking(
-  data: CreateBookingPayload,
-): Promise<ActionState> {
+export async function createCustomerBooking(data: any): Promise<any> {
   const supabase = await createClient();
 
   const {
@@ -36,54 +33,56 @@ export async function createCustomerBooking(
     };
   }
 
-  // --- MATH CALCULATION FOR ITEMIZATION ---
-  // A 12-hour rental is essentially a 1-day base rate, minus the discount.
-  // Standard day calculation:
-  const startDate = new Date(data.start_date);
-  const endDate = new Date(data.end_date);
+  // --- SECURITY: Minimum Payment Check ---
+  const amountPaid = Number(data.payment_details?.amount) || 0;
+  if (amountPaid < 500) {
+    return {
+      success: false,
+      message: "Security Error: Minimum downpayment of ₱500 is required.",
+    };
+  }
 
-  // Calculate days on the server so it never fails (returns at least 1)
-  const msDiff = endDate.getTime() - startDate.getTime();
-  const totalHours = msDiff / (1000 * 60 * 60);
-  const calculatedDays = Math.max(1, Math.ceil(totalHours / 24));
+  // Use the exact hours and rates the frontend agreed upon
+  const totalHours = Number(data.booking_hours) || 24;
+  const rate24h = Number(data.carDailyRate) || 0;
+  const rate12h = Number(data.car12HourRate) || rate24h;
 
-  // Now baseRentTotal is guaranteed to be a valid number > 0!
-  const baseRentTotal = data.is12HourPromo
-    ? data.carDailyRate
-    : data.carDailyRate * calculatedDays;
+  const fullDays = Math.floor(totalHours / 24);
+  const remainingHalfDays = totalHours % 24 >= 12 ? 1 : 0;
 
-  const discountAmount = data.is12HourPromo
-    ? data.carDailyRate - data.car12HourRate
-    : 0;
+  const calculatedBaseRent = fullDays * rate24h + remainingHalfDays * rate12h;
 
-  // --- CALL THE MASTER RPC ---
-  const { error } = await supabase.rpc("create_customer_booking_v2", {
+  // Parse dates correctly
+  const exactStart = new Date(data.start_date);
+  const exactEnd = new Date(data.end_date);
+
+  // --- CALL THE V3 RPC ---
+  const { error } = await supabase.rpc("create_customer_booking_v3", {
     p_user_id: user.id,
     p_car_id: data.car_id,
-    p_start_date: new Date(data.start_date).toISOString(),
-    p_end_date: new Date(data.end_date).toISOString(), // RPC will override this if 12-hr
+    p_start_date: exactStart.toISOString(),
+    p_end_date: exactEnd.toISOString(),
     p_pickup_loc: data.pickup_location,
     p_dropoff_loc: data.dropoff_location,
     p_pickup_type: data.pickup_type,
     p_dropoff_type: data.dropoff_type,
-    p_pickup_price: data.pickup_price || 0,
-    p_dropoff_price: data.dropoff_price || 0,
     p_is_with_driver: data.is_with_driver || false,
 
-    // Financials
-    p_base_rate_snapshot: data.carDailyRate,
-    p_total_base_rent: baseRentTotal,
-    p_total_price: data.grand_total,
-    p_security_deposit: data.security_deposit || 0,
+    // Block Quantities for Ledger Itemization
+    p_full_days: fullDays,
+    p_half_days: remainingHalfDays,
 
-    // Coordinates & Promos
+    // Financial Snapshots
+    p_rate_snapshot_24h: rate24h,
+    p_rate_snapshot_12h: rate12h,
+    p_total_base_rent: calculatedBaseRent,
+
+    // Coordinates
     p_pickup_coordinates: data.pickup_coords || null,
     p_dropoff_coordinates: data.dropoff_coords || null,
-    p_is_12_hour_promo: data.is12HourPromo || false,
-    p_promo_discount_amount: discountAmount,
 
     // Payment Data
-    p_reservation_fee_paid: data.payment_details?.amount || 0,
+    p_amount_paid: amountPaid,
     p_transaction_reference:
       data.payment_details?.transaction_reference || null,
     p_receipt_url: data.payment_details?.receipt_url || null,
@@ -98,7 +97,6 @@ export async function createCustomerBooking(
   }
 
   try {
-    // Get the emails of all Admins and Staff
     const { data: adminUsers } = await supabase
       .from("users")
       .select("email")
@@ -108,8 +106,8 @@ export async function createCustomerBooking(
       ?.map((u) => u.email)
       .filter(Boolean) as string[];
 
-    // Format dates and get Customer name
-    const formattedDates = `${startDate.toLocaleDateString()} to ${endDate.toLocaleDateString()}`;
+    // THE FIX: Format using the exact Date objects we parsed above
+    const formattedDates = `${exactStart.toLocaleDateString()} to ${exactEnd.toLocaleDateString()}`;
     const customerName = user.user_metadata?.full_name || "A Customer";
 
     // Fire and forget the email (No 'await' so the user doesn't wait for SMTP)
@@ -150,7 +148,7 @@ export async function createAdminBooking(data: AdminBookingInput) {
   }
   const input = result.data;
 
-  // --- FETCH CAR FOR BASE RATE AND PROMO RATE ---
+  // --- FETCH CAR FOR BASE RATE AND 12H RATE ---
   const { data: car } = await supabase
     .from("cars")
     .select(
@@ -161,15 +159,19 @@ export async function createAdminBooking(data: AdminBookingInput) {
 
   if (!car) return { success: false, message: "Car not found" };
 
-  const dailyRate = input.custom_daily_rate || car.rental_rate_per_day;
+  // --- BLOCK MATH LOGIC ---
+  const bookingHours = input.booking_hours || 24;
+  const fullDays = Math.floor(bookingHours / 24);
+  const remainingHalfDays = bookingHours % 24 === 12 ? 1 : 0;
 
-  // --- DATE & PROMO LOGIC ---
+  // Custom rate overrides the 24h rate. Half it for the 12h block.
+  const rate24h = input.custom_daily_rate || car.rental_rate_per_day;
+  const rate12h = input.custom_daily_rate
+    ? rate24h / 2
+    : car.rental_rate_per_12h;
+
   const startDate = input.start_date;
-  let endDate = input.end_date;
-
-  if (input.is_12_hour_promo) {
-    endDate = addHours(startDate, 12);
-  }
+  const endDate = addHours(startDate, bookingHours);
 
   // =========================================================================
   // CONFLICT CHECK (The "Block and Alert" Method)
@@ -184,7 +186,6 @@ export async function createAdminBooking(data: AdminBookingInput) {
     .limit(1);
 
   if (conflictError) {
-    console.error("Conflict Check Error:", conflictError);
     return {
       success: false,
       message: "Database error while verifying availability.",
@@ -194,53 +195,41 @@ export async function createAdminBooking(data: AdminBookingInput) {
   if (conflicts && conflicts.length > 0) {
     return {
       success: false,
-      message:
-        "Conflict: This vehicle is already booked or under maintenance during the selected dates.",
+      message: "Conflict: This vehicle is already booked during these dates.",
     };
   }
+
   // =========================================================================
-
-  // Calculate Base Rent Logic
-  const days =
-    Math.ceil(
-      (input.end_date.getTime() - input.start_date.getTime()) /
-        (1000 * 60 * 60 * 24),
-    ) || 1;
-  const baseRent = days * dailyRate!;
-
-  // 3. COMPILE ALL CHARGES
+  // COMPILE ALL CHARGES (Strictly Platform Revenue)
+  // =========================================================================
   const charges = [];
+  let basePlatformTotal = 0;
 
-  // A. Base Rent
-  charges.push({
-    category: "BASE_RATE",
-    amount: baseRent,
-    description: `${days} days @ ₱${dailyRate}/day`,
-  });
-
-  // B. Promo Discount
-  if (input.is_12_hour_promo && car.rental_rate_per_12h > 0) {
-    const discount = dailyRate - car.rental_rate_per_12h;
-    if (discount > 0) {
-      charges.push({
-        category: "PROMO_DISCOUNT",
-        amount: -discount,
-        description: "12-Hour Rental Promo",
-      });
-    }
-  }
-
-  // C. Driver Fee
-  if (input.with_driver) {
-    const driverTotal = days * input.driver_fee_per_day;
+  // A. 24H Block Rent
+  if (fullDays > 0) {
+    const cost24h = fullDays * rate24h;
+    basePlatformTotal += cost24h;
     charges.push({
-      category: "DRIVER_FEE",
-      amount: driverTotal,
-      description: `Chauffeur service (${days} days)`,
+      category: "BASE_RATE_24H",
+      amount: cost24h,
+      description: `${fullDays} Days (24h Blocks)`,
     });
   }
 
-  // D. Pickup/Dropoff Fees
+  // B. 12H Block Rent
+  if (remainingHalfDays > 0) {
+    const cost12h = remainingHalfDays * rate12h;
+    basePlatformTotal += cost12h;
+    charges.push({
+      category: "BASE_RATE_12H",
+      amount: cost12h,
+      description: `12-Hour Block`,
+    });
+  }
+
+  // NOTE: Driver Fee and Promo are REMOVED from the charges array completely.
+
+  // C. Pickup/Dropoff Fees
   if (input.pickup_price > 0) {
     charges.push({
       category: "DELIVERY_FEE",
@@ -256,7 +245,7 @@ export async function createAdminBooking(data: AdminBookingInput) {
     });
   }
 
-  // E. Additional Charges
+  // D. Additional Custom Charges
   if (input.additional_charges && input.additional_charges.length > 0) {
     input.additional_charges.forEach((c: any) => {
       charges.push({
@@ -267,7 +256,7 @@ export async function createAdminBooking(data: AdminBookingInput) {
     });
   }
 
-  // F. Manual Discount
+  // E. Manual Discount
   if (input.discount_amount > 0) {
     charges.push({
       category: "DISCOUNT",
@@ -280,7 +269,7 @@ export async function createAdminBooking(data: AdminBookingInput) {
     return { success: false, message: "Invalid Payment Amount" };
   }
 
-  // 4. Call the RPC (Removed Template and Contract parameters)
+  // 4. Call the RPC
   const { data: bookingId, error } = await supabase.rpc(
     "admin_create_booking_v1",
     {
@@ -297,8 +286,9 @@ export async function createAdminBooking(data: AdminBookingInput) {
       p_pickup_price: input.pickup_price,
       p_dropoff_price: input.dropoff_price,
       p_is_with_driver: input.with_driver,
-      p_base_rate_snapshot: dailyRate,
-      p_security_deposit: input.security_deposit,
+      p_base_rate_snapshot: basePlatformTotal, // Legacy tracking
+      p_rate_snapshot_24h: rate24h, // NEW
+      p_rate_snapshot_12h: rate12h, // NEW
       p_charges_json: charges,
       p_initial_payment_json: input.initial_payment ?? null,
     },
@@ -309,10 +299,20 @@ export async function createAdminBooking(data: AdminBookingInput) {
     return { success: false, message: error.message };
   }
 
+  // --- AUTOMATED NOTIFICATION ---
+  await supabase.from("notifications").insert({
+    user_id: input.user_id,
+    title: "New Reservation Created",
+    message: `An administrator has booked a ${car.brand} ${car.model} for you from ${format(startDate, "MMM dd, yyyy")}.`,
+    type: "BOOKING_CREATED",
+    action_url: `/customer/my-bookings`,
+    reference_id: bookingId,
+  });
+
   revalidatePath("/admin/bookings");
   return { success: true, message: "Booking created successfully", bookingId };
 }
-// UPDATE (Admin Super Form)
+
 export async function updateAdminBooking(bookingId: string, data: unknown) {
   const supabase = await createClient();
 
@@ -326,57 +326,48 @@ export async function updateAdminBooking(bookingId: string, data: unknown) {
   }
   const input = result.data;
 
-  // --- NEW: FETCH CAR FOR BASE RATE AND PROMO RATE ---
+  // --- FETCH CAR FOR BASE RATE AND 12H RATE ---
   const { data: car } = await supabase
     .from("cars")
-    .select("rental_rate_per_day, rental_rate_per_12h")
+    .select("rental_rate_per_day, rental_rate_per_12h, brand, model")
     .eq("car_id", input.car_id)
     .single();
 
   if (!car) return { success: false, message: "Car not found" };
 
-  const dailyRate = input.custom_daily_rate || car.rental_rate_per_day;
+  // --- BLOCK MATH LOGIC ---
+  const bookingHours = input.booking_hours || 24;
+  const fullDays = Math.floor(bookingHours / 24);
+  const remainingHalfDays = bookingHours % 24 === 12 ? 1 : 0;
 
-  // --- NEW: DATE & PROMO LOGIC ---
+  const rate24h = input.custom_daily_rate || car.rental_rate_per_day;
+  const rate12h = input.custom_daily_rate
+    ? rate24h / 2
+    : car.rental_rate_per_12h;
+
   const startDate = input.start_date;
-  let endDate = input.end_date;
-
-  if (input.is_12_hour_promo) {
-    endDate = addHours(startDate, 12);
-  }
-
-  const days =
-    Math.ceil(
-      (input.end_date.getTime() - input.start_date.getTime()) /
-        (1000 * 60 * 60 * 24),
-    ) || 1;
-  const baseRent = days * dailyRate!;
+  const endDate = addHours(startDate, bookingHours);
 
   const charges = [];
+  let basePlatformTotal = 0;
 
-  charges.push({
-    category: "BASE_RATE",
-    amount: baseRent,
-    description: `${days} days @ ₱${dailyRate}/day`,
-  });
-
-  if (input.is_12_hour_promo && car.rental_rate_per_12h > 0) {
-    const discount = dailyRate - car.rental_rate_per_12h;
-    if (discount > 0) {
-      charges.push({
-        category: "PROMO_DISCOUNT",
-        amount: -discount,
-        description: "12-Hour Rental Promo",
-      });
-    }
+  if (fullDays > 0) {
+    const cost24h = fullDays * rate24h;
+    basePlatformTotal += cost24h;
+    charges.push({
+      category: "BASE_RATE_24H",
+      amount: cost24h,
+      description: `${fullDays} Days (24h Blocks)`,
+    });
   }
 
-  if (input.with_driver) {
-    const driverTotal = days * input.driver_fee_per_day;
+  if (remainingHalfDays > 0) {
+    const cost12h = remainingHalfDays * rate12h;
+    basePlatformTotal += cost12h;
     charges.push({
-      category: "DRIVER_FEE",
-      amount: driverTotal,
-      description: `Chauffeur service (${days} days)`,
+      category: "BASE_RATE_12H",
+      amount: cost12h,
+      description: `12-Hour Block`,
     });
   }
 
@@ -396,7 +387,7 @@ export async function updateAdminBooking(bookingId: string, data: unknown) {
   }
 
   if (input.additional_charges && input.additional_charges.length > 0) {
-    input.additional_charges.forEach((c) => {
+    input.additional_charges.forEach((c: any) => {
       charges.push({
         category: c.category,
         amount: c.amount,
@@ -422,7 +413,7 @@ export async function updateAdminBooking(bookingId: string, data: unknown) {
     p_user_id: input.user_id,
     p_car_id: input.car_id,
     p_start_date: startDate.toISOString(),
-    p_end_date: endDate.toISOString(), // Adjusted date!
+    p_end_date: endDate.toISOString(),
     p_pickup_loc: input.pickup_location,
     p_dropoff_loc: input.dropoff_location,
     p_pickup_coordinates: input.pickup_coordinates || null,
@@ -432,8 +423,9 @@ export async function updateAdminBooking(bookingId: string, data: unknown) {
     p_pickup_price: input.pickup_price,
     p_dropoff_price: input.dropoff_price,
     p_is_with_driver: input.with_driver,
-    p_base_rate_snapshot: dailyRate,
-    p_security_deposit: input.security_deposit,
+    p_base_rate_snapshot: basePlatformTotal,
+    p_rate_snapshot_24h: rate24h, // NEW
+    p_rate_snapshot_12h: rate12h, // NEW
     p_charges_json: charges,
     p_new_payment_json: input.initial_payment ?? null,
   });
@@ -442,6 +434,16 @@ export async function updateAdminBooking(bookingId: string, data: unknown) {
     console.error("RPC Error:", error);
     return { success: false, message: error.message };
   }
+
+  // --- AUTOMATED NOTIFICATION ---
+  await supabase.from("notifications").insert({
+    user_id: input.user_id,
+    title: "Reservation Updated",
+    message: `Your reservation for ${car.brand} ${car.model} was updated by an administrator. Please check your folio.`,
+    type: "BOOKING_UPDATE",
+    action_url: `/customer/my-bookings`,
+    reference_id: bookingId,
+  });
 
   revalidatePath("/admin/bookings");
   return { success: true, message: "Booking updated successfully" };
@@ -828,114 +830,132 @@ export async function checkDriverAvailabilityAction(
 }
 
 export async function getBookingDetailsAction(bookingId: string) {
-  const supabase = await createClient();
+  try {
+    if (!bookingId || !bookingId.includes("-")) {
+      return {
+        success: false,
+        data: null,
+        message: "Invalid Booking ID format.",
+      };
+    }
 
-  if (!bookingId) {
-    return { success: false, data: null, message: "Invalid Booking ID" };
-  }
+    const supabase = await createClient();
 
-  // Fetch the booking with all relational joins
-  // NEW: Added booking_driver_assignments to the query string
-  const { data: booking, error } = await supabase
-    .from("bookings")
-    .select(
-      `
-      *,
-      customer:users!user_id(user_id,full_name, email, phone_number),
-      car:cars!car_id(brand, model, plate_number, car_images(image_url, is_primary)),
-      driver:drivers!driver_id(driver_id, users(full_name)),
-      booking_driver_assignments (
-        assignment_id,
-        driver_id,
-        shift_start,
-        shift_end,
-        status,
-        drivers ( users ( full_name ) )
-      ),
-      payments:booking_payments(amount, status),
-      contracts:booking_contracts(is_signed),
-      inspections:booking_inspections(type),
-      logs:booking_logs(log_id, action_type, message, created_at)
-    `,
-    )
-    .eq("booking_id", bookingId)
-    .single();
-
-  if (error) {
-    console.error("Error fetching booking details:", error);
-    return { success: false, data: null, message: error.message };
-  }
-
-  const primaryImage =
-    booking.car?.car_images?.find((img: any) => img.is_primary)?.image_url ||
-    booking.car?.car_images?.[0]?.image_url ||
-    "https://placehold.co/600x400?text=No+Image";
-
-  const amountPaid =
-    booking.payments
-      ?.filter((p: any) => p.status === "COMPLETED")
-      .reduce((sum: number, p: any) => sum + Number(p.amount), 0) || 0;
-
-  // Sort logs dynamically so newest is at the top
-  const sortedLogs = booking.logs
-    ? booking.logs.sort(
-        (a: any, b: any) =>
-          new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+    // Fetch the booking with all relational joins
+    const { data: booking, error } = await supabase
+      .from("bookings")
+      .select(
+        `
+        *,
+        customer:users!user_id(user_id,full_name, email, phone_number),
+        car:cars!car_id(brand, model, plate_number, car_images(image_url, is_primary)),
+        driver:drivers!driver_id(driver_id, users(full_name)),
+        booking_driver_assignments (
+          assignment_id,
+          driver_id,
+          shift_start,
+          shift_end,
+          status,
+          drivers ( users ( full_name ) )
+        ),
+        payments:booking_payments(amount, status),
+        contracts:booking_contracts(is_signed),
+        inspections:booking_inspections(type),
+        logs:booking_logs(log_id, action_type, message, created_at)
+      `,
       )
-    : [];
+      .eq("booking_id", bookingId)
+      .single();
 
-  const formattedData = {
-    id: booking.booking_id,
-    status: booking.booking_status,
-    start_date: new Date(booking.start_date),
-    end_date: new Date(booking.end_date),
-    pickup_location: booking.pickup_location,
-    dropoff_location: booking.dropoff_location,
-    total_price: Number(booking.total_price),
-    security_deposit: Number(booking.security_deposit),
-    amount_paid: amountPaid,
-    is_with_driver: booking.is_with_driver,
-    notes: booking.notes || "",
-    logs: sortedLogs,
+    if (error) {
+      console.error("Supabase Error fetching booking details:", error);
+      throw new Error(`Database error: ${error.message}`);
+    }
 
-    // <-- NEW: Passed to the payload so the frontend can detect Dispatch Gaps!
-    assignments: (booking.booking_driver_assignments || []).map((a: any) => ({
-      id: a.assignment_id,
-      driver_id: a.driver_id,
-      driver_name: a.drivers?.users?.full_name || "Unknown Driver",
-      shift_start: a.shift_start,
-      shift_end: a.shift_end,
-      status: a.status,
-    })),
+    if (!booking) {
+      throw new Error("Booking not found or access denied by RLS.");
+    }
 
-    customer: {
-      id: booking.customer?.user_id,
-      name: booking.customer?.full_name || "Unknown Customer",
-      email: booking.customer?.email || "No Email",
-      phone: booking.customer?.phone_number || "No Phone",
-    },
-    car: {
-      id: booking.car_id,
-      brand: booking.car?.brand,
-      model: booking.car?.model,
-      plate: booking.car?.plate_number,
-      image: primaryImage,
-    },
-    driver: booking.driver
-      ? {
-          id: booking.driver.driver_id,
-          name: booking.driver.users?.full_name || "Unknown Driver",
-        }
-      : null,
-    has_contract: booking.contracts && booking.contracts.length > 0,
-    is_contract_signed: booking.contracts?.some((c: any) => c.is_signed),
-    has_pre_trip: booking.inspections?.some((i: any) => i.type === "Pre-trip"),
-    has_post_trip: booking.inspections?.some(
-      (i: any) => i.type === "Post-trip",
-    ),
-  };
+    const primaryImage =
+      booking.car?.car_images?.find((img: any) => img.is_primary)?.image_url ||
+      booking.car?.car_images?.[0]?.image_url ||
+      "https://placehold.co/600x400?text=No+Image";
 
-  return { success: true, data: formattedData };
+    const amountPaid =
+      booking.payments
+        ?.filter((p: any) => p.status === "COMPLETED")
+        .reduce((sum: number, p: any) => sum + Number(p.amount), 0) || 0;
+
+    // Sort logs dynamically so newest is at the top
+    const sortedLogs = booking.logs
+      ? booking.logs.sort(
+          (a: any, b: any) =>
+            new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+        )
+      : [];
+
+    const formattedData = {
+      id: booking.booking_id,
+      status: booking.booking_status,
+      start_date: new Date(booking.start_date),
+      end_date: new Date(booking.end_date),
+      pickup_location: booking.pickup_location,
+      dropoff_location: booking.dropoff_location,
+      total_price: Number(booking.total_price),
+      security_deposit: Number(booking.security_deposit),
+      amount_paid: amountPaid,
+      is_with_driver: booking.is_with_driver,
+      notes: booking.notes || "",
+      logs: sortedLogs,
+
+      assignments: (booking.booking_driver_assignments || []).map((a: any) => ({
+        id: a.assignment_id,
+        driver_id: a.driver_id,
+        driver_name: a.drivers?.users?.full_name || "Unknown Driver",
+        shift_start: a.shift_start,
+        shift_end: a.shift_end,
+        status: a.status,
+      })),
+
+      customer: {
+        id: booking.customer?.user_id,
+        name: booking.customer?.full_name || "Unknown Customer",
+        email: booking.customer?.email || "No Email",
+        phone: booking.customer?.phone_number || "No Phone",
+      },
+      car: {
+        id: booking.car_id,
+        brand: booking.car?.brand,
+        model: booking.car?.model,
+        plate: booking.car?.plate_number,
+        image: primaryImage,
+      },
+      driver: booking.driver
+        ? {
+            id: booking.driver.driver_id,
+            name: booking.driver.users?.full_name || "Unknown Driver",
+          }
+        : null,
+      has_contract: booking.contracts && booking.contracts.length > 0,
+      is_contract_signed: booking.contracts?.some((c: any) => c.is_signed),
+      has_pre_trip: booking.inspections?.some(
+        (i: any) => i.type === "Pre-trip",
+      ),
+      has_post_trip: booking.inspections?.some(
+        (i: any) => i.type === "Post-trip",
+      ),
+    };
+
+    return { success: true, data: formattedData, message: null };
+  } catch (error: any) {
+    console.error("Action Exception:", error);
+    return {
+      success: false,
+      data: null,
+      message:
+        error.message || "An unexpected error occurred while fetching details.",
+    };
+  }
 }
 
 export async function cancelBookingAction(

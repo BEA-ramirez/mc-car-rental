@@ -115,7 +115,7 @@ export default function AdminBookingDetailsPage() {
     try {
       await updateStatus({
         id: booking?.id,
-        status: newStatus.toLowerCase(),
+        status: newStatus.toUpperCase(),
       });
       toast.success(`Booking status updated to ${newStatus}`);
     } catch (error: any) {
@@ -204,7 +204,6 @@ export default function AdminBookingDetailsPage() {
     try {
       await signContract({ id, signatureDataUrl });
       setIsContractOpen(false);
-      await startTrip(bookingId);
     } catch (error) {
       console.error(error);
     }

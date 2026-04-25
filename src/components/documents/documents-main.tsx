@@ -488,6 +488,7 @@ export default function DocumentsMain() {
         isOpen={!!activeInspection}
         onClose={() => setActiveInspection(null)}
         inspection={activeInspection}
+        blueprintUrl={activeInspection?.images?.blueprint_bg}
       />
 
       {/* WIRED DELETE DIALOG */}

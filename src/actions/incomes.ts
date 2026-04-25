@@ -130,11 +130,20 @@ export async function getBookingFolio(bookingId: string) {
       end_date, 
       total_price, 
       base_rate_snapshot, 
+      rate_snapshot_24h,
+      rate_snapshot_12h,
       security_deposit, 
       payment_status, 
-      booking_status, 
+      booking_status,
+      is_with_driver,
+      pickup_type,
+      dropoff_type,
+      pickup_location,
+      dropoff_location,
+      pickup_coordinates,
+      dropoff_coordinates,
       users(full_name, phone_number, email), 
-      cars(brand, model, plate_number, rental_rate_per_day)
+      cars(brand, model, plate_number, rental_rate_per_day, rental_rate_per_12h)
     `,
     )
     .eq("booking_id", bookingId)

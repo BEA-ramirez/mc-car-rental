@@ -53,8 +53,9 @@ export const useBookings = () => {
   });
 
   // --- THE MASTER BOOKING INVALIDATOR ---
-  const invalidateBookingRipples = (affectsFinancials = false) => {
+  const invalidateBookingRipples: any = (affectsFinancials = false) => {
     // 1. Sync all Booking Tables & Dashboards
+    queryClient.invalidateQueries({ queryKey: ["scheduler-data"] });
     queryClient.invalidateQueries({ queryKey: QUERY_KEYS.bookings.all });
     queryClient.invalidateQueries({ queryKey: QUERY_KEYS.dashboard.summary });
     queryClient.invalidateQueries({
@@ -143,6 +144,9 @@ export const useBookings = () => {
       return res;
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: QUERY_KEYS.financials.pendingPayments,
+      });
       invalidateBookingRipples();
       toast.success("Booking created successfully!");
     },
@@ -282,10 +286,25 @@ export const useBookingDetails = (bookingId: string | null | undefined) => {
   return useQuery({
     queryKey: QUERY_KEYS.bookings.details(bookingId || ""),
     queryFn: async () => {
-      const res = await getBookingDetailsAction(bookingId!);
-      if (!res.success) throw new Error(res.message);
-      return res.data;
+      try {
+        const res = await getBookingDetailsAction(bookingId!);
+
+        // This triggers if the try-catch in the server action caught an RLS/DB error
+        if (!res.success) {
+          throw new Error(
+            res.message || "Unknown error fetching booking details.",
+          );
+        }
+
+        return res.data;
+      } catch (error: any) {
+        console.error("Hook Error:", error);
+        // Re-throw so TanStack Query knows it failed
+        throw error;
+      }
     },
     enabled: !!bookingId,
+    // Optional: add retry logic to prevent immediate failures on flaky connections
+    retry: 1,
   });
 };
