@@ -124,6 +124,10 @@ const LocationField = ({
 
   return (
     <div className="border border-border rounded-xl bg-card overflow-hidden shadow-sm transition-all hover:border-primary/50 group cursor-default">
+      {/* CRITICAL FIX: Hidden inputs ensure React Hook Form tracks and submits the coordinates and type! */}
+      <input type="hidden" {...control.register(modeField)} />
+      <input type="hidden" {...control.register(coordsField)} />
+
       <div className="flex items-center justify-between px-3 py-2.5 bg-secondary/30 border-b border-border transition-colors">
         <span className="text-[10px] font-bold uppercase tracking-widest text-foreground flex items-center gap-1.5 group-hover:text-primary transition-colors">
           <MapPin className="w-3.5 h-3.5 text-muted-foreground group-hover:text-primary" />
@@ -137,22 +141,32 @@ const LocationField = ({
             checked={isCustom}
             className="scale-75 origin-right data-[state=checked]:bg-primary"
             onCheckedChange={(checked) => {
-              setValue(modeField, checked ? "custom" : "hub");
+              setValue(modeField, checked ? "custom" : "hub", {
+                shouldValidate: true,
+              });
               if (!checked) {
                 const defaultHub = hubs[0];
-                setValue(locField, defaultHub?.name || "Main Garage");
-                setValue(priceField, 0);
-                if (defaultHub)
-                  setValue(coordsField, `${defaultHub.lat},${defaultHub.lng}`);
+                setValue(locField, defaultHub?.name || "Main Garage", {
+                  shouldValidate: true,
+                });
+                setValue(priceField, 0, { shouldValidate: true });
+                if (defaultHub) {
+                  setValue(coordsField, `${defaultHub.lat},${defaultHub.lng}`, {
+                    shouldValidate: true,
+                  });
+                }
               } else {
-                setValue(locField, "");
+                setValue(locField, "", { shouldValidate: true });
                 setValue(
                   priceField,
                   type === "pickup"
                     ? fees.custom_pickup_fee
                     : fees.custom_dropoff_fee,
+                  { shouldValidate: true },
                 );
-                setValue(coordsField, undefined as any);
+                setValue(coordsField, undefined as any, {
+                  shouldValidate: true,
+                });
               }
             }}
           />
@@ -170,7 +184,10 @@ const LocationField = ({
                   onValueChange={(val) => {
                     field.onChange(val);
                     const hub = hubs.find((h: any) => h.name === val);
-                    if (hub) setValue(coordsField, `${hub.lat},${hub.lng}`);
+                    if (hub)
+                      setValue(coordsField, `${hub.lat},${hub.lng}`, {
+                        shouldValidate: true,
+                      });
                   }}
                   defaultValue={field.value}
                 >
@@ -1563,7 +1580,6 @@ export default function AdminBookingForm({
                 const field =
                   activeMapField === "pickup" ? "pickup" : "dropoff";
 
-                // FIX: Check if name is an official hub!
                 const isOfficialHub = hubs.some((h: any) => h.name === name);
 
                 if (isOfficialHub && name) {

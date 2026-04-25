@@ -529,30 +529,25 @@ export async function deleteBooking(id: string, reason?: string) {
   };
 }
 
-export async function updateBookingDates(bookingId: string, newEndDate: Date) {
+export async function updateBookingDates(
+  bookingId: string,
+  newEndDate: Date,
+  addedCharge: number = 0,
+) {
   const supabase = await createClient();
 
   const { error } = await supabase.rpc("update_booking_dates_transaction", {
     p_booking_id: bookingId,
     p_new_end_date: newEndDate.toISOString(),
+    p_added_charge: addedCharge, // Pass the money to the RPC
   });
 
   if (error) {
-    console.error("Error updating booking dates:", error);
-    // The RPC raises a specific error message if there is a car conflict
-    return {
-      success: false,
-      message: error.message || "Failed to update booking dates.",
-    };
+    return { success: false, message: error.message };
   }
 
   revalidatePath("/admin/bookings");
-  revalidatePath(`/admin/bookings/${bookingId}`);
-
-  return {
-    success: true,
-    message: "Booking dates and calculations updated successfully.",
-  };
+  return { success: true, message: "Booking updated successfully." };
 }
 
 // update buffer duration

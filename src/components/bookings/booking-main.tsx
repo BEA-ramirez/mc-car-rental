@@ -58,6 +58,7 @@ import {
 import PaymentVerificationView from "./payment-verification-tab";
 import BookingListView from "./booking-list-view";
 import { usePendingPayments } from "../../../hooks/use-payments";
+import { useUnits } from "../../../hooks/use-units";
 import { Input } from "../ui/input";
 
 // --- Define the Tabs ---
@@ -68,6 +69,7 @@ export default function BookingMain() {
   const [date, setDate] = useState(new Date());
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const { payments } = usePendingPayments();
+  const { units = [] } = useUnits();
 
   // --- NEW: View State ---
   const [activeTab, setActiveTab] = useState<ViewTab>("timeline");
@@ -139,6 +141,10 @@ export default function BookingMain() {
   const [editTarget, setEditTarget] = useState<SchedulerEvent | null>(null);
   const [dispatchTarget, setDispatchTarget] = useState<SchedulerEvent | null>(
     null,
+  );
+
+  const carForResize = units.find(
+    (u) => u.car_id === resizeTarget?.event?.resourceId,
   );
 
   // --- NEW: VALIDATION TARGET STATES ---
@@ -262,9 +268,15 @@ export default function BookingMain() {
     setGhostBooking(null);
   };
 
-  const confirmResize = async () => {
+  const confirmResize = async (calculatedNewEnd: Date, addedCharge: number) => {
     if (!resizeTarget) return;
-    updateDates({ id: resizeTarget.event.id, newEndDate: resizeTarget.newEnd });
+
+    updateDates({
+      id: resizeTarget.event.id,
+      newEndDate: calculatedNewEnd,
+      addedCharge: addedCharge,
+    });
+
     setResizeTarget(null);
   };
 
@@ -284,11 +296,12 @@ export default function BookingMain() {
     setEarlyReturnTarget(null);
   };
 
-  const confirmBufferResize = async () => {
+  const confirmBufferResize = async (calculatedBufferMinutes: number) => {
     if (!bufferTarget) return;
+
     updateBuffer({
       id: bufferTarget.event.id,
-      newBuffer: bufferTarget.newBuffer,
+      newBuffer: calculatedBufferMinutes,
     });
     setBufferTarget(null);
   };
@@ -552,6 +565,8 @@ export default function BookingMain() {
         event={resizeTarget?.event || null}
         newEnd={resizeTarget?.newEnd || null}
         isSaving={isUpdatingDates}
+        car24hRate={Number(carForResize?.rental_rate_per_day || 0)}
+        car12hRate={Number(carForResize?.rental_rate_per_12h || 0)}
       />
       <EarlyReturnDialog
         isOpen={!!earlyReturnTarget}
@@ -581,7 +596,11 @@ export default function BookingMain() {
         onClose={() => setExtendTarget(null)}
         onConfirm={(newEnd) => {
           if (!extendTarget) return;
-          updateDates({ id: extendTarget.id, newEndDate: newEnd });
+          updateDates({
+            id: extendTarget.id,
+            newEndDate: newEnd,
+            addedCharge: 0,
+          });
           setExtendTarget(null);
         }}
         event={extendTarget}

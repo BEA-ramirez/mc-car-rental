@@ -94,9 +94,11 @@ export function useScheduler(currentDate: Date) {
     mutationFn: async ({
       id,
       newEndDate,
+      addedCharge,
     }: {
       id: string;
       newEndDate: Date;
+      addedCharge: number;
     }) => {
       const result = await updateBookingDates(id, newEndDate);
       if (!result.success)

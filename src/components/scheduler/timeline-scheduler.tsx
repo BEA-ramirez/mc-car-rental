@@ -146,7 +146,6 @@ type TimelineSchedulerProps = {
   onExtendClick?: (event: SchedulerEvent) => void;
   onDispatchClick?: (event: SchedulerEvent) => void;
   isOverrideMode?: boolean;
-  //onApproveClick?: (event: SchedulerEvent) => void;
   onReleaseClick?: (event: SchedulerEvent) => void;
   onReturnClick?: (event: SchedulerEvent) => void;
   onNoShowClick?: (event: SchedulerEvent) => void;
@@ -186,12 +185,12 @@ export default function TimelineScheduler({
   onExtendClick,
   onDispatchClick,
   isOverrideMode = false,
-  //onApproveClick,
   onReleaseClick,
   onReturnClick,
   onNoShowClick,
 }: TimelineSchedulerProps) {
-  const [view, setView] = useState<ViewType>("day");
+  // CRITICAL FIX: Defaulted to 'month' instead of 'day'
+  const [view, setView] = useState<ViewType>("month");
   const [currentDate, setCurrentDate] = useState(new Date());
   const [clickOffsets, setClickOffsets] = useState<Record<string, number>>({});
   const router = useRouter();
@@ -364,7 +363,6 @@ export default function TimelineScheduler({
     document.body.style.userSelect = "none";
   };
 
-  // PERFORMANCE FIX: Request Animation Frame for Dragging
   useEffect(() => {
     if (!resizingEventId) return;
     let frameId: number;
@@ -376,9 +374,12 @@ export default function TimelineScheduler({
         const deltaX = e.clientX - dragStartX.current;
         if (resizeMode === "event") {
           if (!originalEndRef.current) return;
-          const pxPerDay = pxPerMinute * 1440;
-          const daysDragged = Math.round(deltaX / pxPerDay);
-          setResizePreviewEnd(addDays(originalEndRef.current, daysDragged));
+
+          // CRITICAL FIX: Math now calculates snaps based on 1 Hour instead of 1 Day (24 Hours)
+          const pxPerHour = pxPerMinute * 60;
+          const hoursDragged = Math.round(deltaX / pxPerHour);
+
+          setResizePreviewEnd(addHours(originalEndRef.current, hoursDragged));
         } else {
           const minutesDragged = deltaX / pxPerMinute;
           const snappedMinutes = Math.round(minutesDragged / 60) * 60;
@@ -430,7 +431,6 @@ export default function TimelineScheduler({
     onResizeBuffer,
   ]);
 
-  // PERFORMANCE FIX: Request Animation Frame for Creating
   useEffect(() => {
     if (!creationState?.isDragging) return;
     let frameId: number;
@@ -547,7 +547,6 @@ export default function TimelineScheduler({
 
   const isMonthView = view === "month";
 
-  // PERFORMANCE FIX: Memoize the thousands of grid line DOM nodes
   const BackgroundGridLines = useMemo(() => {
     return (
       <div className="absolute inset-0 flex pointer-events-none">
@@ -555,7 +554,7 @@ export default function TimelineScheduler({
           <div
             key={i}
             className={cn(
-              "border-r h-full", // Stripped transition-colors to prevent layout thrashing
+              "border-r h-full",
               view !== "month" && i % 24 === 0
                 ? "border-border bg-secondary/10"
                 : "border-border/50",
