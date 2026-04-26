@@ -239,17 +239,20 @@ export default function AdminBookingDetailsPage() {
               <Select
                 value={booking.status.toUpperCase()}
                 onValueChange={handleStatusChange}
+                disabled={booking.status.toLowerCase() === "cancelled"}
               >
                 <SelectTrigger
                   className={cn(
-                    "h-7 text-[10px] font-bold uppercase tracking-widest px-3 border border-border shadow-none",
-                    booking.status === "ongoing"
+                    "h-7 text-[10px] font-bold uppercase tracking-widest px-3 border border-border shadow-none transition-colors",
+                    booking.status.toLowerCase() === "ongoing"
                       ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20"
-                      : booking.status === "confirmed"
+                      : booking.status.toLowerCase() === "confirmed"
                         ? "bg-amber-500/10 text-amber-600 border-amber-500/20"
-                        : booking.status === "completed"
+                        : booking.status.toLowerCase() === "completed"
                           ? "bg-secondary text-muted-foreground"
-                          : "bg-primary/10 text-primary border-primary/20",
+                          : booking.status.toLowerCase() === "cancelled"
+                            ? "bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20 disabled:opacity-80"
+                            : "bg-primary/10 text-primary border-primary/20",
                   )}
                 >
                   <SelectValue />
@@ -275,6 +278,12 @@ export default function AdminBookingDetailsPage() {
                     className="text-xs font-bold text-muted-foreground"
                   >
                     COMPLETED
+                  </SelectItem>
+                  <SelectItem
+                    value="CANCELLED"
+                    className="text-xs font-bold text-red-600 dark:text-red-400"
+                  >
+                    CANCELLED
                   </SelectItem>
                 </SelectContent>
               </Select>

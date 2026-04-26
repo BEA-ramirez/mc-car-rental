@@ -53,7 +53,10 @@ export const useBookings = () => {
   });
 
   // --- THE MASTER BOOKING INVALIDATOR ---
-  const invalidateBookingRipples: any = (affectsFinancials = false) => {
+  const invalidateBookingRipples: any = (
+    affectsFinancials = false,
+    id?: string,
+  ) => {
     // 1. Sync all Booking Tables & Dashboards
     queryClient.invalidateQueries({ queryKey: ["scheduler-data"] });
     queryClient.invalidateQueries({ queryKey: QUERY_KEYS.bookings.all });
@@ -61,6 +64,11 @@ export const useBookings = () => {
     queryClient.invalidateQueries({
       queryKey: QUERY_KEYS.dashboard.recentBookings,
     });
+    if (id) {
+      queryClient.invalidateQueries({
+        queryKey: QUERY_KEYS.bookings.details(id),
+      });
+    }
 
     // 2. Sync Car Details (Because active bookings are listed inside the car profile)
     queryClient.invalidateQueries({ queryKey: QUERY_KEYS.fleet.detailBase });
@@ -184,10 +192,10 @@ export const useBookings = () => {
         amountPaid,
         refundMethod,
       ),
-    onSuccess: (data) => {
+    onSuccess: (data, variables) => {
       if (data.success) {
         // Pass true because cancellations move money (refunds/forfeits)
-        invalidateBookingRipples(true);
+        invalidateBookingRipples(true, variables.bookingId);
         toast.success(data.message);
       } else {
         toast.error(data.message);

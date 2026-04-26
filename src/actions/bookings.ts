@@ -180,6 +180,7 @@ export async function createAdminBooking(data: AdminBookingInput) {
     .from("bookings")
     .select("booking_id")
     .eq("car_id", input.car_id)
+    .eq("is_archived", false)
     .in("booking_status", ["CONFIRMED", "ONGOING", "MAINTENANCE"])
     .lt("start_date", endDate.toISOString())
     .gt("end_date", startDate.toISOString())
@@ -536,18 +537,32 @@ export async function updateBookingDates(
 ) {
   const supabase = await createClient();
 
-  const { error } = await supabase.rpc("update_booking_dates_transaction", {
-    p_booking_id: bookingId,
-    p_new_end_date: newEndDate.toISOString(),
-    p_added_charge: addedCharge, // Pass the money to the RPC
-  });
+  const { data, error } = await supabase.rpc(
+    "update_booking_dates_transaction",
+    {
+      p_booking_id: bookingId,
+      p_new_end_date: newEndDate.toISOString(),
+      p_added_charge: addedCharge,
+    },
+  );
 
   if (error) {
-    return { success: false, message: error.message };
+    console.error("Error updating booking dates:", error);
+    return {
+      success: false,
+      message: error.message || "Failed to update booking dates.",
+    };
   }
 
   revalidatePath("/admin/bookings");
-  return { success: true, message: "Booking updated successfully." };
+  revalidatePath(`/admin/bookings/${bookingId}`);
+
+  return {
+    success: true,
+    message: "Booking dates and calculations updated successfully.",
+    // Extract the conflict flag from the RPC response
+    driverConflict: data?.driver_conflict || false,
+  };
 }
 
 // update buffer duration
@@ -658,27 +673,28 @@ export async function reassignBooking(
   bookingId: string,
   newCarId: string,
   newPrice: number,
-): Promise<ActionState> {
+) {
   const supabase = await createClient();
 
   try {
-    const { error } = await supabase
-      .from("bookings")
-      .update({
-        car_id: newCarId,
-        total_price: newPrice, // THE CRUCIAL PRICE UPDATE!
-        booking_status: "CONFIRMED", // Since they accepted the proposal
-        last_updated_at: new Date().toISOString(),
-      })
-      .eq("booking_id", bookingId);
+    const { error } = await supabase.rpc("reassign_booking_transaction", {
+      p_booking_id: bookingId,
+      p_new_car_id: newCarId,
+      p_new_price: newPrice,
+    });
 
     if (error) throw error;
 
     revalidatePath("/admin/bookings");
-    return { success: true, message: "Booking reassigned and price updated" };
+    revalidatePath("/admin/calendar");
+
+    return {
+      success: true,
+      message: "Booking reassigned and confirmed successfully!",
+    };
   } catch (error: any) {
     console.error("Failed to reassign booking:", error);
-    return { success: false, message: error.message };
+    return { success: false, message: error.message || "Failed to reassign." };
   }
 }
 

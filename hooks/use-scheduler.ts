@@ -31,6 +31,25 @@ export function useScheduler(currentDate: Date) {
     format(currentDate, "yyyy-MM"),
   );
 
+  const invalidateAllRelatedQueries = (id?: string) => {
+    queryClient.invalidateQueries({ queryKey: currentQueryKey }); // The exact month view
+    queryClient.invalidateQueries({ queryKey: baseQueryKey }); // The base scheduler
+    queryClient.invalidateQueries({ queryKey: QUERY_KEYS.bookings.all });
+    queryClient.invalidateQueries({ queryKey: QUERY_KEYS.dashboard.summary });
+    queryClient.invalidateQueries({
+      queryKey: QUERY_KEYS.financials.masterLedger,
+    });
+    queryClient.invalidateQueries({
+      queryKey: QUERY_KEYS.financials.incomesDashboard,
+    });
+    if (id) {
+      queryClient.invalidateQueries({
+        queryKey: QUERY_KEYS.bookings.details(id),
+      });
+    }
+    queryClient.invalidateQueries({ queryKey: ["pendingPayments"] });
+  };
+
   const query = useQuery({
     queryKey: currentQueryKey,
     queryFn: async () => {
@@ -63,7 +82,7 @@ export function useScheduler(currentDate: Date) {
           ...oldData,
           events: oldData.events.map((event: SchedulerEvent) =>
             event.id === variables.id
-              ? { ...event, booking_status: variables.status }
+              ? { ...event, status: variables.status }
               : event,
           ),
         };
@@ -86,7 +105,7 @@ export function useScheduler(currentDate: Date) {
     },
     // regardless of success/fail: ensure we are synced with the database
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: baseQueryKey });
+      invalidateAllRelatedQueries();
     },
   });
 
@@ -94,13 +113,13 @@ export function useScheduler(currentDate: Date) {
     mutationFn: async ({
       id,
       newEndDate,
-      addedCharge,
+      addedCharge = 0,
     }: {
       id: string;
       newEndDate: Date;
-      addedCharge: number;
+      addedCharge?: number;
     }) => {
-      const result = await updateBookingDates(id, newEndDate);
+      const result = await updateBookingDates(id, newEndDate, addedCharge);
       if (!result.success)
         throw new Error(result.message || "Failed to update booking dates");
       return result;
@@ -115,15 +134,23 @@ export function useScheduler(currentDate: Date) {
           ...oldData,
           events: oldData.events.map((event: SchedulerEvent) =>
             event.id === variables.id
-              ? { ...event, end_date: variables.newEndDate }
+              ? { ...event, end: variables.newEndDate } // Make sure this is "end", not "end_date" based on your SchedulerEvent type
               : event,
           ),
         };
       });
       return { previousData };
     },
-    onSuccess: () => {
-      toast.success("Booking dates updated");
+    onSuccess: (data) => {
+      // Check for the driver conflict!
+      if (data.driverConflict) {
+        toast.warning(
+          "Booking extended, but the assigned driver has a scheduling conflict. Please reassign a new driver for the extended duration.",
+          { duration: 6000 }, // Keep it on screen a bit longer so they read it
+        );
+      } else {
+        toast.success("Booking dates updated successfully");
+      }
     },
     onError: (error: Error, variables, context) => {
       if (context?.previousData) {
@@ -133,7 +160,7 @@ export function useScheduler(currentDate: Date) {
       console.error(error);
     },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: baseQueryKey });
+      invalidateAllRelatedQueries();
     },
   });
 
@@ -178,7 +205,7 @@ export function useScheduler(currentDate: Date) {
       console.error(error);
     },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: baseQueryKey });
+      invalidateAllRelatedQueries();
     },
   });
 
@@ -240,13 +267,7 @@ export function useScheduler(currentDate: Date) {
       console.error(error);
     },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: baseQueryKey });
-      queryClient.invalidateQueries({
-        queryKey: QUERY_KEYS.financials.masterLedger,
-      });
-      queryClient.invalidateQueries({
-        queryKey: QUERY_KEYS.financials.incomesDashboard,
-      });
+      invalidateAllRelatedQueries();
     },
   });
 
@@ -300,7 +321,7 @@ export function useScheduler(currentDate: Date) {
       console.error(error);
     },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: baseQueryKey });
+      invalidateAllRelatedQueries();
     },
   });
 
@@ -355,7 +376,7 @@ export function useScheduler(currentDate: Date) {
       console.error(err);
     },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: baseQueryKey });
+      invalidateAllRelatedQueries();
     },
   });
 
@@ -408,14 +429,8 @@ export function useScheduler(currentDate: Date) {
     onSuccess: () => {
       toast.success("Booking reassigned successfully!");
     },
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: baseQueryKey });
-      queryClient.invalidateQueries({
-        queryKey: QUERY_KEYS.financials.masterLedger,
-      });
-      queryClient.invalidateQueries({
-        queryKey: QUERY_KEYS.financials.incomesDashboard,
-      });
+    onSettled: (data, error, variables) => {
+      invalidateAllRelatedQueries(variables?.id);
     },
   });
 
@@ -433,7 +448,7 @@ export function useScheduler(currentDate: Date) {
         if (!oldData) return oldData;
         return {
           ...oldData,
-          events: oldData.events.map(
+          events: oldData.events.filter(
             (evt: SchedulerEvent) => evt.id !== variables.id,
           ),
         };
@@ -448,7 +463,7 @@ export function useScheduler(currentDate: Date) {
       toast.error(`Failed to delete: ${err.message}`);
     },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: baseQueryKey });
+      invalidateAllRelatedQueries();
     },
   });
 
@@ -476,8 +491,17 @@ export function useScheduler(currentDate: Date) {
     mutationFn: (bookingId: string) => executeHandoverAction(bookingId),
     onSuccess: (res) => {
       if (res.success) {
-        toast.success(res.message);
-        invalidateQueries();
+        // Intercept the driver conflict warning
+        if (res.driverConflict) {
+          toast.warning(
+            "Vehicle released, but the time shift caused a driver scheduling conflict. Please review the driver's schedule.",
+            { duration: 6000 },
+          );
+        } else {
+          toast.success(res.message);
+        }
+
+        invalidateAllRelatedQueries();
       } else {
         toast.error(res.message);
       }
@@ -492,7 +516,8 @@ export function useScheduler(currentDate: Date) {
     onSuccess: (res) => {
       if (res.success) {
         toast.success(res.message);
-        invalidateQueries();
+        // Ensure this triggers the master refresh!
+        invalidateAllRelatedQueries();
       } else {
         toast.error(res.message);
       }

@@ -20,15 +20,15 @@ import {
 } from "@/actions/incomes";
 import { QUERY_KEYS } from "@/lib/query-keys";
 
-interface IncomeDashboardParams {
-  tab?: string;
-  page?: number;
-  search?: string;
-  sort?: string;
-  method?: string;
-}
+// interface IncomeDashboardParams {
+//   tab?: string;
+//   page?: number;
+//   search?: string;
+//   sort?: string;
+//   method?: string;
+// }
 
-export const useIncomes = (params?: IncomeDashboardParams) => {
+export const useIncomes = (bookingDate?: string) => {
   const queryClient = useQueryClient();
 
   // --- THE MASTER INVALIDATOR ---
@@ -50,6 +50,12 @@ export const useIncomes = (params?: IncomeDashboardParams) => {
       queryKey: QUERY_KEYS.bookings.detailsBase,
     });
     queryClient.invalidateQueries({ queryKey: QUERY_KEYS.dashboard.summary });
+    queryClient.invalidateQueries({ queryKey: ["scheduler-data"] });
+    if (bookingDate) {
+      queryClient.invalidateQueries({
+        queryKey: QUERY_KEYS.bookings.scheduler(bookingDate),
+      });
+    }
   };
 
   // 1. Mutation: Record Payment

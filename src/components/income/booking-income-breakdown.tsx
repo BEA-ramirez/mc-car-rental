@@ -76,6 +76,12 @@ export default function BookingIncomeBreakdownModal({
   const [activeTab, setActiveTab] = useState<string>(getInitialTab());
 
   const { data: folio, isLoading } = useBookingFolio(bookingId);
+
+  // THE FIX: Safely parse the date, falling back to "now" if it's still loading
+  const bookingDate = folio?.booking?.start_date
+    ? format(new Date(folio.booking.start_date), "yyyy-MM")
+    : format(new Date(), "yyyy-MM");
+
   const {
     recordPayment,
     isRecordingPayment,
@@ -86,7 +92,7 @@ export default function BookingIncomeBreakdownModal({
     removeCharge,
     voidPayment,
     isProcessing,
-  } = useIncomes();
+  } = useIncomes(bookingDate);
 
   const [payAmount, setPayAmount] = useState("");
   const [payMethod, setPayMethod] = useState("GCash");
@@ -671,6 +677,7 @@ export default function BookingIncomeBreakdownModal({
                                     {/* Delete Charge Action (Protected) */}
                                     <div className="flex justify-end pl-2">
                                       {![
+                                        "BASE_RATE",
                                         "BASE_RATE_24H",
                                         "BASE_RATE_12H",
                                       ].includes(charge.category) && (

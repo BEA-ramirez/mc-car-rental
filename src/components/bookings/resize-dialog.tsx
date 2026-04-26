@@ -33,13 +33,12 @@ import { Calendar } from "@/components/ui/calendar";
 type ResizeDialogProps = {
   isOpen: boolean;
   onClose: () => void;
-  // NEW: Passes back the exact date AND the automated charge
   onConfirm: (newEndDate: Date, addedCharge: number) => void;
   event: SchedulerEvent | null;
-  newEnd: Date | null; // From the drag action
+  newEnd: Date | null;
   isSaving?: boolean;
-  car24hRate: number; // Passed from BookingMain
-  car12hRate: number; // Passed from BookingMain
+  car24hRate: number;
+  car12hRate: number;
 };
 
 export default function ResizeDialog({
@@ -55,7 +54,6 @@ export default function ResizeDialog({
   const [endDate, setEndDate] = useState<Date | undefined>(undefined);
   const [endTime, setEndTime] = useState("12:00");
 
-  // Sync state when dialog opens
   useEffect(() => {
     if (isOpen && newEnd) {
       setEndDate(newEnd);
@@ -67,7 +65,6 @@ export default function ResizeDialog({
 
   const oldEndObj = new Date(event.end);
 
-  // Construct exact new Date
   let exactNewEnd = newEnd;
   if (endDate && endTime) {
     const [hours, mins] = endTime.split(":").map(Number);
@@ -79,25 +76,36 @@ export default function ResizeDialog({
   const diffHours = diffMins / 60;
   const isExtension = diffHours > 0;
 
-  // Block Pricing Logic
+  // Block Pricing Logic with Label Tracking
   let addedCharge = 0;
+  const chargeLabels: string[] = [];
+
   if (isExtension) {
     if (diffHours > 4) {
       const addedDays = Math.floor(diffHours / 24);
       const remainderHours = diffHours % 24;
 
-      addedCharge += addedDays * car24hRate;
+      if (addedDays > 0) {
+        addedCharge += addedDays * car24hRate;
+        chargeLabels.push(`${addedDays}x 24-Hour Block`);
+      }
 
       // If the remainder breaches the 4hr grace period, bill the next block
       if (remainderHours > 4) {
         if (remainderHours <= 12 && car12hRate > 0) {
           addedCharge += car12hRate;
+          chargeLabels.push("1x 12-Hour Block");
         } else {
           addedCharge += car24hRate;
+          chargeLabels.push("1x 24-Hour Block");
         }
       }
     }
   }
+
+  // Create the formatted label string (e.g., "(1x 24-Hour Block + 1x 12-Hour Block applied)")
+  const chargeLabelText =
+    chargeLabels.length > 0 ? `(${chargeLabels.join(" + ")} applied)` : "";
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -192,8 +200,11 @@ export default function ResizeDialog({
                   </strong>
                   This extension breached the 4-hour grace period. An automated
                   extension charge of{" "}
-                  <strong>₱{addedCharge.toLocaleString()}</strong> will be
-                  injected into the ledger.
+                  <strong>₱{addedCharge.toLocaleString()}</strong>{" "}
+                  <span className="text-amber-600 dark:text-amber-500">
+                    {chargeLabelText}
+                  </span>{" "}
+                  will be injected into the ledger.
                 </div>
               </div>
             )
@@ -243,7 +254,6 @@ export default function ResizeDialog({
                     selected={endDate}
                     onSelect={setEndDate}
                     initialFocus
-                    // Prevent picking a date before the booking even starts
                     disabled={(date) =>
                       date <
                       new Date(new Date(event.start).setHours(0, 0, 0, 0))
@@ -279,7 +289,6 @@ export default function ResizeDialog({
           </Button>
           <Button
             size="sm"
-            // Pass the exact date AND the calculated money back to the parent
             onClick={() => onConfirm(exactNewEnd, addedCharge)}
             disabled={isSaving}
             className="h-8 text-[10px] font-bold uppercase tracking-widest bg-primary hover:opacity-90 text-primary-foreground rounded-lg shadow-sm transition-opacity"

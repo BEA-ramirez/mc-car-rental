@@ -96,14 +96,20 @@ export async function validateReturnRequirements(bookingId: string) {
 
 export async function executeHandoverAction(bookingId: string) {
   const supabase = await createClient();
-  const { error } = await supabase.rpc("execute_vehicle_handover", {
+  const { data, error } = await supabase.rpc("execute_vehicle_handover", {
     p_booking_id: bookingId,
   });
 
   if (error) return { success: false, message: error.message };
+
   revalidatePath("/admin/bookings");
   revalidatePath("/admin/calendar");
-  return { success: true, message: "Vehicle released successfully." };
+
+  return {
+    success: true,
+    message: "Vehicle released successfully. Time clock started.",
+    driverConflict: data?.driver_conflict || false,
+  };
 }
 
 export async function executeReturnAction(bookingId: string) {

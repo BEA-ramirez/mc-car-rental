@@ -10,7 +10,6 @@ import PendingRequestsSidebar from "./pending-request-sidebar";
 import ProposalDialog from "@/components/bookings/proposal-dialog";
 import ResizeDialog from "@/components/bookings/resize-dialog";
 import EarlyReturnDialog from "@/components/bookings/early-return-dialog";
-import ExtendBookingDialog from "./extend-booking-dialog";
 import { Button } from "@/components/ui/button";
 import {
   Inbox,
@@ -61,7 +60,6 @@ import { usePendingPayments } from "../../../hooks/use-payments";
 import { useUnits } from "../../../hooks/use-units";
 import { Input } from "../ui/input";
 
-// --- Define the Tabs ---
 type ViewTab = "timeline" | "list" | "payments";
 
 export default function BookingMain() {
@@ -71,10 +69,8 @@ export default function BookingMain() {
   const { payments } = usePendingPayments();
   const { units = [] } = useUnits();
 
-  // --- NEW: View State ---
   const [activeTab, setActiveTab] = useState<ViewTab>("timeline");
 
-  // --- HOOK WITH NEW WORKFLOWS ---
   const {
     data,
     isLoading: loading,
@@ -92,7 +88,6 @@ export default function BookingMain() {
     isReassigning,
     deleteBooking,
     isDeleting,
-    // --- NEW EXPORTS ---
     checkHandover,
     checkReturn,
     executeHandover,
@@ -106,7 +101,6 @@ export default function BookingMain() {
   const resources = data?.resources || [];
   const events = data?.events || [];
 
-  // --- FORM SHEET STATE ---
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [formPrefill, setFormPrefill] = useState<{
     carId?: string;
@@ -136,18 +130,25 @@ export default function BookingMain() {
     event: SchedulerEvent;
     splitDate: Date;
   } | null>(null);
-  const [extendTarget, setExtendTarget] = useState<SchedulerEvent | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<SchedulerEvent | null>(null);
   const [editTarget, setEditTarget] = useState<SchedulerEvent | null>(null);
   const [dispatchTarget, setDispatchTarget] = useState<SchedulerEvent | null>(
     null,
   );
 
+  const pendingRequests = events.filter((e) => e.status === "PENDING");
+  const confirmedEvents = events.filter((e) => e.status !== "PENDING");
+  const originalBooking =
+    pendingRequests.find((e) => e.id === selectedPendingId) || null;
+
   const carForResize = units.find(
     (u) => u.car_id === resizeTarget?.event?.resourceId,
   );
+  const proposedCar = units.find((u) => u.car_id === ghostBooking?.resourceId);
+  const originalCar = units.find(
+    (u) => u.car_id === originalBooking?.resourceId,
+  );
 
-  // --- NEW: VALIDATION TARGET STATES ---
   const [handoverValidation, setHandoverValidation] = useState<{
     event: SchedulerEvent;
     details: {
@@ -167,11 +168,6 @@ export default function BookingMain() {
   // --- SETTINGS STATE ---
   const [isOverrideMode, setIsOverrideMode] = useState(false);
   const [archiveReason, setArchiveReason] = useState("");
-
-  const pendingRequests = events.filter((e) => e.status === "PENDING");
-  const confirmedEvents = events.filter((e) => e.status !== "PENDING");
-  const originalBooking =
-    pendingRequests.find((e) => e.id === selectedPendingId) || null;
 
   // --- HANDLERS ---
   const handleOpenNewBooking = (
@@ -312,11 +308,9 @@ export default function BookingMain() {
     setSplitTarget(null);
   };
 
-  // --- NEW WORKFLOW HANDLERS ---
   const handleReleaseVehicle = async (evt: SchedulerEvent) => {
     try {
       const res = await checkHandover(evt.id);
-      // TypeScript safety check to ensure res exists
       if (res && res.isReady) {
         await executeHandover(evt.id);
       } else if (res) {
@@ -330,7 +324,6 @@ export default function BookingMain() {
   const handleProcessReturn = async (evt: SchedulerEvent) => {
     try {
       const res = await checkReturn(evt.id);
-      // TypeScript safety check to ensure res exists
       if (res && res.isReady) {
         await executeReturn(evt.id);
       } else if (res) {
@@ -486,7 +479,6 @@ export default function BookingMain() {
                     setResizeTarget({ event, newEnd })
                   }
                   onEarlyReturnClick={(evt) => setEarlyReturnTarget(evt)}
-                  onExtendClick={(event) => setExtendTarget(event)}
                   onAddMaintenance={(resourceId, startDate) =>
                     createMaintenance({
                       carId: resourceId,
@@ -500,13 +492,15 @@ export default function BookingMain() {
                   onSplitEvent={(event, splitDate) =>
                     setSplitTarget({ event, splitDate })
                   }
+                  onExtendClick={(event) =>
+                    setResizeTarget({ event, newEnd: new Date(event.end) })
+                  }
                   onStatusChange={(event, newStatus) =>
                     updateStatus({ id: event.id, status: newStatus })
                   }
                   onDeleteClick={(evt) => setDeleteTarget(evt)}
                   onEditClick={(evt) => setEditTarget(evt)}
                   onDispatchClick={(evt) => setDispatchTarget(evt)}
-                  // NEW WORKFLOW HANDLERS WIRED UP
                   onReleaseClick={handleReleaseVehicle}
                   onReturnClick={handleProcessReturn}
                   onNoShowClick={(evt) => setNoShowTarget(evt)}
@@ -557,6 +551,14 @@ export default function BookingMain() {
         original={originalBooking}
         proposed={ghostBooking}
         isSending={isReassigning}
+        newCar24hRate={Number(proposedCar?.rental_rate_per_day || 0)}
+        newCar12hRate={Number(proposedCar?.rental_rate_per_12h || 0)}
+        originalCarName={
+          originalCar ? `${originalCar.brand} ${originalCar.model}` : undefined
+        }
+        proposedCarName={
+          proposedCar ? `${proposedCar.brand} ${proposedCar.model}` : undefined
+        }
       />
       <ResizeDialog
         isOpen={!!resizeTarget}
@@ -591,21 +593,7 @@ export default function BookingMain() {
         initialSplitDate={splitTarget?.splitDate || null}
         isProcessing={isSplittingBooking}
       />
-      <ExtendBookingDialog
-        isOpen={!!extendTarget}
-        onClose={() => setExtendTarget(null)}
-        onConfirm={(newEnd) => {
-          if (!extendTarget) return;
-          updateDates({
-            id: extendTarget.id,
-            newEndDate: newEnd,
-            addedCharge: 0,
-          });
-          setExtendTarget(null);
-        }}
-        event={extendTarget}
-        isSaving={isUpdatingDates}
-      />
+
       <DispatchDialog
         key={dispatchTarget?.id || "empty"}
         open={!!dispatchTarget}
