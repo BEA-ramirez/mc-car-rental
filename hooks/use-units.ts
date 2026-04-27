@@ -6,7 +6,9 @@ import {
   getUnitById,
   deleteUnit,
   getCarDetailsAction,
+  getInfiniteUnits,
 } from "@/actions/units.ts/manage";
+import { useInfiniteQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { CompleteCarType } from "@/lib/schemas/car";
 import { useState } from "react";
@@ -68,24 +70,33 @@ export const useUnits = (unitId?: string) => {
   });
 
   // save mutation
+  // --- SAVE MUTATION ---
   const saveUnitMutation = useMutation({
     mutationFn: saveUnit,
-    onSuccess: (data) => {
+    onSuccess: (data, variables) => {
       if (data.success) {
         toast.success(data.message);
 
-        // Invalidate the main list
+        // 1. Broadly invalidate ALL admin-units queries (ignores specific filters/pages)
+        queryClient.invalidateQueries({ queryKey: ["admin-units"] });
+
+        // Invalidate the legacy fleet list
         queryClient.invalidateQueries({ queryKey: QUERY_KEYS.fleet.all });
 
-        // Invalidate specific edit queries
-        if (unitId) {
+        // 2. Extract the carId (either from the returned data or the variables we sent)
+        const carId = data.car_id || variables.car_id;
+
+        if (carId) {
+          // Invalidate the specific unit query you requested
+          queryClient.invalidateQueries({ queryKey: ["unit", carId] });
+
+          // Legacy detail query invalidation
           queryClient.invalidateQueries({
-            queryKey: QUERY_KEYS.fleet.detail(unitId),
+            queryKey: QUERY_KEYS.fleet.detail(carId),
           });
         }
 
-        // Also invalidate the detailed view if it was updated
-        // (Uses the base key to wipe all cached detail views)
+        // Wipe all cached detail views globally
         queryClient.invalidateQueries({ queryKey: ["car-details"] });
       } else {
         toast.error(data.message);
@@ -96,19 +107,32 @@ export const useUnits = (unitId?: string) => {
     },
   });
 
-  // delete mutation
+  // --- DELETE MUTATION ---
   const deleteUnitMutation = useMutation({
     mutationFn: deleteUnit,
-    onSuccess: (data) => {
+    // Note: variables is usually just the ID string for delete mutations
+    onSuccess: (data, variables) => {
       if (data.success) {
         toast.success(data.message);
-        queryClient.invalidateQueries({ queryKey: QUERY_KEYS.fleet.all }); // <-- UPDATED
+
+        // 1. Broadly invalidate ALL admin-units queries
+        queryClient.invalidateQueries({ queryKey: ["admin-units"] });
+
+        // Invalidate the legacy fleet list
+        queryClient.invalidateQueries({ queryKey: QUERY_KEYS.fleet.all });
+
+        // 2. Wipe the specific unit from cache to prevent ghost data
+        const carId =
+          typeof variables === "string" ? variables : (variables as any).car_id;
+        if (carId) {
+          queryClient.invalidateQueries({ queryKey: ["unit", carId] });
+        }
       } else {
         toast.error(data.message);
       }
     },
     onError: (err) => {
-      toast.error("Failed to delete unit " + err.message);
+      toast.error("Failed to delete unit: " + err.message);
     },
   });
 
@@ -138,3 +162,31 @@ export const useCarDetails = (carId: string) => {
     enabled: !!carId,
   });
 };
+
+export function useUnitsAdmin(filters: {
+  search: string;
+  type: string;
+  ownerId: string;
+}) {
+  const query = useInfiniteQuery({
+    queryKey: ["admin-units", filters],
+    queryFn: async ({ pageParam = 1 }) => {
+      // Call the Server Action directly!
+      return await getInfiniteUnits({
+        pageParam,
+        limit: 12,
+        search: filters.search,
+        type: filters.type,
+        ownerId: filters.ownerId,
+      });
+    },
+    initialPageParam: 1,
+    getNextPageParam: (lastPage) => lastPage.nextCursor,
+  });
+
+  return {
+    ...query,
+    units: query.data?.pages.flatMap((page) => page.data) || [],
+    isUnitsLoading: query.isLoading,
+  };
+}

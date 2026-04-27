@@ -77,6 +77,8 @@ export default function UnitsCard({
         <Image
           src={primaryImage}
           alt={`${unit.brand} ${unit.model}`}
+          width={600}
+          height={400}
           className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105 opacity-90 group-hover:opacity-100"
         />
 
@@ -94,18 +96,32 @@ export default function UnitsCard({
         </div>
 
         {/* Bottom Gradient Overlay: Plate & Price */}
-        <div className="absolute bottom-0 left-0 right-0 h-14 bg-gradient-to-t from-black/90 via-black/40 to-transparent flex items-end p-2 z-10">
-          <div className="flex justify-between items-center w-full">
-            <span className="text-[10px] font-mono font-bold text-white bg-black/50 px-1.5 py-0.5 rounded border border-white/10 backdrop-blur-md shadow-sm">
+        <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-black/90 via-black/50 to-transparent flex items-end p-2 z-10">
+          <div className="flex justify-between items-end w-full">
+            <span className="text-[10px] font-mono font-bold text-white bg-black/50 px-1.5 py-0.5 rounded border border-white/10 backdrop-blur-md shadow-sm mb-1">
               {unit.plate_number}
             </span>
-            <div className="flex items-baseline text-white drop-shadow-md">
-              <span className="text-sm font-black leading-none">
-                ₱{unit.rental_rate_per_day?.toLocaleString()}
-              </span>
-              <span className="text-[9px] font-medium opacity-80 ml-0.5">
-                /day
-              </span>
+
+            {/* RATES COLUMN */}
+            <div className="flex flex-col items-end text-white drop-shadow-md">
+              <div className="flex items-baseline">
+                <span className="text-sm font-black leading-none">
+                  ₱{unit.rental_rate_per_day?.toLocaleString()}
+                </span>
+                <span className="text-[9px] font-medium opacity-80 ml-0.5">
+                  /24h
+                </span>
+              </div>
+              {unit.rental_rate_per_12h && unit.rental_rate_per_12h > 0 && (
+                <div className="flex items-baseline mt-0.5 text-white/80">
+                  <span className="text-xs font-bold leading-none">
+                    ₱{unit.rental_rate_per_12h?.toLocaleString()}
+                  </span>
+                  <span className="text-[8px] font-medium opacity-80 ml-0.5">
+                    /12h
+                  </span>
+                </div>
+              )}
             </div>
           </div>
         </div>

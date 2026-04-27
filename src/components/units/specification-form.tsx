@@ -7,9 +7,9 @@ import {
   carSpecificationSchema,
   TRANSMISSION_TYPES,
   FUEL_TYPES,
-  BODY_TYPES,
 } from "@/lib/schemas/car";
 import { useFleetSettings } from "../../../hooks/use-fleetSettings";
+import { useBookingSettings } from "../../../hooks/use-settings";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -45,9 +45,14 @@ interface Props {
 }
 
 export function SpecificationForm({ initialData, onClose, onSuccess }: Props) {
-  const { saveSpecification } = useFleetSettings();
+  const { saveSpecification, isSavingSpecification } = useFleetSettings(); // <-- NEW: Destructure isSaving
+  const { data: settingsData } = useBookingSettings();
 
-  const form = useForm({
+  // Get active body types from settings
+  const activeBodyTypes =
+    settingsData?.vehicleTypes?.filter((vt: any) => vt.isActive) || [];
+
+  const form = useForm<SpecificationFormValues>({
     resolver: zodResolver(carSpecificationSchema),
     defaultValues: {
       spec_id: initialData?.spec_id,
@@ -58,8 +63,7 @@ export function SpecificationForm({ initialData, onClose, onSuccess }: Props) {
       body_type: initialData?.body_type || "",
       passenger_capacity: initialData?.passenger_capacity ?? 5,
       luggage_capacity: initialData?.luggage_capacity ?? 2,
-      buffer_hours: initialData?.buffer_hours ?? 12,
-      is_archived: false,
+      is_archived: initialData?.is_archived ?? false,
     },
   });
 
@@ -82,6 +86,7 @@ export function SpecificationForm({ initialData, onClose, onSuccess }: Props) {
         <Button
           variant="ghost"
           size="icon"
+          disabled={isSavingSpecification}
           className="h-7 w-7 rounded-md text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
           onClick={onClose}
           type="button"
@@ -120,6 +125,7 @@ export function SpecificationForm({ initialData, onClose, onSuccess }: Props) {
                     </FormLabel>
                     <FormControl>
                       <Input
+                        disabled={isSavingSpecification}
                         placeholder="e.g. Toyota Vios 2023 - Base"
                         className="h-8 text-[11px] font-medium bg-secondary border-border text-foreground focus-visible:ring-primary rounded-lg shadow-none transition-colors"
                         {...field}
@@ -153,20 +159,21 @@ export function SpecificationForm({ initialData, onClose, onSuccess }: Props) {
                       <Select
                         onValueChange={field.onChange}
                         value={field.value ?? ""}
+                        disabled={isSavingSpecification}
                       >
                         <FormControl>
-                          <SelectTrigger className="h-8 text-[11px] font-medium bg-secondary border-border text-foreground focus-visible:ring-primary rounded-lg shadow-none">
+                          <SelectTrigger className="h-8 w-full text-[11px] font-medium bg-secondary border-border text-foreground focus-visible:ring-primary rounded-lg shadow-none">
                             <SelectValue placeholder="Select type" />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent className="rounded-lg border-border bg-popover">
-                          {BODY_TYPES.map((opt) => (
+                          {activeBodyTypes.map((opt: any) => (
                             <SelectItem
-                              key={opt}
-                              value={opt}
+                              key={opt.id}
+                              value={opt.label}
                               className="text-[11px]"
                             >
-                              {opt}
+                              {opt.label}
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -187,9 +194,10 @@ export function SpecificationForm({ initialData, onClose, onSuccess }: Props) {
                       <Select
                         onValueChange={field.onChange}
                         value={field.value ?? ""}
+                        disabled={isSavingSpecification}
                       >
                         <FormControl>
-                          <SelectTrigger className="h-8 text-[11px] font-medium bg-secondary border-border text-foreground focus-visible:ring-primary rounded-lg shadow-none">
+                          <SelectTrigger className="h-8 w-full text-[11px] font-medium bg-secondary border-border text-foreground focus-visible:ring-primary rounded-lg shadow-none">
                             <SelectValue placeholder="Select trans" />
                           </SelectTrigger>
                         </FormControl>
@@ -223,9 +231,10 @@ export function SpecificationForm({ initialData, onClose, onSuccess }: Props) {
                       <Select
                         onValueChange={field.onChange}
                         value={field.value ?? ""}
+                        disabled={isSavingSpecification}
                       >
                         <FormControl>
-                          <SelectTrigger className="h-8 text-[11px] font-medium bg-secondary border-border text-foreground focus-visible:ring-primary rounded-lg shadow-none">
+                          <SelectTrigger className="h-8 w-full text-[11px] font-medium bg-secondary border-border text-foreground focus-visible:ring-primary rounded-lg shadow-none">
                             <SelectValue placeholder="Select fuel" />
                           </SelectTrigger>
                         </FormControl>
@@ -256,6 +265,7 @@ export function SpecificationForm({ initialData, onClose, onSuccess }: Props) {
                       </FormLabel>
                       <FormControl>
                         <Input
+                          disabled={isSavingSpecification}
                           placeholder="e.g. 1.3L 4-Cylinder"
                           className="h-8 text-[11px] font-medium bg-secondary border-border text-foreground focus-visible:ring-primary rounded-lg shadow-none transition-colors"
                           {...field}
@@ -277,7 +287,7 @@ export function SpecificationForm({ initialData, onClose, onSuccess }: Props) {
                   Capacities & Logistics
                 </h4>
               </div>
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-2 gap-3">
                 <FormField
                   control={form.control}
                   name="passenger_capacity"
@@ -289,12 +299,16 @@ export function SpecificationForm({ initialData, onClose, onSuccess }: Props) {
                       <FormControl>
                         <Input
                           type="number"
+                          disabled={isSavingSpecification}
                           className="h-8 text-[11px] font-medium bg-secondary border-border text-foreground focus-visible:ring-primary rounded-lg shadow-none transition-colors"
                           {...field}
-                          value={(field.value as string) ?? ""}
-                          onChange={(e) =>
-                            field.onChange(e.target.valueAsNumber)
-                          }
+                          value={field.value === undefined ? "" : field.value}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            field.onChange(
+                              val === "" ? undefined : Number(val),
+                            );
+                          }}
                         />
                       </FormControl>
                       <FormMessage className="text-[9px]" />
@@ -313,36 +327,16 @@ export function SpecificationForm({ initialData, onClose, onSuccess }: Props) {
                       <FormControl>
                         <Input
                           type="number"
+                          disabled={isSavingSpecification}
                           className="h-8 text-[11px] font-medium bg-secondary border-border text-foreground focus-visible:ring-primary rounded-lg shadow-none transition-colors"
                           {...field}
-                          value={(field.value as string) ?? ""}
-                          onChange={(e) =>
-                            field.onChange(e.target.valueAsNumber)
-                          }
-                        />
-                      </FormControl>
-                      <FormMessage className="text-[9px]" />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="buffer_hours"
-                  render={({ field }) => (
-                    <FormItem className="space-y-1">
-                      <FormLabel className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">
-                        Buffer (Hrs)
-                      </FormLabel>
-                      <FormControl>
-                        <Input
-                          type="number"
-                          className="h-8 text-[11px] font-medium bg-secondary border-border text-foreground focus-visible:ring-primary rounded-lg shadow-none transition-colors"
-                          {...field}
-                          value={(field.value as string) ?? ""}
-                          onChange={(e) =>
-                            field.onChange(e.target.valueAsNumber)
-                          }
+                          value={field.value === undefined ? "" : field.value}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            field.onChange(
+                              val === "" ? undefined : Number(val),
+                            );
+                          }}
                         />
                       </FormControl>
                       <FormMessage className="text-[9px]" />
@@ -358,6 +352,7 @@ export function SpecificationForm({ initialData, onClose, onSuccess }: Props) {
                 type="button"
                 variant="outline"
                 size="sm"
+                disabled={isSavingSpecification}
                 className="h-8 text-[11px] font-semibold bg-card border-border hover:bg-secondary text-foreground rounded-lg shadow-none transition-colors"
                 onClick={onClose}
               >
@@ -366,12 +361,12 @@ export function SpecificationForm({ initialData, onClose, onSuccess }: Props) {
               <Button
                 type="submit"
                 size="sm"
+                disabled={isSavingSpecification}
                 className="h-8 text-[11px] font-bold uppercase tracking-widest bg-primary hover:opacity-90 text-primary-foreground rounded-lg shadow-sm transition-opacity"
-                disabled={form.formState.isSubmitting}
               >
-                {form.formState.isSubmitting ? (
+                {isSavingSpecification ? (
                   <>
-                    <Loader2 className="w-3.5 h-3.5 mr-2 animate-spin" />
+                    <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
                     Saving...
                   </>
                 ) : (

@@ -19,6 +19,7 @@ import { cn } from "@/lib/utils";
 import { useCarDetails } from "../../../../../hooks/use-units";
 import { UnitsForm } from "@/components/units/units-form";
 import Image from "next/image";
+
 // --- DUMMY ACTIVITY LOGS (Keep for now since car_logs table query isn't built yet) ---
 const dummyActivityLogs = [
   {
@@ -84,11 +85,13 @@ export default function AdminCarDetailsPage() {
       year: details.year,
       color: details.color,
       rental_rate_per_day: details.rental_rate_per_day,
+      rental_rate_per_12h: details.rental_rate_per_12h || 0, // <-- ADDED
+      default_buffer_hours: details.default_buffer_hours || 12, // <-- ADDED
       availability_status: details.status,
-      spec_id: details.spec_id, // Now this will successfully map!
-      car_owner_id: details.owner.id,
-      features: details.features || [], // The RPC now returns the objects we need
-      images: details.images || [], // The RPC now returns the objects we need
+      spec_id: details.spec_id,
+      car_owner_id: details.owner?.id, // Added optional chaining for safety
+      features: details.features || [],
+      images: details.images || [],
       vin: details.vin || "",
       current_mileage: details.current_mileage || 0,
       is_archived: false,
@@ -188,6 +191,8 @@ export default function AdminCarDetailsPage() {
                         `https://ui-avatars.com/api/?name=${carDetails.owner.name}&background=random`
                       }
                       alt="Owner"
+                      width={32}
+                      height={32}
                       className="w-8 h-8 rounded-full border-2 border-border/50 object-cover"
                     />
                     <div>
@@ -325,6 +330,8 @@ export default function AdminCarDetailsPage() {
                     <Image
                       src={activeImage}
                       alt="Car"
+                      width={800}
+                      height={600}
                       className="w-full h-full object-cover transition-opacity duration-300"
                     />
                   ) : (
@@ -368,6 +375,8 @@ export default function AdminCarDetailsPage() {
                           <Image
                             src={imgSrc}
                             alt={`Thumb ${idx}`}
+                            width={32}
+                            height={32}
                             className="w-full h-full object-cover"
                           />
                         </button>

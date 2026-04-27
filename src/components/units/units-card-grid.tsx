@@ -1,10 +1,10 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { Input } from "../ui/input";
 import { Button } from "../ui/button";
 import {
   Search,
-  Filter,
   Download,
   LayoutList,
   LayoutGrid,
@@ -12,17 +12,16 @@ import {
   Loader2,
   AlertTriangle,
   RefreshCw,
-  ClipboardList,
   Car,
   Settings,
 } from "lucide-react";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -34,38 +33,69 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { FleetSettingsDialog } from "./settings-dialog";
-import { useState } from "react";
 import UnitsCard from "./units-card";
-import { useUnits } from "../../../hooks/use-units";
+import { useUnitsAdmin, useUnits } from "../../../hooks/use-units";
 import { CompleteCarType } from "@/lib/schemas/car";
 import { UnitsForm } from "./units-form";
 import UnitsTableList from "./units-table-list";
 import { cn } from "@/lib/utils";
 
+// --- HOOKS ---
+import { useInView } from "react-intersection-observer";
+import { useDebounce } from "../../../hooks/use-debounce";
+import { useFleetPartners } from "../../../hooks/use-fleetPartners";
+import { useBookingSettings } from "../../../hooks/use-settings";
+
 export default function UnitsCardGrid() {
+  const { ref, inView } = useInView();
+
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isAddUnitOpen, setIsAddUnitOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
   const [unitToDelete, setUnitToDelete] = useState<CompleteCarType | null>(
     null,
   );
-
   const [editingUnit, setEditingUnit] = useState<CompleteCarType | null>(null);
   const [isEditOpen, setIsEditOpen] = useState(false);
-
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
 
-  const { units, isUnitsLoading, deleteUnit, isDeleting } = useUnits();
+  // --- FILTER STATES ---
+  const [searchQuery, setSearchQuery] = useState("");
+  const [typeFilter, setTypeFilter] = useState("All");
+  const [ownerFilter, setOwnerFilter] = useState("All");
 
-  const filteredUnits = units.filter((unit) => {
-    const query = searchQuery.toLowerCase();
-    return (
-      unit.plate_number.toLowerCase().includes(query) ||
-      unit.brand.toLowerCase().includes(query) ||
-      unit.model.toLowerCase().includes(query) ||
-      unit.color.toLowerCase().includes(query)
-    );
+  const debouncedSearch = useDebounce(searchQuery, 500);
+
+  // --- DATA FETCHING ---
+  const { data: fleetPartners } = useFleetPartners();
+
+  // NEW: Fetch dynamic vehicle types
+  const { data: settingsData } = useBookingSettings();
+  // Ensure we only show active vehicle types
+  const activeVehicleTypes =
+    settingsData?.vehicleTypes?.filter((vt: any) => vt.isActive) || [];
+
+  // Pass the filters into your updated infinite hook
+  const {
+    units,
+    isUnitsLoading,
+
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useUnitsAdmin({
+    search: debouncedSearch,
+    type: typeFilter,
+    ownerId: ownerFilter,
   });
+
+  const { deleteUnit, isDeleting } = useUnits();
+
+  // Trigger next page load when sentinel is in view
+  useEffect(() => {
+    if (inView && hasNextPage && !isFetchingNextPage) {
+      fetchNextPage();
+    }
+  }, [inView, hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   const handleEdit = (unit: CompleteCarType) => {
     setEditingUnit(unit);
@@ -88,47 +118,72 @@ export default function UnitsCardGrid() {
   return (
     <div className="flex flex-col h-full bg-background text-foreground font-sans overflow-hidden transition-colors duration-300">
       {/* TOOLBAR HEADER */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between px-4 py-3 md:px-6 md:py-4 shrink-0 gap-4 border-b border-border bg-card/50">
-        {/* Left Side: Global Identity / Search */}
-        <div className="relative flex items-center">
-          <Search className="absolute left-2.5 h-3.5 w-3.5 text-muted-foreground" />
-          <Input
-            placeholder="Search plate, brand..."
-            className="pl-8 h-8 w-[200px] sm:w-[250px] text-[11px] font-medium bg-secondary border-border text-foreground focus-visible:ring-1 focus-visible:ring-primary focus-visible:bg-background rounded-md shadow-none transition-colors"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
+      <div className="flex flex-col xl:flex-row xl:items-center justify-between px-4 py-3 md:px-6 md:py-4 shrink-0 gap-4 border-b border-border bg-card/50">
+        {/* Left Side: Global Identity / Search & Filters */}
+        <div className="flex flex-wrap items-center gap-2 flex-1">
+          <div className="relative flex items-center">
+            <Search className="absolute left-2.5 h-3.5 w-3.5 text-muted-foreground" />
+            <Input
+              placeholder="Search plate, brand, model..."
+              className="pl-8 h-8 w-full sm:w-[220px] text-[11px] font-medium bg-secondary border-border text-foreground focus-visible:ring-1 focus-visible:ring-primary focus-visible:bg-background rounded-md shadow-none transition-colors"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
+
+          {/* DYNAMIC VEHICLE TYPE FILTER */}
+          <Select value={typeFilter} onValueChange={setTypeFilter}>
+            <SelectTrigger className="h-8 w-[130px] text-[11px] font-medium bg-secondary border-border shadow-none">
+              <SelectValue placeholder="Vehicle Type" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="All" className="text-[11px]">
+                All Types
+              </SelectItem>
+              {activeVehicleTypes.map((type: any) => (
+                <SelectItem
+                  key={type.id}
+                  value={type.label}
+                  className="text-[11px]"
+                >
+                  {type.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          {/* DYNAMIC OWNER FILTER */}
+          <Select value={ownerFilter} onValueChange={setOwnerFilter}>
+            <SelectTrigger className="h-8 w-[150px] text-[11px] font-medium bg-secondary border-border shadow-none">
+              <SelectValue placeholder="Owner" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="All" className="text-[11px]">
+                All Owners
+              </SelectItem>
+              {fleetPartners?.map((partner: any) => (
+                <SelectItem
+                  key={partner.car_owner_id}
+                  value={partner.car_owner_id}
+                  className="text-[11px]"
+                >
+                  {partner.business_name || partner.users?.full_name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
         {/* Right Side: Toolbar / Controls */}
         <div className="flex flex-wrap items-center gap-2">
-          {/* Filter Dropdown */}
-          <DropdownMenu modal={false}>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-8 text-[10px] font-semibold uppercase tracking-widest bg-card border-border text-muted-foreground hover:bg-secondary hover:text-foreground rounded-md shadow-none transition-colors"
-              >
-                <Filter className="h-3.5 w-3.5 mr-1.5" /> Filter
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent
-              align="end"
-              className="w-36 rounded-lg shadow-md border-border bg-popover"
-            >
-              <DropdownMenuGroup>
-                <DropdownMenuItem className="text-[11px] font-medium cursor-pointer text-popover-foreground focus:bg-secondary">
-                  <RefreshCw className="h-3.5 w-3.5 mr-2 text-muted-foreground" />{" "}
-                  Refresh
-                </DropdownMenuItem>
-                <DropdownMenuItem className="text-[11px] font-medium cursor-pointer text-popover-foreground focus:bg-secondary">
-                  <ClipboardList className="h-3.5 w-3.5 mr-2 text-muted-foreground" />{" "}
-                  Review Status
-                </DropdownMenuItem>
-              </DropdownMenuGroup>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <Button
+            variant="outline"
+            size="icon"
+            className="h-8 w-8 bg-card border-border text-muted-foreground hover:text-foreground hover:bg-secondary rounded-md shadow-none transition-colors"
+            title="Export Fleet Data"
+          >
+            <RefreshCw className="h-3.5 w-3.5" />
+          </Button>
 
           <div className="h-5 w-px bg-border mx-1 hidden sm:block" />
 
@@ -206,15 +261,15 @@ export default function UnitsCardGrid() {
                 </span>
               </div>
             </div>
-          ) : filteredUnits.length === 0 ? (
+          ) : units.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-[400px] bg-card border border-dashed border-border rounded-xl shadow-sm transition-colors">
               <Car className="h-8 w-8 text-muted-foreground/50 mb-3" />
               <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest">
                 No units found.
               </p>
-              {searchQuery ? (
+              {searchQuery || typeFilter !== "All" || ownerFilter !== "All" ? (
                 <p className="text-[10px] text-muted-foreground/70 mt-1 font-medium">
-                  Try adjusting your search query.
+                  Try adjusting your search query or filters.
                 </p>
               ) : (
                 <Button
@@ -228,7 +283,7 @@ export default function UnitsCardGrid() {
             </div>
           ) : viewMode === "grid" ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-              {filteredUnits.map((unit) => (
+              {units.map((unit) => (
                 <UnitsCard
                   key={unit.car_id}
                   unit={unit}
@@ -239,11 +294,26 @@ export default function UnitsCardGrid() {
             </div>
           ) : (
             <UnitsTableList
-              units={filteredUnits}
+              units={units}
               onEdit={handleEdit}
               onRequestDelete={setUnitToDelete}
             />
           )}
+
+          {/* THE INVISIBLE TRIGGER ELEMENT FOR INFINITE SCROLL */}
+          <div
+            ref={ref}
+            className="w-full h-16 mt-6 flex items-center justify-center"
+          >
+            {isFetchingNextPage && (
+              <Loader2 className="w-6 h-6 animate-spin text-primary" />
+            )}
+            {!hasNextPage && units.length > 0 && (
+              <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
+                End of Inventory
+              </p>
+            )}
+          </div>
         </div>
       </div>
 

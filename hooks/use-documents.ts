@@ -159,6 +159,7 @@ export function useDocumentMutations() {
     queryClient.invalidateQueries({
       queryKey: QUERY_KEYS.bookings.detailsBase,
     });
+    queryClient.invalidateQueries({ queryKey: QUERY_KEYS.notifications.all });
   };
 
   const verifyDoc = useMutation({

@@ -50,13 +50,16 @@
 }
 
 :root {
-  --radius: 0.75rem; /* Slightly rounder default for the modern glass look */
+  --radius: 0.75rem;
 
   /* --- LIGHT MODE: Crisp Admin Slate --- */
-  --background: oklch(98% 0.005 250); /* bg-slate-50 */
+
+  /* 1. Darkened background slightly to create contrast with white cards */
+  --background: oklch(96% 0.01 250); /* ~bg-slate-100 */
   --foreground: oklch(16% 0.015 250); /* Deep slate text */
 
-  --card: oklch(100% 0 0); /* Pure white cards */
+  /* 2. Cards remain pure white, but now they will actually stand out */
+  --card: oklch(100% 0 0);
   --card-foreground: oklch(16% 0.015 250);
 
   --popover: oklch(100% 0 0);
@@ -64,35 +67,38 @@
 
   /* MC Ormoc Signature Teal (#64c5c3) */
   --primary: oklch(75% 0.11 195);
-  --primary-foreground: oklch(16% 0.015 250); /* Dark text on teal buttons */
+  --primary-foreground: oklch(16% 0.015 250);
 
-  --secondary: oklch(95% 0.01 250); /* bg-slate-100 */
+  /* 3. Darkened secondary/muted fills for better button/hover contrast */
+  --secondary: oklch(93% 0.015 250); /* ~bg-slate-200 */
   --secondary-foreground: oklch(20% 0.015 250);
 
-  --muted: oklch(95% 0.01 250);
-  --muted-foreground: oklch(55% 0.01 250); /* Slate-500 */
+  --muted: oklch(93% 0.015 250);
+  /* 4. Darkened muted text for better legibility against bright backgrounds */
+  --muted-foreground: oklch(45% 0.015 250); /* ~text-slate-600 */
 
-  --accent: oklch(95% 0.01 250);
+  --accent: oklch(93% 0.015 250);
   --accent-foreground: oklch(16% 0.015 250);
 
   --destructive: oklch(60% 0.18 25);
 
-  --border: oklch(92% 0.01 250); /* Slate-200 */
-  --input: oklch(92% 0.01 250);
+  /* 5. Darkened borders so inputs and dividers are actually visible */
+  --border: oklch(87% 0.015 250); /* ~border-slate-300 */
+  --input: oklch(87% 0.015 250);
 
   /* Teal Rings for active inputs */
   --ring: oklch(75% 0.11 195);
 
-  --sidebar: oklch(98% 0.005 250);
+  --sidebar: oklch(96% 0.01 250);
   --sidebar-foreground: oklch(16% 0.015 250);
   --sidebar-primary: oklch(75% 0.11 195);
   --sidebar-primary-foreground: oklch(16% 0.015 250);
-  --sidebar-accent: oklch(95% 0.01 250);
+  --sidebar-accent: oklch(93% 0.015 250);
   --sidebar-accent-foreground: oklch(16% 0.015 250);
-  --sidebar-border: oklch(92% 0.01 250);
+  --sidebar-border: oklch(87% 0.015 250);
   --sidebar-ring: oklch(75% 0.11 195);
 
-  --chart-1: oklch(75% 0.11 195); /* Teal */
+  --chart-1: oklch(75% 0.11 195);
   --chart-2: oklch(40% 0.02 260);
   --chart-3: oklch(55% 0.02 260);
   --chart-4: oklch(70% 0.02 260);

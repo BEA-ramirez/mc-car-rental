@@ -101,19 +101,18 @@ export async function saveSpecification(
   }
 
   const { data: resultData, error } = await query;
+
   if (error) {
     console.error("Database Error:", error.message);
+    // Throws the error so React Query catches it.
+    // The dead 'return' code has been removed.
     throw new Error(error.message || "Database error saving specification");
-    return {
-      success: false,
-      message: "Database error while saving specification",
-    };
   }
 
   if (!resultData) {
     throw new Error("Operation failed: No data returned (Check RLS policies).");
   }
-  //return spec_id for frontend to insert
+
   return {
     success: true,
     message: "Specification saved successfully.",
@@ -125,11 +124,18 @@ export async function deleteSpecification(
   specId: string,
 ): Promise<ActionResponse> {
   const supabase = await createClient();
+
   const { error } = await supabase
     .from("car_specifications")
     .update({ is_archived: true })
     .eq("spec_id", specId);
-  if (error)
-    return { success: false, message: "Failed to archive the specification." };
+
+  if (error) {
+    console.error("Database Error archiving spec:", error.message);
+    // FIXED: Now throws an error instead of returning success: false
+    // This ensures React Query triggers the onError block properly.
+    throw new Error(error.message || "Failed to archive the specification.");
+  }
+
   return { success: true, message: "Specification archived successfully." };
 }

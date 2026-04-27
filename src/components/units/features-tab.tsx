@@ -17,14 +17,20 @@ import {
 import { Label } from "@/components/ui/label";
 
 export default function FeaturesTab() {
-  const { features, saveFeature, deleteFeature, isFeaturesLoading } =
-    useFleetSettings();
+  const {
+    features,
+    saveFeature,
+    deleteFeature,
+    isFeaturesLoading,
+    isSavingFeature,
+    isDeletingFeature,
+  } = useFleetSettings();
 
-  // State for Adding
   const [newName, setNewName] = useState("");
   const [newDesc, setNewDesc] = useState("");
 
-  // State for Editing
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
   const [editingFeature, setEditingFeature] = useState<FeatureType | null>(
     null,
   );
@@ -61,8 +67,16 @@ export default function FeaturesTab() {
     setEditingFeature(null);
   };
 
+  const handleDelete = (id: string) => {
+    setDeletingId(id);
+    // Pass an onSettled callback to clear the loading state once it succeeds or fails
+    deleteFeature(id, {
+      onSettled: () => setDeletingId(null),
+    });
+  };
+
   return (
-    <div className="flex flex-col h-full min-h-0 gap-3 pb-2 transition-colors duration-300">
+    <div className="flex flex-col h-full min-h-0 gap-3  pb-2 transition-colors duration-300">
       {/* --- ADD NEW BAR --- */}
       <div className="bg-card border border-border p-3 rounded-xl shrink-0 shadow-sm transition-colors">
         <h4 className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-2 flex items-center gap-1.5">
@@ -73,6 +87,7 @@ export default function FeaturesTab() {
             placeholder="E.g., Apple CarPlay"
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
+            disabled={isSavingFeature}
             className="h-8 text-[11px] font-medium bg-secondary text-foreground flex-1 border-border focus-visible:ring-primary rounded-lg shadow-none transition-colors"
           />
           <Input
@@ -80,31 +95,27 @@ export default function FeaturesTab() {
             value={newDesc}
             onChange={(e) => setNewDesc(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleAdd()}
+            disabled={isSavingFeature}
             className="h-8 text-[11px] font-medium bg-secondary text-foreground flex-[1.5] border-border focus-visible:ring-primary rounded-lg shadow-none transition-colors"
           />
           <Button
             size="sm"
             onClick={handleAdd}
-            disabled={!newName.trim()}
+            disabled={!newName.trim() || isSavingFeature}
             className="h-8 text-[11px] font-bold uppercase tracking-widest bg-primary hover:opacity-90 text-primary-foreground w-full md:w-auto shrink-0 shadow-none rounded-lg transition-opacity"
           >
-            Add Feature
+            {/* Show loader only if we are saving AND the edit modal is closed */}
+            {isSavingFeature && !isEditOpen ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            ) : (
+              "Add Feature"
+            )}
           </Button>
         </div>
       </div>
 
       {/* --- LIST AREA --- */}
       <div className="flex flex-col flex-1 min-h-0 overflow-hidden border border-border rounded-xl bg-card shadow-sm transition-colors">
-        {/* Header - Stays pinned */}
-        <div className="px-4 py-2.5 border-b border-border bg-secondary/30 flex justify-between items-center shrink-0">
-          <span className="text-[10px] font-bold text-foreground uppercase tracking-widest">
-            Active Features
-          </span>
-          <span className="text-[9px] font-semibold text-muted-foreground bg-secondary border border-border px-2 py-0.5 rounded-md">
-            {features.length} Total
-          </span>
-        </div>
-
         {/* Scrollable Content */}
         <div className="flex-1 overflow-y-auto p-3 min-h-0 custom-scrollbar bg-background/50">
           {isFeaturesLoading ? (
@@ -151,6 +162,7 @@ export default function FeaturesTab() {
                     <Button
                       variant="ghost"
                       size="icon"
+                      disabled={isDeletingFeature}
                       className="h-6 w-6 rounded-md text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors"
                       onClick={() => openEditModal(feature)}
                       title="Edit Feature"
@@ -160,11 +172,16 @@ export default function FeaturesTab() {
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-6 w-6 rounded-md text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
-                      onClick={() => deleteFeature(feature.feature_id!)}
+                      disabled={isDeletingFeature}
+                      className="h-6 w-6 rounded-md text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors disabled:opacity-50"
+                      onClick={() => handleDelete(feature.feature_id!)}
                       title="Delete Feature"
                     >
-                      <Trash2 className="w-3 h-3" />
+                      {deletingId === feature.feature_id ? (
+                        <Loader2 className="w-3 h-3 animate-spin text-destructive" />
+                      ) : (
+                        <Trash2 className="w-3 h-3" />
+                      )}
                     </Button>
                   </div>
                 </div>
@@ -197,6 +214,7 @@ export default function FeaturesTab() {
                 </Label>
                 <Input
                   id="name"
+                  disabled={isSavingFeature}
                   className="h-8 text-[11px] font-medium bg-secondary text-foreground border-border focus-visible:ring-primary rounded-lg shadow-none"
                   value={editingFeature.name}
                   onChange={(e) =>
@@ -216,6 +234,7 @@ export default function FeaturesTab() {
                 </Label>
                 <Input
                   id="desc"
+                  disabled={isSavingFeature}
                   className="h-8 text-[11px] font-medium bg-secondary text-foreground border-border focus-visible:ring-primary rounded-lg shadow-none"
                   value={editingFeature.description || ""}
                   onChange={(e) =>
@@ -233,6 +252,7 @@ export default function FeaturesTab() {
             <Button
               variant="outline"
               size="sm"
+              disabled={isSavingFeature}
               className="h-8 text-[11px] font-semibold bg-card hover:bg-secondary text-foreground border-border rounded-lg shadow-none transition-colors"
               onClick={() => setIsEditOpen(false)}
             >
@@ -240,11 +260,21 @@ export default function FeaturesTab() {
             </Button>
             <Button
               size="sm"
+              disabled={isSavingFeature}
               className="h-8 text-[11px] font-bold uppercase tracking-widest bg-primary hover:opacity-90 text-primary-foreground rounded-lg shadow-sm transition-opacity"
               onClick={handleSaveEdit}
             >
-              <Save className="w-3.5 h-3.5 mr-1.5" />
-              Save Changes
+              {isSavingFeature ? (
+                <>
+                  <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <Save className="w-3.5 h-3.5 mr-1.5" />
+                  Save Changes
+                </>
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>

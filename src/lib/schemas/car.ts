@@ -18,7 +18,7 @@ export const featureSchema = z.object({
   feature_id: z.string().uuid().optional(),
   name: z.string().min(2, "Feature name is too short"),
   description: z.string().optional(),
-  is_archived: z.boolean().default(false),
+  is_archived: z.boolean().optional(), // <-- CHANGED from default(false)
   last_updated_at: z.string().datetime().optional().nullable(),
 });
 
@@ -26,7 +26,7 @@ export const carFeatureSchema = z.object({
   car_feature_id: z.string().uuid().optional(),
   car_id: z.string().uuid(),
   feature_id: z.string().uuid(),
-  is_archived: z.boolean().default(false),
+  is_archived: z.boolean().optional(), // <-- CHANGED from default(false)
 });
 
 // --- Car Specification ---
@@ -37,10 +37,9 @@ export const carSpecificationSchema = z.object({
   transmission: z.string().min(1, "Required"),
   fuel_type: z.string().min(1, "Required"),
   body_type: z.string().min(1, "Required"),
-  passenger_capacity: z.coerce.number().min(1).max(20),
-  luggage_capacity: z.coerce.number().min(0),
-  buffer_hours: z.coerce.number().min(0).default(12),
-  is_archived: z.boolean().default(false),
+  passenger_capacity: z.number().min(1).max(30),
+  luggage_capacity: z.number().min(0),
+  is_archived: z.boolean().optional(), // <-- CHANGED to optional()
 });
 
 // --- Car Images ---
@@ -49,8 +48,8 @@ export const carImageSchema = z.object({
   car_id: z.string().uuid().optional(),
   image_url: z.string().url(),
   storage_path: z.string().optional(),
-  is_primary: z.boolean().default(false),
-  is_archived: z.boolean().default(false),
+  is_primary: z.boolean().optional(), // <-- CHANGED from default(false)
+  is_archived: z.boolean().optional(), // <-- CHANGED from default(false)
 });
 
 // --- Main Car Schema ---
@@ -65,21 +64,22 @@ export const carSchema = z.object({
     .regex(/^[A-Z0-9\s-]+$/),
   brand: z.string().min(2),
   model: z.string().min(2),
-  year: z.coerce
+  year: z
     .number()
     .min(1990, "Year must be 1990 or later")
     .max(new Date().getFullYear() + 1, "Year cannot be in the far future"),
   color: z.string().min(2, "Color is required"),
   vin: z.string().max(17).optional().or(z.literal("")),
 
-  rental_rate_per_day: z.coerce.number().min(0, "Rate is required"),
   availability_status: z.string().min(1, "Required"),
-  current_mileage: z.coerce.number().min(0).optional(),
-  rental_rate_per_12h: z.number().min(0).default(0),
+  rental_rate_per_day: z.number().min(0, "Rate is required"),
+  rental_rate_per_12h: z.number().min(0).optional(), // <-- CHANGED from default(0)
+  current_mileage: z.number().min(0).optional(),
+  default_buffer_hours: z.number().min(0).optional(), // <-- CHANGED from default(12)
 
   created_at: z.string().datetime().optional(),
   last_updated_at: z.string().datetime().optional(),
-  is_archived: z.boolean().default(false),
+  is_archived: z.boolean().optional(), // <-- CHANGED from default(false)
 });
 
 export const completeCarSchema = carSchema.extend({

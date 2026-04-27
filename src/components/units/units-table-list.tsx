@@ -116,6 +116,8 @@ export default function UnitsTableList({
                         <Image
                           src={unit.images[0].image_url}
                           alt="car"
+                          width={32}
+                          height={32}
                           className="w-full h-full object-cover"
                         />
                       ) : (

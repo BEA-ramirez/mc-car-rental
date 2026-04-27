@@ -64,7 +64,8 @@ export async function saveUnit(data: CompleteCarType): Promise<ActionReponse> {
     return { success: false, message: parsed.error.issues[0].message };
   }
 
-  const { features, images, /*owner ,specifications,*/ car_id, ...carDetails } =
+  // Properly destructure owner and specifications out so they don't get passed to RPC
+  const { features, images, owner, specifications, car_id, ...carDetails } =
     parsed.data;
 
   try {
@@ -80,7 +81,7 @@ export async function saveUnit(data: CompleteCarType): Promise<ActionReponse> {
       p_vin: carDetails.vin || null,
       p_rental_rate_per_day: carDetails.rental_rate_per_day,
       p_rental_rate_per_12h: (carDetails as any).rental_rate_per_12h || 0,
-
+      p_default_buffer_hours: (carDetails as any).default_buffer_hours || 12, // <--- ADDED
       p_availability_status: carDetails.availability_status,
       p_current_mileage: carDetails.current_mileage || 0,
       p_features: features || [],
@@ -158,4 +159,80 @@ export async function getCarDetailsAction(carId: string) {
 
   // Parse the JSON string returned by the RPC function
   return data ? (typeof data === "string" ? JSON.parse(data) : data) : null;
+}
+
+interface FetchUnitsParams {
+  pageParam: number;
+  limit?: number;
+  search?: string;
+  type?: string;
+  ownerId?: string;
+}
+
+export async function getInfiniteUnits({
+  pageParam = 1,
+  limit = 12,
+  search = "",
+  type = "All",
+  ownerId = "All",
+}: FetchUnitsParams) {
+  const supabase = await createClient();
+
+  const from = (pageParam - 1) * limit;
+  const to = from + limit - 1;
+
+  let query = supabase
+    .from("cars")
+    .select(
+      `*, specifications:car_specifications!inner(*), images: car_images(*), car_features(features(*)), owner: car_owner!inner(car_owner_id, business_name, users(full_name))`,
+      { count: "exact" },
+    )
+    .eq("is_archived", false)
+    .order("created_at", { ascending: false })
+    .range(from, to);
+
+  // Apply Search
+  if (search) {
+    query = query.or(
+      `plate_number.ilike.%${search}%,brand.ilike.%${search}%,model.ilike.%${search}%`,
+    );
+  }
+
+  // Apply Type Filter
+  if (type !== "All") {
+    query = query.eq("specifications.body_type", type);
+  }
+
+  // Apply Owner Filter
+  if (ownerId !== "All") {
+    query = query.eq("car_owner_id", ownerId);
+  }
+
+  const { data: rawData, error, count } = await query;
+
+  if (error) throw new Error(error.message);
+
+  const formattedData = (rawData || []).map((row: any) => {
+    const cleanFeatures = row.car_features.map((cf: any) => cf.features) || [];
+    const cleanOwner = {
+      car_owner_id: row.owner?.car_owner_id,
+      business_name: row.owner?.business_name || "Unknown Business",
+      full_name: row.owner?.users?.full_name || "Unknown Owner",
+    };
+
+    return {
+      ...row,
+      specifications: row.specifications || null,
+      images: row.images || [],
+      features: cleanFeatures,
+      owner: cleanOwner,
+    };
+  });
+
+  const hasNextPage = count ? from + limit < count : false;
+
+  return {
+    data: formattedData,
+    nextCursor: hasNextPage ? pageParam + 1 : null,
+  };
 }

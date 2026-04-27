@@ -69,6 +69,7 @@ export const useBookings = () => {
         queryKey: QUERY_KEYS.bookings.details(id),
       });
     }
+    queryClient.invalidateQueries({ queryKey: QUERY_KEYS.notifications.all });
 
     // 2. Sync Car Details (Because active bookings are listed inside the car profile)
     queryClient.invalidateQueries({ queryKey: QUERY_KEYS.fleet.detailBase });

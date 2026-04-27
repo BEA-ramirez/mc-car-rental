@@ -7,7 +7,7 @@ import {
   deleteSpecification,
 } from "@/actions/units.ts/settings";
 import { FeatureType, CarSpecificationType } from "@/lib/schemas/car";
-import { QUERY_KEYS } from "@/lib/query-keys"; // <-- NEW IMPORT
+import { QUERY_KEYS } from "@/lib/query-keys";
 
 const fetchFeatures = async (): Promise<FeatureType[]> => {
   const response = await fetch("/api/features");
@@ -27,19 +27,18 @@ export const useFleetSettings = () => {
   const queryClient = useQueryClient();
 
   const featuresQuery = useQuery({
-    queryKey: QUERY_KEYS.fleet.features(), // <-- UPDATED
+    queryKey: QUERY_KEYS.fleet.features(),
     queryFn: fetchFeatures,
     staleTime: 5 * 60 * 1000,
   });
 
   const specificationsQuery = useQuery({
-    queryKey: QUERY_KEYS.fleet.specifications(), // <-- UPDATED
+    queryKey: QUERY_KEYS.fleet.specifications(),
     queryFn: fetchSpecifications,
     staleTime: 5 * 60 * 1000,
   });
 
   // --- THE RIPPLE INVALIDATORS ---
-  // When a setting changes, update the settings list AND refresh the cars that use them!
   const invalidateFeatureRipples = () => {
     queryClient.invalidateQueries({ queryKey: QUERY_KEYS.fleet.features() });
     queryClient.invalidateQueries({ queryKey: QUERY_KEYS.fleet.all });
@@ -93,7 +92,9 @@ export const useFleetSettings = () => {
       toast.success("Specification deleted");
       invalidateSpecificationRipples();
     },
-    onError: (error: Error) => toast.error(error.message),
+    onError: (error: Error) => {
+      toast.error(error.message || "Failed to delete specification");
+    },
   });
 
   return {
@@ -106,5 +107,11 @@ export const useFleetSettings = () => {
     saveSpecification: specificationMutation.mutateAsync,
     deleteFeature: deleteFeatureMutation.mutate,
     deleteSpecification: deleteSpecificationMutation.mutate,
+
+    // NEW: Expose the isPending states
+    isSavingFeature: featureMutation.isPending,
+    isSavingSpecification: specificationMutation.isPending,
+    isDeletingFeature: deleteFeatureMutation.isPending,
+    isDeletingSpecification: deleteSpecificationMutation.isPending,
   };
 };

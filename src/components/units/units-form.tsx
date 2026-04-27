@@ -46,6 +46,7 @@ import {
   Tag,
   Briefcase,
   Image as ImageIcon,
+  X,
 } from "lucide-react";
 import {
   Select,
@@ -101,7 +102,7 @@ export function UnitsForm({ open, onOpenChange, initialData }: UnitsFormProp) {
       },
     });
 
-  const form = useForm({
+  const form = useForm<CompleteCarType>({
     resolver: zodResolver(completeCarSchema),
     defaultValues: {
       car_id: undefined,
@@ -111,8 +112,9 @@ export function UnitsForm({ open, onOpenChange, initialData }: UnitsFormProp) {
       year: new Date().getFullYear(),
       color: "",
       rental_rate_per_day: 0,
-      rental_rate_per_12h: 0, // <--- ADDED DEFAULT
-      availability_status: "Available",
+      rental_rate_per_12h: 0,
+      default_buffer_hours: 3,
+      availability_status: "AVAILABLE",
       spec_id: "",
       car_owner_id: "",
       specifications: null,
@@ -136,8 +138,9 @@ export function UnitsForm({ open, onOpenChange, initialData }: UnitsFormProp) {
           year: Number(initialData.year) || new Date().getFullYear(),
           color: initialData.color || "",
           rental_rate_per_day: Number(initialData.rental_rate_per_day) || 0,
-          rental_rate_per_12h: Number(initialData.rental_rate_per_12h) || 0, // <--- ADDED MAPPING
-          availability_status: initialData.availability_status || "Available",
+          rental_rate_per_12h: Number(initialData.rental_rate_per_12h) || 0,
+          default_buffer_hours: Number(initialData.default_buffer_hours) || 3,
+          availability_status: initialData.availability_status || "AVAILABLE",
           spec_id: initialData.spec_id || "",
           car_owner_id: initialData.car_owner_id || "",
           features: initialData.features || [],
@@ -155,8 +158,9 @@ export function UnitsForm({ open, onOpenChange, initialData }: UnitsFormProp) {
           year: new Date().getFullYear(),
           color: "",
           rental_rate_per_day: 0,
-          rental_rate_per_12h: 0, // <--- ADDED MAPPING
-          availability_status: "Available",
+          rental_rate_per_12h: 0,
+          default_buffer_hours: 3,
+          availability_status: "AVAILABLE",
           spec_id: "",
           car_owner_id: "",
           specifications: null,
@@ -182,18 +186,32 @@ export function UnitsForm({ open, onOpenChange, initialData }: UnitsFormProp) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[950px] h-[85vh] flex flex-col p-0 gap-0 overflow-hidden rounded-xl bg-background shadow-2xl border-border transition-colors duration-300 [&>button.absolute]:hidden">
+      <DialogContent className="!max-w-5xl !w-[95vw] h-[85vh] flex flex-col p-0 gap-0 overflow-hidden rounded-2xl bg-background shadow-2xl border-border transition-colors duration-300 [&>button.absolute]:hidden">
         {/* HEADER */}
         <DialogHeader className="px-5 py-4 border-b border-border bg-card shrink-0 flex flex-row items-center justify-between transition-colors">
-          <div>
-            <DialogTitle className="text-sm font-bold text-foreground flex items-center gap-2 uppercase tracking-wider">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center border border-primary/20 shadow-sm transition-colors">
               <CarFront className="w-4 h-4 text-primary" />
-              {initialData ? "Edit Unit Details" : "Add New Unit"}
-            </DialogTitle>
-            <DialogDescription className="text-[11px] font-medium text-muted-foreground mt-1">
-              Configure the vehicle identity, specifications, and features.
-            </DialogDescription>
+            </div>
+            <div className="flex flex-col text-left">
+              <DialogTitle className="text-sm font-bold text-foreground tracking-tight leading-none mb-1.5 uppercase">
+                {initialData ? "Edit Unit Details" : "Add New Unit"}
+              </DialogTitle>
+              <DialogDescription className="text-[10px] font-medium text-muted-foreground leading-none m-0">
+                Configure the vehicle identity, specifications, and features.
+              </DialogDescription>
+            </div>
           </div>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            disabled={isSaving || isUploading} // Disable close button when busy
+            className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-secondary rounded-lg transition-colors shadow-none"
+            onClick={() => onOpenChange(false)}
+          >
+            <X className="w-4 h-4" />
+          </Button>
         </DialogHeader>
 
         <Form {...form}>
@@ -211,23 +229,23 @@ export function UnitsForm({ open, onOpenChange, initialData }: UnitsFormProp) {
               className="flex flex-col flex-1 min-h-0"
             >
               {/* TAB NAVIGATION */}
-              <div className="px-5 py-2.5 border-b border-border bg-card shrink-0 transition-colors">
-                <TabsList className="h-8 bg-secondary p-0.5 rounded-lg border border-border inline-flex">
+              <div className="px-4 py-2 border-b border-border bg-secondary/30 shrink-0 transition-colors">
+                <TabsList className="h-9 bg-background/50 p-1 flex w-full max-w-[400px] rounded-lg border border-border shadow-inner transition-colors">
                   <TabsTrigger
                     value="identity"
-                    className="h-6 text-[10px] font-semibold px-4 rounded-md data-[state=active]:bg-card data-[state=active]:shadow-sm data-[state=active]:text-foreground text-muted-foreground transition-all gap-1.5"
+                    className="flex-1 h-7 text-[10px] font-bold uppercase tracking-widest rounded-md data-[state=active]:bg-foreground data-[state=active]:shadow-sm data-[state=active]:text-background text-muted-foreground transition-all gap-1.5"
                   >
-                    <IdCard className="w-3.5 h-3.5" /> Identity & Operations
+                    <IdCard className="w-3.5 h-3.5" /> Identity & Ops
                   </TabsTrigger>
                   <TabsTrigger
                     value="config"
-                    className="h-6 text-[10px] font-semibold px-4 rounded-md data-[state=active]:bg-card data-[state=active]:shadow-sm data-[state=active]:text-foreground text-muted-foreground transition-all gap-1.5"
+                    className="flex-1 h-7 text-[10px] font-bold uppercase tracking-widest rounded-md data-[state=active]:bg-foreground data-[state=active]:shadow-sm data-[state=active]:text-background text-muted-foreground transition-all gap-1.5"
                   >
-                    <Settings2 className="w-3.5 h-3.5" /> Configuration
+                    <Settings2 className="w-3.5 h-3.5" /> Specs
                   </TabsTrigger>
                   <TabsTrigger
                     value="features"
-                    className="h-6 text-[10px] font-semibold px-4 rounded-md data-[state=active]:bg-card data-[state=active]:shadow-sm data-[state=active]:text-foreground text-muted-foreground transition-all gap-1.5"
+                    className="flex-1 h-7 text-[10px] font-bold uppercase tracking-widest rounded-md data-[state=active]:bg-foreground data-[state=active]:shadow-sm data-[state=active]:text-background text-muted-foreground transition-all gap-1.5"
                   >
                     <Sparkles className="w-3.5 h-3.5" /> Features
                     <span className="ml-1 bg-primary/10 text-primary text-[9px] px-1.5 py-0 rounded border border-primary/20 font-bold">
@@ -238,7 +256,7 @@ export function UnitsForm({ open, onOpenChange, initialData }: UnitsFormProp) {
               </div>
 
               {/* SCROLLABLE CONTENT */}
-              <div className="flex-1 overflow-y-auto p-4 md:p-5 bg-background custom-scrollbar">
+              <div className="flex-1 overflow-y-auto p-4 sm:pt-2 bg-background custom-scrollbar transition-colors">
                 {/* --- TAB 1: IDENTITY & PRICING --- */}
                 <TabsContent
                   value="identity"
@@ -248,27 +266,27 @@ export function UnitsForm({ open, onOpenChange, initialData }: UnitsFormProp) {
                     {/* LEFT COLUMN: INPUTS */}
                     <div className="lg:col-span-7 space-y-4">
                       {/* Section: Vehicle Identity */}
-                      <div className="p-4 bg-card border border-border rounded-xl space-y-3 shadow-sm">
-                        <div className="flex items-center gap-2 mb-2">
+                      <div className="p-4 bg-card border border-border rounded-xl space-y-4 shadow-sm">
+                        <div className="flex items-center gap-2 mb-1 border-b border-border pb-2.5">
                           <Tag className="w-3.5 h-3.5 text-primary" />
-                          <h3 className="text-[11px] font-bold text-foreground uppercase tracking-widest">
+                          <h3 className="text-[10px] font-bold text-foreground uppercase tracking-widest">
                             Vehicle Identity
                           </h3>
                         </div>
 
-                        <div className="grid grid-cols-2 gap-3">
+                        <div className="grid grid-cols-2 gap-4">
                           <FormField
                             control={form.control}
                             name="plate_number"
                             render={({ field }) => (
-                              <FormItem className="space-y-1">
+                              <FormItem className="space-y-1.5">
                                 <FormLabel className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">
                                   Plate Number
                                 </FormLabel>
                                 <FormControl>
                                   <Input
                                     placeholder="ABC-1234"
-                                    className="h-8 text-[11px] font-medium bg-secondary border-border text-foreground uppercase rounded-lg focus-visible:ring-primary shadow-none"
+                                    className="h-8 text-[11px] font-bold font-mono bg-secondary border-border text-foreground uppercase rounded-lg focus-visible:ring-primary shadow-none transition-colors"
                                     {...field}
                                     onChange={(e) =>
                                       field.onChange(
@@ -285,7 +303,7 @@ export function UnitsForm({ open, onOpenChange, initialData }: UnitsFormProp) {
                             control={form.control}
                             name="vin"
                             render={({ field }) => (
-                              <FormItem className="space-y-1">
+                              <FormItem className="space-y-1.5">
                                 <FormLabel className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">
                                   VIN (Serial)
                                 </FormLabel>
@@ -293,7 +311,7 @@ export function UnitsForm({ open, onOpenChange, initialData }: UnitsFormProp) {
                                   <Input
                                     placeholder="1HGCM82..."
                                     maxLength={17}
-                                    className="h-8 text-[11px] font-medium bg-secondary border-border text-foreground uppercase rounded-lg focus-visible:ring-primary shadow-none"
+                                    className="h-8 text-[11px] font-bold font-mono bg-secondary border-border text-foreground uppercase rounded-lg focus-visible:ring-primary shadow-none transition-colors"
                                     {...field}
                                     onChange={(e) =>
                                       field.onChange(
@@ -309,19 +327,19 @@ export function UnitsForm({ open, onOpenChange, initialData }: UnitsFormProp) {
                           />
                         </div>
 
-                        <div className="grid grid-cols-2 gap-3">
+                        <div className="grid grid-cols-2 gap-4">
                           <FormField
                             control={form.control}
                             name="brand"
                             render={({ field }) => (
-                              <FormItem className="space-y-1">
+                              <FormItem className="space-y-1.5">
                                 <FormLabel className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">
                                   Brand
                                 </FormLabel>
                                 <FormControl>
                                   <Input
                                     placeholder="Toyota"
-                                    className="h-8 text-[11px] font-medium bg-secondary border-border text-foreground rounded-lg focus-visible:ring-primary shadow-none"
+                                    className="h-8 text-[11px] font-semibold bg-secondary border-border text-foreground rounded-lg focus-visible:ring-primary shadow-none transition-colors"
                                     {...field}
                                   />
                                 </FormControl>
@@ -333,14 +351,14 @@ export function UnitsForm({ open, onOpenChange, initialData }: UnitsFormProp) {
                             control={form.control}
                             name="model"
                             render={({ field }) => (
-                              <FormItem className="space-y-1">
+                              <FormItem className="space-y-1.5">
                                 <FormLabel className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">
                                   Model
                                 </FormLabel>
                                 <FormControl>
                                   <Input
                                     placeholder="Fortuner"
-                                    className="h-8 text-[11px] font-medium bg-secondary border-border text-foreground rounded-lg focus-visible:ring-primary shadow-none"
+                                    className="h-8 text-[11px] font-semibold bg-secondary border-border text-foreground rounded-lg focus-visible:ring-primary shadow-none transition-colors"
                                     {...field}
                                   />
                                 </FormControl>
@@ -350,28 +368,31 @@ export function UnitsForm({ open, onOpenChange, initialData }: UnitsFormProp) {
                           />
                         </div>
 
-                        <div className="grid grid-cols-3 gap-3">
+                        <div className="grid grid-cols-3 gap-4">
                           <FormField
                             control={form.control}
                             name="year"
                             render={({ field }) => (
-                              <FormItem className="space-y-1">
+                              <FormItem className="space-y-1.5">
                                 <FormLabel className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">
                                   Year
                                 </FormLabel>
                                 <FormControl>
                                   <Input
                                     type="number"
-                                    className="h-8 text-[11px] font-medium bg-secondary border-border text-foreground rounded-lg focus-visible:ring-primary shadow-none"
+                                    className="h-8 text-[11px] font-semibold bg-secondary border-border text-foreground rounded-lg focus-visible:ring-primary shadow-none transition-colors"
                                     {...field}
+                                    value={
+                                      field.value === undefined
+                                        ? ""
+                                        : field.value
+                                    }
                                     onChange={(e) => {
-                                      const val = parseInt(e.target.value);
-                                      if (!isNaN(val))
-                                        form.setValue("year", val);
-                                      else if (e.target.value === "")
-                                        form.setValue("year", "" as any);
+                                      const val = e.target.value;
+                                      field.onChange(
+                                        val === "" ? undefined : Number(val),
+                                      );
                                     }}
-                                    value={(field.value as number) || ""}
                                   />
                                 </FormControl>
                                 <FormMessage className="text-[9px]" />
@@ -382,14 +403,14 @@ export function UnitsForm({ open, onOpenChange, initialData }: UnitsFormProp) {
                             control={form.control}
                             name="color"
                             render={({ field }) => (
-                              <FormItem className="space-y-1">
+                              <FormItem className="space-y-1.5">
                                 <FormLabel className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">
                                   Color
                                 </FormLabel>
                                 <FormControl>
                                   <Input
-                                    placeholder="Attitude Black"
-                                    className="h-8 text-[11px] font-medium bg-secondary border-border text-foreground rounded-lg focus-visible:ring-primary shadow-none"
+                                    placeholder="Black"
+                                    className="h-8 text-[11px] font-semibold bg-secondary border-border text-foreground rounded-lg focus-visible:ring-primary shadow-none transition-colors"
                                     {...field}
                                   />
                                 </FormControl>
@@ -401,7 +422,7 @@ export function UnitsForm({ open, onOpenChange, initialData }: UnitsFormProp) {
                             control={form.control}
                             name="current_mileage"
                             render={({ field }) => (
-                              <FormItem className="space-y-1">
+                              <FormItem className="space-y-1.5">
                                 <FormLabel className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">
                                   Mileage (km)
                                 </FormLabel>
@@ -409,19 +430,19 @@ export function UnitsForm({ open, onOpenChange, initialData }: UnitsFormProp) {
                                   <Input
                                     type="number"
                                     placeholder="0"
-                                    className="h-8 text-[11px] font-medium bg-secondary border-border text-foreground rounded-lg focus-visible:ring-primary shadow-none"
+                                    className="h-8 text-[11px] font-semibold font-mono bg-secondary border-border text-foreground rounded-lg focus-visible:ring-primary shadow-none transition-colors"
                                     {...field}
+                                    value={
+                                      field.value === undefined
+                                        ? ""
+                                        : field.value
+                                    }
                                     onChange={(e) => {
-                                      const val = parseInt(e.target.value);
-                                      if (!isNaN(val))
-                                        form.setValue("current_mileage", val);
-                                      else if (e.target.value === "")
-                                        form.setValue(
-                                          "current_mileage",
-                                          "" as any,
-                                        );
+                                      const val = e.target.value;
+                                      field.onChange(
+                                        val === "" ? undefined : Number(val),
+                                      );
                                     }}
-                                    value={(field.value as number) || ""}
                                   />
                                 </FormControl>
                                 <FormMessage className="text-[9px]" />
@@ -432,98 +453,20 @@ export function UnitsForm({ open, onOpenChange, initialData }: UnitsFormProp) {
                       </div>
 
                       {/* Section: Pricing & Operations */}
-                      <div className="p-4 bg-card border border-border rounded-xl space-y-3 shadow-sm">
-                        <div className="flex items-center gap-2 mb-2">
+                      <div className="p-4 bg-card border border-border rounded-xl space-y-4 shadow-sm">
+                        <div className="flex items-center gap-2 mb-1 border-b border-border pb-2.5">
                           <Briefcase className="w-3.5 h-3.5 text-primary" />
-                          <h3 className="text-[11px] font-bold text-foreground uppercase tracking-widest">
+                          <h3 className="text-[10px] font-bold text-foreground uppercase tracking-widest">
                             Operations & Pricing
                           </h3>
                         </div>
 
-                        {/* --- ADDED 12-HOUR RATE TO THE GRID --- */}
-                        <div className="grid grid-cols-2 gap-3">
-                          <FormField
-                            control={form.control}
-                            name="rental_rate_per_day"
-                            render={({ field }) => (
-                              <FormItem className="space-y-1">
-                                <FormLabel className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">
-                                  Daily Rate (₱)
-                                </FormLabel>
-                                <FormControl>
-                                  <Input
-                                    type="number"
-                                    placeholder="2500"
-                                    className="h-8 text-[11px] font-medium bg-secondary border-border text-foreground rounded-lg focus-visible:ring-primary shadow-none"
-                                    {...field}
-                                    onChange={(e) => {
-                                      const val = parseInt(e.target.value);
-                                      if (!isNaN(val))
-                                        form.setValue(
-                                          "rental_rate_per_day",
-                                          val,
-                                        );
-                                      else if (e.target.value === "")
-                                        form.setValue(
-                                          "rental_rate_per_day",
-                                          "" as any,
-                                        );
-                                    }}
-                                    value={(field.value as number) || ""}
-                                  />
-                                </FormControl>
-                                <FormMessage className="text-[9px]" />
-                              </FormItem>
-                            )}
-                          />
-
-                          {/* --- NEW 12-HOUR RATE FIELD --- */}
-                          <FormField
-                            control={form.control}
-                            name="rental_rate_per_12h"
-                            render={({ field }) => (
-                              <FormItem className="space-y-1">
-                                <FormLabel className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">
-                                  12-Hour Rate (₱){" "}
-                                  <span className="lowercase font-normal opacity-70">
-                                    (Optional)
-                                  </span>
-                                </FormLabel>
-                                <FormControl>
-                                  <Input
-                                    type="number"
-                                    placeholder="2000"
-                                    className="h-8 text-[11px] font-medium bg-secondary border-border text-foreground rounded-lg focus-visible:ring-primary shadow-none"
-                                    {...field}
-                                    onChange={(e) => {
-                                      const val = parseInt(e.target.value);
-                                      if (!isNaN(val))
-                                        form.setValue(
-                                          "rental_rate_per_12h",
-                                          val,
-                                        );
-                                      else if (e.target.value === "")
-                                        form.setValue(
-                                          "rental_rate_per_12h",
-                                          "" as any,
-                                        );
-                                    }}
-                                    value={(field.value as number) || ""}
-                                  />
-                                </FormControl>
-                                <FormMessage className="text-[9px]" />
-                              </FormItem>
-                            )}
-                          />
-                        </div>
-
-                        {/* Moved Status & Owner to their own row */}
-                        <div className="grid grid-cols-2 gap-3 mt-3">
+                        <div className="grid grid-cols-2 gap-4">
                           <FormField
                             control={form.control}
                             name="availability_status"
                             render={({ field }) => (
-                              <FormItem className="space-y-1">
+                              <FormItem className="space-y-1.5">
                                 <FormLabel className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">
                                   Status
                                 </FormLabel>
@@ -532,26 +475,26 @@ export function UnitsForm({ open, onOpenChange, initialData }: UnitsFormProp) {
                                   defaultValue={field.value}
                                 >
                                   <FormControl>
-                                    <SelectTrigger className="h-8 text-[11px] font-medium bg-secondary border-border text-foreground rounded-lg focus-visible:ring-primary shadow-none">
+                                    <SelectTrigger className="h-8 w-full text-[11px] font-semibold bg-secondary border-border text-foreground rounded-lg focus-visible:ring-primary shadow-none transition-colors">
                                       <SelectValue placeholder="Status" />
                                     </SelectTrigger>
                                   </FormControl>
-                                  <SelectContent className="rounded-lg border-border bg-popover">
+                                  <SelectContent className="rounded-lg border-border bg-popover shadow-md">
                                     <SelectItem
-                                      value="Available"
-                                      className="text-[11px]"
+                                      value="AVAILABLE"
+                                      className="text-[11px] font-semibold"
                                     >
                                       🟢 Available
                                     </SelectItem>
                                     <SelectItem
-                                      value="Rented"
-                                      className="text-[11px]"
+                                      value="IN USE"
+                                      className="text-[11px] font-semibold"
                                     >
                                       🔵 Rented
                                     </SelectItem>
                                     <SelectItem
-                                      value="Maintenance"
-                                      className="text-[11px]"
+                                      value="MAINTENANCE"
+                                      className="text-[11px] font-semibold"
                                     >
                                       🟠 Maintenance
                                     </SelectItem>
@@ -565,7 +508,7 @@ export function UnitsForm({ open, onOpenChange, initialData }: UnitsFormProp) {
                             control={form.control}
                             name="car_owner_id"
                             render={({ field }) => (
-                              <FormItem className="space-y-1">
+                              <FormItem className="space-y-1.5">
                                 <FormLabel className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">
                                   Owner / Partner
                                 </FormLabel>
@@ -574,17 +517,17 @@ export function UnitsForm({ open, onOpenChange, initialData }: UnitsFormProp) {
                                   defaultValue={field.value}
                                 >
                                   <FormControl>
-                                    <SelectTrigger className="h-8 text-[11px] font-medium bg-secondary border-border text-foreground rounded-lg focus-visible:ring-primary shadow-none">
+                                    <SelectTrigger className="h-8 w-full text-[11px] font-semibold bg-secondary border-border text-foreground rounded-lg focus-visible:ring-primary shadow-none transition-colors">
                                       <SelectValue placeholder="Assign fleet partner" />
                                     </SelectTrigger>
                                   </FormControl>
-                                  <SelectContent className="rounded-lg border-border bg-popover">
+                                  <SelectContent className="rounded-lg border-border bg-popover shadow-md">
                                     {fleetPartners?.map(
                                       (partner: FleetPartnerType) => (
                                         <SelectItem
                                           key={partner.car_owner_id}
                                           value={partner.car_owner_id}
-                                          className="text-[11px]"
+                                          className="text-[11px] font-semibold"
                                         >
                                           {partner.business_name ||
                                             partner.users.first_name}
@@ -598,22 +541,118 @@ export function UnitsForm({ open, onOpenChange, initialData }: UnitsFormProp) {
                             )}
                           />
                         </div>
+
+                        <div className="grid grid-cols-3 gap-4">
+                          <FormField
+                            control={form.control}
+                            name="rental_rate_per_day"
+                            render={({ field }) => (
+                              <FormItem className="space-y-1.5">
+                                <FormLabel className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">
+                                  Daily Rate (₱)
+                                </FormLabel>
+                                <FormControl>
+                                  <Input
+                                    type="number"
+                                    placeholder="2500"
+                                    className="h-8 text-[11px] font-bold font-mono bg-secondary border-border text-foreground rounded-lg focus-visible:ring-primary shadow-none transition-colors"
+                                    {...field}
+                                    value={
+                                      field.value === undefined
+                                        ? ""
+                                        : field.value
+                                    }
+                                    onChange={(e) => {
+                                      const val = e.target.value;
+                                      field.onChange(
+                                        val === "" ? undefined : Number(val),
+                                      );
+                                    }}
+                                  />
+                                </FormControl>
+                                <FormMessage className="text-[9px]" />
+                              </FormItem>
+                            )}
+                          />
+                          <FormField
+                            control={form.control}
+                            name="rental_rate_per_12h"
+                            render={({ field }) => (
+                              <FormItem className="space-y-1.5">
+                                <FormLabel className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">
+                                  12-Hr Rate (₱)
+                                </FormLabel>
+                                <FormControl>
+                                  <Input
+                                    type="number"
+                                    placeholder="1500"
+                                    className="h-8 text-[11px] font-bold font-mono bg-secondary border-border text-foreground rounded-lg focus-visible:ring-primary shadow-none transition-colors"
+                                    {...field}
+                                    value={
+                                      field.value === undefined
+                                        ? ""
+                                        : field.value
+                                    }
+                                    onChange={(e) => {
+                                      const val = e.target.value;
+                                      field.onChange(
+                                        val === "" ? undefined : Number(val),
+                                      );
+                                    }}
+                                  />
+                                </FormControl>
+                                <FormMessage className="text-[9px]" />
+                              </FormItem>
+                            )}
+                          />
+                          <FormField
+                            control={form.control}
+                            name="default_buffer_hours"
+                            render={({ field }) => (
+                              <FormItem className="space-y-1.5">
+                                <FormLabel className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">
+                                  Buffer (Hrs)
+                                </FormLabel>
+                                <FormControl>
+                                  <Input
+                                    type="number"
+                                    placeholder="12"
+                                    className="h-8 text-[11px] font-bold font-mono bg-secondary border-border text-foreground rounded-lg focus-visible:ring-primary shadow-none transition-colors"
+                                    {...field}
+                                    value={
+                                      field.value === undefined
+                                        ? ""
+                                        : field.value
+                                    }
+                                    onChange={(e) => {
+                                      const val = e.target.value;
+                                      field.onChange(
+                                        val === "" ? undefined : Number(val),
+                                      );
+                                    }}
+                                  />
+                                </FormControl>
+                                <FormMessage className="text-[9px]" />
+                              </FormItem>
+                            )}
+                          />
+                        </div>
                       </div>
                     </div>
 
                     {/* RIGHT COLUMN: IMAGES */}
                     <div className="lg:col-span-5 h-full">
                       <div className="p-4 bg-card border border-border rounded-xl h-full flex flex-col shadow-sm">
-                        <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center justify-between mb-4 border-b border-border pb-2.5">
                           <div className="flex items-center gap-2">
                             <ImageIcon className="w-3.5 h-3.5 text-primary" />
-                            <h3 className="text-[11px] font-bold text-foreground uppercase tracking-widest">
+                            <h3 className="text-[10px] font-bold text-foreground uppercase tracking-widest">
                               Media Gallery
                             </h3>
                           </div>
                           <Badge
                             variant="secondary"
-                            className="text-[9px] font-semibold text-muted-foreground bg-secondary border-border rounded"
+                            className="text-[9px] font-bold font-mono text-muted-foreground bg-secondary border border-border rounded shadow-none h-5 px-1.5"
                           >
                             {form.watch("images")?.length || 0} / 5
                           </Badge>
@@ -627,53 +666,64 @@ export function UnitsForm({ open, onOpenChange, initialData }: UnitsFormProp) {
                           accept="image/*"
                           multiple
                           onChange={handleFileSelect}
-                          disabled={isUploading}
+                          disabled={isUploading || isSaving}
                         />
                         <div
-                          className="border border-dashed border-border rounded-lg h-24 flex flex-col items-center justify-center bg-secondary/50 hover:bg-secondary cursor-pointer transition-colors shadow-sm mb-3"
+                          className={cn(
+                            "border border-dashed border-border rounded-xl h-24 flex flex-col items-center justify-center bg-secondary/50 hover:bg-secondary cursor-pointer transition-colors shadow-sm mb-4",
+                            (isUploading || isSaving) &&
+                              "opacity-50 cursor-not-allowed pointer-events-none",
+                          )}
                           onClick={triggerFileDialog}
                         >
-                          <UploadCloud className="h-5 w-5 text-muted-foreground mb-1.5" />
-                          <p className="text-[10px] text-muted-foreground font-semibold">
+                          {isUploading ? (
+                            <Loader2 className="h-5 w-5 text-primary mb-1.5 animate-spin" />
+                          ) : (
+                            <UploadCloud className="h-5 w-5 text-muted-foreground mb-1.5" />
+                          )}
+                          <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest">
                             {isUploading
-                              ? "Uploading..."
+                              ? "Uploading Images..."
                               : "Click to upload images"}
                           </p>
                         </div>
 
                         {/* Image List */}
-                        <div className="flex-1 overflow-y-auto w-full rounded-lg border border-border p-2 bg-secondary/30 min-h-[150px] custom-scrollbar">
-                          <div className="space-y-2">
+                        <div className="flex-1 overflow-y-auto w-full rounded-xl border border-border p-3 bg-secondary/30 max-h-[150px] custom-scrollbar">
+                          <div className="space-y-2.5">
                             {(form.watch("images") || []).map(
                               (img: any, index: number) => (
                                 <div
                                   key={index}
-                                  className="flex items-center gap-2 p-1.5 border border-border rounded-md bg-card shadow-sm group transition-colors hover:border-primary/50"
+                                  className="flex items-center gap-3 p-2 border border-border rounded-lg bg-card shadow-sm group transition-colors hover:border-primary/50"
                                 >
                                   <Image
                                     src={img.image_url}
                                     alt="Unit"
-                                    className="h-10 w-14 object-cover rounded shadow-sm border border-border"
+                                    width={64}
+                                    height={48}
+                                    className="h-12 w-16 object-cover rounded border border-border"
                                   />
                                   <div className="flex-1 min-w-0">
-                                    <p className="text-[10px] font-semibold text-foreground truncate">
+                                    <p className="text-[10px] font-bold text-foreground uppercase tracking-widest truncate">
                                       image_{index + 1}.jpg
                                     </p>
                                     {img.is_primary && (
                                       <Badge
                                         variant="secondary"
-                                        className="text-[8px] uppercase tracking-widest h-3.5 px-1 bg-primary/10 text-primary border-primary/20 mt-0.5 rounded"
+                                        className="text-[8px] uppercase tracking-widest h-4 px-1.5 bg-primary/10 text-primary border border-primary/20 mt-1 rounded shadow-none"
                                       >
                                         Primary
                                       </Badge>
                                     )}
                                   </div>
-                                  <div className="flex items-center gap-0.5">
+                                  <div className="flex items-center gap-1 shrink-0">
                                     <Button
                                       type="button"
                                       size="icon"
                                       variant="ghost"
-                                      className="h-6 w-6 text-muted-foreground hover:text-amber-500 hover:bg-amber-500/10 rounded transition-colors"
+                                      disabled={isUploading || isSaving}
+                                      className="h-7 w-7 text-muted-foreground hover:text-amber-500 hover:bg-amber-500/10 rounded transition-colors"
                                       title="Set Primary"
                                       onClick={() => {
                                         const updated = form
@@ -700,7 +750,8 @@ export function UnitsForm({ open, onOpenChange, initialData }: UnitsFormProp) {
                                       type="button"
                                       size="icon"
                                       variant="ghost"
-                                      className="h-6 w-6 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded transition-colors"
+                                      disabled={isUploading || isSaving}
+                                      className="h-7 w-7 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded transition-colors"
                                       onClick={() => {
                                         const filtered = form
                                           .getValues("images")
@@ -719,9 +770,12 @@ export function UnitsForm({ open, onOpenChange, initialData }: UnitsFormProp) {
                               ),
                             )}
                             {form.watch("images")?.length === 0 && (
-                              <p className="text-[10px] text-center text-muted-foreground/50 py-10 font-semibold italic">
-                                No images added yet.
-                              </p>
+                              <div className="flex flex-col items-center justify-center h-full py-10 opacity-50">
+                                <ImageIcon className="w-6 h-6 mb-2 text-muted-foreground" />
+                                <p className="text-[10px] text-center text-muted-foreground font-bold uppercase tracking-widest">
+                                  No images added
+                                </p>
+                              </div>
                             )}
                           </div>
                         </div>
@@ -738,13 +792,13 @@ export function UnitsForm({ open, onOpenChange, initialData }: UnitsFormProp) {
                   {form.formState.errors.spec_id && (
                     <Alert
                       variant="destructive"
-                      className="py-2 px-3 h-auto border-destructive/20 bg-destructive/10 text-destructive"
+                      className="py-2.5 px-3 h-auto border-destructive/20 bg-destructive/10 text-destructive"
                     >
                       <AlertCircle className="h-4 w-4" />
-                      <AlertTitle className="text-[11px] font-bold uppercase tracking-widest">
+                      <AlertTitle className="text-[10px] font-bold uppercase tracking-widest">
                         Selection Required
                       </AlertTitle>
-                      <AlertDescription className="text-[10px] font-medium">
+                      <AlertDescription className="text-[11px] font-medium mt-1">
                         Please select a vehicle configuration from the list
                         below.
                       </AlertDescription>
@@ -752,11 +806,12 @@ export function UnitsForm({ open, onOpenChange, initialData }: UnitsFormProp) {
                   )}
 
                   <div className="flex items-center gap-2">
-                    <div className="relative flex-1">
-                      <Search className="absolute left-2.5 top-2 h-3.5 w-3.5 text-muted-foreground" />
+                    <div className="relative w-full sm:w-[320px]">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                       <Input
                         placeholder="Search templates (e.g. 'Vios', 'Automatic')..."
-                        className="pl-8 h-8 text-[11px] font-medium bg-secondary border-border text-foreground focus-visible:ring-primary rounded-lg shadow-none"
+                        disabled={isSaving || isUploading}
+                        className="pl-9 h-9 text-[11px] font-medium bg-card border-border text-foreground focus-visible:ring-primary rounded-lg shadow-sm transition-colors"
                         onChange={(e) => setSpecSearch(e.target.value)}
                       />
                     </div>
@@ -764,8 +819,8 @@ export function UnitsForm({ open, onOpenChange, initialData }: UnitsFormProp) {
 
                   <div className="flex-1 overflow-y-auto pb-4 custom-scrollbar">
                     {loadingSpecs ? (
-                      <div className="flex justify-center p-8">
-                        <Loader2 className="animate-spin text-primary h-5 w-5" />
+                      <div className="flex justify-center items-center h-full min-h-[200px]">
+                        <Loader2 className="animate-spin text-primary h-6 w-6" />
                       </div>
                     ) : (
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -775,24 +830,27 @@ export function UnitsForm({ open, onOpenChange, initialData }: UnitsFormProp) {
                           return (
                             <div
                               key={spec.spec_id}
-                              onClick={() =>
+                              onClick={() => {
+                                if (isSaving || isUploading) return;
                                 form.setValue("spec_id", spec.spec_id!, {
                                   shouldDirty: true,
                                   shouldValidate: true,
-                                })
-                              }
+                                });
+                              }}
                               className={cn(
-                                "cursor-pointer rounded-xl p-3 transition-all flex flex-col gap-2.5 border",
+                                "cursor-pointer rounded-xl p-4 transition-all flex flex-col gap-3 border shadow-sm",
                                 isSelected
-                                  ? "border-primary bg-primary/5 ring-1 ring-primary shadow-sm"
-                                  : "bg-card border-border hover:border-primary/50",
+                                  ? "border-primary bg-primary/5 ring-1 ring-primary"
+                                  : "bg-card border-border hover:border-primary/50 hover:bg-secondary/40",
+                                (isSaving || isUploading) &&
+                                  "opacity-50 cursor-not-allowed pointer-events-none",
                               )}
                             >
                               <div className="flex justify-between items-start">
                                 <div>
                                   <h4
                                     className={cn(
-                                      "font-bold text-[11px] leading-tight",
+                                      "font-bold text-xs uppercase tracking-wider leading-tight",
                                       isSelected
                                         ? "text-primary"
                                         : "text-foreground",
@@ -800,7 +858,7 @@ export function UnitsForm({ open, onOpenChange, initialData }: UnitsFormProp) {
                                   >
                                     {spec.name}
                                   </h4>
-                                  <p className="text-[9px] font-medium text-muted-foreground mt-0.5">
+                                  <p className="text-[10px] font-medium text-muted-foreground mt-1">
                                     {spec.body_type} • {spec.engine_type}
                                   </p>
                                 </div>
@@ -808,22 +866,22 @@ export function UnitsForm({ open, onOpenChange, initialData }: UnitsFormProp) {
                                   <CheckCircle2 className="h-4 w-4 text-primary shrink-0" />
                                 )}
                               </div>
-                              <div className="flex gap-1.5 text-[10px] flex-wrap pt-2 border-t border-border">
+                              <div className="flex gap-2 text-[10px] flex-wrap pt-3 border-t border-border mt-1">
                                 <Badge
                                   variant="secondary"
-                                  className="text-[9px] h-4 px-1.5 bg-secondary border border-border text-foreground rounded"
+                                  className="text-[9px] font-bold uppercase tracking-widest h-5 px-2 bg-secondary border border-border text-foreground rounded shadow-none"
                                 >
                                   {spec.transmission}
                                 </Badge>
                                 <Badge
                                   variant="secondary"
-                                  className="text-[9px] h-4 px-1.5 bg-secondary border border-border text-foreground rounded"
+                                  className="text-[9px] font-bold uppercase tracking-widest h-5 px-2 bg-secondary border border-border text-foreground rounded shadow-none"
                                 >
                                   {spec.fuel_type}
                                 </Badge>
                                 <Badge
                                   variant="secondary"
-                                  className="text-[9px] h-4 px-1.5 bg-secondary border border-border text-foreground rounded"
+                                  className="text-[9px] font-bold uppercase tracking-widest h-5 px-2 bg-secondary border border-border text-foreground rounded shadow-none"
                                 >
                                   {spec.passenger_capacity} Seats
                                 </Badge>
@@ -832,9 +890,12 @@ export function UnitsForm({ open, onOpenChange, initialData }: UnitsFormProp) {
                           );
                         })}
                         {specifications.length === 0 && (
-                          <p className="col-span-full text-center text-muted-foreground py-4 text-[10px] font-semibold">
-                            No specifications found.
-                          </p>
+                          <div className="col-span-full flex flex-col items-center justify-center h-full min-h-[200px] border border-dashed border-border rounded-xl bg-card">
+                            <Settings2 className="h-8 w-8 text-muted-foreground/30 mb-3" />
+                            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
+                              No specifications found.
+                            </p>
+                          </div>
                         )}
                       </div>
                     )}
@@ -849,21 +910,22 @@ export function UnitsForm({ open, onOpenChange, initialData }: UnitsFormProp) {
                   {form.formState.errors.features && (
                     <Alert
                       variant="destructive"
-                      className="py-2 px-3 h-auto border-destructive/20 bg-destructive/10 text-destructive"
+                      className="py-2.5 px-3 h-auto border-destructive/20 bg-destructive/10 text-destructive"
                     >
                       <AlertCircle className="h-4 w-4" />
-                      <AlertDescription className="text-[10px] font-medium">
+                      <AlertDescription className="text-[11px] font-medium mt-1">
                         {form.formState.errors.features.message as string}
                       </AlertDescription>
                     </Alert>
                   )}
 
                   <div className="flex items-center gap-2">
-                    <div className="relative flex-1">
-                      <Search className="absolute left-2.5 top-2 h-3.5 w-3.5 text-muted-foreground" />
+                    <div className="relative w-full sm:w-[320px]">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                       <Input
                         placeholder="Search features..."
-                        className="pl-8 h-8 text-[11px] font-medium bg-secondary border-border text-foreground focus-visible:ring-primary rounded-lg shadow-none"
+                        disabled={isSaving || isUploading}
+                        className="pl-9 h-9 text-[11px] font-medium bg-card border-border text-foreground focus-visible:ring-primary rounded-lg shadow-sm transition-colors"
                         onChange={(e) => setFeatureSearch(e.target.value)}
                       />
                     </div>
@@ -871,8 +933,8 @@ export function UnitsForm({ open, onOpenChange, initialData }: UnitsFormProp) {
 
                   <div className="flex-1 overflow-y-auto pb-4 custom-scrollbar">
                     {loadingFeatures ? (
-                      <div className="flex justify-center p-8">
-                        <Loader2 className="animate-spin text-primary h-5 w-5" />
+                      <div className="flex justify-center items-center h-full min-h-[200px]">
+                        <Loader2 className="animate-spin text-primary h-6 w-6" />
                       </div>
                     ) : (
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -886,6 +948,7 @@ export function UnitsForm({ open, onOpenChange, initialData }: UnitsFormProp) {
                             <div
                               key={feat.feature_id}
                               onClick={() => {
+                                if (isSaving || isUploading) return;
                                 if (isSelected) {
                                   form.setValue(
                                     "features",
@@ -910,15 +973,17 @@ export function UnitsForm({ open, onOpenChange, initialData }: UnitsFormProp) {
                                 }
                               }}
                               className={cn(
-                                "cursor-pointer flex items-start gap-2.5 p-3 rounded-xl transition-all border",
+                                "cursor-pointer flex items-start gap-3 p-4 rounded-xl transition-all border shadow-sm",
                                 isSelected
-                                  ? "border-primary bg-primary/5 ring-1 ring-primary shadow-sm"
-                                  : "bg-card border-border hover:border-primary/50",
+                                  ? "border-primary bg-primary/5 ring-1 ring-primary"
+                                  : "bg-card border-border hover:border-primary/50 hover:bg-secondary/40",
+                                (isSaving || isUploading) &&
+                                  "opacity-50 cursor-not-allowed pointer-events-none",
                               )}
                             >
                               <div
                                 className={cn(
-                                  "h-4 w-4 rounded-[4px] border flex items-center justify-center shrink-0 mt-0.5 transition-colors",
+                                  "h-4 w-4 rounded-md border flex items-center justify-center shrink-0 mt-0.5 transition-colors",
                                   isSelected
                                     ? "bg-primary border-primary text-primary-foreground"
                                     : "border-border bg-secondary",
@@ -929,7 +994,7 @@ export function UnitsForm({ open, onOpenChange, initialData }: UnitsFormProp) {
                               <div className="flex flex-col">
                                 <p
                                   className={cn(
-                                    "text-[11px] font-bold leading-tight",
+                                    "text-[11px] font-bold uppercase tracking-wider leading-tight",
                                     isSelected
                                       ? "text-primary"
                                       : "text-foreground",
@@ -938,7 +1003,7 @@ export function UnitsForm({ open, onOpenChange, initialData }: UnitsFormProp) {
                                   {feat.name}
                                 </p>
                                 {feat.description && (
-                                  <p className="text-[9px] font-medium text-muted-foreground line-clamp-1 mt-0.5">
+                                  <p className="text-[10px] font-medium text-muted-foreground line-clamp-1 mt-1">
                                     {feat.description}
                                   </p>
                                 )}
@@ -954,26 +1019,33 @@ export function UnitsForm({ open, onOpenChange, initialData }: UnitsFormProp) {
             </Tabs>
 
             {/* FOOTER */}
-            <DialogFooter className="px-5 py-3 border-t border-border bg-card shrink-0 flex items-center justify-end gap-2 transition-colors">
+            <DialogFooter className="px-5 py-4 border-t border-border bg-card shrink-0 flex items-center justify-end gap-3 transition-colors">
               <Button
                 type="button"
                 variant="outline"
                 size="sm"
                 onClick={() => onOpenChange(false)}
-                className="h-8 text-[11px] font-semibold bg-card text-foreground border-border hover:bg-secondary rounded-lg shadow-none"
+                disabled={isSaving || isUploading} // Disable Cancel button when busy
+                className="h-9 px-5 text-[10px] font-bold uppercase tracking-widest bg-card text-foreground border-border hover:bg-secondary rounded-lg shadow-none disabled:opacity-50"
               >
                 Cancel
               </Button>
               <Button
                 type="submit"
                 size="sm"
-                disabled={isSaving || !form.formState.isDirty}
-                className="h-8 text-[11px] font-bold uppercase tracking-widest bg-primary hover:opacity-90 text-primary-foreground rounded-lg shadow-sm transition-opacity"
+                disabled={isSaving || isUploading || !form.formState.isDirty} // Disable Save button when busy
+                className="h-9 px-6 text-[10px] font-bold uppercase tracking-widest bg-primary hover:opacity-90 text-primary-foreground rounded-lg shadow-sm transition-opacity"
               >
-                {isSaving && (
+                {(isSaving || isUploading) && (
                   <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
                 )}
-                {initialData ? "Save Changes" : "Create Unit"}
+                {isSaving
+                  ? "Saving..."
+                  : isUploading
+                    ? "Uploading Images..."
+                    : initialData
+                      ? "Save Changes"
+                      : "Create Unit"}
               </Button>
             </DialogFooter>
           </form>
