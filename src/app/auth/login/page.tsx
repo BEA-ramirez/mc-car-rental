@@ -8,9 +8,10 @@ import { LoginForm } from "@/components/auth/login-form";
 const spotlightAnim: Variants = {
   animate: {
     rotate: [0, 360],
-    scale: [1, 1.1, 1],
+    // Removed the scale animation. Animating scale alongside heavy blurs
+    // forces the GPU to constantly repaint, killing mobile typing performance.
     transition: {
-      duration: 25,
+      duration: 35, // Slowed down slightly for a smoother ambient effect
       repeat: Infinity,
       ease: "linear",
     },
@@ -24,7 +25,11 @@ export default function LoginPage() {
       <motion.div
         variants={spotlightAnim}
         animate="animate"
-        className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] h-[600px] md:w-[600px] md:h-[900px] bg-gradient-to-br from-[#64c5c3]/10 via-blue-900/10 to-transparent blur-[120px] -z-10 pointer-events-none rounded-full mix-blend-screen"
+        // OPTIMIZATIONS APPLIED:
+        // 1. Reduced blur on mobile (blur-[80px]), kept heavy blur on desktop (md:blur-[120px])
+        // 2. Added `will-change-transform` to force hardware acceleration
+        // 3. Removed mix-blend-screen on mobile, kept on desktop
+        className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[350px] h-[600px] md:w-[600px] md:h-[900px] bg-gradient-to-br from-[#64c5c3]/15 via-blue-900/10 to-transparent blur-[80px] md:blur-[120px] -z-10 pointer-events-none rounded-full md:mix-blend-screen will-change-transform"
       />
 
       {/* Top Header - Tightened padding to prevent vertical scroll */}
@@ -36,7 +41,7 @@ export default function LoginPage() {
       >
         <Link href="/" className="flex items-center gap-2 cursor-pointer group">
           <span className="text-xl md:text-2xl font-black tracking-tighter text-white group-hover:text-[#64c5c3] transition-colors duration-300">
-            MC ORMOC
+            SEFFNE TRANSPORT SERVICES INC.
           </span>
         </Link>
         <Link
