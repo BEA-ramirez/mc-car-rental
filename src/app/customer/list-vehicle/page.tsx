@@ -258,9 +258,10 @@ export default function ListVehiclePage() {
                     className="text-[9px] text-gray-400 leading-relaxed cursor-pointer font-bold uppercase tracking-widest"
                   >
                     I confirm that the information provided is accurate and I
-                    agree to the MC Ormoc Fleet Partner Terms of Service. I
-                    consent to the collection and processing of my business and
-                    banking details solely for payout purposes.
+                    agree to the Seffne Transport Services Inc. Fleet Partner
+                    Terms of Service. I consent to the collection and processing
+                    of my business and banking details solely for payout
+                    purposes.
                   </Label>
                 </div>
               </div>

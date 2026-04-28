@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect } from "react";
+import { useActionState, useEffect, useRef, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { login, LoginState } from "@/actions/login";
@@ -29,14 +29,53 @@ export function LoginForm({
   const router = useRouter();
   const [state, formAction, isPending] = useActionState(login, initialState);
 
+  // Track the toast ID so we can update/dismiss the loading state
+  const toastId = useRef<string | number | null>(null);
+
+  // This keeps the UI in a loading state while Next.js fetches the target page
+  const [isNavigating, startTransition] = useTransition();
+
+  // 1. Show loading toast when the server action is running
   useEffect(() => {
-    if (state.success && state.redirectPath) {
-      toast.success("Welcome back!");
-      router.push(state.redirectPath);
-    } else if (state.message && !state.success) {
-      toast.error(state.message);
+    if (isPending) {
+      toastId.current = toast.loading("Logging in...");
     }
-  }, [state, router]);
+  }, [isPending]);
+
+  // 2. Handle success or error states
+  useEffect(() => {
+    // Only run this logic once the server action finishes
+    if (!isPending) {
+      if (state.success && state.redirectPath) {
+        // Dismiss the loading toast immediately
+        if (toastId.current) {
+          toast.dismiss(toastId.current);
+          toastId.current = null;
+        }
+
+        // Wrap the push in a transition to keep the button spinning
+        startTransition(() => {
+          router.push(state.redirectPath!);
+        });
+
+        // Delay the success toast so it pops up ON the dashboard, not the login screen
+        setTimeout(() => {
+          toast.success("Welcome back!");
+        }, 600); // 600ms is usually perfect for the route transition to complete
+      } else if (state.message && !state.success) {
+        // Morph the loading toast directly into an error toast
+        if (toastId.current) {
+          toast.error(state.message, { id: toastId.current });
+          toastId.current = null;
+        } else {
+          toast.error(state.message);
+        }
+      }
+    }
+  }, [state, isPending, router]);
+
+  // Combined loading state: True if the server action is running OR the page is transitioning
+  const isLoading = isPending || isNavigating;
 
   return (
     <form
@@ -71,7 +110,7 @@ export function LoginForm({
               type="email"
               placeholder="you@example.com"
               required
-              disabled={isPending}
+              disabled={isLoading}
               className={cn(
                 "h-11 rounded-xl bg-black/50 border-white/10 text-white placeholder:text-gray-600 focus-visible:ring-[#64c5c3] focus-visible:border-transparent transition-all",
                 state.errors?.email &&
@@ -106,7 +145,7 @@ export function LoginForm({
               type="password"
               placeholder="••••••••"
               required
-              disabled={isPending}
+              disabled={isLoading}
               className={cn(
                 "h-11 rounded-xl bg-black/50 border-white/10 text-white placeholder:text-gray-600 focus-visible:ring-[#64c5c3] focus-visible:border-transparent transition-all",
                 state.errors?.password &&
@@ -124,10 +163,10 @@ export function LoginForm({
         <Field className="relative z-10 mt-5">
           <Button
             type="submit"
-            disabled={isPending}
+            disabled={isLoading}
             className="w-full h-11 sm:h-12 bg-[#64c5c3] text-black hover:bg-[#52a3a1] rounded-xl font-black text-[10px] sm:text-xs uppercase tracking-widest transition-all duration-300 shadow-[0_0_15px_rgba(100,197,195,0.2)] group disabled:opacity-50 disabled:bg-[#64c5c3]"
           >
-            {isPending ? (
+            {isLoading ? (
               <span className="flex items-center gap-2 sm:gap-3">
                 <Loader2 className="w-4 h-4 animate-spin" />
                 Logging in...

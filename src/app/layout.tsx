@@ -6,6 +6,7 @@ import QueryProvider from "@/components/providers/query-provider";
 import { AuthProvider } from "@/providers/auth-provider";
 import { createClient } from "@/utils/supabase/server";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
+import NextTopLoader from "nextjs-toploader";
 
 // 1. Unified Style Imports
 import "./globals.css";
@@ -44,6 +45,17 @@ export default async function RootLayout({
       suppressHydrationWarning
     >
       <body className="font-sans antialiased" suppressHydrationWarning>
+        <NextTopLoader
+          color="#64c5c3"
+          initialPosition={0.08}
+          crawlSpeed={200}
+          height={3}
+          crawl={true}
+          showSpinner={false}
+          easing="ease"
+          speed={200}
+          shadow="0 0 10px #64c5c3,0 0 5px #64c5c3"
+        />
         <ThemeProvider
           attribute="class"
           defaultTheme="system"

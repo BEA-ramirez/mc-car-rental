@@ -214,9 +214,9 @@ export default function ApplyDriverPage() {
                 )}
               >
                 I confirm that I have a clean driving record and I agree to the
-                MC Ormoc Driver Partner Terms of Service. I understand that my
-                application is subject to admin approval before dashboard access
-                is granted.
+                Seffne Transports Services Inc. Driver Partner Terms of Service.
+                I understand that my application is subject to admin approval
+                before dashboard access is granted.
               </Label>
             </div>
           </div>

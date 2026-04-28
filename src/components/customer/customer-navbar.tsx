@@ -54,7 +54,7 @@ export default function CustomerNavbar() {
               className="flex items-center gap-2 cursor-pointer group"
             >
               <span className="text-base sm:text-2xl font-black tracking-tighter text-white group-hover:text-[#64c5c3] transition-colors duration-300">
-                MC ORMOC
+                Seffne
               </span>
             </Link>
           </div>
