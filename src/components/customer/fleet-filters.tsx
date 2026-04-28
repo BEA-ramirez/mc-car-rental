@@ -21,7 +21,6 @@ interface FleetFiltersProps {
 }
 
 const TRANSMISSIONS = ["Any", "Auto", "Manual", "CVT"];
-// Shortened labels to keep pills on a single line where possible
 const SEATING_CAPACITIES = [
   { label: "Any", value: null },
   { label: "4+", value: 4 },
@@ -57,9 +56,9 @@ export default function FleetFilters({
   };
 
   return (
-    // Reduced overall padding from p-6 to p-4, adjusted sticky top spacing slightly
-    <div className="bg-[#161d24] backdrop-blur-2xl rounded-3xl border border-white/20 p-4 shadow-[0_8px_32px_rgba(0,0,0,0.5)] sticky top-24">
-      {/* Header - Reduced bottom margin and padding */}
+    // UPDATED: bg-[#161d24]/60 and backdrop-blur-xl for a gorgeous frosted glass pop-up
+    <div className="bg-[#161d24]/60 backdrop-blur-xl rounded-3xl border border-white/10 p-5 shadow-2xl sticky top-24">
+      {/* Header */}
       <div className="flex items-center gap-2 mb-4 border-b border-white/10 pb-3">
         <SlidersHorizontal className="w-4 h-4 text-[#64c5c3]" />
         <h2 className="text-xs font-bold uppercase tracking-widest text-white">
@@ -67,7 +66,7 @@ export default function FleetFilters({
         </h2>
       </div>
 
-      {/* Search Bar - Reduced height to h-10, tighter bottom margin */}
+      {/* Search Bar  */}
       <div className="relative mb-5">
         <Search className="absolute left-3.5 top-3 h-4 w-4 text-gray-400" />
         <Input
@@ -78,7 +77,7 @@ export default function FleetFilters({
         />
       </div>
 
-      {/* Vehicle Type - Tightened margins and pill sizes */}
+      {/* Vehicle Type  */}
       <div className="mb-5">
         <h3 className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-2.5 flex items-center justify-between">
           Vehicle Type
@@ -161,7 +160,7 @@ export default function FleetFilters({
         </div>
       </div>
 
-      {/* Max Price Slider - Tightened text and spacing */}
+      {/* Max Price Slider  */}
       <div className="mb-6">
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-[10px] font-bold uppercase tracking-widest text-gray-400 flex items-center gap-1.5">
@@ -186,7 +185,7 @@ export default function FleetFilters({
         </div>
       </div>
 
-      {/* Clear Filters Button - Reduced height to h-10 */}
+      {/* Clear Filters Button  */}
       <Button
         variant="ghost"
         onClick={clearAll}

@@ -26,12 +26,13 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+// UPDATED: Imported Dialog components instead of Sheet
 import {
-  Sheet,
-  SheetContent,
-  SheetTrigger,
-  SheetTitle,
-} from "@/components/ui/sheet";
+  Dialog,
+  DialogContent,
+  DialogTrigger,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import Image from "next/image";
 
@@ -40,7 +41,6 @@ import { useCustomerFleet } from "../../../../hooks/use-customer-fleet";
 import { useNotifications } from "../../../../hooks/use-notifications";
 import { useDebounce } from "../../../../hooks/use-debounce";
 
-// Lazy load non-critical modal components to free up initial mobile JS payload
 const CarDetailsSheet = dynamic(
   () => import("@/components/customer/car-details-sheet"),
   { ssr: false },
@@ -54,7 +54,9 @@ export default function CustomerFleetPage() {
 
   const [selectedCar, setSelectedCar] = useState<any | null>(null);
   const [isDetailsSheetOpen, setIsDetailsSheetOpen] = useState(false);
-  const [isFilterSheetOpen, setIsFilterSheetOpen] = useState(false);
+
+  // UPDATED: State name to reflect modal instead of sheet
+  const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
 
   const [filters, setFilters] = useState<FilterState>({
@@ -70,7 +72,6 @@ export default function CustomerFleetPage() {
   const { data, isLoading, fetchNextPage, hasNextPage, isFetchingNextPage } =
     useCustomerFleet(debouncedFilters);
 
-  // --- FETCH REAL NOTIFICATIONS ---
   const {
     data: notifications = [],
     markAsRead,
@@ -79,7 +80,6 @@ export default function CustomerFleetPage() {
 
   const unreadCount = notifications.filter((n: any) => !n.is_read).length;
 
-  // Calculate active filters count for the mobile button badge
   const activeFiltersCount = Object.entries(filters).filter(([key, value]) => {
     if (key === "search" && value !== "") return true;
     if (key === "type" && value !== "All") return true;
@@ -120,8 +120,6 @@ export default function CustomerFleetPage() {
       rental_rate_per_day: unit.rental_rate_per_day || 0,
     };
   });
-
-  console.log("Formatted Cars:", formattedCars);
 
   useEffect(() => {
     if (inView && hasNextPage && !isFetchingNextPage) {
@@ -395,10 +393,13 @@ export default function CustomerFleetPage() {
             <FleetFilters filters={filters} setFilters={setFilters} />
           </div>
 
-          {/* Mobile Filter Button (Floating at bottom) */}
+          {/* UPDATED: Mobile Filter Button (Floating at bottom as a Dialog Popup) */}
           <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 lg:hidden">
-            <Sheet open={isFilterSheetOpen} onOpenChange={setIsFilterSheetOpen}>
-              <SheetTrigger asChild>
+            <Dialog
+              open={isFilterModalOpen}
+              onOpenChange={setIsFilterModalOpen}
+            >
+              <DialogTrigger asChild>
                 <Button className="bg-[#161d24]/95 backdrop-blur-sm border border-[#64c5c3]/50 text-white hover:bg-[#161d24] rounded-full shadow-[0_8px_32px_rgba(0,0,0,0.6)] px-6 h-12 text-sm font-medium tracking-wide flex items-center gap-2">
                   <SlidersHorizontal className="w-4 h-4 text-[#64c5c3]" />
                   Filters{" "}
@@ -408,18 +409,15 @@ export default function CustomerFleetPage() {
                     </span>
                   )}
                 </Button>
-              </SheetTrigger>
-              <SheetContent
-                side="bottom"
-                className="h-[85vh] bg-[#0a1118] border-t border-white/10 p-0 rounded-t-3xl text-white outline-none flex flex-col"
-              >
-                <SheetTitle className="sr-only">Filter Vehicles</SheetTitle>
-                <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
-                  {/* Reuse the exact same filter component */}
+              </DialogTrigger>
+              {/* Note the bg-transparent, border-none, and p-0 so the FleetFilter component acts as the visual container! */}
+              <DialogContent className="w-[90vw] max-w-md bg-transparent border-none p-0 shadow-none">
+                <DialogTitle className="sr-only">Filter Vehicles</DialogTitle>
+                <div className="max-h-[85vh] overflow-y-auto custom-scrollbar">
                   <FleetFilters filters={filters} setFilters={setFilters} />
                 </div>
-              </SheetContent>
-            </Sheet>
+              </DialogContent>
+            </Dialog>
           </div>
 
           <div className="lg:col-span-9">

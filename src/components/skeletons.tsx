@@ -146,40 +146,54 @@ export function ClientOverviewSkeleton() {
 
 export function CarCardSkeleton() {
   return (
-    <div className="bg-[#111623]/80 backdrop-blur-md rounded-xl border border-white/5 overflow-hidden flex flex-col h-full animate-pulse">
-      {/* Image Area Skeleton - Darkened */}
-      <div className="relative h-44 w-full bg-[#050608] flex items-center justify-center border-b border-white/5">
+    <div className="bg-[#0a1118] rounded-xl sm:rounded-2xl border border-white/5 overflow-hidden flex flex-col h-full animate-pulse shadow-lg">
+      {/* Image Area Skeleton - Increased to h-40/h-52 to match the new card */}
+      <div className="relative h-40 sm:h-52 w-full bg-[#050608] flex items-center justify-center shrink-0">
         <Skeleton className="w-full h-full bg-white/[0.03] rounded-none" />
+
         {/* Compact Year badge skeleton */}
-        <Skeleton className="absolute top-3 left-3 w-10 h-4 bg-white/5 rounded-sm" />
+        <div className="absolute top-2 right-2 sm:top-3 sm:right-3 w-12 h-5 bg-white/5 rounded-full" />
       </div>
 
       {/* Content Area Skeleton */}
-      <div className="p-4 flex flex-col flex-1">
-        <div className="mb-4 space-y-2">
+      <div className="p-3 sm:p-5 flex flex-col flex-1 relative z-10 -mt-6 sm:-mt-8">
+        {/* Header Skeletons */}
+        <div className="mb-2 sm:mb-4 flex items-baseline gap-1.5 sm:gap-2 overflow-hidden">
           {/* Brand skeleton */}
-          <Skeleton className="w-12 h-2 bg-blue-500/10 rounded-none" />
+          <Skeleton className="w-12 h-3 sm:h-3.5 bg-[#64c5c3]/10 rounded flex-shrink-0" />
           {/* Model skeleton */}
-          <Skeleton className="w-32 h-5 bg-white/5 rounded-none" />
+          <Skeleton className="w-24 sm:w-32 h-4 sm:h-5 bg-white/10 rounded" />
         </div>
 
-        {/* Specs Row Skeletons */}
-        <div className="grid grid-cols-3 gap-1.5 mb-5 mt-auto">
-          <Skeleton className="h-10 bg-white/[0.02] border border-white/5 rounded-sm" />
-          <Skeleton className="h-10 bg-white/[0.02] border border-white/5 rounded-sm" />
-          <Skeleton className="h-10 bg-white/[0.02] border border-white/5 rounded-sm" />
+        {/* Specs Row Skeletons (Hidden on Mobile, just like the real card) */}
+        <div className="hidden sm:grid grid-cols-3 gap-2 mb-5 mt-auto">
+          <Skeleton className="h-[46px] bg-white/[0.02] border border-white/5 rounded-lg" />
+          <Skeleton className="h-[46px] bg-white/[0.02] border border-white/5 rounded-lg" />
+          <Skeleton className="h-[46px] bg-white/[0.02] border border-white/5 rounded-lg" />
         </div>
 
-        {/* Footer Skeleton */}
-        <div className="pt-4 border-t border-white/5 flex items-center justify-between mt-auto">
-          <div className="space-y-1.5">
-            {/* Rate label skeleton */}
-            <Skeleton className="w-10 h-2 bg-white/5 rounded-none" />
-            {/* Price skeleton */}
-            <Skeleton className="w-20 h-5 bg-white/10 rounded-none" />
+        {/* Spacer to push footer down on mobile when specs are hidden */}
+        <div className="flex-1 sm:hidden" />
+
+        {/* Footer: Price & Action Skeleton */}
+        <div className="pt-3 sm:pt-4 border-t border-white/5 flex items-end justify-between gap-2 mt-auto">
+          {/* Rates Container Skeleton */}
+          <div className="flex flex-col gap-1.5 w-1/2">
+            {/* 24h Rate Skeleton */}
+            <div className="flex items-baseline gap-1.5">
+              <Skeleton className="w-16 sm:w-20 h-4 sm:h-5 bg-white/10 rounded-md" />
+              <Skeleton className="w-6 sm:w-8 h-2 sm:h-2.5 bg-white/5 rounded-sm" />
+            </div>
+
+            {/* 12h Rate Skeleton (optional double stack look) */}
+            <div className="flex items-baseline gap-1.5">
+              <Skeleton className="w-12 sm:w-16 h-3 sm:h-4 bg-white/5 rounded-md" />
+              <Skeleton className="w-6 sm:w-8 h-2 sm:h-2 bg-white/[0.02] rounded-sm" />
+            </div>
           </div>
+
           {/* Button skeleton */}
-          <Skeleton className="w-20 h-9 bg-white/20 rounded-none" />
+          <Skeleton className="w-10 sm:w-20 h-8 sm:h-10 bg-white/5 rounded-lg shrink-0" />
         </div>
       </div>
     </div>
