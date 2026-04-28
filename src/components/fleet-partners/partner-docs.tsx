@@ -38,7 +38,7 @@ export default function PartnerDocs({ selectedPartner }: PartnerDocsProps) {
   };
 
   return (
-    <div className="flex flex-col h-full w-full bg-transparent transition-colors duration-300 min-h-[300px]">
+    <div className="flex flex-col h-full w-full bg-transparent transition-colors duration-300 min-h-[470px]">
       {/* Header Info */}
       <div className="flex items-center justify-between mb-4 shrink-0 border-b border-border pb-2.5 transition-colors">
         <div>

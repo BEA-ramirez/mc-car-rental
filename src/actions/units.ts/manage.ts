@@ -139,9 +139,14 @@ export async function deleteUnit(carId: string): Promise<ActionReponse> {
     if (error) throw new Error(error.message);
 
     return { success: true, message: "Unit deleted successfully" };
-  } catch (error) {
+  } catch (error: any) {
     console.error("Archive error: ", error);
-    return { success: false, message: "Failed to delete unit" };
+
+    // Return the specific error message from Postgres if it exists
+    return {
+      success: false,
+      message: error.message || "Failed to delete unit",
+    };
   }
 }
 

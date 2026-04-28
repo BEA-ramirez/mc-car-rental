@@ -96,7 +96,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
               <div className="flex flex-col gap-0.5 leading-none overflow-hidden transition-all duration-200 group-data-[collapsible=icon]:w-0 group-data-[collapsible=icon]:opacity-0 group-data-[collapsible=icon]:!ml-0">
                 <span className="font-black text-[12px] text-sidebar-foreground uppercase tracking-widest truncate whitespace-nowrap">
-                  MC Rentals
+                  Seffne
                 </span>
                 <span className="font-semibold text-[9px] text-sidebar-foreground/50 uppercase tracking-wider truncate whitespace-nowrap">
                   Admin System

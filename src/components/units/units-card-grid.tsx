@@ -5,12 +5,10 @@ import { Input } from "../ui/input";
 import { Button } from "../ui/button";
 import {
   Search,
-  Download,
   LayoutList,
   LayoutGrid,
   Plus,
   Loader2,
-  AlertTriangle,
   RefreshCw,
   Car,
   Settings,
@@ -22,16 +20,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+import { DeleteDialog } from "../delete-dialog";
+
 import { FleetSettingsDialog } from "./settings-dialog";
 import UnitsCard from "./units-card";
 import { useUnitsAdmin, useUnits } from "../../../hooks/use-units";
@@ -78,7 +68,7 @@ export default function UnitsCardGrid() {
   const {
     units,
     isUnitsLoading,
-    isRefetching, // <-- We grab isRefetching here
+    isRefetching,
     refreshUnits,
     fetchNextPage,
     hasNextPage,
@@ -229,14 +219,6 @@ export default function UnitsCardGrid() {
           <Button
             variant="outline"
             size="icon"
-            className="h-8 w-8 bg-card border-border text-muted-foreground hover:text-foreground hover:bg-secondary rounded-md shadow-none transition-colors"
-            title="Export Fleet Data"
-          >
-            <Download className="h-3.5 w-3.5" />
-          </Button>
-          <Button
-            variant="outline"
-            size="icon"
             onClick={() => setIsSettingsOpen(true)}
             className="h-8 w-8 bg-card border-border text-muted-foreground hover:text-foreground hover:bg-secondary rounded-md shadow-none transition-colors"
             title="Fleet Settings"
@@ -323,59 +305,15 @@ export default function UnitsCardGrid() {
         </div>
       </div>
 
-      {/* DIALOGS */}
-      <AlertDialog
-        open={!!unitToDelete}
-        onOpenChange={(open) => !open && setUnitToDelete(null)}
-      >
-        <AlertDialogContent className="sm:max-w-[425px] rounded-xl bg-card border-border shadow-xl">
-          <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2 text-destructive text-xs font-bold uppercase tracking-widest">
-              <AlertTriangle className="h-4 w-4" /> Confirm Deletion
-            </AlertDialogTitle>
-            <AlertDialogDescription className="text-[11px] font-medium text-muted-foreground mt-2 leading-relaxed">
-              Are you sure you want to delete the{" "}
-              <strong className="text-foreground">
-                {unitToDelete?.brand} {unitToDelete?.model}
-              </strong>{" "}
-              (
-              <span className="font-mono text-foreground">
-                {unitToDelete?.plate_number}
-              </span>
-              )?
-              <br />
-              <br />
-              This action will permanently archive the unit. It will be removed
-              from the active fleet and scheduler.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter className="mt-4 border-t border-border pt-4">
-            <AlertDialogCancel
-              disabled={isDeleting}
-              className="h-8 text-[10px] font-semibold uppercase tracking-widest bg-card border-border hover:bg-secondary text-foreground rounded-md shadow-none transition-colors"
-            >
-              Cancel
-            </AlertDialogCancel>
-            <AlertDialogAction
-              onClick={(e) => {
-                e.preventDefault();
-                confirmDelete();
-              }}
-              disabled={isDeleting}
-              className="h-8 text-[10px] font-bold uppercase tracking-widest bg-destructive text-destructive-foreground hover:opacity-90 rounded-md shadow-none transition-opacity"
-            >
-              {isDeleting ? (
-                <>
-                  <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />{" "}
-                  Deleting...
-                </>
-              ) : (
-                "Delete Unit"
-              )}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {/* --- REPLACED ALERT DIALOG WITH CUSTOM DELETE DIALOG --- */}
+      <DeleteDialog
+        isOpen={!!unitToDelete}
+        onClose={() => setUnitToDelete(null)}
+        onConfirm={confirmDelete}
+        isDeleting={isDeleting}
+        title="Confirm Deletion"
+        description={`Are you sure you want to delete the ${unitToDelete?.brand} ${unitToDelete?.model} (${unitToDelete?.plate_number})? This action will permanently archive the unit. It will be removed from the active fleet and scheduler.`}
+      />
 
       <FleetSettingsDialog
         open={isSettingsOpen}

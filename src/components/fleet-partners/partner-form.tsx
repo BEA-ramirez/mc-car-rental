@@ -7,11 +7,13 @@ import * as z from "zod";
 import { managePartner } from "@/actions/manage-partner";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Label } from "@/components/ui/label";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import {
   Form,
@@ -44,6 +46,8 @@ import {
   Loader2,
   Check,
   ChevronsUpDown,
+  X,
+  FileText,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -145,7 +149,7 @@ export function PartnerForm({
     setComboboxOpen(false);
   };
 
-  // --- 4. SUBMIT HANDLER ---
+  // --- SUBMIT HANDLER ---
   const onSubmit = async (values: FleetPartnerFormValues) => {
     setIsSaving(true);
 
@@ -197,12 +201,31 @@ export function PartnerForm({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-[550px] h-[85vh] flex flex-col p-0 border-border shadow-2xl rounded-2xl overflow-hidden gap-0 bg-background transition-colors duration-300">
+      <DialogContent className="sm:max-w-[600px] w-[95vw] h-[85vh] flex flex-col p-0 border-border shadow-2xl rounded-2xl overflow-hidden gap-0 bg-background transition-colors duration-300 [&>button.absolute]:hidden">
         {/* HEADER */}
-        <DialogHeader className="px-5 py-4 border-b border-border bg-card shrink-0 transition-colors">
-          <DialogTitle className="text-sm font-bold text-foreground tracking-tight uppercase leading-none">
-            {initialData ? "Edit Partner Details" : "Add New Fleet Partner"}
-          </DialogTitle>
+        <DialogHeader className="px-5 py-4 border-b border-border bg-card shrink-0 flex flex-row items-center justify-between transition-colors">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center border border-primary/20 shadow-sm transition-colors">
+              <Briefcase className="w-4 h-4 text-primary" />
+            </div>
+            <div className="flex flex-col text-left">
+              <DialogTitle className="text-sm font-bold text-foreground tracking-tight leading-none mb-1.5 uppercase">
+                {initialData ? "Edit Partner Details" : "Add New Fleet Partner"}
+              </DialogTitle>
+              <DialogDescription className="text-[10px] font-medium text-muted-foreground leading-none m-0">
+                Configure partner identity, financials, and legal contracts.
+              </DialogDescription>
+            </div>
+          </div>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-secondary rounded-lg transition-colors shadow-none"
+            onClick={() => handleOpenChange(false)}
+          >
+            <X className="w-4 h-4" />
+          </Button>
         </DialogHeader>
 
         <Form {...form}>
@@ -215,334 +238,362 @@ export function PartnerForm({
               className="flex flex-col flex-1 min-h-0"
             >
               {/* TAB NAVIGATION */}
-              <div className="px-5 pt-4 pb-0 bg-background shrink-0 transition-colors">
-                <TabsList className="h-9 bg-secondary/50 p-1 rounded-lg border border-border/50 inline-flex w-full mb-3 shadow-inner transition-colors">
+              <div className="px-4 py-2 border-b border-border bg-secondary/30 shrink-0 transition-colors">
+                <TabsList className="h-9 bg-background/50 p-1 flex w-full max-w-[400px] rounded-lg border border-border shadow-inner transition-colors">
                   <TabsTrigger
                     value="profile"
-                    className="flex-1 h-7 text-[10px] font-bold rounded-md data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-foreground text-muted-foreground uppercase tracking-widest transition-all"
+                    className="flex-1 h-7 text-[10px] font-bold uppercase tracking-widest rounded-md data-[state=active]:bg-foreground data-[state=active]:shadow-sm data-[state=active]:text-background text-muted-foreground transition-all gap-1.5"
                   >
-                    Partner Profile
+                    <User className="w-3.5 h-3.5" /> Profile
                   </TabsTrigger>
                   <TabsTrigger
                     value="financials"
-                    className="flex-1 h-7 text-[10px] font-bold rounded-md data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-foreground text-muted-foreground uppercase tracking-widest transition-all"
+                    className="flex-1 h-7 text-[10px] font-bold uppercase tracking-widest rounded-md data-[state=active]:bg-foreground data-[state=active]:shadow-sm data-[state=active]:text-background text-muted-foreground transition-all gap-1.5"
                   >
-                    Financials & Legal
+                    <Landmark className="w-3.5 h-3.5" /> Financials
                   </TabsTrigger>
                 </TabsList>
               </div>
 
               {/* SCROLLABLE TAB CONTENT */}
-              <div className="flex-1 overflow-y-auto px-5 py-4 pb-20 custom-scrollbar transition-colors">
+              <div className="flex-1 overflow-y-auto p-4 sm:p-5 custom-scrollbar transition-colors pb-20">
                 {/* --- TAB 1: PROFILE --- */}
                 <TabsContent
                   value="profile"
-                  className="m-0 space-y-4 outline-none"
+                  className="m-0 outline-none flex flex-col gap-4 sm:gap-5"
                 >
-                  {/* LINK ACCOUNT COMBOBOX */}
-                  {!initialData ? (
-                    <FormField
-                      control={form.control}
-                      name="user_id"
-                      render={({ field }) => (
-                        <FormItem className="flex flex-col space-y-1.5">
-                          <FormLabel className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">
-                            Link Account
-                          </FormLabel>
-                          <Popover
-                            open={comboboxOpen}
-                            onOpenChange={setComboboxOpen}
-                          >
-                            <PopoverTrigger asChild>
-                              <FormControl>
-                                <Button
-                                  variant="outline"
-                                  role="combobox"
-                                  className={cn(
-                                    "w-full justify-between h-8 text-[11px] font-semibold rounded-lg border-border bg-secondary shadow-none hover:bg-secondary/80 focus:ring-1 focus:ring-primary transition-colors text-foreground",
-                                    !field.value && "text-muted-foreground",
-                                  )}
-                                >
-                                  {field.value
-                                    ? availableUsers?.find(
-                                        (u) => u.user_id === field.value,
-                                      )?.full_name
-                                    : "Search applicants..."}
-                                  <ChevronsUpDown className="ml-2 h-3.5 w-3.5 shrink-0 opacity-50" />
-                                </Button>
-                              </FormControl>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-[510px] p-0 border-border rounded-xl shadow-xl bg-popover transition-colors">
-                              <Command>
-                                <CommandInput
-                                  placeholder="Search name or email..."
-                                  className="h-9 text-[11px] font-medium border-none focus:ring-0"
-                                />
-                                <CommandList className="custom-scrollbar">
-                                  <CommandEmpty className="text-[10px] font-bold uppercase tracking-widest py-4 text-center text-muted-foreground">
-                                    {isLoadingUsers
-                                      ? "Loading..."
-                                      : "No applicants found."}
-                                  </CommandEmpty>
-                                  <CommandGroup>
-                                    {availableUsers?.map((user) => (
-                                      <CommandItem
-                                        key={user.user_id}
-                                        value={user.full_name}
-                                        onSelect={() =>
-                                          onSelectUser(user.user_id)
-                                        }
-                                        className="text-[11px] font-semibold cursor-pointer rounded-lg aria-selected:bg-secondary transition-colors px-3 py-2"
-                                      >
-                                        <Check
-                                          className={cn(
-                                            "mr-2 h-3.5 w-3.5",
-                                            user.user_id === field.value
-                                              ? "opacity-100 text-primary"
-                                              : "opacity-0",
-                                          )}
-                                        />
-                                        <div className="flex flex-col">
-                                          <span className="text-foreground">
-                                            {user.full_name}
-                                          </span>
-                                          <span className="text-[9px] font-mono text-muted-foreground mt-0.5">
-                                            {user.email}
-                                          </span>
-                                        </div>
-                                      </CommandItem>
-                                    ))}
-                                  </CommandGroup>
-                                </CommandList>
-                              </Command>
-                            </PopoverContent>
-                          </Popover>
-                          <FormMessage className="text-[9px] font-bold uppercase tracking-widest text-destructive" />
-                        </FormItem>
-                      )}
-                    />
-                  ) : (
-                    <div className="bg-secondary/30 p-3 border border-border rounded-xl transition-colors">
-                      <input type="hidden" {...form.register("user_id")} />
-
-                      <label className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest mb-1.5 block">
-                        Linked Account
-                      </label>
-                      <div className="flex items-center gap-2.5 px-3 bg-background rounded-lg border border-border h-8 transition-colors">
-                        <User className="h-3.5 w-3.5 text-muted-foreground" />
-                        <span className="text-[11px] font-bold text-foreground">
-                          {initialData.users?.first_name}{" "}
-                          {initialData.users?.last_name}
-                        </span>
-                      </div>
+                  {/* Card 1: Account Identity */}
+                  <div className="p-4 bg-card border border-border rounded-xl space-y-4 shadow-sm transition-colors">
+                    <div className="flex items-center gap-2 mb-1 border-b border-border pb-2.5">
+                      <User className="w-3.5 h-3.5 text-primary" />
+                      <h3 className="text-[10px] font-bold text-foreground uppercase tracking-widest">
+                        Account Identity
+                      </h3>
                     </div>
-                  )}
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {/* BUSINESS NAME */}
+                    {/* LINK ACCOUNT COMBOBOX */}
+                    {!initialData ? (
+                      <FormField
+                        control={form.control}
+                        name="user_id"
+                        render={({ field }) => (
+                          <FormItem className="flex flex-col space-y-1.5">
+                            <FormLabel className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">
+                              Link User Account
+                            </FormLabel>
+                            <Popover
+                              open={comboboxOpen}
+                              onOpenChange={setComboboxOpen}
+                            >
+                              <PopoverTrigger asChild>
+                                <FormControl>
+                                  <Button
+                                    variant="outline"
+                                    role="combobox"
+                                    className={cn(
+                                      "w-full justify-between h-8 text-[11px] font-semibold rounded-lg border-border bg-secondary shadow-none hover:bg-secondary/80 focus:ring-1 focus:ring-primary transition-colors text-foreground",
+                                      !field.value && "text-muted-foreground",
+                                    )}
+                                  >
+                                    {field.value
+                                      ? availableUsers?.find(
+                                          (u) => u.user_id === field.value,
+                                        )?.full_name
+                                      : "Search applicants..."}
+                                    <ChevronsUpDown className="ml-2 h-3.5 w-3.5 shrink-0 opacity-50" />
+                                  </Button>
+                                </FormControl>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-[510px] p-0 border-border rounded-xl shadow-xl bg-popover transition-colors">
+                                <Command>
+                                  <CommandInput
+                                    placeholder="Search name or email..."
+                                    className="h-9 text-[11px] font-medium border-none focus:ring-0"
+                                  />
+                                  <CommandList className="custom-scrollbar">
+                                    <CommandEmpty className="text-[10px] font-bold uppercase tracking-widest py-4 text-center text-muted-foreground">
+                                      {isLoadingUsers
+                                        ? "Loading..."
+                                        : "No applicants found."}
+                                    </CommandEmpty>
+                                    <CommandGroup>
+                                      {availableUsers?.map((user) => (
+                                        <CommandItem
+                                          key={user.user_id}
+                                          value={user.full_name}
+                                          onSelect={() =>
+                                            onSelectUser(user.user_id)
+                                          }
+                                          className="text-[11px] font-semibold cursor-pointer rounded-lg aria-selected:bg-secondary transition-colors px-3 py-2"
+                                        >
+                                          <Check
+                                            className={cn(
+                                              "mr-2 h-3.5 w-3.5",
+                                              user.user_id === field.value
+                                                ? "opacity-100 text-primary"
+                                                : "opacity-0",
+                                            )}
+                                          />
+                                          <div className="flex flex-col">
+                                            <span className="text-foreground">
+                                              {user.full_name}
+                                            </span>
+                                            <span className="text-[9px] font-mono text-muted-foreground mt-0.5">
+                                              {user.email}
+                                            </span>
+                                          </div>
+                                        </CommandItem>
+                                      ))}
+                                    </CommandGroup>
+                                  </CommandList>
+                                </Command>
+                              </PopoverContent>
+                            </Popover>
+                            <FormMessage className="text-[9px] font-bold uppercase tracking-widest text-destructive" />
+                          </FormItem>
+                        )}
+                      />
+                    ) : (
+                      <div className="flex flex-col space-y-1.5">
+                        <Label className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">
+                          Linked Account
+                        </Label>
+                        <div className="flex items-center gap-2.5 px-3 bg-secondary rounded-lg border border-border h-8 transition-colors">
+                          <User className="h-3.5 w-3.5 text-muted-foreground" />
+                          <span className="text-[11px] font-bold text-foreground">
+                            {initialData.users?.first_name}{" "}
+                            {initialData.users?.last_name}
+                          </span>
+                        </div>
+                        <input type="hidden" {...form.register("user_id")} />
+                      </div>
+                    )}
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {/* BUSINESS NAME */}
+                      <FormField
+                        control={form.control}
+                        name="business_name"
+                        render={({ field }) => (
+                          <FormItem className="space-y-1.5">
+                            <FormLabel className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest block">
+                              Business Name
+                            </FormLabel>
+                            <div className="relative">
+                              <Briefcase className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                              <FormControl>
+                                <Input
+                                  {...field}
+                                  className="pl-8 h-8 text-[11px] font-semibold bg-secondary border-border rounded-lg shadow-none focus-visible:ring-1 focus-visible:ring-primary transition-colors text-foreground"
+                                  placeholder="Enter official business name"
+                                />
+                              </FormControl>
+                            </div>
+                            <FormMessage className="text-[9px] font-bold uppercase tracking-widest text-destructive" />
+                          </FormItem>
+                        )}
+                      />
+
+                      {/* ACTIVE STATUS */}
+                      <FormField
+                        control={form.control}
+                        name="active_status"
+                        render={({ field }) => (
+                          <FormItem className="space-y-1.5 flex flex-col justify-end">
+                            <FormLabel className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest block">
+                              Operational Status
+                            </FormLabel>
+                            <div className="flex items-center justify-between px-3 rounded-lg border border-border bg-secondary h-8 shadow-none transition-colors">
+                              <span className="text-[11px] font-bold text-foreground">
+                                {field.value
+                                  ? "Active & Dispatching"
+                                  : "Suspended"}
+                              </span>
+                              <FormControl>
+                                <Switch
+                                  checked={field.value}
+                                  onCheckedChange={field.onChange}
+                                  className="data-[state=checked]:bg-emerald-500 scale-90"
+                                />
+                              </FormControl>
+                            </div>
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Card 2: Internal Notes */}
+                  <div className="p-4 bg-card border border-border rounded-xl shadow-sm transition-colors">
                     <FormField
                       control={form.control}
-                      name="business_name"
+                      name="owner_notes"
                       render={({ field }) => (
                         <FormItem className="space-y-1.5">
-                          <FormLabel className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest block">
-                            Business Name
-                          </FormLabel>
-                          <div className="relative">
-                            <Briefcase className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                            <FormControl>
-                              <Input
-                                {...field}
-                                className="pl-8 h-8 text-[11px] font-semibold bg-secondary border-border rounded-lg shadow-none focus-visible:ring-1 focus-visible:ring-primary transition-colors text-foreground"
-                                placeholder="Enter official business name"
-                              />
-                            </FormControl>
-                          </div>
-                          <FormMessage className="text-[9px] font-bold uppercase tracking-widest text-destructive" />
-                        </FormItem>
-                      )}
-                    />
-
-                    {/* ACTIVE STATUS (Now adjacent to Business Name) */}
-                    <FormField
-                      control={form.control}
-                      name="active_status"
-                      render={({ field }) => (
-                        <FormItem className="space-y-0 flex flex-col justify-end">
-                          <FormLabel className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest mb-1.5 block">
-                            Operational Status
-                          </FormLabel>
-                          <div className="flex items-center justify-between px-3 rounded-lg border border-border bg-background h-8 shadow-none transition-colors">
-                            <span className="text-[11px] font-bold text-foreground">
-                              {field.value
-                                ? "Active & Dispatching"
-                                : "Suspended"}
+                          <div className="flex items-center justify-between mb-1">
+                            <FormLabel className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest block flex-1">
+                              Internal Notes
+                            </FormLabel>
+                            <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest text-right">
+                              Admin Only
                             </span>
-                            <FormControl>
-                              <Switch
-                                checked={field.value}
-                                onCheckedChange={field.onChange}
-                                className="data-[state=checked]:bg-emerald-500 scale-90"
-                              />
-                            </FormControl>
                           </div>
+                          <FormControl>
+                            <Textarea
+                              {...field}
+                              value={field.value || ""}
+                              placeholder="Private observations or requirements..."
+                              className="resize-none min-h-[80px] text-[11px] font-medium bg-secondary border-border rounded-lg shadow-none focus-visible:ring-1 focus-visible:ring-primary transition-colors text-foreground custom-scrollbar"
+                            />
+                          </FormControl>
                         </FormItem>
                       )}
                     />
                   </div>
-
-                  {/* INTERNAL NOTES */}
-                  <FormField
-                    control={form.control}
-                    name="owner_notes"
-                    render={({ field }) => (
-                      <FormItem className="space-y-1.5 pt-2">
-                        <FormLabel className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest block">
-                          Internal Notes
-                        </FormLabel>
-                        <FormControl>
-                          <Textarea
-                            {...field}
-                            value={field.value || ""}
-                            placeholder="Private admin notes..."
-                            className="resize-none min-h-[80px] text-[11px] font-medium bg-secondary border-border rounded-lg shadow-none focus-visible:ring-1 focus-visible:ring-primary transition-colors text-foreground"
-                          />
-                        </FormControl>
-                        <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest mt-1">
-                          Visible only to administrative staff.
-                        </p>
-                      </FormItem>
-                    )}
-                  />
                 </TabsContent>
 
                 {/* --- TAB 2: FINANCIALS --- */}
                 <TabsContent
                   value="financials"
-                  className="m-0 space-y-4 outline-none"
+                  className="m-0 outline-none flex flex-col gap-4 sm:gap-5"
                 >
-                  {/* REVENUE SHARE */}
-                  <FormField
-                    control={form.control}
-                    name="revenue_share_percentage"
-                    render={({ field }) => (
-                      <FormItem className="space-y-1.5 w-1/2 pr-2.5">
-                        <FormLabel className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest block">
-                          Revenue Share (%)
-                        </FormLabel>
-                        <div className="relative">
-                          <Percent className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                          <FormControl>
-                            <Input
-                              {...field}
-                              type="number"
-                              onChange={(e) =>
-                                field.onChange(
-                                  e.target.value === ""
-                                    ? 0
-                                    : Number(e.target.value),
-                                )
-                              }
-                              className="pl-8 h-8 text-[11px] font-semibold bg-secondary border-border rounded-lg shadow-none focus-visible:ring-1 focus-visible:ring-primary transition-colors text-foreground"
-                              max={100}
-                              min={0}
-                            />
-                          </FormControl>
-                        </div>
-                        <FormMessage className="text-[9px] font-bold uppercase tracking-widest text-destructive" />
-                        <p className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground mt-1">
-                          Percentage of revenue assigned.
-                        </p>
-                      </FormItem>
-                    )}
-                  />
+                  {/* Card 1: Revenue & Payout */}
+                  <div className="p-4 bg-card border border-border rounded-xl space-y-4 shadow-sm transition-colors">
+                    <div className="flex items-center gap-2 mb-1 border-b border-border pb-2.5">
+                      <Landmark className="w-3.5 h-3.5 text-primary" />
+                      <h3 className="text-[10px] font-bold text-foreground uppercase tracking-widest">
+                        Revenue & Payout Details
+                      </h3>
+                    </div>
 
-                  <hr className="border-border my-2 transition-colors" />
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {/* REVENUE SHARE */}
+                      <FormField
+                        control={form.control}
+                        name="revenue_share_percentage"
+                        render={({ field }) => (
+                          <FormItem className="space-y-1.5">
+                            <FormLabel className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest block">
+                              Revenue Share (%)
+                            </FormLabel>
+                            <div className="relative">
+                              <Percent className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                              <FormControl>
+                                <Input
+                                  {...field}
+                                  type="number"
+                                  onChange={(e) =>
+                                    field.onChange(
+                                      e.target.value === ""
+                                        ? 0
+                                        : Number(e.target.value),
+                                    )
+                                  }
+                                  className="pl-8 h-8 text-[11px] font-bold bg-secondary border-border rounded-lg shadow-none focus-visible:ring-1 focus-visible:ring-primary transition-colors text-foreground"
+                                  max={100}
+                                  min={0}
+                                />
+                              </FormControl>
+                            </div>
+                            <FormMessage className="text-[9px] font-bold uppercase tracking-widest text-destructive" />
+                          </FormItem>
+                        )}
+                      />
 
-                  <div className="grid grid-cols-2 gap-4">
-                    {/* BANK NAME */}
-                    <FormField
-                      control={form.control}
-                      name="bank_name"
-                      render={({ field }) => (
-                        <FormItem className="space-y-1.5">
-                          <FormLabel className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest block">
-                            Bank Name
-                          </FormLabel>
-                          <div className="relative">
-                            <Landmark className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                            <FormControl>
-                              <Input
-                                {...field}
-                                value={field.value || ""}
-                                className="pl-8 h-8 text-[11px] font-semibold bg-secondary border-border rounded-lg shadow-none focus-visible:ring-1 focus-visible:ring-primary transition-colors text-foreground"
-                                placeholder="e.g. BDO"
-                              />
-                            </FormControl>
-                          </div>
-                          <FormMessage className="text-[9px] font-bold uppercase tracking-widest text-destructive" />
-                        </FormItem>
-                      )}
-                    />
+                      {/* BANK NAME */}
+                      <FormField
+                        control={form.control}
+                        name="bank_name"
+                        render={({ field }) => (
+                          <FormItem className="space-y-1.5">
+                            <FormLabel className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest block">
+                              Bank Name
+                            </FormLabel>
+                            <div className="relative">
+                              <Landmark className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                              <FormControl>
+                                <Input
+                                  {...field}
+                                  value={field.value || ""}
+                                  className="pl-8 h-8 text-[11px] font-semibold bg-secondary border-border rounded-lg shadow-none focus-visible:ring-1 focus-visible:ring-primary transition-colors text-foreground"
+                                  placeholder="e.g. BDO, GCash"
+                                />
+                              </FormControl>
+                            </div>
+                            <FormMessage className="text-[9px] font-bold uppercase tracking-widest text-destructive" />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
 
-                    {/* ACCOUNT HOLDER */}
-                    <FormField
-                      control={form.control}
-                      name="bank_account_name"
-                      render={({ field }) => (
-                        <FormItem className="space-y-1.5">
-                          <FormLabel className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest block">
-                            Account Holder
-                          </FormLabel>
-                          <div className="relative">
-                            <User className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                            <FormControl>
-                              <Input
-                                {...field}
-                                value={field.value || ""}
-                                className="pl-8 h-8 text-[11px] font-semibold bg-secondary border-border rounded-lg shadow-none focus-visible:ring-1 focus-visible:ring-primary transition-colors text-foreground"
-                                placeholder="Account Name"
-                              />
-                            </FormControl>
-                          </div>
-                          <FormMessage className="text-[9px] font-bold uppercase tracking-widest text-destructive" />
-                        </FormItem>
-                      )}
-                    />
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {/* ACCOUNT HOLDER */}
+                      <FormField
+                        control={form.control}
+                        name="bank_account_name"
+                        render={({ field }) => (
+                          <FormItem className="space-y-1.5">
+                            <FormLabel className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest block">
+                              Account Holder
+                            </FormLabel>
+                            <div className="relative">
+                              <User className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                              <FormControl>
+                                <Input
+                                  {...field}
+                                  value={field.value || ""}
+                                  className="pl-8 h-8 text-[11px] font-semibold bg-secondary border-border rounded-lg shadow-none focus-visible:ring-1 focus-visible:ring-primary transition-colors text-foreground"
+                                  placeholder="Account Name"
+                                />
+                              </FormControl>
+                            </div>
+                            <FormMessage className="text-[9px] font-bold uppercase tracking-widest text-destructive" />
+                          </FormItem>
+                        )}
+                      />
+
+                      {/* ACCOUNT NUMBER */}
+                      <FormField
+                        control={form.control}
+                        name="bank_account_number"
+                        render={({ field }) => (
+                          <FormItem className="space-y-1.5">
+                            <FormLabel className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest block">
+                              Account Number
+                            </FormLabel>
+                            <div className="relative">
+                              <CreditCard className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                              <FormControl>
+                                <Input
+                                  {...field}
+                                  value={field.value || ""}
+                                  className="pl-8 h-8 text-[11px] font-semibold font-mono bg-secondary border-border rounded-lg shadow-none focus-visible:ring-1 focus-visible:ring-primary transition-colors text-foreground tracking-widest"
+                                  placeholder="XXXX-XXXX-XXXX"
+                                />
+                              </FormControl>
+                            </div>
+                            <FormMessage className="text-[9px] font-bold uppercase tracking-widest text-destructive" />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
-                    {/* ACCOUNT NUMBER */}
-                    <FormField
-                      control={form.control}
-                      name="bank_account_number"
-                      render={({ field }) => (
-                        <FormItem className="space-y-1.5">
-                          <FormLabel className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest block">
-                            Account Number
-                          </FormLabel>
-                          <div className="relative">
-                            <CreditCard className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                            <FormControl>
-                              <Input
-                                {...field}
-                                value={field.value || ""}
-                                className="pl-8 h-8 text-[11px] font-semibold bg-secondary border-border font-mono rounded-lg shadow-none focus-visible:ring-1 focus-visible:ring-primary transition-colors text-foreground"
-                                placeholder="XXXX-XXXX-XXXX"
-                              />
-                            </FormControl>
-                          </div>
-                          <FormMessage className="text-[9px] font-bold uppercase tracking-widest text-destructive" />
-                        </FormItem>
-                      )}
-                    />
+                  {/* Card 2: Legal Contract */}
+                  <div className="p-4 bg-card border border-border rounded-xl space-y-4 shadow-sm transition-colors">
+                    <div className="flex items-center gap-2 mb-1 border-b border-border pb-2.5">
+                      <FileText className="w-3.5 h-3.5 text-primary" />
+                      <h3 className="text-[10px] font-bold text-foreground uppercase tracking-widest">
+                        Legal Contract
+                      </h3>
+                    </div>
 
                     {/* CONTRACT EXPIRY */}
                     <FormField
                       control={form.control}
                       name="contract_expiry_date"
                       render={({ field }) => (
-                        <FormItem className="space-y-1.5">
+                        <FormItem className="space-y-1.5 sm:w-1/2 pr-0 sm:pr-2">
                           <FormLabel className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest block">
                             Contract Expiry
                           </FormLabel>
@@ -579,7 +630,7 @@ export function PartnerForm({
                   </Button>
                   <Button
                     type="submit"
-                    disabled={isSaving}
+                    disabled={isSaving || !form.formState.isDirty}
                     className="h-8 px-5 min-w-[140px] text-[10px] font-bold uppercase tracking-widest bg-primary hover:opacity-90 text-primary-foreground shadow-sm rounded-lg transition-opacity"
                   >
                     {isSaving && (
@@ -588,7 +639,7 @@ export function PartnerForm({
                     {isSaving
                       ? "Saving..."
                       : isAdd
-                        ? "Add Fleet Partner"
+                        ? "Add Partner"
                         : "Save Changes"}
                   </Button>
                 </div>

@@ -182,10 +182,10 @@ export default function UnitsCard({
                   <Pen className="w-3.5 h-3.5 mr-2 text-muted-foreground" />
                   Edit details
                 </DropdownMenuItem>
-                <DropdownMenuItem className="text-[11px] font-medium cursor-pointer text-popover-foreground focus:bg-secondary">
+                {/* <DropdownMenuItem className="text-[11px] font-medium cursor-pointer text-popover-foreground focus:bg-secondary">
                   <Wrench className="w-3.5 h-3.5 mr-2 text-muted-foreground" />
                   Set Maintenance
-                </DropdownMenuItem>
+                </DropdownMenuItem> */}
                 <DropdownMenuSeparator className="bg-border" />
                 <DropdownMenuItem
                   className="text-[11px] font-medium cursor-pointer text-red-600 focus:text-red-600 focus:bg-red-500/10"
