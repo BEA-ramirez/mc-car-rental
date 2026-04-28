@@ -44,7 +44,7 @@ export function LoginForm({
       className={cn("flex flex-col w-full", className)}
       {...props}
     >
-      <FieldGroup className="border border-white/5 bg-[#0a1118]/80 backdrop-blur-2xl shadow-2xl p-5 sm:p-6 rounded-2xl sm:rounded-3xl w-full relative overflow-hidden">
+      <FieldGroup className="border border-white/5 bg-[#0a1118]/80 backdrop-blur-sm md:backdrop-blur-2xl shadow-2xl p-5 sm:p-6 rounded-2xl sm:rounded-3xl w-full relative overflow-hidden">
         <div className="relative z-10 flex flex-col items-center gap-1.5 text-center mb-5">
           <div className="w-10 h-10 bg-[#64c5c3]/10 rounded-xl flex items-center justify-center mb-1">
             <User className="w-5 h-5 text-[#64c5c3]" />

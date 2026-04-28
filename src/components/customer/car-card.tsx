@@ -10,11 +10,7 @@ interface CarCardProps {
 }
 
 export default function CarCard({ car, onViewDetails }: CarCardProps) {
-  // Use price24h if available, fallback to price
-  const dailyRate = car.price24h || car.price || 0;
-
-  // Determine if we should show the 12h rate
-  const show12hRate = car.has12hRate || (car.price12h && car.price12h > 0);
+  const show12hRate = car.rental_rate_per_12h > 0;
 
   return (
     <div className="group bg-[#0a1118] rounded-xl sm:rounded-2xl border border-white/5 overflow-hidden transition-all duration-300 hover:border-[#64c5c3]/30 flex flex-col h-full shadow-lg">
@@ -86,7 +82,7 @@ export default function CarCard({ car, onViewDetails }: CarCardProps) {
           <div className="flex flex-col gap-0.5">
             <div className="flex items-baseline gap-1.5">
               <p className="text-sm sm:text-lg font-black text-white whitespace-nowrap leading-none">
-                ₱{dailyRate.toLocaleString()}
+                ₱{car.rental_rate_per_day.toLocaleString()}
               </p>
               <p className="text-[7px] sm:text-[8px] font-bold text-gray-500 uppercase tracking-widest">
                 / 24h
@@ -96,7 +92,7 @@ export default function CarCard({ car, onViewDetails }: CarCardProps) {
             {show12hRate && (
               <div className="flex items-baseline gap-1.5">
                 <p className="text-xs sm:text-sm font-bold text-white/80 whitespace-nowrap leading-none">
-                  ₱{car.price12h?.toLocaleString()}
+                  ₱{car.rental_rate_per_12h?.toLocaleString()}
                 </p>
                 <p className="text-[7px] sm:text-[8px] font-bold text-gray-500 uppercase tracking-widest">
                   / 12h

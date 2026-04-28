@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo, use } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
+import dynamic from "next/dynamic";
 import { format, addHours, parse } from "date-fns";
 import { motion } from "framer-motion";
 import {
@@ -44,14 +45,28 @@ import {
 } from "@/components/ui/carousel";
 import { cn } from "@/lib/utils";
 
-import OrmocMapSelector, { MapHub } from "@/components/ormoc-map";
-import ReceiptScanner from "@/components/bookings/receipt-scanner";
+import { MapHub } from "@/components/ormoc-map";
 
 import { useBookingSettings } from "../../../../../hooks/use-settings";
 import { useUnits } from "../../../../../hooks/use-units";
 import { useBookings } from "../../../../../hooks/use-bookings";
 import { createClient } from "@/utils/supabase/client";
 import { uploadFile } from "@/actions/helper/upload-file";
+
+// Lazy load heavy non-critical components to free up initial mobile JS payload
+const OrmocMapSelector = dynamic(() => import("@/components/ormoc-map"), {
+  ssr: false,
+  loading: () => (
+    <div className="flex items-center justify-center h-full w-full bg-[#050B10] text-[#64c5c3] text-xs font-bold uppercase tracking-widest">
+      Loading Map...
+    </div>
+  ),
+});
+
+const ReceiptScanner = dynamic(
+  () => import("@/components/bookings/receipt-scanner"),
+  { ssr: false },
+);
 
 export default function CustomerBookingPage({
   params,
@@ -367,7 +382,7 @@ export default function CustomerBookingPage({
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="max-w-md w-full bg-[#0a1118]/80 backdrop-blur-2xl p-8 md:p-10 rounded-3xl border border-[#64c5c3]/30 text-center shadow-[0_0_50px_rgba(100,197,195,0.15)] relative overflow-hidden"
+          className="max-w-md w-full bg-[#0a1118]/80 backdrop-blur-md md:backdrop-blur-2xl p-8 md:p-10 rounded-3xl border border-[#64c5c3]/30 text-center shadow-[0_0_50px_rgba(100,197,195,0.15)] relative overflow-hidden"
         >
           <div className="absolute top-0 right-0 w-64 h-64 bg-[#64c5c3]/10 rounded-full blur-[80px] pointer-events-none -z-10" />
 
@@ -430,7 +445,7 @@ export default function CustomerBookingPage({
 
   return (
     <div className="min-h-screen bg-[#050B10] font-sans selection:bg-[#64c5c3] selection:text-black text-white pb-24">
-      <div className="bg-[#050B10]/80 backdrop-blur-xl border-b border-white/5 sticky top-0 z-50 transition-all duration-500">
+      <div className="bg-[#050B10]/80 backdrop-blur-sm md:backdrop-blur-xl border-b border-white/5 sticky top-0 z-50 transition-all duration-500">
         <div className="max-w-6xl mx-auto px-4 md:px-6 h-16 md:h-20 flex items-center gap-4 md:gap-6">
           <Button
             variant="ghost"
@@ -451,7 +466,7 @@ export default function CustomerBookingPage({
           {/* LEFT COLUMN: Forms */}
           <div className="lg:col-span-7 xl:col-span-8 space-y-8 md:space-y-12">
             {/* 1. Schedule Recap */}
-            <section className="bg-[#0a1118]/80 backdrop-blur-xl rounded-2xl md:rounded-3xl p-6 md:p-10 shadow-2xl border border-white/5 relative overflow-hidden">
+            <section className="bg-[#0a1118]/80 backdrop-blur-sm md:backdrop-blur-xl rounded-2xl md:rounded-3xl p-6 md:p-10 shadow-2xl border border-white/5 relative overflow-hidden">
               <div className="absolute top-0 right-0 w-64 h-64 bg-[#64c5c3]/5 rounded-full blur-[80px] pointer-events-none -z-10" />
 
               <div className="flex items-center gap-4 mb-8 md:mb-10 pb-6 border-b border-white/10">
@@ -507,7 +522,7 @@ export default function CustomerBookingPage({
             </section>
 
             {/* 2. Location Logistics */}
-            <section className="bg-[#0a1118]/80 backdrop-blur-xl rounded-2xl md:rounded-3xl p-6 md:p-10 shadow-2xl border border-white/5 relative overflow-hidden">
+            <section className="bg-[#0a1118]/80 backdrop-blur-sm md:backdrop-blur-xl rounded-2xl md:rounded-3xl p-6 md:p-10 shadow-2xl border border-white/5 relative overflow-hidden">
               <div className="absolute top-0 right-0 w-64 h-64 bg-[#64c5c3]/5 rounded-full blur-[80px] pointer-events-none -z-10" />
 
               <div className="flex items-center gap-4 mb-8 md:mb-10 pb-6 border-b border-white/10">
@@ -685,7 +700,7 @@ export default function CustomerBookingPage({
 
           {/* RIGHT COLUMN: The Sticky Summary */}
           <div className="lg:col-span-5 xl:col-span-4 relative mt-4 lg:mt-0">
-            <div className="bg-[#0a1118]/80 backdrop-blur-2xl rounded-3xl border border-white/5 shadow-2xl overflow-hidden sticky top-28">
+            <div className="bg-[#0a1118]/80 backdrop-blur-md md:backdrop-blur-2xl rounded-3xl border border-white/5 shadow-2xl overflow-hidden sticky top-28">
               <div className="p-6 md:p-8 border-b border-white/10 flex gap-4 md:gap-5 items-center bg-black/40">
                 <div className="relative w-24 h-16 md:w-28 md:h-20 rounded-xl bg-black overflow-hidden shrink-0 border border-white/5">
                   <Image
@@ -693,6 +708,8 @@ export default function CustomerBookingPage({
                     alt="Vehicle"
                     width={112}
                     height={80}
+                    priority
+                    sizes="(max-width: 768px) 96px, 112px"
                     className="w-full h-full object-cover opacity-80"
                   />
                 </div>
@@ -801,7 +818,7 @@ export default function CustomerBookingPage({
 
       {/* --- THE PAYMENT MODAL --- */}
       <Dialog open={isPaymentModalOpen} onOpenChange={setIsPaymentModalOpen}>
-        <DialogContent className="w-[90vw] sm:max-w-lg md:max-w-xl max-h-[90vh] overflow-y-auto custom-scrollbar bg-[#0a1118]/95 backdrop-blur-2xl border border-[#64c5c3]/30 p-6 md:p-8 rounded-3xl shadow-[0_0_50px_rgba(100,197,195,0.15)] text-white">
+        <DialogContent className="w-[90vw] sm:max-w-lg md:max-w-xl max-h-[90vh] overflow-y-auto custom-scrollbar bg-[#0a1118]/95 backdrop-blur-md md:backdrop-blur-2xl border border-[#64c5c3]/30 p-6 md:p-8 rounded-3xl shadow-[0_0_50px_rgba(100,197,195,0.15)] text-white">
           <DialogHeader className="text-center shrink-0 border-b border-white/10 pb-4 mb-4">
             <DialogTitle className="text-2xl font-black uppercase tracking-tighter text-white">
               Secure Vehicle
@@ -832,6 +849,7 @@ export default function CustomerBookingPage({
                                 src={method.qrCodeUrl}
                                 alt={`${method.name} QR Code`}
                                 fill
+                                sizes="(max-width: 768px) 128px, 128px"
                                 className="object-contain p-2"
                               />
                             </div>

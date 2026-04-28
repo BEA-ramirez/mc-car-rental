@@ -15,11 +15,20 @@ export async function getCustomerFleet(
   const from = pageParam * PAGE_SIZE;
   const to = from + PAGE_SIZE - 1;
 
-  // base query
+  // base query - explicitly ask for junction table and features table
   let query = supabase
     .from("cars")
     .select(
-      "*, specifications:car_specifications!inner(*), images: car_images(*), car_features(features(*)), owner: car_owner(car_owner_id, business_name, users(full_name))",
+      `
+      *, 
+      specifications:car_specifications!inner(*), 
+      images: car_images(*), 
+      car_features(
+        is_archived,
+        features(*)
+      ), 
+      owner: car_owner(car_owner_id, business_name, users(full_name))
+      `,
     )
     .eq("is_archived", false);
 
@@ -62,7 +71,22 @@ export async function getCustomerFleet(
   }
 
   const formattedData = (rawData || []).map((row: any) => {
-    const cleanFeatures = row.car_features?.map((cf: any) => cf.features) || [];
+    // 1. SAFELY MAP AND FILTER FEATURES
+    // Ensure the junction isn't archived, the feature exists, and the feature isn't archived
+    const cleanFeatures = (row.car_features || [])
+      .filter(
+        (cf: any) =>
+          cf.is_archived === false &&
+          cf.features &&
+          cf.features.is_archived === false,
+      )
+      .map((cf: any) => cf.features);
+
+    // 2. SAFELY FILTER IMAGES
+    const cleanImages = (row.images || []).filter(
+      (img: any) => img.is_archived === false,
+    );
+
     const cleanOwner = {
       car_owner_id: row.owner?.car_owner_id,
       business_name: row.owner?.business_name || "Unknown Business",
@@ -72,11 +96,12 @@ export async function getCustomerFleet(
     return {
       ...row,
       specifications: row.specifications || null,
-      images: row.images || [],
-      features: cleanFeatures,
+      images: cleanImages, // Using filtered images
+      features: cleanFeatures, // Using filtered & mapped features
       owner: cleanOwner,
     };
   });
+
   return {
     success: true,
     data: formattedData,

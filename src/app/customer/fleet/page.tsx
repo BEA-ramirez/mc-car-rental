@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import {
   User,
   CalendarDays,
@@ -13,12 +14,11 @@ import {
   Loader2,
   SlidersHorizontal,
 } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { formatDistanceToNow } from "date-fns";
 
 import FleetFilters, { FilterState } from "@/components/customer/fleet-filters";
 import CarCard from "@/components/customer/car-card";
-import CarDetailsSheet from "@/components/customer/car-details-sheet";
 import { CarCardSkeleton } from "@/components/skeletons";
 import { Button } from "@/components/ui/button";
 import {
@@ -33,13 +33,21 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
-import LogoutDialog from "@/components/auth/logout-dialog";
 import Image from "next/image";
 
 import { useInView } from "react-intersection-observer";
 import { useCustomerFleet } from "../../../../hooks/use-customer-fleet";
 import { useNotifications } from "../../../../hooks/use-notifications";
 import { useDebounce } from "../../../../hooks/use-debounce";
+
+// Lazy load non-critical modal components to free up initial mobile JS payload
+const CarDetailsSheet = dynamic(
+  () => import("@/components/customer/car-details-sheet"),
+  { ssr: false },
+);
+const LogoutDialog = dynamic(() => import("@/components/auth/logout-dialog"), {
+  ssr: false,
+});
 
 export default function CustomerFleetPage() {
   const { ref, inView } = useInView();
@@ -107,10 +115,13 @@ export default function CustomerFleetPage() {
       price: Number(unit.rental_rate_per_day) || 0,
       images: imageUrls,
       features: unit.features || [],
+      color: unit.color || "Unknown",
       rental_rate_per_12h: unit.rental_rate_per_12h || 0,
       rental_rate_per_day: unit.rental_rate_per_day || 0,
     };
   });
+
+  console.log("Formatted Cars:", formattedCars);
 
   useEffect(() => {
     if (inView && hasNextPage && !isFetchingNextPage) {
@@ -126,7 +137,7 @@ export default function CustomerFleetPage() {
   return (
     <div className="min-h-screen bg-[#050B10] text-white font-sans selection:bg-[#64c5c3] selection:text-black pb-24 lg:pb-0 relative">
       {/* Top Nav */}
-      <nav className="fixed top-0 w-full z-50 bg-[#050B10]/50 backdrop-blur-lg border-b border-white/5 transition-all duration-500">
+      <nav className="fixed top-0 w-full z-50 bg-[#050B10]/90 md:bg-[#050B10]/50 backdrop-blur-sm md:backdrop-blur-lg border-b border-white/5 transition-all duration-500">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 sm:h-20 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Image
@@ -135,6 +146,7 @@ export default function CustomerFleetPage() {
               width={48}
               height={48}
               priority
+              sizes="(max-width: 640px) 48px, 60px"
               className="object-contain sm:w-[60px] sm:h-[60px]"
             />
             <Link
@@ -164,7 +176,7 @@ export default function CustomerFleetPage() {
               <PopoverContent
                 align="end"
                 sideOffset={12}
-                className="w-[calc(100vw-2rem)] sm:w-96 p-0 rounded-2xl border-white/10 bg-[#0a1118]/95 backdrop-blur-2xl shadow-2xl overflow-hidden z-[100] mx-4 sm:mx-0"
+                className="w-[calc(100vw-2rem)] sm:w-96 p-0 rounded-2xl border-white/10 bg-[#0a1118]/95 backdrop-blur-md md:backdrop-blur-2xl shadow-2xl overflow-hidden z-[100] mx-4 sm:mx-0"
               >
                 <div className="bg-white/5 border-b border-white/5 p-4 flex items-center justify-between">
                   <div className="flex items-center gap-3">
@@ -323,8 +335,8 @@ export default function CustomerFleetPage() {
           </motion.div>
 
           <motion.div
-            initial={{ x: "100vw", opacity: 0, skewX: -10 }}
-            animate={{ x: 0, opacity: 1, skewX: 0 }}
+            initial={{ x: "100vw", opacity: 0 }}
+            animate={{ x: 0, opacity: 1 }}
             transition={{
               type: "spring",
               stiffness: 45,
@@ -342,6 +354,8 @@ export default function CustomerFleetPage() {
                   className="w-full h-[300px] object-cover opacity-90"
                   width={1200}
                   height={800}
+                  priority
+                  sizes="(max-width: 768px) 100vw, 50vw"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
               </div>
@@ -350,7 +364,7 @@ export default function CustomerFleetPage() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 1.1 }}
-                className="absolute -bottom-6 left-8 bg-[#0a1118]/90 backdrop-blur-xl border border-white/10 px-6 py-4 rounded-2xl flex gap-6 shadow-2xl"
+                className="absolute -bottom-6 left-8 bg-[#0a1118]/95 md:bg-[#0a1118]/90 backdrop-blur-md md:backdrop-blur-xl border border-white/10 px-6 py-4 rounded-2xl flex gap-6 shadow-2xl"
               >
                 <div>
                   <p className="text-[9px] text-[#64c5c3] font-bold uppercase tracking-widest mb-1">
@@ -385,7 +399,7 @@ export default function CustomerFleetPage() {
           <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 lg:hidden">
             <Sheet open={isFilterSheetOpen} onOpenChange={setIsFilterSheetOpen}>
               <SheetTrigger asChild>
-                <Button className="bg-[#161d24]/90 backdrop-blur-xl border border-[#64c5c3]/50 text-white hover:bg-[#161d24] rounded-full shadow-[0_8px_32px_rgba(0,0,0,0.6)] px-6 h-12 text-sm font-medium tracking-wide flex items-center gap-2">
+                <Button className="bg-[#161d24]/95 backdrop-blur-sm border border-[#64c5c3]/50 text-white hover:bg-[#161d24] rounded-full shadow-[0_8px_32px_rgba(0,0,0,0.6)] px-6 h-12 text-sm font-medium tracking-wide flex items-center gap-2">
                   <SlidersHorizontal className="w-4 h-4 text-[#64c5c3]" />
                   Filters{" "}
                   {activeFiltersCount > 0 && (

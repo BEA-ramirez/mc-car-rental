@@ -1,13 +1,24 @@
 "use client";
 
 import { useState } from "react";
+import dynamic from "next/dynamic";
 import { Search, Inbox } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { motion } from "framer-motion";
 
-import BookingCard from "@/components/customer/booking-card";
 import { useCustomerBookings } from "../../../../hooks/use-bookings";
+
+// Lazy load the BookingCard component since it's rendered in a list and can contain heavy elements/images
+const BookingCard = dynamic(
+  () => import("@/components/customer/booking-card"),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="h-32 w-full bg-white/5 border border-white/10 rounded-2xl animate-pulse" />
+    ),
+  },
+);
 
 const TABS = ["All Trips", "Upcoming", "Ongoing", "History"];
 
@@ -53,7 +64,9 @@ export default function MyBookingsPage() {
     <div className="min-h-screen bg-[#050B10] text-white font-sans selection:bg-[#64c5c3] selection:text-black pb-24">
       {/* --- Hero Header Section --- */}
       <div className="relative pt-32 pb-16 md:pb-20 px-6 overflow-hidden border-b border-white/5">
-        <div className="absolute top-0 right-1/4 w-[400px] h-[400px] bg-[#64c5c3]/10 rounded-full blur-[120px] pointer-events-none -z-10" />
+        {/* Optimized background blur for mobile */}
+        <div className="absolute top-0 right-1/4 w-[400px] h-[400px] bg-[#64c5c3]/10 rounded-full blur-[80px] md:blur-[120px] pointer-events-none -z-10" />
+
         <div className="max-w-6xl mx-auto w-full relative z-10">
           <motion.div
             initial={{ opacity: 0, x: -20 }}
@@ -80,7 +93,7 @@ export default function MyBookingsPage() {
 
       <div className="max-w-6xl mx-auto px-4 md:px-6 py-6 md:py-8 relative z-10">
         {/* --- Filters & Search Bar --- */}
-        <div className="bg-[#0a1118]/80 backdrop-blur-xl rounded-2xl md:rounded-3xl p-3 md:p-4 border border-white/5 flex flex-col lg:flex-row items-center justify-between gap-3 md:gap-4 mb-6 md:mb-10 shadow-2xl">
+        <div className="bg-[#0a1118]/80 backdrop-blur-sm md:backdrop-blur-xl rounded-2xl md:rounded-3xl p-3 md:p-4 border border-white/5 flex flex-col lg:flex-row items-center justify-between gap-3 md:gap-4 mb-6 md:mb-10 shadow-2xl">
           <div className="flex w-full lg:w-auto overflow-x-auto custom-scrollbar pb-1 lg:pb-0 gap-1.5 md:gap-2 snap-x">
             {TABS.map((tab) => (
               <button

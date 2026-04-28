@@ -19,6 +19,9 @@ import {
   Info,
   Palette,
   Clock,
+  Plus,
+  Minus,
+  Sparkles,
 } from "lucide-react";
 
 import {
@@ -31,7 +34,6 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Calendar } from "@/components/ui/calendar";
-import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
 import { useBookingSettings } from "../../../hooks/use-settings";
@@ -40,8 +42,8 @@ import { checkCustomerProfileStatus } from "@/actions/verify-profile";
 
 function SpecPill({ icon: Icon, label }: { icon: any; label: string }) {
   return (
-    <div className="flex items-center gap-2 bg-white/5 border border-white/10 px-4 py-2.5 rounded-xl text-xs font-medium text-gray-300">
-      <Icon className="w-4 h-4 text-[#64c5c3] shrink-0" /> {label}
+    <div className="flex items-center gap-2 bg-white/5 border border-white/10 px-3 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest text-gray-300 shadow-sm">
+      <Icon className="w-3.5 h-3.5 text-[#64c5c3] shrink-0" /> {label}
     </div>
   );
 }
@@ -184,17 +186,6 @@ export default function CarDetailsSheet({
       }
     }
   }, [startDate, exactStart, exactEnd, unavailableRanges]);
-
-  const handleHoursChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    let val = parseInt(e.target.value);
-    if (isNaN(val)) val = hourStep;
-
-    const snappedValue = Math.max(
-      hourStep,
-      Math.round(val / hourStep) * hourStep,
-    );
-    setBookingHours(snappedValue);
-  };
 
   const formatDurationText = (hrs: number) => {
     const d = Math.floor(hrs / 24);
@@ -340,9 +331,6 @@ export default function CarDetailsSheet({
                         <X className="w-4 h-4" /> Close
                       </button>
                     </SheetClose>
-                    <span className="text-[10px] font-bold uppercase tracking-widest text-gray-500 bg-black/40 px-3 py-1.5 rounded-full border border-white/5">
-                      ID: {car.id}
-                    </span>
                   </div>
 
                   <div className="space-y-4 mb-10 relative z-10">
@@ -388,21 +376,35 @@ export default function CarDetailsSheet({
                       </div>
                     )}
                   </div>
-
-                  <div className="mb-8 relative z-10">
-                    <p className="text-[11px] font-bold text-[#64c5c3] uppercase tracking-widest mb-2">
-                      {car.brand}
-                    </p>
-                    <h1 className="text-4xl md:text-6xl font-black text-white tracking-tighter uppercase mb-4 leading-none">
-                      {car.model}
-                    </h1>
-                    <p className="text-sm text-gray-400 font-medium leading-relaxed max-w-2xl">
-                      Experience superior comfort and reliable capability.
-                      Meticulously maintained for your safety and enjoyment.
-                    </p>
+                  <div className="flex items-start justify-between shrink-0">
+                    <div className=" relative z-10">
+                      <p className="text-[11px] font-bold text-[#64c5c3] uppercase tracking-widest mb-2">
+                        {car.brand}
+                      </p>
+                      <h1 className="text-4xl md:text-6xl font-black text-white tracking-tighter uppercase mb-4 leading-none">
+                        {car.model}
+                      </h1>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-3xl font-black text-white tracking-tighter">
+                        ₱{car24hRate.toLocaleString()}{" "}
+                        <span className="text-sm font-medium text-gray-400 uppercase tracking-widest">
+                          / 24h
+                        </span>
+                      </p>
+                      {has12hRate && (
+                        <p className="text-[10px] text-[#64c5c3] mt-1 font-bold tracking-widest uppercase">
+                          12h Rate: ₱{car12hRate.toLocaleString()}
+                        </p>
+                      )}
+                    </div>
                   </div>
+                  <p className="text-sm mb-6 text-gray-400 font-medium leading-relaxed max-w-2xl">
+                    Experience superior comfort and reliable capability.
+                    Meticulously maintained for your safety and enjoyment.
+                  </p>
 
-                  <div className="flex flex-wrap gap-3 mb-10 relative z-10">
+                  <div className="flex flex-wrap gap-2.5 mb-10 relative z-10">
                     <SpecPill
                       icon={Palette}
                       label={`${car.color || "Standard"}`}
@@ -410,29 +412,27 @@ export default function CarDetailsSheet({
                     <SpecPill icon={Users} label={`${car.seats} Seats`} />
                     <SpecPill icon={Settings2} label={`${car.transmission}`} />
                     <SpecPill icon={Fuel} label={`${car.fuel}`} />
-                    <SpecPill icon={MapPin} label="Ormoc Hub" />
                   </div>
 
-                  <div className="flex items-center justify-between bg-white/5 border border-white/10  p-5 rounded-2xl mb-8 transition-colors hover:border-[#64c5c3]/30 relative z-10">
-                    <Label
-                      htmlFor="with-driver"
-                      className="flex flex-col gap-1.5 items-start cursor-pointer"
-                    >
-                      <span className="text-sm font-semibold text-white ">
-                        Request a Driver Service
-                      </span>
-                      <span className="text-xs font-medium text-gray-400">
-                        ₱{driver12hRate.toLocaleString()} / 12h Shift • Paid
-                        directly to driver
-                      </span>
-                    </Label>
-                    <Switch
-                      id="with-driver"
-                      checked={withDriver}
-                      onCheckedChange={setWithDriver}
-                      className="data-[state=checked]:bg-[#64c5c3]"
-                    />
-                  </div>
+                  {/* FEATURE LIST CARD */}
+                  {car?.features && car.features.length > 0 && (
+                    <div className="mb-4 shrink-0">
+                      <Label className="text-sm font-semibold text-white flex items-center gap-2 mb-3">
+                        <Sparkles className="w-4 h-4 text-[#64c5c3]" /> Features
+                      </Label>
+                      <div className="bg-white/5 border border-white/10 rounded-2xl p-4 h-[150px] overflow-y-auto custom-scrollbar flex flex-wrap gap-2 content-start">
+                        {car.features.map((feat: any) => (
+                          <div
+                            key={feat.feature_id}
+                            className="flex items-center gap-1.5 bg-black/40 border border-white/5 px-2.5 py-1.5 rounded-lg text-[9px] font-bold text-gray-300 uppercase tracking-widest shadow-inner h-fit"
+                          >
+                            <Sparkles className="w-3 h-3 text-[#64c5c3]" />
+                            {feat.name}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
 
                   <div className="mt-auto pt-6 relative z-10">
                     <div className="bg-[#64c5c3]/5 border border-[#64c5c3]/20 rounded-2xl p-6">
@@ -469,25 +469,6 @@ export default function CarDetailsSheet({
                             </p>
                           </div>
                         </div>
-
-                        <div className="flex gap-3 items-start">
-                          <div className="bg-[#050B10] p-1.5 rounded-lg border border-white/10 shrink-0 mt-0.5">
-                            <Clock className="w-4 h-4 text-[#64c5c3]" />
-                          </div>
-                          <div>
-                            <p className="text-sm font-semibold text-white mb-1">
-                              Flexible Extensions
-                            </p>
-                            <p className="text-sm text-gray-400 leading-relaxed font-medium">
-                              Need more time? Extensions over 4 hours
-                              automatically upgrade to a{" "}
-                              <span className="text-white">
-                                discounted 12-hour block rate
-                              </span>
-                              .
-                            </p>
-                          </div>
-                        </div>
                       </div>
                     </div>
                   </div>
@@ -495,27 +476,8 @@ export default function CarDetailsSheet({
 
                 {/* --- RIGHT COL: SCHEDULER & PRICING --- */}
                 <div className="lg:col-span-5 p-6 md:p-10 bg-[#0a1118]/80 backdrop-blur-2xl flex flex-col justify-start h-full">
-                  <div className="flex items-end justify-between mb-6 pb-6 border-b border-white/10 shrink-0">
-                    <h3 className="text-xs font-medium text-gray-400 uppercase tracking-widest">
-                      Rental Rates
-                    </h3>
-                    <div className="text-right">
-                      <p className="text-3xl font-black text-white tracking-tighter">
-                        ₱{car24hRate.toLocaleString()}{" "}
-                        <span className="text-sm font-medium text-gray-400 uppercase tracking-widest">
-                          / 24h
-                        </span>
-                      </p>
-                      {has12hRate && (
-                        <p className="text-[10px] text-[#64c5c3] mt-1 font-bold tracking-widest uppercase">
-                          12h Rate: ₱{car12hRate.toLocaleString()}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-
                   {/* SCHEDULER */}
-                  <div className="mb-6 space-y-4 shrink-0">
+                  <div className="mb-3 space-y-4 shrink-0">
                     <Label className="text-sm font-semibold text-white flex items-center justify-between mb-3">
                       <div className="flex items-center gap-2">
                         <CalendarDays className="w-4 h-4 text-[#64c5c3]" />{" "}
@@ -524,41 +486,48 @@ export default function CarDetailsSheet({
                     </Label>
 
                     <div className="bg-black/40 border border-white/10 rounded-2xl p-4 flex flex-col items-center shadow-inner relative">
-                      <Calendar
-                        mode="range"
-                        defaultMonth={new Date()}
-                        selected={{
-                          from: exactStart || startDate,
-                          to: exactEnd || startDate,
-                        }}
-                        onSelect={(range, selectedDay) =>
-                          setStartDate(selectedDay)
-                        }
-                        disabled={isDateDisabled}
-                        className={cn(
-                          "w-full text-white font-medium transition-opacity",
-                          isDatesLoading
-                            ? "opacity-50 pointer-events-none"
-                            : "opacity-100",
-                        )}
-                        classNames={{
-                          table: "w-full border-collapse space-y-1",
-                          head_row: "flex w-full justify-between mt-2",
-                          head_cell:
-                            "text-[10px] font-bold text-gray-500 uppercase tracking-widest w-9 text-center",
-                          row: "flex w-full justify-between mt-2",
-                          cell: "h-9 w-9 text-center relative p-0 focus-within:relative focus-within:z-20",
-                          day: "h-9 w-9 p-0 font-normal hover:bg-white/10 rounded-lg cursor-pointer flex items-center justify-center transition-colors",
-                          day_selected:
-                            "bg-[#64c5c3] text-black hover:bg-[#52a3a1] font-bold rounded-lg",
-                          day_today:
-                            "bg-white/5 text-[#64c5c3] border border-[#64c5c3]/30 rounded-lg",
-                          day_range_middle:
-                            "bg-[#64c5c3]/20 text-white rounded-none hover:bg-[#64c5c3]/30",
-                          day_disabled:
-                            "text-gray-700 opacity-50 cursor-not-allowed bg-black/50 line-through decoration-gray-600/50",
-                        }}
-                      />
+                      <div className="w-fit">
+                        <Calendar
+                          mode="range"
+                          defaultMonth={new Date()}
+                          selected={{
+                            from: exactStart || startDate,
+                            to: exactEnd || startDate,
+                          }}
+                          onSelect={(range, selectedDay) =>
+                            setStartDate(selectedDay)
+                          }
+                          disabled={isDateDisabled}
+                          showOutsideDays={true}
+                          className={cn(
+                            "text-white font-medium transition-opacity",
+                            isDatesLoading
+                              ? "opacity-50 pointer-events-none"
+                              : "opacity-100",
+                          )}
+                          classNames={{
+                            months: "w-fit",
+                            month: "w-fit",
+                            table: "w-fit border-collapse",
+                            head_row: "grid grid-cols-7 gap-1 mt-2",
+                            head_cell:
+                              "w-9 h-9 text-[10px] font-bold text-gray-500 uppercase tracking-widest text-center flex items-center justify-center",
+                            row: "grid grid-cols-7 gap-1 mt-2",
+                            cell: "w-9 h-9 text-center relative p-0 focus-within:relative focus-within:z-20 flex items-center justify-center",
+                            day: "h-9 w-9 p-0 font-normal hover:bg-white/10 rounded-lg cursor-pointer flex items-center justify-center transition-colors",
+                            day_selected:
+                              "bg-[#64c5c3] text-black hover:bg-[#52a3a1] font-bold rounded-lg",
+                            day_today:
+                              "bg-white/5 text-[#64c5c3] border border-[#64c5c3]/30 rounded-lg",
+                            day_range_middle:
+                              "bg-[#64c5c3]/20 text-white rounded-none hover:bg-[#64c5c3]/30",
+                            day_disabled:
+                              "text-gray-700 opacity-50 cursor-not-allowed bg-black/50 line-through decoration-gray-600/50",
+                            day_outside:
+                              "text-gray-600 opacity-50 aria-selected:bg-transparent aria-selected:text-gray-600",
+                          }}
+                        />
+                      </div>
 
                       <div className="flex items-center gap-1.5 mt-4 pt-3 border-t border-white/5 w-full justify-center">
                         <Info className="w-3.5 h-3.5 text-gray-500 shrink-0" />
@@ -574,30 +543,54 @@ export default function CarDetailsSheet({
                         <Label className="text-[10px] text-gray-400 uppercase tracking-widest font-bold">
                           Start Time
                         </Label>
-                        <Input
-                          type="time"
-                          value={startTime}
-                          onChange={(e) => setStartTime(e.target.value)}
-                          className="bg-white/5 border-white/10 text-white shadow-none focus-visible:ring-[#64c5c3]"
-                        />
+                        <div className="relative">
+                          <input
+                            type="time"
+                            value={startTime}
+                            onChange={(e) => setStartTime(e.target.value)}
+                            className="w-full h-10 bg-white/5 border border-white/10 text-white rounded-lg px-3 text-sm focus:outline-none focus:ring-1 focus:ring-[#64c5c3]"
+                          />
+                        </div>
                       </div>
+
+                      {/* Custom Stepper */}
                       <div className="space-y-2">
                         <Label className="text-[10px] text-gray-400 uppercase tracking-widest font-bold">
-                          Duration
-                        </Label>
-                        <div className="relative">
-                          <Input
-                            type="number"
-                            min={hourStep}
-                            step={hourStep}
-                            value={bookingHours}
-                            onChange={handleHoursChange}
-                            onBlur={handleHoursChange}
-                            className="bg-white/5 border-white/10 text-white shadow-none focus-visible:ring-[#64c5c3] pr-12"
-                          />
-                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-gray-500 pointer-events-none">
-                            HRS
+                          Duration{" "}
+                          <span className="text-[#64c5c3] opacity-70 lowercase tracking-normal font-medium">
+                            (Steps of {hourStep}h)
                           </span>
+                        </Label>
+                        <div className="flex items-center h-10 bg-white/5 border border-white/10 rounded-lg overflow-hidden">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            className="h-full px-4 text-white hover:bg-white/10 rounded-none border-r border-white/10 shadow-none"
+                            onClick={() =>
+                              setBookingHours((prev) =>
+                                Math.max(hourStep, prev - hourStep),
+                              )
+                            }
+                            disabled={bookingHours <= hourStep}
+                          >
+                            <Minus className="w-4 h-4" />
+                          </Button>
+                          <div className="flex-1 flex items-center justify-center text-sm font-bold text-white bg-black/20 h-full">
+                            {bookingHours}{" "}
+                            <span className="text-[10px] text-gray-500 ml-1 font-bold">
+                              HRS
+                            </span>
+                          </div>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            className="h-full px-4 text-white hover:bg-white/10 rounded-none border-l border-white/10 shadow-none"
+                            onClick={() =>
+                              setBookingHours((prev) => prev + hourStep)
+                            }
+                          >
+                            <Plus className="w-4 h-4" />
+                          </Button>
                         </div>
                         <p className="text-[10px] font-bold text-[#64c5c3] uppercase tracking-widest mt-1">
                           = {formatDurationText(bookingHours)}
@@ -605,7 +598,6 @@ export default function CarDetailsSheet({
                       </div>
                     </div>
 
-                    {/* THE FIX: Removed the !dateError check so the Info message always shows! */}
                     {partialDayWarning && (
                       <div className="bg-amber-500/10 border border-amber-500/20 text-amber-400 text-[10px] font-semibold p-3 rounded-lg flex items-start gap-2 mt-2">
                         <Info className="w-3.5 h-3.5 shrink-0 mt-0.5" />
@@ -639,9 +631,30 @@ export default function CarDetailsSheet({
                         </div>
                       </div>
                     )}
+
+                    {/* DRIVER SWITCH (Moved here) */}
+                    <div className="flex items-center justify-between bg-black/40 border border-white/10 p-4 rounded-xl mt-4 transition-colors hover:border-[#64c5c3]/30">
+                      <Label
+                        htmlFor="with-driver"
+                        className="flex flex-col gap-1 items-start cursor-pointer"
+                      >
+                        <span className="text-[11px] font-bold text-white uppercase tracking-widest">
+                          Request a Driver
+                        </span>
+                        <span className="text-[10px] font-medium text-gray-500">
+                          ₱{driver12hRate.toLocaleString()} / 12h Shift
+                        </span>
+                      </Label>
+                      <Switch
+                        id="with-driver"
+                        checked={withDriver}
+                        onCheckedChange={setWithDriver}
+                        className="data-[state=checked]:bg-[#64c5c3]"
+                      />
+                    </div>
                   </div>
 
-                  <div className="space-y-4 pt-5 border-t border-white/10 mt-auto shrink-0">
+                  <div className="space-y-6 pt-3 border-t border-white/10 mt-auto shrink-0">
                     {/* --- THE RECEIPT BREAKDOWN --- */}
                     <div className="space-y-2 mb-4 bg-white/5 rounded-xl p-4 border border-white/10">
                       <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2">
