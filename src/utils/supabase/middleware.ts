@@ -57,7 +57,7 @@ export async function updateSession(request: NextRequest) {
 
     // 2. PREVENT UNAUTHORIZED ACCESS (The Bouncer)
     // If a non-admin tries to access /admin
-    if (path.startsWith("/admin") && role !== "admin") {
+    if (path.startsWith("/admin") && role !== "admin" && role !== "staff") {
       const url = request.nextUrl.clone();
       url.pathname = "/customer/fleet";
       return NextResponse.redirect(url);
@@ -81,7 +81,7 @@ export async function updateSession(request: NextRequest) {
     if (path.startsWith("/auth/login") || path.startsWith("/auth/signup")) {
       const url = request.nextUrl.clone();
 
-      if (role === "admin") {
+      if (role === "admin" || role === "staff") {
         url.pathname = "/admin/dashboard";
       } else if (role === "driver") {
         url.pathname = "/driver/home";

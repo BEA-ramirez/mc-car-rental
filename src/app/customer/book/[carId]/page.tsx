@@ -15,6 +15,7 @@ import {
   FileText,
   Info,
   X,
+  CreditCard,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -34,6 +35,13 @@ import {
   DialogDescription,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  CarouselNext,
+  CarouselPrevious,
+} from "@/components/ui/carousel";
 import { cn } from "@/lib/utils";
 
 import OrmocMapSelector, { MapHub } from "@/components/ormoc-map";
@@ -68,6 +76,25 @@ export default function CustomerBookingPage({
   }, [settings]);
 
   const MINIMUM_DOWNPAYMENT = 500;
+
+  // --- DYNAMIC PAYMENT METHODS FILTERING ---
+  const activePaymentMethods = useMemo(() => {
+    if (!settings?.payments) return [];
+
+    // Convert the payments object to an array, filter out 'cash' and disabled ones
+    return Object.entries(settings.payments)
+      .filter(
+        ([key, details]: [string, any]) => details.enabled && key !== "cash",
+      )
+      .map(([key, details]: [string, any]) => ({
+        id: key,
+        name: details.name || key.replace(/_/g, " "),
+        accountName: details.account_name,
+        accountNumber: details.account_number,
+        instructions: details.instructions,
+        qrCodeUrl: details.qr_code_url,
+      }));
+  }, [settings]);
 
   const car = useMemo(() => {
     if (!unit) return null;
@@ -785,28 +812,68 @@ export default function CustomerBookingPage({
           </DialogHeader>
 
           <div className="flex flex-col gap-6">
-            <div className="p-5 bg-black/40 border border-white/5 rounded-2xl text-center flex flex-col items-center shrink-0">
-              <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-3">
-                Scan to Pay via GCash / Maya
-              </p>
-              <div className="w-32 h-32 bg-white rounded-xl p-2 mb-3 relative flex items-center justify-center">
-                <Image
-                  src="https://images.unsplash.com/photo-1629128625414-374a9e16d56a?q=80&w=870&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
-                  alt="GCash/Maya QR Code"
-                  width={400}
-                  height={400}
-                  className="w-full h-full object-contain p-2"
-                />
-              </div>
-              <p className="text-[10px] text-white font-bold uppercase tracking-widest mb-1">
-                MC Ormoc Car Rental
-              </p>
-              <p className="text-[10px] text-[#64c5c3] font-bold tracking-widest">
-                0976 180 4397
-              </p>
-            </div>
+            {/* --- SHADCN CAROUSEL FOR PAYMENT METHODS --- */}
+            {activePaymentMethods.length > 0 ? (
+              <div className="w-full max-w-sm mx-auto relative px-8">
+                <Carousel>
+                  <CarouselContent>
+                    {activePaymentMethods.map((method) => (
+                      <CarouselItem key={method.id}>
+                        <div className="p-5 bg-black/40 border border-white/5 rounded-2xl text-center flex flex-col items-center justify-center min-h-[260px]">
+                          <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-3 flex items-center gap-1.5">
+                            <CreditCard className="w-3.5 h-3.5 text-[#64c5c3]" />
+                            Pay via {method.name}
+                          </p>
 
-            <div className="shrink-0">
+                          {/* QR Code Container */}
+                          {method.qrCodeUrl ? (
+                            <div className="w-32 h-32 bg-white rounded-xl p-2 mb-3 relative flex items-center justify-center shadow-[0_0_20px_rgba(100,197,195,0.1)]">
+                              <Image
+                                src={method.qrCodeUrl}
+                                alt={`${method.name} QR Code`}
+                                fill
+                                className="object-contain p-2"
+                              />
+                            </div>
+                          ) : (
+                            <div className="w-32 h-32 bg-white/5 border border-white/10 rounded-xl mb-3 flex items-center justify-center">
+                              <span className="text-[9px] text-gray-500 uppercase tracking-widest font-bold">
+                                No QR Code
+                              </span>
+                            </div>
+                          )}
+
+                          <div className="bg-white/5 border border-white/10 px-4 py-2 rounded-lg mb-3 w-full">
+                            <p className="text-[10px] text-white font-bold uppercase tracking-widest mb-1 truncate">
+                              {method.accountName || "Account Name"}
+                            </p>
+                            <p className="text-[10px] text-[#64c5c3] font-bold tracking-widest">
+                              {method.accountNumber || "Account Number"}
+                            </p>
+                          </div>
+
+                          {method.instructions && (
+                            <p className="text-[9px] text-gray-400 font-medium leading-relaxed max-w-[250px]">
+                              {method.instructions}
+                            </p>
+                          )}
+                        </div>
+                      </CarouselItem>
+                    ))}
+                  </CarouselContent>
+                  <CarouselPrevious className="absolute -left-6 border-white/10 bg-black/60 hover:bg-black hover:text-[#64c5c3] text-white" />
+                  <CarouselNext className="absolute -right-6 border-white/10 bg-black/60 hover:bg-black hover:text-[#64c5c3] text-white" />
+                </Carousel>
+              </div>
+            ) : (
+              <div className="p-8 bg-black/40 border border-white/5 rounded-2xl text-center">
+                <p className="text-xs text-gray-400 font-bold uppercase tracking-widest">
+                  No digital payment methods configured.
+                </p>
+              </div>
+            )}
+
+            <div className="shrink-0 border-t border-white/10 pt-6">
               <ReceiptScanner
                 onScanComplete={handleReceiptScan}
                 expectedAmount={MINIMUM_DOWNPAYMENT}

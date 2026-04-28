@@ -15,7 +15,6 @@ import {
 } from "@/lib/schemas/settings";
 import { createAdminClient } from "@/utils/supabase/admin";
 
-// --- 1. GET SETTINGS (Generic) ---
 export async function getSystemSettings(keys: string[]) {
   const supabase = await createClient();
   const { data, error } = await supabase
@@ -272,16 +271,19 @@ export type PaymentMethodDetail = {
   enabled: boolean;
   account_name?: string;
   account_number?: string;
+  qr_code_url?: string; // To store the uploaded QR code link
+  name?: string; // To store custom display names (like "Maya")
+  instructions?: string; // "Send screenshot to..."
 };
 
 export type PaymentMethods = {
-  bdo: PaymentMethodDetail;
+  bank: PaymentMethodDetail;
   cash: PaymentMethodDetail;
   gcash: PaymentMethodDetail;
-  [key: string]: PaymentMethodDetail; // Allows flexibility if you add BPI, UnionBank, etc. later
+  [key: string]: PaymentMethodDetail; // Allows flexibility for dynamic keys
 };
 
-// 7. Fetch Payment Methods
+// Fetch Payment Methods
 export async function getPaymentMethods(): Promise<PaymentMethods | null> {
   const supabase = await createAdminClient();
   const { data, error } = await supabase
@@ -298,7 +300,7 @@ export async function getPaymentMethods(): Promise<PaymentMethods | null> {
   return data?.value ? (data.value as PaymentMethods) : null;
 }
 
-// 8. Save Payment Methods
+// Save Payment Methods
 export async function savePaymentMethods(methods: PaymentMethods) {
   const supabase = await createAdminClient();
 

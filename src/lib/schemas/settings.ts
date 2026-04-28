@@ -58,7 +58,8 @@ const PaymentMethodDetailSchema = z.object({
   account_name: z.string().optional(),
   account_number: z.string().optional(),
   instructions: z.string().optional(), // "Send screenshot to..."
-  qr_code_url: z.string().url().optional().nullable(),
+  qr_code_url: z.string().url().optional(),
+  name: z.string().optional(), // For display purposes (e.g. "Maya" instead of "GCash")
 });
 
 export const PaymentMethodsSchema = z
