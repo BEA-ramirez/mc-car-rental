@@ -56,7 +56,7 @@ export default function LandingPage() {
             className="object-contain"
           />
           <div className="text-xl md:text-2xl font-black tracking-tighter uppercase">
-            MC Ormoc
+            Seffne
           </div>
         </div>
 
@@ -323,7 +323,7 @@ export default function LandingPage() {
             className="max-w-2xl"
           >
             <p className="text-[#64c5c3] font-bold tracking-widest text-[10px] sm:text-xs mb-3 sm:mb-4">
-              — ABOUT MC ORMOC CAR RENTAL
+              — ABOUT SEFFNE TRANSPORT SERVICES
             </p>
             <h2 className="text-3xl sm:text-4xl md:text-5xl font-black uppercase leading-tight mb-4 sm:mb-6">
               The No. 1 choice for hassle-free exploration.
@@ -600,10 +600,11 @@ export default function LandingPage() {
       {/* FOOTER */}
       <footer className="border-t border-white/5 bg-black py-10 sm:py-16 px-6 text-center text-gray-500 text-sm">
         <h2 className="text-4xl sm:text-6xl md:text-8xl font-black text-white/5 uppercase tracking-tighter mb-4 sm:mb-8">
-          MC ORMOC
+          Seffne
         </h2>
         <p className="text-[10px] sm:text-xs font-bold uppercase tracking-widest text-gray-600">
-          © {new Date().getFullYear()} MC Ormoc Car Rental. All rights reserved.
+          © {new Date().getFullYear()} Seffne Transport Services Inc. All rights
+          reserved.
         </p>
       </footer>
     </div>
