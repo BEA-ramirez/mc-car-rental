@@ -818,25 +818,35 @@ export default function CustomerBookingPage({
 
       {/* --- THE PAYMENT MODAL --- */}
       <Dialog open={isPaymentModalOpen} onOpenChange={setIsPaymentModalOpen}>
-        <DialogContent className="w-[90vw] sm:max-w-lg md:max-w-xl max-h-[90vh] overflow-y-auto custom-scrollbar bg-[#0a1118]/95 backdrop-blur-md md:backdrop-blur-2xl border border-[#64c5c3]/30 p-6 md:p-8 rounded-3xl shadow-[0_0_50px_rgba(100,197,195,0.15)] text-white">
-          <DialogHeader className="text-center shrink-0 border-b border-white/10 pb-4 mb-4">
-            <DialogTitle className="text-2xl font-black uppercase tracking-tighter text-white">
+        <DialogContent className="w-[95vw] sm:max-w-lg md:max-w-xl h-[90vh] md:h-auto md:max-h-[90vh] flex flex-col p-0 gap-0 overflow-hidden bg-[#0a1118]/95 backdrop-blur-xl border border-[#64c5c3]/30 rounded-2xl md:rounded-3xl shadow-[0_0_50px_rgba(100,197,195,0.15)] text-white [&>button.absolute]:hidden">
+          {/* Pinned Header */}
+          <DialogHeader className="text-center p-6 pb-4 border-b border-white/10 shrink-0 relative">
+            {/* Custom Close Button since we hid the default one */}
+            <button
+              onClick={() => setIsPaymentModalOpen(false)}
+              className="absolute right-4 top-4 p-2 text-gray-400 hover:text-white hover:bg-white/10 rounded-full transition-colors"
+            >
+              <X className="w-4 h-4" />
+            </button>
+
+            <DialogTitle className="text-xl md:text-2xl font-black uppercase tracking-tighter text-white">
               Secure Vehicle
             </DialogTitle>
-            <DialogDescription className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mt-2">
-              Platform Total: ₱{platformTotalValue.toLocaleString()}
+            <DialogDescription className="text-[10px] font-bold uppercase tracking-widest text-[#64c5c3] mt-1.5">
+              <h3>Platform Total: ₱{platformTotalValue.toLocaleString()}</h3>
+              <h3>Downpayment: ₱{MINIMUM_DOWNPAYMENT.toLocaleString()}</h3>
             </DialogDescription>
           </DialogHeader>
 
-          <div className="flex flex-col gap-6">
-            {/* --- SHADCN CAROUSEL FOR PAYMENT METHODS --- */}
+          {/* Scrollable Middle Content */}
+          <div className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar">
             {activePaymentMethods.length > 0 ? (
               <div className="w-full max-w-sm mx-auto relative px-8">
                 <Carousel>
                   <CarouselContent>
                     {activePaymentMethods.map((method) => (
                       <CarouselItem key={method.id}>
-                        <div className="p-5 bg-black/40 border border-white/5 rounded-2xl text-center flex flex-col items-center justify-center min-h-[260px]">
+                        <div className="p-5 bg-black/40 border border-white/5 rounded-2xl text-center flex flex-col items-center justify-center min-h-[240px]">
                           <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-3 flex items-center gap-1.5">
                             <CreditCard className="w-3.5 h-3.5 text-[#64c5c3]" />
                             Pay via {method.name}
@@ -844,34 +854,34 @@ export default function CustomerBookingPage({
 
                           {/* QR Code Container */}
                           {method.qrCodeUrl ? (
-                            <div className="w-32 h-32 bg-white rounded-xl p-2 mb-3 relative flex items-center justify-center shadow-[0_0_20px_rgba(100,197,195,0.1)]">
+                            <div className="w-28 h-28 bg-white rounded-xl p-2 mb-3 relative flex items-center justify-center shadow-[0_0_20px_rgba(100,197,195,0.1)]">
                               <Image
                                 src={method.qrCodeUrl}
                                 alt={`${method.name} QR Code`}
                                 fill
-                                sizes="(max-width: 768px) 128px, 128px"
+                                sizes="112px"
                                 className="object-contain p-2"
                               />
                             </div>
                           ) : (
-                            <div className="w-32 h-32 bg-white/5 border border-white/10 rounded-xl mb-3 flex items-center justify-center">
+                            <div className="w-28 h-28 bg-white/5 border border-white/10 rounded-xl mb-3 flex items-center justify-center">
                               <span className="text-[9px] text-gray-500 uppercase tracking-widest font-bold">
                                 No QR Code
                               </span>
                             </div>
                           )}
 
-                          <div className="bg-white/5 border border-white/10 px-4 py-2 rounded-lg mb-3 w-full">
-                            <p className="text-[10px] text-white font-bold uppercase tracking-widest mb-1 truncate">
+                          <div className="bg-white/5 border border-white/10 px-4 py-2.5 rounded-lg w-full mb-3">
+                            <p className="text-[10px] text-white font-bold uppercase tracking-widest mb-0.5 truncate">
                               {method.accountName || "Account Name"}
                             </p>
-                            <p className="text-[10px] text-[#64c5c3] font-bold tracking-widest">
+                            <p className="text-[10px] text-[#64c5c3] font-bold tracking-widest font-mono">
                               {method.accountNumber || "Account Number"}
                             </p>
                           </div>
 
                           {method.instructions && (
-                            <p className="text-[9px] text-gray-400 font-medium leading-relaxed max-w-[250px]">
+                            <p className="text-[9px] text-gray-400 font-medium leading-relaxed">
                               {method.instructions}
                             </p>
                           )}
@@ -879,8 +889,8 @@ export default function CustomerBookingPage({
                       </CarouselItem>
                     ))}
                   </CarouselContent>
-                  <CarouselPrevious className="absolute -left-6 border-white/10 bg-black/60 hover:bg-black hover:text-[#64c5c3] text-white" />
-                  <CarouselNext className="absolute -right-6 border-white/10 bg-black/60 hover:bg-black hover:text-[#64c5c3] text-white" />
+                  <CarouselPrevious className="absolute -left-6 border-white/10 bg-black/60 hover:bg-black hover:text-[#64c5c3] text-white w-8 h-8" />
+                  <CarouselNext className="absolute -right-6 border-white/10 bg-black/60 hover:bg-black hover:text-[#64c5c3] text-white w-8 h-8" />
                 </Carousel>
               </div>
             ) : (
@@ -891,18 +901,21 @@ export default function CustomerBookingPage({
               </div>
             )}
 
-            <div className="shrink-0 border-t border-white/10 pt-6">
+            <div className="border-t border-white/10 pt-6">
               <ReceiptScanner
                 onScanComplete={handleReceiptScan}
                 expectedAmount={MINIMUM_DOWNPAYMENT}
               />
             </div>
+          </div>
 
-            <label className="flex items-start gap-3 cursor-pointer group shrink-0">
-              <div className="relative flex items-center justify-center mt-0.5">
+          {/* Pinned Footer (Agreement & Button) */}
+          <div className="p-6 pt-4 border-t border-white/10 bg-black/20 shrink-0 flex flex-col gap-4">
+            <label className="flex items-start gap-3 cursor-pointer group">
+              <div className="relative flex items-center justify-center mt-0.5 shrink-0">
                 <input
                   type="checkbox"
-                  className="peer appearance-none w-4 h-4 border-2 border-white/20 rounded-md checked:bg-[#64c5c3] checked:border-[#64c5c3] transition-all outline-none cursor-pointer"
+                  className="peer appearance-none w-4 h-4 border-2 border-white/20 rounded-[4px] checked:bg-[#64c5c3] checked:border-[#64c5c3] transition-all outline-none cursor-pointer"
                   checked={agreedToTerms}
                   onChange={(e) => setAgreedToTerms(e.target.checked)}
                 />
@@ -911,7 +924,7 @@ export default function CustomerBookingPage({
                   strokeWidth={4}
                 />
               </div>
-              <p className="text-[10px] text-gray-400 font-medium leading-relaxed">
+              <p className="text-[9px] text-gray-400 font-medium leading-relaxed">
                 I agree to pay the{" "}
                 <strong className="text-white">
                   non-refundable Reservation Fee
@@ -932,7 +945,7 @@ export default function CustomerBookingPage({
                 !receiptFile ||
                 receiptAmount < MINIMUM_DOWNPAYMENT
               }
-              className="w-full shrink-0 bg-[#64c5c3] text-black hover:bg-[#52a3a1] h-14 rounded-xl font-black text-[10px] uppercase tracking-widest shadow-[0_0_20px_rgba(100,197,195,0.2)] transition-all duration-500 disabled:opacity-40 disabled:bg-[#64c5c3] disabled:cursor-not-allowed"
+              className="w-full bg-[#64c5c3] text-black hover:bg-[#52a3a1] h-12 md:h-14 rounded-xl font-black text-[10px] md:text-xs uppercase tracking-widest shadow-[0_0_20px_rgba(100,197,195,0.2)] transition-all duration-500 disabled:opacity-40 disabled:bg-[#64c5c3] disabled:cursor-not-allowed"
             >
               {isUploading
                 ? "Uploading Receipt..."

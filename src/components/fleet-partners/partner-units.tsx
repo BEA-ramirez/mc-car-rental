@@ -48,7 +48,7 @@ export default function PartnerUnits({
   if (!selectedPartner) return null;
 
   return (
-    <div className="flex flex-col h-full w-full bg-transparent relative transition-colors duration-300">
+    <div className="flex flex-col h-full w-full bg-transparent relative transition-colors duration-300 min-h-[300px]">
       {/* Header Info */}
       <div className="flex items-center justify-between mb-3 shrink-0 border-b border-border pb-2.5 transition-colors">
         <h3 className="text-[10px] font-bold text-foreground uppercase tracking-widest leading-none">
@@ -60,19 +60,19 @@ export default function PartnerUnits({
       </div>
 
       {/* List Area */}
-      <div className="flex-1 overflow-y-auto min-h-0 custom-scrollbar relative">
+      <div className="flex-1 overflow-y-auto min-h-[450px] custom-scrollbar relative">
         {isLoading ? (
-          <div className="absolute inset-0 flex flex-col items-center justify-center bg-background/50 backdrop-blur-sm z-10 transition-colors">
+          <div className="absolute inset-0 flex flex-col items-center justify-center bg-background/50 backdrop-blur-sm z-10 transition-colors rounded-xl border border-border">
             <Loader2 className="w-5 h-5 animate-spin text-primary mb-2" />
             <span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">
               Loading Fleet Data...
             </span>
           </div>
         ) : !fleetUnits || fleetUnits.length === 0 ? (
-          <div className="absolute inset-0 flex flex-col items-center justify-center bg-secondary/30 rounded-xl border border-dashed border-border z-10 transition-colors">
+          <div className="h-full absolute inset-0 flex flex-col items-center justify-center bg-secondary/30 rounded-xl border border-dashed border-border z-10 transition-colors">
             <Car className="w-6 h-6 text-muted-foreground/30 mb-2 opacity-80" />
-            <span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">
-              No Active Vehicles
+            <span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground text-center">
+              No active vehicles found <br /> for this partner.
             </span>
           </div>
         ) : (
@@ -108,7 +108,6 @@ export default function PartnerUnits({
                       >
                         {car.availability_status || "Unknown"}
                       </Badge>
-                      {/* Optional: Add year and color to make use of the extra RPC data */}
                       <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">
                         {car.year} • {car.color}
                       </span>

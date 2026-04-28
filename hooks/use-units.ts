@@ -168,10 +168,11 @@ export function useUnitsAdmin(filters: {
   type: string;
   ownerId: string;
 }) {
+  const queryClient = useQueryClient(); // <-- 1. Get the query client
+
   const query = useInfiniteQuery({
     queryKey: ["admin-units", filters],
     queryFn: async ({ pageParam = 1 }) => {
-      // Call the Server Action directly!
       return await getInfiniteUnits({
         pageParam,
         limit: 12,
@@ -184,9 +185,17 @@ export function useUnitsAdmin(filters: {
     getNextPageParam: (lastPage) => lastPage.nextCursor,
   });
 
+  // --- 2. Create the refresh function ---
+  const refreshUnits = async () => {
+    // This invalidates ANY query that starts with "admin-units",
+    // forcing it to refetch the fresh data from the server immediately.
+    await queryClient.invalidateQueries({ queryKey: ["admin-units"] });
+  };
+
   return {
     ...query,
     units: query.data?.pages.flatMap((page) => page.data) || [],
     isUnitsLoading: query.isLoading,
+    refreshUnits, // <-- 3. Export it so your buttons can use it!
   };
 }

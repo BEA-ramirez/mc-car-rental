@@ -78,7 +78,8 @@ export default function UnitsCardGrid() {
   const {
     units,
     isUnitsLoading,
-
+    isRefetching, // <-- We grab isRefetching here
+    refreshUnits,
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
@@ -176,13 +177,18 @@ export default function UnitsCardGrid() {
 
         {/* Right Side: Toolbar / Controls */}
         <div className="flex flex-wrap items-center gap-2">
+          {/* REFRESH BUTTON UPDATED WITH SPINNER */}
           <Button
             variant="outline"
             size="icon"
-            className="h-8 w-8 bg-card border-border text-muted-foreground hover:text-foreground hover:bg-secondary rounded-md shadow-none transition-colors"
-            title="Export Fleet Data"
+            disabled={isRefetching}
+            className="h-8 w-8 bg-card border-border text-muted-foreground hover:text-foreground hover:bg-secondary rounded-md shadow-none transition-colors disabled:opacity-50"
+            title="Refresh Fleet Data"
+            onClick={() => refreshUnits()}
           >
-            <RefreshCw className="h-3.5 w-3.5" />
+            <RefreshCw
+              className={cn("h-3.5 w-3.5", isRefetching && "animate-spin")}
+            />
           </Button>
 
           <div className="h-5 w-px bg-border mx-1 hidden sm:block" />
@@ -252,7 +258,7 @@ export default function UnitsCardGrid() {
       {/* SCROLLABLE GRID AREA */}
       <div className="flex-1 w-full overflow-y-auto custom-scrollbar">
         <div className="max-w-[1600px] mx-auto p-4 md:p-6">
-          {isUnitsLoading ? (
+          {isUnitsLoading && !isRefetching ? ( // Only show full-screen loader on initial fetch
             <div className="flex h-[400px] items-center justify-center">
               <div className="flex flex-col items-center gap-3 text-muted-foreground">
                 <Loader2 className="h-6 w-6 animate-spin text-primary" />

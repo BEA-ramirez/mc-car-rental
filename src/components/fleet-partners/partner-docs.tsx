@@ -38,7 +38,7 @@ export default function PartnerDocs({ selectedPartner }: PartnerDocsProps) {
   };
 
   return (
-    <div className="flex flex-col h-full w-full bg-transparent transition-colors duration-300">
+    <div className="flex flex-col h-full w-full bg-transparent transition-colors duration-300 min-h-[300px]">
       {/* Header Info */}
       <div className="flex items-center justify-between mb-4 shrink-0 border-b border-border pb-2.5 transition-colors">
         <div>
@@ -59,9 +59,9 @@ export default function PartnerDocs({ selectedPartner }: PartnerDocsProps) {
       </div>
 
       {/* Scrollable List Area */}
-      <div className="flex-1 overflow-y-auto min-h-0 custom-scrollbar relative">
+      <div className="flex-1 overflow-y-auto min-h-[250px] custom-scrollbar relative">
         {isLoading ? (
-          <div className="absolute inset-0 flex flex-col items-center justify-center bg-background/50 backdrop-blur-sm z-10 transition-colors">
+          <div className="absolute inset-0 flex flex-col items-center justify-center bg-background/50 backdrop-blur-sm z-10 transition-colors rounded-xl border border-border">
             <Loader2 className="w-5 h-5 animate-spin text-primary mb-2" />
             <span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">
               Retrieving Documents...
@@ -70,7 +70,7 @@ export default function PartnerDocs({ selectedPartner }: PartnerDocsProps) {
         ) : !documents || documents.length === 0 ? (
           <div className="absolute inset-0 flex flex-col items-center justify-center bg-secondary/30 rounded-xl border border-dashed border-border z-10 transition-colors">
             <FileSignature className="w-6 h-6 text-muted-foreground/30 mb-2 opacity-80" />
-            <span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">
+            <span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground text-center">
               No Documents Found
             </span>
           </div>

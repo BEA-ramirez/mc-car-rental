@@ -64,7 +64,7 @@ export default function PartnerLogs({ selectedPartner }: PartnerLogsProps) {
   if (!selectedPartner) return null;
 
   return (
-    <div className="flex flex-col h-full w-full bg-transparent transition-colors duration-300">
+    <div className="flex flex-col h-full w-full bg-transparent transition-colors duration-300 min-h-[300px]">
       {/* Header Info */}
       <div className="flex items-center justify-between mb-4 shrink-0 border-b border-border pb-2.5 transition-colors">
         <div>
@@ -78,9 +78,9 @@ export default function PartnerLogs({ selectedPartner }: PartnerLogsProps) {
       </div>
 
       {/* Scrollable Timeline Area */}
-      <div className="flex-1 overflow-y-auto min-h-0 custom-scrollbar relative">
+      <div className="flex-1 overflow-y-auto min-h-[450px] custom-scrollbar relative">
         {isLoading ? (
-          <div className="absolute inset-0 flex flex-col items-center justify-center bg-background/50 backdrop-blur-sm z-10 transition-colors">
+          <div className="absolute inset-0 flex flex-col items-center justify-center bg-background/50 backdrop-blur-sm z-10 transition-colors rounded-xl border border-border">
             <Loader2 className="w-5 h-5 animate-spin text-primary mb-2" />
             <span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">
               Fetching Security Logs...
@@ -89,12 +89,12 @@ export default function PartnerLogs({ selectedPartner }: PartnerLogsProps) {
         ) : !logs || logs.length === 0 ? (
           <div className="absolute inset-0 flex flex-col items-center justify-center bg-secondary/30 rounded-xl border border-dashed border-border z-10 transition-colors">
             <History className="w-6 h-6 text-muted-foreground/30 mb-2 opacity-80" />
-            <span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">
+            <span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground text-center">
               No Activity Recorded
             </span>
           </div>
         ) : (
-          <div className="flex flex-col relative pb-4 pl-3.5">
+          <div className="flex flex-col relative pb-4 pl-3.5 mt-2">
             {/* The vertical timeline line */}
             <div className="absolute left-[25.5px] top-4 bottom-4 w-px bg-border transition-colors" />
 

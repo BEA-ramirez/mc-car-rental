@@ -113,52 +113,60 @@ export default function PartnerFinancials({
         </Button>
       </div>
 
-      <div className="flex-1 overflow-y-auto min-h-0 custom-scrollbar border border-border rounded-xl bg-card relative transition-colors shadow-sm">
-        {isLoading ? (
-          <div className="absolute inset-0 flex flex-col items-center justify-center bg-background/50 backdrop-blur-sm z-10 transition-colors">
-            <Loader2 className="w-5 h-5 animate-spin text-primary mb-2" />
-            <span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">
-              Loading Ledger...
-            </span>
-          </div>
-        ) : !payouts || payouts.length === 0 ? (
-          <div className="absolute inset-0 flex flex-col items-center justify-center bg-secondary/30 z-10 transition-colors border border-dashed border-border rounded-xl">
-            <FileText className="w-6 h-6 text-muted-foreground/30 mb-2 opacity-80" />
-            <span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">
-              No Settlement History
-            </span>
-          </div>
-        ) : (
-          <table className="w-full text-left text-[11px] whitespace-nowrap">
-            <thead className="bg-secondary/30 border-b border-border sticky top-0 z-10 transition-colors">
+      <div className="flex-1 min-h-[320px] overflow-y-auto custom-scrollbar border border-border rounded-xl bg-card relative transition-colors shadow-sm">
+        <table className="w-full text-left text-[11px] whitespace-nowrap">
+          <thead className="bg-secondary/30 border-b border-border sticky top-0 z-10 transition-colors">
+            <tr>
+              <th className="h-9 px-4 text-[9px] font-bold uppercase tracking-widest text-muted-foreground">
+                Period
+              </th>
+              <th className="h-9 px-4 text-[9px] font-bold uppercase tracking-widest text-muted-foreground">
+                Gross Revenue
+              </th>
+              <th className="h-9 px-4 text-[9px] font-bold uppercase tracking-widest text-muted-foreground">
+                Commission
+              </th>
+              <th className="h-9 px-4 text-[9px] font-bold uppercase tracking-widest text-foreground">
+                Net Payout
+              </th>
+              <th className="h-9 px-4 text-[9px] font-bold uppercase tracking-widest text-muted-foreground">
+                Status
+              </th>
+              <th className="h-9 px-4 text-[9px] font-bold uppercase tracking-widest text-muted-foreground text-right w-[60px]">
+                Action
+              </th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-border">
+            {isLoading ? (
               <tr>
-                <th className="h-8 px-4 text-[9px] font-bold uppercase tracking-widest text-muted-foreground">
-                  Period
-                </th>
-                <th className="h-8 px-4 text-[9px] font-bold uppercase tracking-widest text-muted-foreground">
-                  Gross Revenue
-                </th>
-                <th className="h-8 px-4 text-[9px] font-bold uppercase tracking-widest text-muted-foreground">
-                  Commission
-                </th>
-                <th className="h-8 px-4 text-[9px] font-bold uppercase tracking-widest text-foreground">
-                  Net Payout
-                </th>
-                <th className="h-8 px-4 text-[9px] font-bold uppercase tracking-widest text-muted-foreground">
-                  Status
-                </th>
-                <th className="h-8 px-4 text-[9px] font-bold uppercase tracking-widest text-muted-foreground text-right">
-                  Action
-                </th>
+                <td colSpan={6} className="h-40 text-center">
+                  <div className="flex flex-col items-center justify-center">
+                    <Loader2 className="w-5 h-5 animate-spin text-primary mb-2" />
+                    <span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">
+                      Loading Ledger...
+                    </span>
+                  </div>
+                </td>
               </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {payouts.map((payout: any) => (
+            ) : !payouts || payouts.length === 0 ? (
+              <tr>
+                <td colSpan={6} className="h-40 text-center">
+                  <div className="flex flex-col items-center justify-center">
+                    <FileText className="w-6 h-6 text-muted-foreground/30 mb-2 opacity-80" />
+                    <span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">
+                      No Settlement History
+                    </span>
+                  </div>
+                </td>
+              </tr>
+            ) : (
+              payouts.map((payout: any) => (
                 <tr
                   key={payout.payout_id}
-                  className="hover:bg-secondary/50 transition-colors group"
+                  className="hover:bg-secondary/40 transition-colors group cursor-default"
                 >
-                  <td className="px-4 py-2.5">
+                  <td className="px-4 py-3">
                     <div className="flex flex-col">
                       <span className="text-[11px] font-bold text-foreground transition-colors">
                         {format(new Date(payout.period_start), "MMM dd")} -{" "}
@@ -169,16 +177,16 @@ export default function PartnerFinancials({
                       </span>
                     </div>
                   </td>
-                  <td className="px-4 py-2.5 text-[11px] font-mono font-medium text-muted-foreground">
+                  <td className="px-4 py-3 text-[11px] font-mono font-medium text-muted-foreground">
                     {formatPHP(payout.total_revenue)}
                   </td>
-                  <td className="px-4 py-2.5 text-[11px] font-mono font-medium text-destructive">
+                  <td className="px-4 py-3 text-[11px] font-mono font-medium text-destructive">
                     -{formatPHP(payout.commission_deducted)}
                   </td>
-                  <td className="px-4 py-2.5 text-[11px] font-mono font-bold text-emerald-600 dark:text-emerald-400">
+                  <td className="px-4 py-3 text-[11px] font-mono font-bold text-emerald-600 dark:text-emerald-400">
                     {formatPHP(payout.net_payout)}
                   </td>
-                  <td className="px-4 py-2.5">
+                  <td className="px-4 py-3">
                     <Badge
                       variant="outline"
                       className={cn(
@@ -193,7 +201,7 @@ export default function PartnerFinancials({
                       {payout.status}
                     </Badge>
                   </td>
-                  <td className="px-4 py-2.5 text-right">
+                  <td className="px-4 py-3 text-right">
                     <Button
                       variant="ghost"
                       size="icon"
@@ -203,10 +211,10 @@ export default function PartnerFinancials({
                     </Button>
                   </td>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
+              ))
+            )}
+          </tbody>
+        </table>
       </div>
     </div>
   );

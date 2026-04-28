@@ -8,13 +8,10 @@ import PartnerRequestsQueue from "./partner-requests-queue";
 
 export default function FleetPartnerData() {
   return (
-    <div className="flex flex-col flex-1 h-full w-full bg-background transition-colors duration-300 min-h-0">
-      <Tabs
-        defaultValue="active-partners"
-        className="flex flex-col h-full min-h-0 w-full"
-      >
+    <div className="w-full bg-background transition-colors duration-300">
+      <Tabs defaultValue="active-partners" className="w-full">
         {/* TAB NAVIGATION */}
-        <div className="shrink-0 mb-4">
+        <div className="mb-4">
           <TabsList className="bg-secondary/50 border border-border/50 p-1 rounded-lg h-auto shadow-inner transition-colors inline-flex">
             <TabsTrigger
               value="active-partners"
@@ -34,18 +31,17 @@ export default function FleetPartnerData() {
         </div>
 
         {/* TAB CONTENTS */}
-        <div className="flex-1 flex flex-col min-h-0">
-          {/* FIX: Force TabsContent to act as a flex container so ActivePartners can stretch */}
+        <div className="w-full">
           <TabsContent
             value="active-partners"
-            className="m-0 flex-1 data-[state=active]:flex flex-col outline-none min-h-0"
+            className="m-0 data-[state=active]:flex flex-col outline-none w-full"
           >
             <ActivePartners />
           </TabsContent>
 
           <TabsContent
             value="app-requests"
-            className="m-0 flex-1 data-[state=active]:flex flex-col outline-none min-h-0"
+            className="m-0 data-[state=active]:flex flex-col outline-none w-full h-[500px]"
           >
             <PartnerRequestsQueue />
           </TabsContent>
