@@ -22,7 +22,6 @@ type PendingRequestsSidebarProps = {
   selectedId: string | null;
   onSelect: (request: SchedulerEvent) => void;
   onApprove: (request: SchedulerEvent) => void;
-  onReject: (request: SchedulerEvent) => void;
 };
 
 export default function PendingRequestsSidebar({
@@ -30,7 +29,6 @@ export default function PendingRequestsSidebar({
   selectedId,
   onSelect,
   onApprove,
-  onReject,
 }: PendingRequestsSidebarProps) {
   return (
     <div className="flex flex-col h-full bg-secondary/10 border-l border-border w-full transition-colors duration-300">
@@ -160,17 +158,6 @@ export default function PendingRequestsSidebar({
                         }}
                       >
                         <CheckCircle className="w-3 h-3 mr-1.5" /> Approve
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="flex-1 h-7 text-[9px] font-bold uppercase tracking-widest text-destructive border-destructive/30 hover:bg-destructive/10 hover:border-destructive/50 rounded-lg shadow-none bg-card transition-colors"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onReject(req);
-                        }}
-                      >
-                        <XCircle className="w-3 h-3 mr-1.5" /> Reject
                       </Button>
                     </div>
                   )}

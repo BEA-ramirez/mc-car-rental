@@ -47,6 +47,7 @@ import {
   Briefcase,
   Image as ImageIcon,
   X,
+  AlertCircle,
 } from "lucide-react";
 import {
   Select,
@@ -56,11 +57,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { FleetPartnerType } from "@/lib/schemas/car-owner";
 import Image from "next/image";
+import { toast } from "sonner"; // Imported toast
 
 interface UnitsFormProp {
   open: boolean;
@@ -130,6 +131,13 @@ export function UnitsForm({ open, onOpenChange, initialData }: UnitsFormProp) {
   useEffect(() => {
     if (open) {
       if (initialData) {
+        // Fix: Strip problematic timestamp fields from features to prevent Zod ISO string errors
+        const safeFeatures = (initialData.features || []).map((f: any) => ({
+          feature_id: f.feature_id,
+          name: f.name,
+          description: f.description,
+        }));
+
         form.reset({
           car_id: initialData.car_id,
           plate_number: initialData.plate_number || "",
@@ -143,7 +151,7 @@ export function UnitsForm({ open, onOpenChange, initialData }: UnitsFormProp) {
           availability_status: initialData.availability_status || "AVAILABLE",
           spec_id: initialData.spec_id || "",
           car_owner_id: initialData.car_owner_id || "",
-          features: initialData.features || [],
+          features: safeFeatures, // Using the sanitized features array
           images: initialData.images || [],
           vin: initialData.vin || "",
           current_mileage: Number(initialData.current_mileage) || 0,
@@ -179,8 +187,14 @@ export function UnitsForm({ open, onOpenChange, initialData }: UnitsFormProp) {
     try {
       await saveUnit(data as unknown as CompleteCarType);
       onOpenChange(false);
+      toast.success(
+        initialData
+          ? "Unit updated successfully!"
+          : "Unit created successfully!",
+      );
     } catch (error) {
       console.error(error);
+      toast.error("An error occurred while saving the unit.");
     }
   };
 
@@ -219,7 +233,11 @@ export function UnitsForm({ open, onOpenChange, initialData }: UnitsFormProp) {
             onSubmit={(e) => {
               form.handleSubmit(onSubmit, (errors) => {
                 console.log("Validation Errors:", errors);
-                alert("Please check all required fields before saving.");
+                // Fix: Replaced alert with a toast notification
+                toast.error("Please check all required fields before saving.", {
+                  description:
+                    "Ensure you've selected a specification and assigned an owner.",
+                });
               })(e);
             }}
             className="flex flex-col flex-1 min-h-0 overflow-hidden"
@@ -689,7 +707,7 @@ export function UnitsForm({ open, onOpenChange, initialData }: UnitsFormProp) {
                         </div>
 
                         {/* Image List */}
-                        <div className="flex-1 overflow-y-auto w-full rounded-xl border border-border p-3 bg-secondary/30 max-h-[150px] custom-scrollbar">
+                        <div className="flex-1 overflow-y-auto w-full rounded-xl border border-border p-3 bg-secondary/30 max-h-[400px] custom-scrollbar">
                           <div className="space-y-2.5">
                             {(form.watch("images") || []).map(
                               (img: any, index: number) => (

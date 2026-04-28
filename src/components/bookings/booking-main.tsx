@@ -520,9 +520,6 @@ export default function BookingMain() {
                     selectedId={selectedPendingId}
                     onSelect={handleSelectRequest}
                     onApprove={handleApproveClick}
-                    onReject={(req) =>
-                      updateStatus({ id: req.id, status: "REJECTED" })
-                    }
                   />
                 </div>
               </div>
