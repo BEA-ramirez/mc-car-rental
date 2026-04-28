@@ -31,47 +31,37 @@ export default function PartnerRevenueChart({
   );
 
   return (
-    <div className="flex flex-col h-full w-full transition-colors duration-300">
-      <div className="flex items-center justify-between mb-4 shrink-0 transition-colors">
-        <div>
-          <h3 className="text-[10px] font-bold text-foreground uppercase tracking-widest leading-none">
-            Revenue Trend
-          </h3>
-          <p className="text-[9px] text-muted-foreground font-bold uppercase tracking-widest mt-1.5">
-            Past {monthsBack} Months Performance
-          </p>
-        </div>
-
-        {/* Simplified Action Button - Wired to state */}
-        <div className="flex gap-1.5">
-          <button
-            onClick={() => setMonthsBack(6)}
-            className={cn(
-              "h-7 px-3 border rounded-lg text-[9px] font-bold uppercase tracking-widest flex items-center transition-colors shadow-none",
-              monthsBack === 6
-                ? "bg-primary text-primary-foreground border-primary"
-                : "bg-background border-border text-muted-foreground hover:bg-secondary hover:text-foreground",
-            )}
-          >
-            6M
-          </button>
-          <button
-            onClick={() => setMonthsBack(12)}
-            className={cn(
-              "h-7 px-3 border rounded-lg text-[9px] font-bold uppercase tracking-widest flex items-center transition-colors shadow-none",
-              monthsBack === 12
-                ? "bg-primary text-primary-foreground border-primary"
-                : "bg-background border-border text-muted-foreground hover:bg-secondary hover:text-foreground",
-            )}
-          >
-            1Y
-          </button>
-        </div>
+    <div className="flex flex-col h-full w-full transition-colors duration-300 relative">
+      {/* Time Filter Buttons - Floating Top Right */}
+      <div className="absolute -top-11 right-0 flex gap-1.5 z-10">
+        <button
+          onClick={() => setMonthsBack(6)}
+          className={cn(
+            "h-7 px-3 border rounded-md text-[9px] font-bold uppercase tracking-widest flex items-center transition-colors shadow-sm",
+            monthsBack === 6
+              ? "bg-foreground text-background border-foreground"
+              : "bg-background border-border text-muted-foreground hover:bg-secondary hover:text-foreground",
+          )}
+        >
+          6M
+        </button>
+        <button
+          onClick={() => setMonthsBack(12)}
+          className={cn(
+            "h-7 px-3 border rounded-md text-[9px] font-bold uppercase tracking-widest flex items-center transition-colors shadow-sm",
+            monthsBack === 12
+              ? "bg-foreground text-background border-foreground"
+              : "bg-background border-border text-muted-foreground hover:bg-secondary hover:text-foreground",
+          )}
+        >
+          1Y
+        </button>
       </div>
 
-      <div className="flex-1 min-h-0 w-full relative">
+      {/* Chart Area */}
+      <div className="flex-1 w-full relative mt-2">
         {isLoading ? (
-          <div className="absolute inset-0 flex flex-col items-center justify-center bg-background/50 backdrop-blur-sm z-10 transition-colors">
+          <div className="absolute inset-0 flex flex-col items-center justify-center bg-background/50 backdrop-blur-sm z-10 transition-colors rounded-lg">
             <Loader2 className="w-5 h-5 animate-spin text-primary mb-2" />
             <span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">
               Loading Data...
@@ -84,7 +74,9 @@ export default function PartnerRevenueChart({
             </span>
           </div>
         ) : (
-          <RevenueLineChart data={chartData} />
+          <div className="absolute inset-0">
+            <RevenueLineChart data={chartData} />
+          </div>
         )}
       </div>
     </div>

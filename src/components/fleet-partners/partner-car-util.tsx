@@ -15,20 +15,10 @@ export default function PartnerCarUtil({ ownerId }: PartnerCarUtilProps) {
 
   return (
     <div className="flex flex-col h-full w-full relative transition-colors duration-300">
-      {/* Header */}
-      <div className="mb-4 shrink-0 border-b border-border pb-2.5 transition-colors">
-        <h3 className="text-[10px] font-bold text-foreground uppercase tracking-widest leading-none">
-          Fleet Utilization
-        </h3>
-        <p className="text-[9px] text-muted-foreground font-bold uppercase tracking-widest mt-1.5">
-          Active Usage (Last 30 Days)
-        </p>
-      </div>
-
       {/* Content Area */}
-      <div className="flex-1 min-h-0 w-full relative">
+      <div className="flex-1 w-full relative mt-2">
         {isLoading ? (
-          <div className="absolute inset-0 flex flex-col items-center justify-center bg-background/50 backdrop-blur-sm z-10 transition-colors">
+          <div className="absolute inset-0 flex flex-col items-center justify-center bg-background/50 backdrop-blur-sm z-10 transition-colors rounded-lg">
             <Loader2 className="w-5 h-5 animate-spin text-primary mb-2" />
             <span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">
               Loading Fleet Data...
@@ -42,7 +32,7 @@ export default function PartnerCarUtil({ ownerId }: PartnerCarUtilProps) {
             </span>
           </div>
         ) : (
-          <div className="absolute inset-0 overflow-y-auto pr-2 space-y-4 custom-scrollbar transition-colors">
+          <div className="absolute inset-0 overflow-y-auto pr-2 space-y-5 custom-scrollbar transition-colors">
             {utilizationData.map((car: any, index: any) => {
               // Determine color based on utilization threshold
               const isHigh = car.utilization_percentage >= 70;
@@ -51,7 +41,7 @@ export default function PartnerCarUtil({ ownerId }: PartnerCarUtilProps) {
               return (
                 <div
                   key={car.car_id || index}
-                  className="flex flex-col gap-1.5 w-full group"
+                  className="flex flex-col gap-2 w-full group"
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">

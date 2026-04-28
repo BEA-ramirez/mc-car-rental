@@ -13,6 +13,7 @@ import {
   Loader2,
   FileText,
   ArrowRight,
+  Download,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { usePartnerPayoutHistory } from "../../../hooks/use-fleetPartners";
@@ -100,20 +101,17 @@ export default function PartnerFinancials({
       </div>
 
       {/* --- LEDGER TABLE --- */}
-      <div className="flex items-center justify-between mb-2.5 shrink-0 border-b border-border pb-2.5 transition-colors">
-        <h3 className="text-[10px] font-bold text-foreground uppercase tracking-widest leading-none">
-          Settlement Ledger
-        </h3>
+      <div className="flex items-center justify-end mb-3 shrink-0 pb-1 transition-colors">
         <Button
           variant="outline"
           size="sm"
           className="h-7 px-3 text-[9px] font-bold uppercase tracking-widest rounded-lg border-border shadow-none bg-background text-foreground hover:bg-secondary transition-colors"
         >
-          Export CSV
+          <Download className="w-3 h-3 mr-1.5" /> Export CSV
         </Button>
       </div>
 
-      <div className="flex-1 min-h-[320px] overflow-y-auto custom-scrollbar border border-border rounded-xl bg-card relative transition-colors shadow-sm">
+      <div className="flex-1 min-h-[300px] overflow-y-auto custom-scrollbar border border-border rounded-xl bg-card relative transition-colors shadow-sm">
         <table className="w-full text-left text-[11px] whitespace-nowrap">
           <thead className="bg-secondary/30 border-b border-border sticky top-0 z-10 transition-colors">
             <tr>
