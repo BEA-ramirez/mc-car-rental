@@ -145,7 +145,7 @@ export default function CustomerProfilePage() {
 
     setUploadingDocMeta({ category, name: file.name });
     const toastId = toast.loading(
-      `Compressing & Uploading ${category === "license_id" ? "License" : "ID"}...`,
+      `Uploading ${category === "license_id" ? "License" : "ID"}...`,
     );
 
     try {

@@ -67,7 +67,10 @@ export default function PaymentVerificationView() {
     setRejectReason("");
   };
 
-  const closeReviewModal = () => setSelectedPayment(null);
+  const closeReviewModal = () => {
+    if (isProcessing) return; // Prevent closing while processing
+    setSelectedPayment(null);
+  };
 
   // Helper to map DB doc to ReviewModal format
   const handleOpenDocReview = (doc: any, user: any) => {
@@ -84,22 +87,32 @@ export default function PaymentVerificationView() {
     });
   };
 
-  const submitApprove = () => {
+  // UPDATED: Made async to wait for the verification to complete
+  const submitApprove = async () => {
     if (!selectedPayment) return;
-    handleVerify(
-      selectedPayment.payment_id,
-      "approve",
-      undefined,
-      editAmount,
-      editRef,
-    );
-    closeReviewModal();
+    try {
+      await handleVerify(
+        selectedPayment.payment_id,
+        "approve",
+        undefined,
+        editAmount,
+        editRef,
+      );
+      setSelectedPayment(null); // Close only on success
+    } catch (error) {
+      console.error("Failed to approve payment:", error);
+    }
   };
 
-  const submitReject = () => {
+  // UPDATED: Made async to wait for the verification to complete
+  const submitReject = async () => {
     if (!selectedPayment || !rejectReason) return;
-    handleVerify(selectedPayment.payment_id, "reject", rejectReason);
-    closeReviewModal();
+    try {
+      await handleVerify(selectedPayment.payment_id, "reject", rejectReason);
+      setSelectedPayment(null); // Close only on success
+    } catch (error) {
+      console.error("Failed to reject payment:", error);
+    }
   };
 
   // Helper to format block-math duration cleanly
@@ -214,8 +227,16 @@ export default function PaymentVerificationView() {
       )}
 
       {/* --- THE COMPREHENSIVE VERIFICATION MODAL --- */}
-      <Dialog open={!!selectedPayment} onOpenChange={closeReviewModal}>
-        <DialogContent className="max-w-6xl! w-[95vw]! bg-background border border-border text-foreground rounded-2xl p-0 overflow-hidden shadow-xl">
+      {/* UPDATED: Prevent closing by clicking outside if it's currently processing */}
+      <Dialog
+        open={!!selectedPayment}
+        onOpenChange={(open) => {
+          if (!open && !isProcessing) {
+            closeReviewModal();
+          }
+        }}
+      >
+        <DialogContent className="max-w-6xl! w-[95vw]! bg-background border border-border text-foreground rounded-2xl p-0 overflow-hidden shadow-xl [&>button]:hidden">
           {selectedPayment && (
             <div className="grid grid-cols-1 xl:grid-cols-12 h-full max-h-[90vh]">
               {/* Left Column: Receipt Explorer */}
@@ -245,8 +266,17 @@ export default function PaymentVerificationView() {
               </div>
 
               {/* Right Column: Information & Actions */}
-              <div className="xl:col-span-7 flex flex-col h-full overflow-y-auto custom-scrollbar p-6">
-                <DialogHeader className="mb-5 border-b border-border pb-4">
+              <div className="xl:col-span-7 flex flex-col h-full overflow-y-auto custom-scrollbar p-6 relative">
+                {/* Custom Close Button since we hid the default to prevent mid-processing closes */}
+                <button
+                  onClick={closeReviewModal}
+                  disabled={isProcessing}
+                  className="absolute top-6 right-6 p-2 rounded-full hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <XCircle className="w-5 h-5" />
+                </button>
+
+                <DialogHeader className="mb-5 border-b border-border pb-4 pr-8">
                   <DialogTitle className="text-base font-bold text-foreground">
                     Booking Command Center
                   </DialogTitle>
@@ -437,8 +467,9 @@ export default function PaymentVerificationView() {
                         </Label>
                         <Input
                           value={editRef}
+                          disabled={isProcessing}
                           onChange={(e) => setEditRef(e.target.value)}
-                          className="bg-secondary/50 border-border text-foreground font-mono text-xs h-8 shadow-none"
+                          className="bg-secondary/50 border-border text-foreground font-mono text-xs h-8 shadow-none disabled:opacity-50"
                         />
                       </div>
                       <div className="space-y-1.5">
@@ -452,8 +483,9 @@ export default function PaymentVerificationView() {
                           <Input
                             type="number"
                             value={editAmount}
+                            disabled={isProcessing}
                             onChange={(e) => setEditAmount(e.target.value)}
-                            className="bg-secondary/50 border-border text-foreground font-bold text-xs h-8 pl-6 shadow-none"
+                            className="bg-secondary/50 border-border text-foreground font-bold text-xs h-8 pl-6 shadow-none disabled:opacity-50"
                           />
                         </div>
                       </div>
@@ -468,7 +500,8 @@ export default function PaymentVerificationView() {
                       <Button
                         variant="outline"
                         onClick={() => setIsRejectMode(true)}
-                        className="flex-1 border-destructive/30 text-destructive hover:bg-destructive/10 hover:text-destructive h-10 rounded shadow-sm text-[11px] font-bold transition-colors"
+                        disabled={isProcessing}
+                        className="flex-1 border-destructive/30 text-destructive hover:bg-destructive/10 hover:text-destructive h-10 rounded shadow-sm text-[11px] font-bold transition-colors disabled:opacity-50"
                       >
                         <XCircle className="w-3.5 h-3.5 mr-1.5" /> Reject
                         Booking
@@ -476,7 +509,7 @@ export default function PaymentVerificationView() {
                       <Button
                         onClick={submitApprove}
                         disabled={isProcessing}
-                        className="flex-[2] bg-primary text-primary-foreground hover:opacity-90 h-10 rounded shadow-sm text-[11px] font-bold transition-opacity"
+                        className="flex-[2] bg-primary text-primary-foreground hover:opacity-90 h-10 rounded shadow-sm text-[11px] font-bold transition-opacity disabled:opacity-80"
                       >
                         {isProcessing ? (
                           <span className="flex items-center gap-2">
@@ -499,25 +532,34 @@ export default function PaymentVerificationView() {
                         </Label>
                         <Input
                           value={rejectReason}
+                          disabled={isProcessing}
                           onChange={(e) => setRejectReason(e.target.value)}
                           placeholder="e.g., Reference number invalid, insufficient amount..."
-                          className="bg-destructive/5 border-destructive/30 text-foreground placeholder:text-destructive/40 focus-visible:ring-destructive h-8 text-xs shadow-sm"
+                          className="bg-destructive/5 border-destructive/30 text-foreground placeholder:text-destructive/40 focus-visible:ring-destructive h-8 text-xs shadow-sm disabled:opacity-50"
                         />
                       </div>
                       <div className="flex gap-2">
                         <Button
                           variant="ghost"
                           onClick={() => setIsRejectMode(false)}
-                          className="flex-1 hover:bg-secondary text-muted-foreground h-9 rounded text-[10px] font-bold uppercase tracking-widest"
+                          disabled={isProcessing}
+                          className="flex-1 hover:bg-secondary text-muted-foreground h-9 rounded text-[10px] font-bold uppercase tracking-widest disabled:opacity-50"
                         >
                           Cancel
                         </Button>
                         <Button
                           onClick={submitReject}
                           disabled={!rejectReason || isProcessing}
-                          className="flex-[2] bg-destructive hover:bg-destructive/90 text-destructive-foreground h-9 rounded text-[10px] font-bold uppercase tracking-widest shadow-sm transition-all"
+                          className="flex-[2] bg-destructive hover:bg-destructive/90 text-destructive-foreground h-9 rounded text-[10px] font-bold uppercase tracking-widest shadow-sm transition-all disabled:opacity-80"
                         >
-                          {isProcessing ? "Rejecting..." : "Confirm Rejection"}
+                          {isProcessing ? (
+                            <span className="flex items-center gap-2">
+                              <Loader2 className="w-3.5 h-3.5 animate-spin" />{" "}
+                              Rejecting...
+                            </span>
+                          ) : (
+                            "Confirm Rejection"
+                          )}
                         </Button>
                       </div>
                     </div>
