@@ -36,6 +36,7 @@ import { useClients } from "../../../hooks/use-clients";
 import { getInitials } from "@/actions/helper/format-text";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
+import imageCompression from "browser-image-compression";
 
 interface ClientFormProps {
   data: any;
@@ -49,6 +50,7 @@ export function ClientForm({ data: rawData, closeDialog }: ClientFormProps) {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [files, setFiles] = useState<any>({});
   const [documentsToDelete, setDocumentsToDelete] = useState<string[]>([]);
+  const [isCompressing, setIsCompressing] = useState(false); // Track compression state
 
   const profilePicRef = useRef<HTMLInputElement>(null);
   const licenseInputRef = useRef<HTMLInputElement>(null);
@@ -85,14 +87,41 @@ export function ClientForm({ data: rawData, closeDialog }: ClientFormProps) {
     }
   };
 
-  const handleFileChange = (e: any, fieldName: string) => {
+  // --- UPDATED: Async function with client-side compression ---
+  const handleFileChange = async (e: any, fieldName: string) => {
     if (e.target.files && e.target.files.length > 0) {
-      const f = e.target.files[0];
-      setFiles((prev: any) => ({ ...prev, [fieldName]: f }));
+      let fileToUpload: File = e.target.files[0];
+
+      setIsCompressing(true);
+
+      // If it's an image, compress it before adding to state!
+      if (fileToUpload.type.startsWith("image/")) {
+        try {
+          const compressedBlob = await imageCompression(fileToUpload, {
+            maxSizeMB: 0.8, // Strict 800kb limit to bypass Next.js 1MB cap
+            maxWidthOrHeight: 1920,
+            useWebWorker: true,
+          });
+
+          fileToUpload = new File([compressedBlob], fileToUpload.name, {
+            type: compressedBlob.type,
+            lastModified: Date.now(),
+          });
+        } catch (compressErr) {
+          console.warn(
+            "Compression failed, attempting original file.",
+            compressErr,
+          );
+          toast.error("Image compression failed. File may be too large.");
+        }
+      }
+
+      setFiles((prev: any) => ({ ...prev, [fieldName]: fileToUpload }));
+      setIsCompressing(false);
 
       if (fieldName === "profile_picture_url") {
         if (previewUrl) URL.revokeObjectURL(previewUrl);
-        setPreviewUrl(URL.createObjectURL(f));
+        setPreviewUrl(URL.createObjectURL(fileToUpload));
       }
 
       if (fieldName === "license_id_url" && rawData?.license_document_id) {
@@ -113,12 +142,13 @@ export function ClientForm({ data: rawData, closeDialog }: ClientFormProps) {
   };
 
   const onSubmit = async (data: ClientFormValues) => {
-    const MAX_FILE_SIZE = 1 * 1024 * 1024; // 1MB in bytes
+    // We can now safely bump this to 1MB or rely on our compression
+    const MAX_FILE_SIZE = 1 * 1024 * 1024;
 
     for (const [, file] of Object.entries(files)) {
       if (file && (file as File).size > MAX_FILE_SIZE) {
-        toast.error(`Profile picture is too large! Maximum size is 1MB.`);
-        return; // Stop the submission immediately
+        toast.error(`A file is still too large! Maximum size is 1MB.`);
+        return;
       }
     }
     const submitData = new FormData();
@@ -273,12 +303,19 @@ export function ClientForm({ data: rawData, closeDialog }: ClientFormProps) {
                       <button
                         type="button"
                         onClick={() => profilePicRef.current?.click()}
-                        className="absolute inset-0 bg-background/60 backdrop-blur-sm opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center transition-opacity rounded-xl border border-border"
+                        disabled={isCompressing}
+                        className="absolute inset-0 bg-background/60 backdrop-blur-sm opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center transition-opacity rounded-xl border border-border disabled:opacity-100"
                       >
-                        <Camera className="w-4 h-4 text-foreground mb-1" />
-                        <span className="text-[8px] font-bold text-foreground uppercase tracking-widest">
-                          Edit
-                        </span>
+                        {isCompressing ? (
+                          <Loader2 className="w-4 h-4 text-primary animate-spin" />
+                        ) : (
+                          <>
+                            <Camera className="w-4 h-4 text-foreground mb-1" />
+                            <span className="text-[8px] font-bold text-foreground uppercase tracking-widest">
+                              Edit
+                            </span>
+                          </>
+                        )}
                       </button>
                     </div>
                     <input
@@ -551,7 +588,7 @@ export function ClientForm({ data: rawData, closeDialog }: ClientFormProps) {
                       >
                         <UploadCloud className="w-4 h-4 text-muted-foreground" />
                         <span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">
-                          Upload Document
+                          {isCompressing ? "Compressing..." : "Upload Document"}
                         </span>
                       </div>
                     )}
@@ -647,7 +684,7 @@ export function ClientForm({ data: rawData, closeDialog }: ClientFormProps) {
                       >
                         <UploadCloud className="w-4 h-4 text-muted-foreground" />
                         <span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">
-                          Upload Document
+                          {isCompressing ? "Compressing..." : "Upload Document"}
                         </span>
                       </div>
                     )}
@@ -670,10 +707,10 @@ export function ClientForm({ data: rawData, closeDialog }: ClientFormProps) {
           </Button>
           <Button
             type="submit"
-            disabled={isSubmitting}
+            disabled={isSubmitting || isCompressing}
             className="h-8 px-5 min-w-[120px] text-[10px] font-bold uppercase tracking-widest rounded shadow-sm bg-primary hover:opacity-90 text-primary-foreground transition-opacity"
           >
-            {isSubmitting ? (
+            {isSubmitting || isCompressing ? (
               <Loader2 className="w-3.5 h-3.5 mr-2 animate-spin" />
             ) : null}
             {isAdd ? "Save Client" : "Update Profile"}

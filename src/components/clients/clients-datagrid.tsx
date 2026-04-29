@@ -47,7 +47,6 @@ import {
   Mail,
   Plus,
   Trash2,
-  History,
   User,
   Edit2,
   Download,
@@ -63,12 +62,14 @@ import {
   ChevronLeft,
   ChevronRight,
   ExternalLink,
-  CarFront,
 } from "lucide-react";
 import { useDebounce } from "../../../hooks/use-debounce";
 import { DeleteDialog } from "../delete-dialog";
 import { ClientsDataGridSkeleton } from "../skeletons";
 import MessageModal from "./message-modal";
+
+// --- IMPORT YOUR BOOKING FORM ---
+import AdminBookingForm from "@/components/bookings/admin-booking-form"; // Adjust path if needed
 
 function getRoleBadgeStyle(role: string) {
   switch (role) {
@@ -88,7 +89,7 @@ function getRoleBadgeStyle(role: string) {
 
 export default function ClientsDataGrid() {
   const [searchQuery, setSearchQuery] = useState("");
-  const debouncedSearch = useDebounce(searchQuery, 500); // Waits half a second
+  const debouncedSearch = useDebounce(searchQuery, 500);
   const [roleFilter, setRoleFilter] = useState<string[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
@@ -105,13 +106,17 @@ export default function ClientsDataGrid() {
     page: currentPage,
     limit: itemsPerPage,
     search: debouncedSearch,
-    statusFilter: [], // We removed status filtering logic
+    statusFilter: [],
     roleFilter,
   });
 
   const [selectedUser, setSelectedUser] = useState<any | null>(null);
   const [selectedRowIds, setSelectedRowIds] = useState<Set<string>>(new Set());
   const [isFormOpen, setIsFormOpen] = useState(false);
+
+  // --- NEW STATE FOR BOOKING MODAL ---
+  const [isBookingOpen, setIsBookingOpen] = useState(false);
+
   const [editingUser, setEditingUser] = useState<any | null>(null);
   const [userToDelete, setUserToDelete] = useState<string | null>(null);
   const [userToMessage, setUserToMessage] = useState<any | null>(null);
@@ -213,7 +218,7 @@ export default function ClientsDataGrid() {
                 value={searchQuery}
                 onChange={(e) => {
                   setSearchQuery(e.target.value);
-                  setCurrentPage(1); // Reset to page 1 on search
+                  setCurrentPage(1);
                 }}
               />
             </div>
@@ -394,7 +399,6 @@ export default function ClientsDataGrid() {
                   <TableHead className="h-8 text-[9px] font-bold uppercase tracking-widest text-muted-foreground">
                     Role
                   </TableHead>
-                  {/* NEW TRUST SCORE COLUMN */}
                   <TableHead className="h-8 text-[9px] font-bold uppercase tracking-widest text-muted-foreground">
                     Trust Score
                   </TableHead>
@@ -528,7 +532,11 @@ export default function ClientsDataGrid() {
                           )}
                         >
                           <span className="text-[10px] font-mono text-muted-foreground">
-                            {user.last_active_at ? new Date(user.last_active_at).toLocaleDateString() : 'New Account'}
+                            {user.last_active_at
+                              ? new Date(
+                                  user.last_active_at,
+                                ).toLocaleDateString()
+                              : "New Account"}
                           </span>
                         </TableCell>
 
@@ -674,6 +682,7 @@ export default function ClientsDataGrid() {
               <div className="flex gap-2 mt-4">
                 <Button
                   size="sm"
+                  onClick={() => setIsBookingOpen(true)} // <-- TRIGGER BOOKING MODAL
                   className="h-8 text-[10px] font-bold uppercase tracking-widest bg-primary hover:opacity-90 text-primary-foreground flex-1 rounded-lg shadow-sm transition-opacity"
                 >
                   <SquarePlus className="w-3.5 h-3.5 mr-1.5" /> Book
@@ -702,12 +711,6 @@ export default function ClientsDataGrid() {
                       Overview
                     </TabsTrigger>
                     <TabsTrigger
-                      value="history"
-                      className="flex-1 h-9 text-[10px] font-bold uppercase tracking-widest rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-foreground text-muted-foreground transition-all"
-                    >
-                      Bookings
-                    </TabsTrigger>
-                    <TabsTrigger
                       value="docs"
                       className="flex-1 h-9 text-[10px] font-bold uppercase tracking-widest rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-foreground text-muted-foreground transition-all"
                     >
@@ -731,9 +734,19 @@ export default function ClientsDataGrid() {
                         </span>
                         <div>
                           {selectedUser.is_archived ? (
-                            <Badge variant="outline" className="text-[8px] uppercase tracking-widest bg-destructive/10 text-destructive border-destructive/20 px-1.5 rounded">Banned</Badge>
+                            <Badge
+                              variant="outline"
+                              className="text-[8px] uppercase tracking-widest bg-destructive/10 text-destructive border-destructive/20 px-1.5 rounded"
+                            >
+                              Banned
+                            </Badge>
                           ) : (
-                            <Badge variant="outline" className="text-[8px] uppercase tracking-widest bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 px-1.5 rounded">Active</Badge>
+                            <Badge
+                              variant="outline"
+                              className="text-[8px] uppercase tracking-widest bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 px-1.5 rounded"
+                            >
+                              Active
+                            </Badge>
                           )}
                         </div>
                       </div>
@@ -790,75 +803,6 @@ export default function ClientsDataGrid() {
                         <span className="text-[11px] text-foreground leading-snug font-medium">
                           {selectedUser.address || "No address on file."}
                         </span>
-                      </div>
-                    </div>
-                  </div>
-                </TabsContent>
-
-                <TabsContent value="history" className="p-4 m-0 outline-none">
-                  <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden transition-colors">
-                    <div className="p-3 border-b border-border flex items-center justify-between bg-secondary/50">
-                      <h4 className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-1.5">
-                        <History className="w-3.5 h-3.5" /> Recent Bookings
-                      </h4>
-                      <span className="text-[9px] font-bold text-muted-foreground">
-                        Total: 2
-                      </span>
-                    </div>
-
-                    <div className="flex flex-col divide-y divide-border">
-                      {/* Booking 1 */}
-                      <div className="p-3 hover:bg-secondary/30 transition-colors cursor-pointer group">
-                        <div className="flex items-center justify-between mb-1.5">
-                          <span className="text-[11px] font-mono font-bold text-foreground">
-                            BK-7A921
-                          </span>
-                          <Badge
-                            variant="outline"
-                            className="text-[8px] uppercase tracking-widest bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 px-1.5 h-4 rounded"
-                          >
-                            Completed
-                          </Badge>
-                        </div>
-                        <div className="flex items-center gap-1.5 text-[11px] text-foreground mb-1.5">
-                          <CarFront className="w-3.5 h-3.5 text-muted-foreground" />
-                          <span className="font-semibold">
-                            2023 Toyota Fortuner
-                          </span>
-                        </div>
-                        <div className="flex items-center justify-between text-[9px] font-mono text-muted-foreground uppercase tracking-widest">
-                          <span>Mar 12 - Mar 15</span>
-                          <span className="font-bold text-foreground text-[11px]">
-                            ₱ 12,500
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Booking 2 */}
-                      <div className="p-3 hover:bg-secondary/30 transition-colors cursor-pointer group">
-                        <div className="flex items-center justify-between mb-1.5">
-                          <span className="text-[11px] font-mono font-bold text-foreground">
-                            BK-3B445
-                          </span>
-                          <Badge
-                            variant="outline"
-                            className="text-[8px] uppercase tracking-widest bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20 px-1.5 h-4 rounded"
-                          >
-                            Upcoming
-                          </Badge>
-                        </div>
-                        <div className="flex items-center gap-1.5 text-[11px] text-foreground mb-1.5">
-                          <CarFront className="w-3.5 h-3.5 text-muted-foreground" />
-                          <span className="font-semibold">
-                            2024 Honda Civic
-                          </span>
-                        </div>
-                        <div className="flex items-center justify-between text-[9px] font-mono text-muted-foreground uppercase tracking-widest">
-                          <span>Apr 01 - Apr 03</span>
-                          <span className="font-bold text-foreground text-[11px]">
-                            ₱ 8,200
-                          </span>
-                        </div>
                       </div>
                     </div>
                   </div>
@@ -1013,6 +957,28 @@ export default function ClientsDataGrid() {
             data={editingUser}
             closeDialog={() => setIsFormOpen(false)}
           />
+        </DialogContent>
+      </Dialog>
+
+      {/* --- NEW BOOKING MODAL --- */}
+      <Dialog open={isBookingOpen} onOpenChange={setIsBookingOpen}>
+        <DialogContent
+          showCloseButton={false}
+          className="min-w-[1000px] w-[95vw]! h-[90vh] flex flex-col p-0 border-border shadow-2xl rounded-2xl overflow-hidden gap-0 bg-background transition-colors duration-300"
+        >
+          <DialogHeader className="p-0">
+            <DialogTitle className="sr-only">Create New Booking</DialogTitle>
+          </DialogHeader>
+          <div className="flex-1 overflow-y-auto">
+            <AdminBookingForm
+              initialUserId={selectedUser?.user_id}
+              onCancel={() => setIsBookingOpen(false)}
+              onSuccess={() => {
+                setIsBookingOpen(false);
+                // Optionally add a toast or refresh logic here if needed
+              }}
+            />
+          </div>
         </DialogContent>
       </Dialog>
 

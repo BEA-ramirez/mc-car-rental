@@ -98,6 +98,7 @@ type LocationFieldProps = {
 type AdminBookingFormProps = {
   bookingId?: string;
   initialCarId?: string;
+  initialUserId?: string;
   initialStartDate?: Date;
   initialDuration?: number;
   onSuccess?: () => void;
@@ -299,6 +300,7 @@ const PREDEFINED_CHARGES = [
 export default function AdminBookingForm({
   bookingId,
   initialCarId,
+  initialUserId,
   initialStartDate,
   initialDuration,
   onSuccess,
@@ -344,7 +346,7 @@ export default function AdminBookingForm({
   const form = useForm({
     resolver: zodResolver(AdminCreateBookingSchema),
     defaultValues: {
-      user_id: "",
+      user_id: initialUserId || "",
       pickup_type: "hub",
       pickup_location: hubs[0]?.name || "Main Garage",
       pickup_coordinates: defaultHubCoords,
