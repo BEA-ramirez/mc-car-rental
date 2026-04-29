@@ -8,7 +8,7 @@ import Image from "next/image";
 export default function SignupPage() {
   return (
     <div className="grid min-h-[100dvh] lg:h-screen lg:grid-cols-2 bg-[#050B10] text-white selection:bg-[#64c5c3] selection:text-black font-sans overflow-hidden">
-      {/* --- LEFT SIDE: FORM CONTAINER --- */}
+      {/* LEFT SIDE: FORM CONTAINER  */}
       <div className="relative flex flex-col w-full min-h-[100dvh] lg:h-full z-20 overflow-y-auto lg:overflow-hidden [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
         <div className="fixed top-1/2 left-1/2 md:left-1/4 -translate-x-1/2 -translate-y-1/2 w-[300px] h-[600px] md:w-[600px] md:h-[900px] bg-gradient-to-br from-[#64c5c3]/10 via-blue-900/10 to-transparent blur-[70px] md:blur-[120px] lg:mix-blend-screen -z-10 pointer-events-none rounded-full transform-gpu will-change-transform" />
 
