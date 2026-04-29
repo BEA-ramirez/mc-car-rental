@@ -1,42 +1,23 @@
 "use client";
 
 import Link from "next/link";
-import { motion, Variants } from "framer-motion";
+import { motion } from "framer-motion";
 import { SignupForm } from "@/components/auth/signup-form";
 import Image from "next/image";
 
-// --- ANIMATION VARIANTS ---
-const spotlightAnim: Variants = {
-  animate: {
-    rotate: [0, 360],
-    scale: [1, 1.1, 1],
-    transition: {
-      duration: 25,
-      repeat: Infinity,
-      ease: "linear",
-    },
-  },
-};
-
 export default function SignupPage() {
   return (
-    // Grid handles side-by-side layout on desktop, standard flow on mobile
     <div className="grid min-h-[100dvh] lg:h-screen lg:grid-cols-2 bg-[#050B10] text-white selection:bg-[#64c5c3] selection:text-black font-sans overflow-hidden">
       {/* --- LEFT SIDE: FORM CONTAINER --- */}
       <div className="relative flex flex-col w-full min-h-[100dvh] lg:h-full z-20 overflow-y-auto lg:overflow-hidden [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-        {/* Elegant Ambient Glow behind the form */}
-        <motion.div
-          variants={spotlightAnim}
-          animate="animate"
-          className="fixed top-1/2 left-1/2 md:left-1/4 -translate-x-1/2 -translate-y-1/2 w-[300px] h-[600px] md:w-[600px] md:h-[900px] bg-gradient-to-br from-[#64c5c3]/10 via-blue-900/10 to-transparent blur-[120px] -z-10 pointer-events-none rounded-full mix-blend-screen"
-        />
+        <div className="fixed top-1/2 left-1/2 md:left-1/4 -translate-x-1/2 -translate-y-1/2 w-[300px] h-[600px] md:w-[600px] md:h-[900px] bg-gradient-to-br from-[#64c5c3]/10 via-blue-900/10 to-transparent blur-[70px] md:blur-[120px] lg:mix-blend-screen -z-10 pointer-events-none rounded-full transform-gpu will-change-transform" />
 
-        {/* Top Header - Tightened padding to prevent vertical scroll */}
+        {/* Top Header */}
         <motion.header
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-          className="flex justify-between items-center w-full px-6 py-4 md:px-12 md:py-6 shrink-0 z-20"
+          className="flex justify-between items-center w-full px-6 py-4 md:px-12 md:py-6 shrink-0 z-20 transform-gpu"
         >
           <Link
             href="/"
@@ -54,19 +35,19 @@ export default function SignupPage() {
           </Link>
         </motion.header>
 
-        {/* Center: The Form - Flex-1 ensures perfect vertical centering */}
+        {/* Center: The Form */}
         <main className="flex-1 flex flex-col items-center justify-center w-full px-4 sm:px-6 z-10 py-6 lg:py-0">
           <motion.div
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1], delay: 0.1 }}
-            className="w-full max-w-[24rem] sm:max-w-md lg:max-w-lg"
+            className="w-full max-w-[24rem] sm:max-w-md lg:max-w-lg transform-gpu"
           >
             <SignupForm />
           </motion.div>
         </main>
 
-        {/* Bottom Footer - Tightened padding */}
+        {/* Bottom Footer */}
         <footer className="flex flex-col sm:flex-row justify-between items-center gap-3 w-full px-6 py-4 md:px-12 shrink-0 z-20">
           <div className="text-[9px] md:text-[10px] font-bold text-gray-600 uppercase tracking-widest text-center sm:text-left">
             Secure Encrypted Registration
@@ -85,8 +66,8 @@ export default function SignupPage() {
       {/* --- RIGHT SIDE: ANIMATED SHOWCASE (Hidden on Mobile) --- */}
       <div className="relative hidden lg:flex flex-col items-center justify-center h-full bg-[#050B10] p-12 z-10 overflow-hidden">
         {/* Dynamic Background Glows for the Right Pane */}
-        <div className="absolute top-1/4 right-0 w-[400px] h-[400px] bg-[#64c5c3]/10 rounded-full blur-[120px] pointer-events-none -z-10" />
-        <div className="absolute bottom-1/4 left-0 w-[300px] h-[300px] bg-blue-900/10 rounded-full blur-[100px] pointer-events-none -z-10" />
+        <div className="absolute top-1/4 right-0 w-[400px] h-[400px] bg-[#64c5c3]/10 rounded-full blur-[120px] pointer-events-none -z-10 transform-gpu" />
+        <div className="absolute bottom-1/4 left-0 w-[300px] h-[300px] bg-blue-900/10 rounded-full blur-[100px] pointer-events-none -z-10 transform-gpu" />
 
         {/* The "Running" Car Animation */}
         <motion.div
@@ -97,9 +78,9 @@ export default function SignupPage() {
             stiffness: 45,
             damping: 14,
             mass: 1.2,
-            delay: 0.3, // Slightly delayed so it slides in after the form loads
+            delay: 0.3,
           }}
-          className="relative w-full max-w-lg mb-12"
+          className="relative w-full max-w-lg mb-12 transform-gpu will-change-transform"
         >
           {/* Wrapper to handle the floating spec tag positioning */}
           <div className="relative w-[110%] -right-[5%]">
@@ -108,25 +89,26 @@ export default function SignupPage() {
               initial={{ opacity: 1, scaleX: 1, x: 0 }}
               animate={{ opacity: 0, scaleX: 0, x: -100 }}
               transition={{ duration: 0.8, delay: 0.9 }}
-              className="absolute top-1/2 left-0 w-full h-[2px] bg-gradient-to-r from-transparent via-[#64c5c3]/50 to-transparent -z-10 origin-left"
+              className="absolute top-1/2 left-0 w-full h-[2px] bg-gradient-to-r from-transparent via-[#64c5c3]/50 to-transparent -z-10 origin-left transform-gpu"
             />
             <motion.div
               initial={{ opacity: 1, scaleX: 1, x: 0 }}
               animate={{ opacity: 0, scaleX: 0, x: -100 }}
               transition={{ duration: 0.8, delay: 1.0 }}
-              className="absolute top-[60%] left-10 w-3/4 h-[1px] bg-gradient-to-r from-transparent via-white/30 to-transparent -z-10 origin-left"
+              className="absolute top-[60%] left-10 w-3/4 h-[1px] bg-gradient-to-r from-transparent via-white/30 to-transparent -z-10 origin-left transform-gpu"
             />
 
             {/* The Car Image */}
-            <div className="relative rounded-3xl overflow-hidden border border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.5)] bg-black">
+            <div className="relative rounded-3xl overflow-hidden border border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.5)] bg-black transform-gpu">
               <Image
                 src="https://images.unsplash.com/photo-1609521263047-f8f205293f24?q=80&w=1000"
                 alt="Mazda 3 Hatchback"
-                width={1000} // 👇 ADDED THIS
-                height={750} // 👇 ADDED THIS
+                width={1000}
+                height={750}
+                priority // Preloads this heavy LCP image
                 className="w-full h-[300px] object-cover opacity-90"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent pointer-events-none" />
             </div>
 
             {/* Glassmorphic spec tag attached to the car */}
@@ -134,7 +116,7 @@ export default function SignupPage() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 1.2 }}
-              className="absolute -bottom-6 left-8 bg-[#0a1118]/90 backdrop-blur-xl border border-white/10 px-6 py-4 rounded-2xl flex gap-6 shadow-2xl"
+              className="absolute -bottom-6 left-8 bg-[#0a1118]/90 backdrop-blur-xl border border-white/10 px-6 py-4 rounded-2xl flex gap-6 shadow-2xl transform-gpu"
             >
               <div>
                 <p className="text-[9px] text-[#64c5c3] font-bold uppercase tracking-widest mb-1">
@@ -160,7 +142,7 @@ export default function SignupPage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.6 }}
-          className="w-full max-w-lg mt-8 pl-4"
+          className="w-full max-w-lg mt-8 pl-4 transform-gpu"
         >
           <div className="w-12 h-[3px] bg-[#64c5c3] mb-6" />
           <h2 className="text-5xl font-black text-white uppercase tracking-tighter leading-[0.9] mb-4">
