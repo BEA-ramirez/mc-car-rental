@@ -74,52 +74,47 @@ export async function uploadCustomerDocument(formData: FormData) {
 
   if (!file || file.size === 0) throw new Error("No file provided.");
 
-  // Use the existing upload helper
+  // 1. Fetch ALL existing documents for this category to clean up any duplicates
+  const { data: existingDocs } = await supabase
+    .from("documents")
+    .select("document_id, file_path")
+    .eq("user_id", user.id)
+    .eq("category", category);
+
+  // 2. Upload the new file FIRST. (If this fails, we don't accidentally delete existing records)
   const folderName = category === "license_id" ? "license_ids" : "valid_ids";
   const uploadResult = await uploadFile(file, "documents", folderName, user.id);
 
   if (!uploadResult) throw new Error("Failed to upload document to storage.");
 
-  // --- NEW LOGIC: Check for existing document ---
-  const { data: existingDoc } = await supabase
-    .from("documents")
-    .select("document_id, file_path")
-    .eq("user_id", user.id)
-    .eq("category", category)
-    .single();
+  // 3. Clean up old files from storage and delete old records from DB
+  if (existingDocs && existingDocs.length > 0) {
+    const pathsToDelete = existingDocs
+      .map((doc) => doc.file_path)
+      .filter(Boolean);
 
-  if (existingDoc) {
-    // 1. Delete the old file from storage to save space
-    if (existingDoc.file_path) {
-      await supabase.storage.from("documents").remove([existingDoc.file_path]);
+    if (pathsToDelete.length > 0) {
+      // Remove all old duplicate files from the storage bucket
+      await supabase.storage.from("documents").remove(pathsToDelete);
     }
 
-    // 2. Update the existing record instead of creating a new one
-    const { error: updateError } = await supabase
-      .from("documents")
-      .update({
-        file_name: file.name,
-        file_path: uploadResult.path,
-        file_type: file.type || "application/octet-stream",
-        status: "PENDING", // Resets status so admin can review the new file
-      })
-      .eq("document_id", existingDoc.document_id);
-
-    if (updateError) throw updateError;
-  } else {
-    // Insert new record if one doesn't exist yet
-    const { error: docError } = await supabase.from("documents").insert({
-      user_id: user.id,
-      category: category,
-      file_name: file.name,
-      file_path: uploadResult.path,
-      file_type: file.type || "application/octet-stream",
-      status: "PENDING",
-      created_at: new Date().toISOString(),
-    });
-
-    if (docError) throw docError;
+    const idsToDelete = existingDocs.map((doc) => doc.document_id);
+    // Delete the duplicate rows from the database
+    await supabase.from("documents").delete().in("document_id", idsToDelete);
   }
+
+  // 4. Insert the fresh, single record
+  const { error: docError } = await supabase.from("documents").insert({
+    user_id: user.id,
+    category: category,
+    file_name: file.name,
+    file_path: uploadResult.path,
+    file_type: file.type || "application/octet-stream",
+    status: "PENDING",
+    created_at: new Date().toISOString(),
+  });
+
+  if (docError) throw docError;
 
   revalidatePath("/customer/profile");
   return { success: true, message: "Document submitted for verification!" };
