@@ -24,16 +24,16 @@ export async function sendRejectionEmail(
 
   // email payload
   const mailOptions = {
-    from: `"MC Ormoc Car Rental Support" <${process.env.SMTP_FROM_EMAIL}>`,
+    from: `"Seffne Transport Services Inc. Support" <${process.env.SMTP_FROM_EMAIL}>`,
     to: email,
     subject: "Action Required: Update on Your Account Verification",
     html: `
     <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; background-color: #ffffff; padding: 30px; border: 1px solid #e2e8f0; border-radius: 8px; color: #334155;">
-      <h2 style="color: #0f172a; border-bottom: 2px solid #f1f5f9; padding-bottom: 15px; margin-top: 0;">MC Ormoc Car Rental</h2>
+      <h2 style="color: #0f172a; border-bottom: 2px solid #f1f5f9; padding-bottom: 15px; margin-top: 0;">Seffne Transport Services Inc.</h2>
       
       <p style="font-size: 16px;">Dear ${name},</p>
       
-      <p style="font-size: 16px; line-height: 1.5;">Thank you for registering with MC Ormoc Car Rental. We are currently processing your account verification, but we encountered an issue with the documents you provided.</p>
+      <p style="font-size: 16px; line-height: 1.5;">Thank you for registering with Seffne Transport Services Inc.. We are currently processing your account verification, but we encountered an issue with the documents you provided.</p>
       
       <div style="background-color: #fef2f2; border-left: 4px solid #ef4444; padding: 16px; margin: 24px 0; border-radius: 0 4px 4px 0;">
         <p style="margin: 0 0 8px 0; font-weight: bold; color: #991b1b;">Documents requiring your attention:</p>
@@ -48,12 +48,12 @@ export async function sendRejectionEmail(
       <p style="font-size: 16px; line-height: 1.5;">To proceed with your verification and start booking vehicles, please log in to your account and re-upload the requested documents.</p>
       
       <div style="text-align: center; margin: 32px 0;">
-        <a href="${process.env.NEXT_PUBLIC_APP_URL}/dashboard/documents" style="background-color: #2563eb; color: #ffffff; text-decoration: none; padding: 12px 28px; border-radius: 6px; font-weight: 600; font-size: 16px; display: inline-block;">Review & Update Documents</a>
+        <a href="mc-car-rental.vercel.app/dashboard/documents" style="background-color: #2563eb; color: #ffffff; text-decoration: none; padding: 12px 28px; border-radius: 6px; font-weight: 600; font-size: 16px; display: inline-block;">Review & Update Documents</a>
       </div>
       
       <p style="font-size: 14px; color: #64748b; line-height: 1.5; border-top: 1px solid #f1f5f9; padding-top: 20px;">
         Best regards,<br/>
-        <strong>The MC Ormoc Car Rental Team</strong>
+        <strong>The Seffne Transport Services Inc. Team</strong>
       </p>
     </div>
   `,
@@ -64,12 +64,12 @@ export async function sendRejectionEmail(
 
 export async function sendVerificationEmail(email: string, name: string) {
   const mailOptions = {
-    from: `"MC Ormoc Car Rental" <${process.env.SMTP_FROM_EMAIL}>`,
+    from: `"Seffne Transport Services Inc." <${process.env.SMTP_FROM_EMAIL}>`,
     to: email,
     subject: "Welcome! Your Account is Verified",
     html: `
     <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; background-color: #ffffff; padding: 30px; border: 1px solid #e2e8f0; border-radius: 8px; color: #334155;">
-      <h2 style="color: #0f172a; border-bottom: 2px solid #f1f5f9; padding-bottom: 15px; margin-top: 0;">MC Ormoc Car Rental</h2>
+      <h2 style="color: #0f172a; border-bottom: 2px solid #f1f5f9; padding-bottom: 15px; margin-top: 0;">Seffne Transport Services Inc.</h2>
       
       <p style="font-size: 16px;">Dear ${name},</p>
       
@@ -78,13 +78,13 @@ export async function sendVerificationEmail(email: string, name: string) {
       <p style="font-size: 16px; line-height: 1.5;">Your account is now fully active. You have full access to our platform and can officially start booking your preferred vehicles from our fleet.</p>
       
       <div style="text-align: center; margin: 32px 0;">
-        <a href="${process.env.NEXT_PUBLIC_APP_URL}/bookings" style="background-color: #10b981; color: #ffffff; text-decoration: none; padding: 12px 28px; border-radius: 6px; font-weight: 600; font-size: 16px; display: inline-block;">Book a Car Now</a>
+        <a href="mc-car-rental.vercel.app/customer/fleet" style="background-color: #10b981; color: #ffffff; text-decoration: none; padding: 12px 28px; border-radius: 6px; font-weight: 600; font-size: 16px; display: inline-block;">Book a Car Now</a>
       </div>
       
       <p style="font-size: 14px; color: #64748b; line-height: 1.5; border-top: 1px solid #f1f5f9; padding-top: 20px;">
         We look forward to serving you.<br/><br/>
         Best regards,<br/>
-        <strong>The MC Ormoc Car Rental Team</strong>
+        <strong>The Seffne Transport Services Inc. Team</strong>
       </p>
     </div>
   `,
@@ -99,24 +99,24 @@ export async function sendCustomEmail(
   body: string,
 ) {
   const mailOptions = {
-    from: `"MC Ormoc Car Rental Support" <${process.env.SMTP_FROM_EMAIL}>`,
+    from: `"Seffne Transport Services Inc. Support" <${process.env.SMTP_FROM_EMAIL}>`,
     to: email,
     subject: subject,
     html: `
     <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; background-color: #ffffff; padding: 30px; border: 1px solid #e2e8f0; border-radius: 8px; color: #334155;">
-      <h2 style="color: #0f172a; border-bottom: 2px solid #f1f5f9; padding-bottom: 15px; margin-top: 0;">MC Ormoc Car Rental</h2>
+      <h2 style="color: #0f172a; border-bottom: 2px solid #f1f5f9; padding-bottom: 15px; margin-top: 0;">Seffne Transport Services Inc.</h2>
       
       <p style="font-size: 16px;">Dear ${name},</p>
       
       <div style="font-size: 16px; line-height: 1.6; white-space: pre-wrap; margin: 24px 0; color: #334155;">${body}</div>
       
       <div style="text-align: center; margin: 32px 0;">
-        <a href="${process.env.NEXT_PUBLIC_APP_URL}" style="background-color: #f1f5f9; color: #334155; text-decoration: none; padding: 10px 24px; border-radius: 6px; font-weight: 600; font-size: 14px; display: inline-block; border: 1px solid #cbd5e1;">Visit Your Account</a>
+        <a href="mc-car-rental.vercel.app" style="background-color: #f1f5f9; color: #334155; text-decoration: none; padding: 10px 24px; border-radius: 6px; font-weight: 600; font-size: 14px; display: inline-block; border: 1px solid #cbd5e1;">Visit Your Account</a>
       </div>
 
       <p style="font-size: 14px; color: #64748b; line-height: 1.5; border-top: 1px solid #f1f5f9; padding-top: 20px;">
         Best regards,<br/>
-        <strong>The MC Ormoc Car Rental Team</strong>
+        <strong>The Seffne Transport Services Inc. Team</strong>
       </p>
     </div>
   `,
@@ -130,16 +130,16 @@ export async function sendDriverRejectionEmail(
   reason: string,
 ) {
   const mailOptions = {
-    from: `"MC Ormoc Fleet Management" <${process.env.SMTP_FROM_EMAIL}>`,
+    from: `"Seffne Transport Services Fleet Management" <${process.env.SMTP_FROM_EMAIL}>`,
     to: email,
     subject: "Action Required: Update on Your Driver Application",
     html: `
     <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; background-color: #ffffff; padding: 30px; border: 1px solid #e2e8f0; border-radius: 8px; color: #334155;">
-      <h2 style="color: #0f172a; border-bottom: 2px solid #f1f5f9; padding-bottom: 15px; margin-top: 0;">MC Ormoc Fleet Management</h2>
+      <h2 style="color: #0f172a; border-bottom: 2px solid #f1f5f9; padding-bottom: 15px; margin-top: 0;">Seffne Transport Services Fleet Management</h2>
       
       <p style="font-size: 16px;">Dear ${name},</p>
       
-      <p style="font-size: 16px; line-height: 1.5;">Thank you for applying to join the MC Ormoc Car Rental fleet as a driver. We are currently processing your application, but our review team requires additional action from you regarding your submitted documents.</p>
+      <p style="font-size: 16px; line-height: 1.5;">Thank you for applying to join the Seffne Transport Services Inc. fleet as a driver. We are currently processing your application, but our review team requires additional action from you regarding your submitted documents.</p>
       
       <div style="background-color: #fef2f2; border-left: 4px solid #ef4444; padding: 16px; margin: 24px 0; border-radius: 0 4px 4px 0;">
         <p style="margin: 0 0 8px 0; font-weight: bold; color: #991b1b;">Message from our Review Team:</p>
@@ -149,12 +149,12 @@ export async function sendDriverRejectionEmail(
       <p style="font-size: 16px; line-height: 1.5;">To proceed with your application, please log in to your driver portal and update the requested information.</p>
       
       <div style="text-align: center; margin: 32px 0;">
-        <a href="${process.env.NEXT_PUBLIC_APP_URL}/dashboard/documents" style="background-color: #0f172a; color: #ffffff; text-decoration: none; padding: 12px 28px; border-radius: 6px; font-weight: 600; font-size: 16px; display: inline-block;">Update Application Documents</a>
+        <a href="mc-car-rental.vercel.app/dashboard/documents" style="background-color: #0f172a; color: #ffffff; text-decoration: none; padding: 12px 28px; border-radius: 6px; font-weight: 600; font-size: 16px; display: inline-block;">Update Application Documents</a>
       </div>
       
       <p style="font-size: 14px; color: #64748b; line-height: 1.5; border-top: 1px solid #f1f5f9; padding-top: 20px;">
         Best regards,<br/>
-        <strong>The MC Ormoc Fleet Team</strong>
+        <strong>The Seffne Transport Services Inc. Team</strong>
       </p>
     </div>
   `,
@@ -165,27 +165,27 @@ export async function sendDriverRejectionEmail(
 
 export async function sendDriverVerificationEmail(email: string, name: string) {
   const mailOptions = {
-    from: `"MC Ormoc Fleet Management" <${process.env.SMTP_FROM_EMAIL}>`,
+    from: `"Seffne Transport Services Fleet Management" <${process.env.SMTP_FROM_EMAIL}>`,
     to: email,
     subject: "Welcome to the Fleet! Your Driver Account is Verified",
     html: `
     <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; background-color: #ffffff; padding: 30px; border: 1px solid #e2e8f0; border-radius: 8px; color: #334155;">
-      <h2 style="color: #0f172a; border-bottom: 2px solid #f1f5f9; padding-bottom: 15px; margin-top: 0;">MC Ormoc Fleet Management</h2>
+      <h2 style="color: #0f172a; border-bottom: 2px solid #f1f5f9; padding-bottom: 15px; margin-top: 0;">Seffne Transport Services Fleet Management</h2>
       
       <p style="font-size: 16px;">Dear ${name},</p>
       
       <p style="font-size: 16px; line-height: 1.5;">Congratulations! We have successfully reviewed your application and verified your documents.</p>
       
-      <p style="font-size: 16px; line-height: 1.5;">Your driver account is now fully active. You are officially part of the MC Ormoc Car Rental fleet. You can now log in to the driver portal to view your schedule and dispatch assignments.</p>
+      <p style="font-size: 16px; line-height: 1.5;">Your driver account is now fully active. You are officially part of the Seffne Transport Services Inc. fleet. You can now log in to the driver portal to view your schedule and dispatch assignments.</p>
       
       <div style="text-align: center; margin: 32px 0;">
-        <a href="${process.env.NEXT_PUBLIC_APP_URL}/driver-portal" style="background-color: #10b981; color: #ffffff; text-decoration: none; padding: 12px 28px; border-radius: 6px; font-weight: 600; font-size: 16px; display: inline-block;">Access Driver Portal</a>
+        <a href="mc-car-rental.vercel.app/driver-portal" style="background-color: #10b981; color: #ffffff; text-decoration: none; padding: 12px 28px; border-radius: 6px; font-weight: 600; font-size: 16px; display: inline-block;">Access Driver Portal</a>
       </div>
       
       <p style="font-size: 14px; color: #64748b; line-height: 1.5; border-top: 1px solid #f1f5f9; padding-top: 20px;">
         We look forward to working with you.<br/><br/>
         Best regards,<br/>
-        <strong>The MC Ormoc Fleet Team</strong>
+        <strong>The Seffne Transport Services Inc. Team</strong>
       </p>
     </div>
   `,
@@ -199,16 +199,16 @@ export async function sendPartnerRejectionEmail(
   reason: string,
 ) {
   const mailOptions = {
-    from: `"MC Ormoc Fleet Management" <${process.env.SMTP_FROM_EMAIL}>`,
+    from: `"Seffne Transport Services Fleet Management" <${process.env.SMTP_FROM_EMAIL}>`,
     to: email,
     subject: "Action Required: Update on Your Fleet Partner Application",
     html: `
     <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; background-color: #ffffff; padding: 30px; border: 1px solid #e2e8f0; border-radius: 8px; color: #334155;">
-      <h2 style="color: #0f172a; border-bottom: 2px solid #f1f5f9; padding-bottom: 15px; margin-top: 0;">MC Ormoc Fleet Management</h2>
+      <h2 style="color: #0f172a; border-bottom: 2px solid #f1f5f9; padding-bottom: 15px; margin-top: 0;">Seffne Transport Services Fleet Management</h2>
       
       <p style="font-size: 16px;">Dear ${name},</p>
       
-      <p style="font-size: 16px; line-height: 1.5;">Thank you for applying to partner with MC Ormoc Car Rental. We are currently processing your application to join our fleet network, but our administration team requires additional details regarding your business profile or banking information.</p>
+      <p style="font-size: 16px; line-height: 1.5;">Thank you for applying to partner with Seffne Transport Services Inc.. We are currently processing your application to join our fleet network, but our administration team requires additional details regarding your business profile or banking information.</p>
       
       <div style="background-color: #fef2f2; border-left: 4px solid #ef4444; padding: 16px; margin: 24px 0; border-radius: 0 4px 4px 0;">
         <p style="margin: 0 0 8px 0; font-weight: bold; color: #991b1b;">Message from our Review Team:</p>
@@ -218,12 +218,12 @@ export async function sendPartnerRejectionEmail(
       <p style="font-size: 16px; line-height: 1.5;">To proceed with your partnership setup, please log in to your partner portal and update the requested records.</p>
       
       <div style="text-align: center; margin: 32px 0;">
-        <a href="${process.env.NEXT_PUBLIC_APP_URL}/partner-portal/settings" style="background-color: #0f172a; color: #ffffff; text-decoration: none; padding: 12px 28px; border-radius: 6px; font-weight: 600; font-size: 16px; display: inline-block;">Update Partner Details</a>
+        <a href="mc-car-rental.vercel.app/customer/profile" style="background-color: #0f172a; color: #ffffff; text-decoration: none; padding: 12px 28px; border-radius: 6px; font-weight: 600; font-size: 16px; display: inline-block;">Update Partner Details</a>
       </div>
       
       <p style="font-size: 14px; color: #64748b; line-height: 1.5; border-top: 1px solid #f1f5f9; padding-top: 20px;">
         Best regards,<br/>
-        <strong>The MC Ormoc Fleet Team</strong>
+        <strong>The Seffne Transport Services Inc. Team</strong>
       </p>
     </div>
   `,
@@ -237,12 +237,12 @@ export async function sendPartnerVerificationEmail(
   name: string,
 ) {
   const mailOptions = {
-    from: `"MC Ormoc Fleet Management" <${process.env.SMTP_FROM_EMAIL}>`,
+    from: `"Seffne Transport Services Inc. Fleet Management" <${process.env.SMTP_FROM_EMAIL}>`,
     to: email,
     subject: "Welcome to the Fleet! Your Partner Account is Verified",
     html: `
     <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; background-color: #ffffff; padding: 30px; border: 1px solid #e2e8f0; border-radius: 8px; color: #334155;">
-      <h2 style="color: #0f172a; border-bottom: 2px solid #f1f5f9; padding-bottom: 15px; margin-top: 0;">MC Ormoc Fleet Management</h2>
+      <h2 style="color: #0f172a; border-bottom: 2px solid #f1f5f9; padding-bottom: 15px; margin-top: 0;">Seffne Transport Services Inc. Fleet Management</h2>
       
       <p style="font-size: 16px;">Dear ${name},</p>
       
@@ -251,13 +251,13 @@ export async function sendPartnerVerificationEmail(
       <p style="font-size: 16px; line-height: 1.5;">Your fleet partner account is now fully active. You can now log in to the partner portal to manage your vehicle fleet, view real-time rental analytics, and track your revenue payouts.</p>
       
       <div style="text-align: center; margin: 32px 0;">
-        <a href="${process.env.NEXT_PUBLIC_APP_URL}/partner-portal" style="background-color: #10b981; color: #ffffff; text-decoration: none; padding: 12px 28px; border-radius: 6px; font-weight: 600; font-size: 16px; display: inline-block;">Access Partner Portal</a>
+        <a href="mc-car-rental.vercel.app/partner-portal" style="background-color: #10b981; color: #ffffff; text-decoration: none; padding: 12px 28px; border-radius: 6px; font-weight: 600; font-size: 16px; display: inline-block;">Access Partner Portal</a>
       </div>
       
       <p style="font-size: 14px; color: #64748b; line-height: 1.5; border-top: 1px solid #f1f5f9; padding-top: 20px;">
         We look forward to a successful partnership with you.<br/><br/>
         Best regards,<br/>
-        <strong>The MC Ormoc Fleet Team</strong>
+        <strong>The Seffne Transport Services Inc. Team</strong>
       </p>
     </div>
   `,
@@ -290,12 +290,12 @@ export async function sendBookingVerificationEmail(
   const statusText = isApproved ? "APPROVED" : "REJECTED";
 
   const mailOptions = {
-    from: `"MC Ormoc Car Rental Support" <${process.env.SMTP_FROM_EMAIL}>`,
+    from: `"Seffne Transport Services Inc. Support" <${process.env.SMTP_FROM_EMAIL}>`,
     to: email,
     subject: subject,
     html: `
     <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; background-color: #ffffff; padding: 30px; border: 1px solid #e2e8f0; border-radius: 8px; color: #334155;">
-      <h2 style="color: #0f172a; border-bottom: 2px solid #f1f5f9; padding-bottom: 15px; margin-top: 0;">MC Ormoc Car Rental</h2>
+      <h2 style="color: #0f172a; border-bottom: 2px solid #f1f5f9; padding-bottom: 15px; margin-top: 0;">Seffne Transport Services Inc.</h2>
       
       <p style="font-size: 16px;">Hi ${name},</p>
       
@@ -331,14 +331,14 @@ export async function sendBookingVerificationEmail(
       }
 
       <div style="text-align: center; margin: 32px 0;">
-        <a href="${process.env.NEXT_PUBLIC_APP_URL}/customer/my-bookings" style="background-color: #0f172a; color: #ffffff; text-decoration: none; padding: 12px 28px; border-radius: 6px; font-weight: 600; font-size: 16px; display: inline-block;">
+        <a href="mc-car-rental.vercel.app/customer/my-bookings" style="background-color: #0f172a; color: #ffffff; text-decoration: none; padding: 12px 28px; border-radius: 6px; font-weight: 600; font-size: 16px; display: inline-block;">
           View My Dashboard
         </a>
       </div>
       
       <p style="font-size: 14px; color: #64748b; line-height: 1.5; border-top: 1px solid #f1f5f9; padding-top: 20px;">
         Best regards,<br/>
-        <strong>The MC Ormoc Car Rental Team</strong>
+        <strong>The Seffne Transport Services Inc. Team</strong>
       </p>
     </div>
   `,
@@ -361,12 +361,12 @@ export async function sendAdminBookingNotification(
   if (!adminEmails || adminEmails.length === 0) return;
 
   const mailOptions = {
-    from: `"MC Ormoc Car Rental System" <${process.env.SMTP_FROM_EMAIL}>`,
+    from: `"Seffne Transport Services Inc. System" <${process.env.SMTP_FROM_EMAIL}>`,
     to: adminEmails.join(", "), // Sends to all admins/staff at once
     subject: "New Booking Request Awaiting Verification",
     html: `
     <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; background-color: #ffffff; padding: 30px; border: 1px solid #e2e8f0; border-radius: 8px; color: #334155;">
-      <h2 style="color: #0f172a; border-bottom: 2px solid #f1f5f9; padding-bottom: 15px; margin-top: 0;">MC Ormoc Car Rental</h2>
+      <h2 style="color: #0f172a; border-bottom: 2px solid #f1f5f9; padding-bottom: 15px; margin-top: 0;">Seffne Transport Services Inc.</h2>
       
       <p style="font-size: 16px;">Hello Team,</p>
       
@@ -380,7 +380,7 @@ export async function sendAdminBookingNotification(
       <p style="font-size: 16px; line-height: 1.5;">Please review the attached payment receipt and approve or reject the booking accordingly.</p>
       
       <div style="text-align: center; margin: 32px 0;">
-        <a href="${process.env.NEXT_PUBLIC_APP_URL}/admin/bookings" style="background-color: #2563eb; color: #ffffff; text-decoration: none; padding: 12px 28px; border-radius: 6px; font-weight: 600; font-size: 16px; display: inline-block;">Review Booking</a>
+        <a href="mc-car-rental.vercel.app/admin/bookings" style="background-color: #2563eb; color: #ffffff; text-decoration: none; padding: 12px 28px; border-radius: 6px; font-weight: 600; font-size: 16px; display: inline-block;">Review Booking</a>
       </div>
     </div>
   `,

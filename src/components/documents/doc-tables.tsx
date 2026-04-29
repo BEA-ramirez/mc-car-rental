@@ -3,7 +3,14 @@
 import React from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Eye, CheckCircle, AlertTriangle, Trash2, Edit2 } from "lucide-react";
+import {
+  Eye,
+  CheckCircle,
+  AlertTriangle,
+  Trash2,
+  Edit2,
+  ExternalLink,
+} from "lucide-react";
 import {
   useKYCDocuments,
   useContracts,
@@ -85,8 +92,6 @@ export function KYCTable({
   const totalCount = response?.count || 0;
   const totalPages = Math.ceil(totalCount / 10);
 
-  console.log("Documents", documents);
-
   if (isLoading)
     return (
       <div className="p-8 text-center text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
@@ -103,7 +108,7 @@ export function KYCTable({
 
   return (
     <div className="flex flex-col h-full w-full bg-card rounded-xl border border-border">
-      <div className="w-full overflow-x-auto custom-scrollbar">
+      <div className="w-full overflow-auto h-[450px] custom-scrollbar">
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="bg-secondary/30 border-b border-border transition-colors">
@@ -112,6 +117,10 @@ export function KYCTable({
               </th>
               <th className="px-3 py-2 text-[9px] font-bold text-muted-foreground uppercase tracking-widest">
                 Document Type
+              </th>
+              {/* --- NEW: FILE NAME COLUMN --- */}
+              <th className="px-3 py-2 text-[9px] font-bold text-muted-foreground uppercase tracking-widest">
+                File Name
               </th>
               <th className="px-3 py-2 text-[9px] font-bold text-muted-foreground uppercase tracking-widest">
                 Uploaded Date
@@ -122,7 +131,6 @@ export function KYCTable({
               <th className="px-3 py-2 text-[9px] font-bold text-muted-foreground uppercase tracking-widest">
                 Status
               </th>
-              {/* Split into two columns for perfect alignment */}
               <th className="px-3 py-2 text-[9px] font-bold text-muted-foreground uppercase tracking-widest text-right w-[80px]">
                 Manage
               </th>
@@ -132,75 +140,104 @@ export function KYCTable({
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
-            {documents.map((doc: any, idx: number) => (
-              <tr
-                key={doc.document_id || `kyc-${idx}`}
-                className="hover:bg-secondary/30 transition-colors group bg-background"
-              >
-                <td className="px-3 py-2">
-                  <div className="flex flex-col">
-                    <span className="text-[11px] font-bold text-foreground">
-                      {doc.users?.full_name || "Unknown"}
-                    </span>
-                    <span className="text-[9px] font-medium text-muted-foreground truncate">
-                      {doc.users?.email || "No email"}
-                    </span>
-                  </div>
-                </td>
-                <td className="px-3 py-2 text-[10px] font-bold text-foreground">
-                  {formatCategory(doc.category)}
-                </td>
-                <td className="px-3 py-2 text-[10px] font-semibold text-muted-foreground font-mono">
-                  {doc.created_at
-                    ? format(new Date(doc.created_at), "MMM dd, yyyy")
-                    : "---"}
-                </td>
-                <td className="px-3 py-2 text-[10px] font-semibold text-muted-foreground font-mono">
-                  {doc.expiry_date
-                    ? format(new Date(doc.expiry_date), "MMM dd, yyyy")
-                    : "---"}
-                </td>
-                <td className="px-3 py-2">
-                  <StatusBadge status={doc.status} />
-                </td>
+            {documents.map((doc: any, idx: number) => {
+              const isImage = doc.file_type?.startsWith("image/");
 
-                {/* COLUMN 1: Edit & Delete Icons */}
-                <td className="px-3 py-2">
-                  <div className="flex items-center justify-end gap-1 opacity-80 group-hover:opacity-100 transition-opacity">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-6 w-6 text-muted-foreground hover:text-foreground hover:bg-secondary rounded-md transition-colors"
-                      onClick={() => onEdit(doc)}
-                      title="Edit Document"
+              return (
+                <tr
+                  key={doc.document_id || `kyc-${idx}`}
+                  className="hover:bg-secondary/30 transition-colors group bg-background"
+                >
+                  <td className="px-3 py-2">
+                    <div className="flex flex-col">
+                      <span className="text-[11px] font-bold text-foreground">
+                        {doc.users?.full_name || "Unknown"}
+                      </span>
+                      <span className="text-[9px] font-medium text-muted-foreground truncate">
+                        {doc.users?.email || "No email"}
+                      </span>
+                    </div>
+                  </td>
+                  <td className="px-3 py-2 text-[10px] font-bold text-foreground">
+                    {formatCategory(doc.category)}
+                  </td>
+                  {/* --- NEW: FILE NAME DATA --- */}
+                  <td className="px-3 py-2">
+                    <span
+                      className="text-[10px] font-semibold text-muted-foreground truncate max-w-[120px] block"
+                      title={doc.file_name}
                     >
-                      <Edit2 className="w-3.5 h-3.5" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-6 w-6 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-md transition-colors"
-                      onClick={() => onDelete(doc)}
-                      title="Delete Document"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </Button>
-                  </div>
-                </td>
+                      {doc.file_name || "---"}
+                    </span>
+                  </td>
+                  <td className="px-3 py-2 text-[10px] font-semibold text-muted-foreground font-mono">
+                    {doc.created_at
+                      ? format(new Date(doc.created_at), "MMM dd, yyyy")
+                      : "---"}
+                  </td>
+                  <td className="px-3 py-2 text-[10px] font-semibold text-muted-foreground font-mono">
+                    {doc.expiry_date
+                      ? format(new Date(doc.expiry_date), "MMM dd, yyyy")
+                      : "---"}
+                  </td>
+                  <td className="px-3 py-2">
+                    <StatusBadge status={doc.status} />
+                  </td>
 
-                {/* COLUMN 2: Primary Action Button */}
-                <td className="px-3 py-2 text-right">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-6 w-16 px-0 text-[9px] font-bold text-primary hover:text-primary hover:bg-primary/10 rounded-md transition-colors flex items-center justify-center"
-                    onClick={() => onViewReview(doc)}
-                  >
-                    {doc.status === "PENDING" ? "REVIEW" : "VIEW"}
-                  </Button>
-                </td>
-              </tr>
-            ))}
+                  <td className="px-3 py-2">
+                    <div className="flex items-center justify-end gap-1 opacity-80 group-hover:opacity-100 transition-opacity">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6 text-muted-foreground hover:text-foreground hover:bg-secondary rounded-md transition-colors"
+                        onClick={() => onEdit(doc)}
+                        title="Edit Document"
+                      >
+                        <Edit2 className="w-3.5 h-3.5" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-md transition-colors"
+                        onClick={() => onDelete(doc)}
+                        title="Delete Document"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </Button>
+                    </div>
+                  </td>
+
+                  <td className="px-3 py-2 text-right">
+                    {isImage ? (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 w-16 px-0 text-[9px] font-bold text-primary hover:text-primary hover:bg-primary/10 rounded-md transition-colors flex items-center justify-center ml-auto"
+                        onClick={() => onViewReview(doc)}
+                      >
+                        {doc.status === "PENDING" ? "REVIEW" : "VIEW"}
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 w-auto px-2 text-[9px] font-bold text-primary hover:text-primary hover:bg-primary/10 rounded-md transition-colors flex items-center justify-center ml-auto"
+                        onClick={() => {
+                          const supabaseUrl =
+                            process.env.NEXT_PUBLIC_SUPABASE_URL;
+                          const publicUrl =
+                            doc.file_url ||
+                            `${supabaseUrl}/storage/v1/object/public/documents/${doc.file_path}`;
+                          if (publicUrl) window.open(publicUrl, "_blank");
+                        }}
+                      >
+                        OPEN FILE <ExternalLink className="w-3 h-3 ml-1.5" />
+                      </Button>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
@@ -215,13 +252,32 @@ export function KYCTable({
 }
 
 export function ContractsTable({
+  searchTerm = "", // <-- ADDED SEARCH PROP
   onRemind,
   onPreview,
 }: {
+  searchTerm?: string;
   onRemind: (row: any) => void;
   onPreview: (row: any) => void;
 }) {
   const { data: contracts = [], isLoading } = useContracts();
+
+  // --- CLIENT-SIDE FILTERING ---
+  const filteredContracts = contracts.filter((contract: any) => {
+    if (!searchTerm) return true;
+    const s = searchTerm.toLowerCase();
+
+    const booking = contract.bookings || {};
+    const customerName = (booking.users?.full_name || "").toLowerCase();
+    const vehicleName = booking.cars
+      ? `${booking.cars.brand} ${booking.cars.model}`.toLowerCase()
+      : "";
+    const refId = (contract.booking_id?.split("-")[0] || "").toLowerCase();
+
+    return (
+      customerName.includes(s) || vehicleName.includes(s) || refId.includes(s)
+    );
+  });
 
   if (isLoading)
     return (
@@ -230,15 +286,15 @@ export function ContractsTable({
       </div>
     );
 
-  if (contracts.length === 0)
+  if (filteredContracts.length === 0)
     return (
       <div className="p-8 text-center text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
-        No contracts found.
+        No contracts found matching your search.
       </div>
     );
 
   return (
-    <div className="w-full overflow-x-auto custom-scrollbar">
+    <div className="w-full overflow-auto h-[450px] custom-scrollbar">
       <table className="w-full text-left border-collapse">
         <thead>
           <tr className="bg-secondary/30 border-b border-border transition-colors">
@@ -263,8 +319,7 @@ export function ContractsTable({
           </tr>
         </thead>
         <tbody className="divide-y divide-border">
-          {contracts.map((contract: any) => {
-            // Safe extraction of nested data
+          {filteredContracts.map((contract: any) => {
             const booking = contract.bookings || {};
             const customerName = booking.users?.full_name || "Unknown Customer";
             const vehicleName = booking.cars
@@ -334,11 +389,33 @@ export function ContractsTable({
 }
 
 export function InspectionsTable({
+  searchTerm = "", // <-- ADDED SEARCH PROP
   onViewReport,
 }: {
+  searchTerm?: string;
   onViewReport: (row: any) => void;
 }) {
   const { data: inspections = [], isLoading } = useInspections();
+
+  // --- CLIENT-SIDE FILTERING ---
+  const filteredInspections = inspections.filter((row: any) => {
+    if (!searchTerm) return true;
+    const s = searchTerm.toLowerCase();
+
+    const vehicleName = row.bookings?.cars
+      ? `${row.bookings.cars.brand} ${row.bookings.cars.model}`.toLowerCase()
+      : "";
+    const refId = (row.booking_id?.split("-")[0] || "").toLowerCase();
+    const inspector = (row.users?.full_name || "System").toLowerCase();
+    const type = (row.type || "").toLowerCase();
+
+    return (
+      vehicleName.includes(s) ||
+      refId.includes(s) ||
+      inspector.includes(s) ||
+      type.includes(s)
+    );
+  });
 
   if (isLoading)
     return (
@@ -347,15 +424,15 @@ export function InspectionsTable({
       </div>
     );
 
-  if (inspections.length === 0)
+  if (filteredInspections.length === 0)
     return (
       <div className="p-8 text-center text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
-        No inspections found.
+        No inspections found matching your search.
       </div>
     );
 
   return (
-    <div className="w-full overflow-x-auto custom-scrollbar">
+    <div className="w-full overflow-auto h-[450px] custom-scrollbar">
       <table className="w-full text-left border-collapse">
         <thead>
           <tr className="bg-secondary/30 border-b border-border transition-colors">
@@ -380,7 +457,7 @@ export function InspectionsTable({
           </tr>
         </thead>
         <tbody className="divide-y divide-border">
-          {inspections.map((row: any, idx: number) => {
+          {filteredInspections.map((row: any, idx: number) => {
             const vehicleName = row.bookings?.cars
               ? `${row.bookings.cars.brand} ${row.bookings.cars.model}`
               : "Unknown Vehicle";

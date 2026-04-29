@@ -14,6 +14,9 @@ import {
   MoreHorizontal,
   Calendar,
   User,
+  Landmark,
+  CreditCard,
+  CalendarDays,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -56,7 +59,7 @@ export default function PartnerHeader({
     selectedPartner.business_name;
 
   return (
-    <div className="flex flex-col gap-3 w-full transition-colors duration-300">
+    <div className="flex flex-col w-full transition-colors duration-300">
       {/* --- TOP SECTION: BRANDING & ACTIONS --- */}
       <div className="flex items-start justify-between gap-4">
         <div className="flex items-center gap-3 min-w-0">
@@ -74,7 +77,7 @@ export default function PartnerHeader({
           </div>
         </div>
 
-        {/* Action Buttons  */}
+        {/* Action Buttons */}
         <div className="flex items-center gap-1.5 shrink-0">
           <button
             onClick={onEdit}
@@ -86,7 +89,7 @@ export default function PartnerHeader({
           {/* TRIGGER MESSAGE MODAL */}
           <button
             onClick={() => setIsMessageModalOpen(true)}
-            className="p-1.5 border border-border rounded bg-secondary hover:border-primary/50 text-muted-foreground transition-colors"
+            className="p-1.5 border border-border rounded bg-secondary hover:border-primary/50 text-muted-foreground transition-colors outline-none"
             title="Message Partner"
           >
             <MessageSquare className="w-3.5 h-3.5" />
@@ -100,19 +103,19 @@ export default function PartnerHeader({
             </DropdownMenuTrigger>
             <DropdownMenuContent
               align="end"
-              className="w-40 rounded-lg shadow-xl border-border bg-popover p-1 transition-colors"
+              className="w-44 rounded-xl shadow-xl border-border bg-popover p-1 transition-colors"
             >
               {/* TRIGGER PAYOUT MODAL */}
               <DropdownMenuItem
                 onClick={() => setIsPayoutModalOpen(true)}
-                className="text-[11px] font-medium cursor-pointer text-muted-foreground focus:bg-secondary focus:text-foreground rounded transition-colors py-1.5"
+                className="text-[11px] font-medium cursor-pointer text-muted-foreground focus:bg-secondary focus:text-foreground rounded-lg transition-colors py-2"
               >
                 <Calendar className="w-3.5 h-3.5 mr-2" /> Schedule payout
               </DropdownMenuItem>
 
               {/* TRIGGER DELETE DIALOG */}
               <DropdownMenuItem
-                className="text-[11px] font-medium cursor-pointer text-destructive focus:bg-destructive/10 focus:text-destructive rounded transition-colors py-1.5"
+                className="text-[11px] font-medium cursor-pointer text-destructive focus:bg-destructive/10 focus:text-destructive rounded-lg transition-colors py-2"
                 onClick={() => setIsDeleteDialogOpen(true)}
               >
                 <Trash2 className="w-3.5 h-3.5 mr-2" /> Archive partner
@@ -122,54 +125,110 @@ export default function PartnerHeader({
         </div>
       </div>
 
-      {/* --- INFO STRIP: CONTACT & KEY DATA --- */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mt-1 pt-3 border-t border-border/50 transition-colors">
-        <div className="flex flex-col gap-0.5">
-          <p className="text-[9px] font-medium text-muted-foreground flex items-center gap-1.5">
-            <User className="w-3 h-3" /> Representative
-          </p>
-          <p className="text-[11px] font-semibold text-foreground truncate pl-4.5">
-            {selectedPartner.users?.first_name}{" "}
-            {selectedPartner.users?.last_name}
-          </p>
-        </div>
-
-        <div className="flex flex-col gap-0.5">
-          <p className="text-[9px] font-medium text-muted-foreground flex items-center gap-1.5">
-            <Mail className="w-3 h-3" /> Email
-          </p>
-          <p className="text-[11px] font-semibold text-foreground truncate pl-4.5">
-            {selectedPartner.users?.email}
-          </p>
-        </div>
-
-        <div className="flex flex-col gap-0.5">
-          <p className="text-[9px] font-medium text-muted-foreground flex items-center gap-1.5">
-            <Phone className="w-3 h-3" /> Phone
-          </p>
-          <p className="text-[11px] font-semibold text-foreground truncate pl-4.5">
-            {selectedPartner.users?.phone_number || "N/A"}
-          </p>
-        </div>
-
-        <div className="flex items-center gap-5 lg:ml-auto lg:border-l lg:border-border lg:pl-5 transition-colors">
-          <div className="flex flex-col gap-0.5">
-            <p className="text-[9px] font-medium text-muted-foreground">
-              Trust score
-            </p>
-            <span className="text-[11px] font-semibold text-foreground flex items-center gap-1">
-              <Star className="w-3 h-3 text-amber-500 fill-amber-500" />
-              {selectedPartner.users?.trust_score || "5.0"}
-            </span>
+      {/* --- STRUCTURED DATA GRID --- */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8 mt-4 pt-4 border-t border-border/50 transition-colors">
+        {/* Column 1: Contact Information */}
+        <div>
+          <h3 className="text-[10px] font-semibold text-muted-foreground mb-3 uppercase tracking-widest">
+            Contact Information
+          </h3>
+          <div className="flex flex-col gap-2.5 text-[10px]">
+            <div className="flex justify-between items-center gap-4">
+              <span className="text-muted-foreground font-medium flex items-center gap-1.5 shrink-0">
+                <User className="w-3 h-3" /> Rep
+              </span>
+              <span className="text-foreground font-semibold truncate text-right">
+                {selectedPartner.users?.first_name}{" "}
+                {selectedPartner.users?.last_name}
+              </span>
+            </div>
+            <div className="flex justify-between items-center gap-4">
+              <span className="text-muted-foreground font-medium flex items-center gap-1.5 shrink-0">
+                <Mail className="w-3 h-3" /> Email
+              </span>
+              <span className="text-foreground font-semibold truncate text-right">
+                {selectedPartner.users?.email}
+              </span>
+            </div>
+            <div className="flex justify-between items-center gap-4">
+              <span className="text-muted-foreground font-medium flex items-center gap-1.5 shrink-0">
+                <Phone className="w-3 h-3" /> Phone
+              </span>
+              <span className="text-foreground font-semibold font-mono truncate text-right">
+                {selectedPartner.users?.phone_number || "N/A"}
+              </span>
+            </div>
           </div>
-          <div className="flex flex-col gap-0.5">
-            <p className="text-[9px] font-medium text-muted-foreground">
-              Rev share
-            </p>
-            <span className="text-[11px] font-semibold text-foreground flex items-center gap-1">
-              <BadgePercent className="w-3 h-3 text-primary" />
-              {selectedPartner.revenue_share_percentage}%
-            </span>
+        </div>
+
+        {/* Column 2: Payout Details */}
+        <div>
+          <h3 className="text-[10px] font-semibold text-muted-foreground mb-3 uppercase tracking-widest">
+            Payout Details
+          </h3>
+          <div className="flex flex-col gap-2.5 text-[10px]">
+            <div className="flex justify-between items-center gap-4">
+              <span className="text-muted-foreground font-medium flex items-center gap-1.5 shrink-0">
+                <Landmark className="w-3 h-3" /> Bank
+              </span>
+              <span className="text-foreground font-semibold truncate text-right">
+                {selectedPartner.bank_name || "N/A"}
+              </span>
+            </div>
+            <div className="flex justify-between items-center gap-4">
+              <span className="text-muted-foreground font-medium flex items-center gap-1.5 shrink-0">
+                <User className="w-3 h-3" /> Account
+              </span>
+              <span className="text-foreground font-semibold truncate text-right">
+                {selectedPartner.bank_account_name || "N/A"}
+              </span>
+            </div>
+            <div className="flex justify-between items-center gap-4">
+              <span className="text-muted-foreground font-medium flex items-center gap-1.5 shrink-0">
+                <CreditCard className="w-3 h-3" /> Number
+              </span>
+              <span className="text-foreground font-semibold font-mono truncate text-right">
+                {selectedPartner.bank_account_number || "N/A"}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Column 3: Agreement & Metrics */}
+        <div>
+          <h3 className="text-[10px] font-semibold text-muted-foreground mb-3 uppercase tracking-widest">
+            Agreement & Metrics
+          </h3>
+          <div className="flex flex-col gap-2.5 text-[10px]">
+            <div className="flex justify-between items-center gap-4">
+              <span className="text-muted-foreground font-medium flex items-center gap-1.5 shrink-0">
+                <CalendarDays className="w-3 h-3" /> Expiry
+              </span>
+              <span className="text-foreground font-semibold truncate text-right">
+                {selectedPartner.contract_expiry_date
+                  ? new Date(
+                      selectedPartner.contract_expiry_date,
+                    ).toLocaleDateString()
+                  : "N/A"}
+              </span>
+            </div>
+            <div className="flex justify-between items-center gap-4">
+              <span className="text-muted-foreground font-medium flex items-center gap-1.5 shrink-0">
+                <BadgePercent className="w-3 h-3 text-primary" /> Rev Share
+              </span>
+              <span className="text-primary font-bold truncate text-right">
+                {selectedPartner.revenue_share_percentage}%
+              </span>
+            </div>
+            <div className="flex justify-between items-center gap-4">
+              <span className="text-muted-foreground font-medium flex items-center gap-1.5 shrink-0">
+                <Star className="w-3 h-3 text-amber-500 fill-amber-500" /> Trust
+                Score
+              </span>
+              <span className="text-foreground font-semibold truncate text-right">
+                {selectedPartner.users?.trust_score || "5.0"}
+              </span>
+            </div>
           </div>
         </div>
       </div>
@@ -190,7 +249,6 @@ export default function PartnerHeader({
         description={`Are you sure you want to archive ${selectedPartner.business_name}? They will be removed from the active fleet management list.`}
       />
 
-      {/* MESSAGE MODAL */}
       <MessageModal
         isOpen={isMessageModalOpen}
         onClose={() => setIsMessageModalOpen(false)}

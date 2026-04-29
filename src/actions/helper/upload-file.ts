@@ -24,27 +24,31 @@ export async function uploadFile(
 
     const supabaseAdmin = createAdminClient();
     const fileExt = file.name.split(".").pop();
-    // Create unique file name: folder/userID/timestamp-random.ext
 
     const filePath = `${folder}/${userId}/${Date.now()}-${Math.random()
       .toString(36)
       .substring(7)}.${fileExt}`;
+
     const arrayBuffer = await file.arrayBuffer();
     const fileBuffer = Buffer.from(arrayBuffer);
+
+    console.log(
+      `Attempting to upload to bucket: ${bucket}, path: ${filePath}, size: ${fileBuffer.length} bytes`,
+    );
 
     const { error: uploadError } = await supabaseAdmin.storage
       .from(bucket)
       .upload(filePath, fileBuffer, {
         contentType: file.type,
-        upsert: true, // overwrite if same name exists
+        upsert: true,
       });
 
     if (uploadError) {
-      console.error(`Error uploading to ${bucket}:`, uploadError);
+      // THIS IS THE CRITICAL LINE: Log the EXACT reason Supabase rejected it.
+      console.error(`SUPABASE UPLOAD REJECTED:`, uploadError);
       throw uploadError;
     }
 
-    // get public url
     const { data: publicUrlData } = supabaseAdmin.storage
       .from(bucket)
       .getPublicUrl(filePath);
@@ -54,7 +58,7 @@ export async function uploadFile(
       path: filePath,
     };
   } catch (error) {
-    console.error("Upload helper failed", error);
+    console.error("Upload helper failed details:", error);
     return null;
   }
 }

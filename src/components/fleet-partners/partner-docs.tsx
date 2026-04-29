@@ -64,7 +64,7 @@ export default function PartnerDocs({ selectedPartner }: PartnerDocsProps) {
       </div>
 
       {/* Scrollable List Area */}
-      <div className="flex-1 overflow-y-auto min-h-[250px] custom-scrollbar relative">
+      <div className="flex-1 overflow-y-auto max-h-[420px] custom-scrollbar relative">
         {isLoading ? (
           <div className="absolute inset-0 flex flex-col items-center justify-center bg-background/50 backdrop-blur-sm z-10 transition-colors rounded-xl border border-border">
             <Loader2 className="w-5 h-5 animate-spin text-primary mb-2" />

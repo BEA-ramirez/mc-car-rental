@@ -147,10 +147,9 @@ export function useUpsertInspection() {
 export function useDocumentMutations() {
   const queryClient = useQueryClient();
 
-  // --- THE MASTER RIPPLE INVALIDATOR ---
-  // A document change impacts the User's Status, the Booking's readiness, and KPIs!
   const invalidateDocs = () => {
     queryClient.invalidateQueries({ queryKey: QUERY_KEYS.documents.all });
+    queryClient.invalidateQueries({ queryKey: ["partner-documents"] });
     queryClient.invalidateQueries({ queryKey: QUERY_KEYS.users.clients() }); // Admin Clients Table
 
     queryClient.invalidateQueries({ queryKey: QUERY_KEYS.users.profile }); // Customer's own profile
@@ -159,6 +158,7 @@ export function useDocumentMutations() {
     queryClient.invalidateQueries({
       queryKey: QUERY_KEYS.bookings.detailsBase,
     });
+
     queryClient.invalidateQueries({ queryKey: QUERY_KEYS.notifications.all });
   };
 
@@ -254,6 +254,7 @@ export function useDocumentMutations() {
       toast.success(
         data.message || "File uploaded and record created successfully.",
       );
+
       invalidateDocs();
     },
     onError: (error: Error) => toast.error(error.message),

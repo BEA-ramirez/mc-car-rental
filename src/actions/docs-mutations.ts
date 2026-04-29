@@ -44,7 +44,7 @@ export async function rejectDocumentAction(documentId: string, reason: string) {
         message: "Failed to reject document.",
       };
     }
-    return { succes: true, message: "Document rejected successfully!" };
+    return { success: true, message: "Document rejected successfully!" };
   } catch (error: any) {
     console.error("Unexpected error in rejectDocumentAction", error.message);
     return {
@@ -105,10 +105,11 @@ export async function updateInternalNoteAction(
 // requires deleteing from both storage and db
 export async function deleteDocumentAction(documentId: string) {
   try {
-    const supabase = await createClient();
+    // Use Admin Client to bypass RLS for Admin operations
+    const supabaseAdmin = createAdminClient();
 
     // Get the file path directly from the DB
-    const { data: doc, error: fetchError } = await supabase
+    const { data: doc, error: fetchError } = await supabaseAdmin
       .from("documents")
       .select("file_path")
       .eq("document_id", documentId)
@@ -121,8 +122,22 @@ export async function deleteDocumentAction(documentId: string) {
       };
     }
 
+    if (doc.file_path) {
+      const storageResult = await deleteFileFromStorage(
+        "documents",
+        doc.file_path,
+      );
+
+      if (!storageResult.success) {
+        return {
+          success: false,
+          message: "Failed to delete the file from storage. Aborting.",
+        };
+      }
+    }
+
     // Delete the database record
-    const { error: dbError } = await supabase
+    const { error: dbError } = await supabaseAdmin
       .from("documents")
       .delete()
       .eq("document_id", documentId);
@@ -130,8 +145,6 @@ export async function deleteDocumentAction(documentId: string) {
     if (dbError) {
       return { success: false, message: dbError.message };
     }
-
-    await deleteFileFromStorage("documents", doc.file_path);
 
     return { success: true, message: "Document permanently deleted." };
   } catch (error: any) {

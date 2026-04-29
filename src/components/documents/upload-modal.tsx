@@ -55,6 +55,9 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner"; // <-- Added for compression warnings
+import imageCompression from "browser-image-compression"; // <-- IMPORTED COMPRESSION
+
 import {
   useDropdownData,
   useDocumentMutations,
@@ -63,7 +66,7 @@ import {
 const DOC_TYPES = [
   { value: "license_id", label: "Driver's License" },
   { value: "valid_id", label: "Valid ID" },
-  { value: "business_permit", label: "Business Permit" }, // Added some common partner docs
+  { value: "business_permit", label: "Business Permit" },
   {
     value: "certificate_of_registration",
     label: "Certificate of Registration (CR)",
@@ -99,7 +102,7 @@ type UploadModalProps = {
   isOpen: boolean;
   onClose: () => void;
   initialData?: any | null;
-  prefilledUserId?: string; // <-- ADDED PREFILLED PROP
+  prefilledUserId?: string;
 };
 
 export default function UploadModal({
@@ -113,6 +116,7 @@ export default function UploadModal({
 
   const isEdit = !!initialData;
   const [comboboxOpen, setComboboxOpen] = useState(false);
+  const [isCompressing, setIsCompressing] = useState(false); // <-- TRACK COMPRESSION STATE
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const form = useForm<UploadFormValues>({
@@ -147,7 +151,7 @@ export default function UploadModal({
       } else {
         form.reset({
           documentId: "",
-          customerId: prefilledUserId || "", // <-- USE PREFILLED ID ON RESET
+          customerId: prefilledUserId || "",
           docCategory: "",
           status: "PENDING",
           internal_notes: "",
@@ -157,21 +161,55 @@ export default function UploadModal({
     }
   }, [isOpen, initialData, prefilledUserId, form]);
 
-  // HANDLERS
-  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+  // --- NEW: COMPRESSION HELPER ---
+  const processAndSetFile = async (file: File) => {
+    setIsCompressing(true);
+    let fileToUpload = file;
+
+    // Compress if it's an image
+    if (file.type.startsWith("image/")) {
+      try {
+        const compressedBlob = await imageCompression(file, {
+          maxSizeMB: 0.8, // Squish below 1MB Next.js limit
+          maxWidthOrHeight: 1920,
+          useWebWorker: true,
+        });
+        fileToUpload = new File([compressedBlob], file.name, {
+          type: compressedBlob.type,
+          lastModified: Date.now(),
+        });
+      } catch (error) {
+        console.warn("Compression failed, using original", error);
+        toast.error("Image compression failed. The file may be too large.");
+      }
+    }
+
+    form.setValue("file", fileToUpload, { shouldValidate: true });
+    setIsCompressing(false);
+  };
+
+  // --- UPDATED HANDLERS ---
+  const handleDrop = async (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      form.setValue("file", e.dataTransfer.files[0], { shouldValidate: true });
+      await processAndSetFile(e.dataTransfer.files[0]);
     }
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      form.setValue("file", e.target.files[0], { shouldValidate: true });
+      await processAndSetFile(e.target.files[0]);
     }
   };
 
   const onSubmit = async (values: UploadFormValues) => {
+    // Safety check for PDFs or files that bypassed compression
+    const MAX_FILE_SIZE = 1 * 1024 * 1024; // 1MB
+    if (values.file && (values.file as File).size > MAX_FILE_SIZE) {
+      toast.error(`File is too large! Maximum size is 1MB.`);
+      return;
+    }
+
     const formData = new FormData();
 
     if (values.documentId) formData.append("documentId", values.documentId);
@@ -222,7 +260,7 @@ export default function UploadModal({
             size="icon"
             className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-secondary rounded-lg transition-colors shadow-none"
             onClick={onClose}
-            disabled={isPending}
+            disabled={isPending || isCompressing}
           >
             <X className="w-4 h-4" />
           </Button>
@@ -254,7 +292,7 @@ export default function UploadModal({
                           <Button
                             variant="outline"
                             role="combobox"
-                            // If the user ID is prefilled or we are editing, lock the combobox
+                            // Lock the combobox if prefilled or editing
                             disabled={
                               users.isLoading || !!prefilledUserId || isEdit
                             }
@@ -568,14 +606,22 @@ export default function UploadModal({
                   ) : (
                     <>
                       <div className="w-8 h-8 rounded-lg bg-secondary flex items-center justify-center mb-2.5">
-                        <UploadCloud className="w-4 h-4 text-muted-foreground" />
+                        {isCompressing ? (
+                          <Loader2 className="w-4 h-4 text-primary animate-spin" />
+                        ) : (
+                          <UploadCloud className="w-4 h-4 text-muted-foreground" />
+                        )}
                       </div>
                       <p className="text-[11px] font-bold text-foreground">
-                        Click to upload or drag and drop
+                        {isCompressing
+                          ? "Compressing image..."
+                          : "Click to upload or drag and drop"}
                       </p>
-                      <p className="text-[9px] font-bold text-muted-foreground mt-1 uppercase tracking-widest">
-                        PNG, JPG, or PDF (Max. 5MB)
-                      </p>
+                      {!isCompressing && (
+                        <p className="text-[9px] font-bold text-muted-foreground mt-1 uppercase tracking-widest">
+                          PNG, JPG, or PDF
+                        </p>
+                      )}
                     </>
                   )}
                 </div>
@@ -594,14 +640,14 @@ export default function UploadModal({
                 variant="outline"
                 className="h-8 px-4 text-[10px] font-bold uppercase tracking-widest bg-card text-foreground border-border hover:bg-secondary shadow-none rounded-lg transition-colors"
                 onClick={onClose}
-                disabled={isPending}
+                disabled={isPending || isCompressing}
               >
                 Cancel
               </Button>
               <Button
                 type="submit"
                 className="h-8 px-5 text-[10px] font-bold uppercase tracking-widest bg-primary hover:opacity-90 text-primary-foreground rounded-lg shadow-sm transition-opacity"
-                disabled={isPending}
+                disabled={isPending || isCompressing}
               >
                 {isPending ? (
                   <>

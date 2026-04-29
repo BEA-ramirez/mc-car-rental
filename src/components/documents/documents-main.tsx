@@ -14,6 +14,20 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { cn } from "@/lib/utils";
+
 import { KYCTable, ContractsTable, InspectionsTable } from "./doc-tables";
 import ReviewModal, { ReviewDocument } from "./review-modal";
 import UploadModal from "./upload-modal";
@@ -24,13 +38,14 @@ import InspectionExecutionModal from "./inspection-execution-modal";
 import ContractPreviewModal, {
   ContractPreview,
 } from "./contract-preview-modal";
+import { DeleteDialog } from "../delete-dialog";
+
 import {
   usePendingDocuments,
   useExpiringDocuments,
   useDocumentMutations,
 } from "../../../hooks/use-documents";
 import { format, differenceInDays } from "date-fns";
-import { DeleteDialog } from "../delete-dialog";
 
 export const formatCategory = (cat: string) => {
   if (!cat) return "Unknown";
@@ -70,10 +85,10 @@ export default function DocumentsMain() {
     isPending,
   } = useDocumentMutations();
 
-  //kyc table pagination & filters
+  // --- GLOBALIZE SEARCH & ACTIVE FILTERS ---
   const [kycPage, setKycPage] = useState(1);
-  const [kycSearch, setKycSearch] = useState("");
-  const [docFilters] = useState({
+  const [globalSearch, setGlobalSearch] = useState("");
+  const [docFilters, setDocFilters] = useState({
     category: "all",
     status: "all",
     file_type: "all",
@@ -135,7 +150,13 @@ export default function DocumentsMain() {
                             variant="outline"
                             size="sm"
                             className="h-7 text-[9px] font-bold border-border bg-card rounded-lg text-foreground hover:bg-secondary opacity-100 md:opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
-                            onClick={() =>
+                            onClick={() => {
+                              const supabaseUrl =
+                                process.env.NEXT_PUBLIC_SUPABASE_URL;
+                              const publicUrl =
+                                doc.file_url ||
+                                `${supabaseUrl}/storage/v1/object/public/documents/${doc.file_path}`;
+
                               setReviewDoc({
                                 id: doc.document_id,
                                 customerName: doc.users?.full_name || "Unknown",
@@ -148,9 +169,9 @@ export default function DocumentsMain() {
                                   "MMM dd, yyyy HH:mm",
                                 ),
                                 status: "PENDING",
-                                imageUrl: doc.file_path,
-                              })
-                            }
+                                imageUrl: publicUrl,
+                              });
+                            }}
                           >
                             Review <ArrowRight className="w-3 h-3 ml-1" />
                           </Button>
@@ -252,7 +273,6 @@ export default function DocumentsMain() {
                 size="sm"
                 className="h-8 text-[10px] font-bold uppercase tracking-widest bg-primary hover:opacity-90 text-primary-foreground rounded-lg shadow-sm transition-opacity"
                 onClick={() => {
-                  // ENSURE we clear edit state before opening!
                   setEditDoc(null);
                   setIsUploadOpen(true);
                 }}
@@ -298,29 +318,184 @@ export default function DocumentsMain() {
                   <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
                   <input
                     type="text"
-                    placeholder="Search customer, ID, or file name..."
+                    placeholder="Search records..."
+                    value={globalSearch}
                     onChange={(e) => {
-                      if (activeTab === "kyc") setKycSearch(e.target.value);
+                      setGlobalSearch(e.target.value);
+                      setKycPage(1); // Reset page on search to prevent empty states
                     }}
                     className="w-full h-8 pl-8 pr-3 text-[11px] font-medium bg-secondary border border-border rounded-lg focus:outline-none focus:ring-1 focus:ring-primary text-foreground placeholder:text-muted-foreground transition-colors shadow-none"
                   />
                 </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-8 text-[11px] font-semibold rounded-lg border-border text-foreground bg-card hover:bg-secondary transition-colors"
-                >
-                  <Filter className="w-3.5 h-3.5 mr-1.5" /> Filter
-                </Button>
+
+                {/* --- FULLY WIRED FILTER POPOVER --- */}
+                {activeTab === "kyc" && (
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className={cn(
+                          "h-8 text-[11px] font-semibold rounded-lg border-border transition-colors",
+                          docFilters.category !== "all" ||
+                            docFilters.status !== "all"
+                            ? "bg-primary/10 text-primary border-primary/20 hover:bg-primary/20"
+                            : "text-foreground bg-card hover:bg-secondary",
+                        )}
+                      >
+                        <Filter className="w-3.5 h-3.5 mr-1.5" /> Filter
+                        {(docFilters.category !== "all" ||
+                          docFilters.status !== "all") && (
+                          <span className="ml-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[9px] text-primary-foreground">
+                            !
+                          </span>
+                        )}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent
+                      className="w-56 p-3 rounded-xl border-border bg-popover shadow-xl"
+                      align="end"
+                    >
+                      <div className="space-y-3">
+                        <h4 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                          Filter KYC Documents
+                        </h4>
+
+                        <div className="space-y-1.5">
+                          <label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">
+                            Category
+                          </label>
+                          <Select
+                            value={docFilters.category}
+                            onValueChange={(val) => {
+                              setDocFilters((prev) => ({
+                                ...prev,
+                                category: val,
+                              }));
+                              setKycPage(1);
+                            }}
+                          >
+                            <SelectTrigger className="h-8 w-full text-[11px] bg-secondary border-border focus:ring-1 focus:ring-primary shadow-none">
+                              <SelectValue placeholder="All Categories" />
+                            </SelectTrigger>
+                            <SelectContent className="rounded-lg border-border shadow-xl">
+                              <SelectItem value="all" className="text-[11px]">
+                                All Categories
+                              </SelectItem>
+                              <SelectItem
+                                value="license_id"
+                                className="text-[11px]"
+                              >
+                                Driver's License
+                              </SelectItem>
+                              <SelectItem
+                                value="valid_id"
+                                className="text-[11px]"
+                              >
+                                Valid ID
+                              </SelectItem>
+                              <SelectItem
+                                value="business_permit"
+                                className="text-[11px]"
+                              >
+                                Business Permit
+                              </SelectItem>
+                              <SelectItem
+                                value="certificate_of_registration"
+                                className="text-[11px]"
+                              >
+                                CR
+                              </SelectItem>
+                              <SelectItem
+                                value="official_receipt"
+                                className="text-[11px]"
+                              >
+                                OR
+                              </SelectItem>
+                              <SelectItem value="other" className="text-[11px]">
+                                Other / Misc
+                              </SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">
+                            Status
+                          </label>
+                          <Select
+                            value={docFilters.status}
+                            onValueChange={(val) => {
+                              setDocFilters((prev) => ({
+                                ...prev,
+                                status: val,
+                              }));
+                              setKycPage(1);
+                            }}
+                          >
+                            <SelectTrigger className="h-8 w-full text-[11px] bg-secondary border-border focus:ring-1 focus:ring-primary shadow-none">
+                              <SelectValue placeholder="All Statuses" />
+                            </SelectTrigger>
+                            <SelectContent className="rounded-lg border-border shadow-xl">
+                              <SelectItem value="all" className="text-[11px]">
+                                All Statuses
+                              </SelectItem>
+                              <SelectItem
+                                value="PENDING"
+                                className="text-[11px]"
+                              >
+                                Pending
+                              </SelectItem>
+                              <SelectItem
+                                value="VERIFIED"
+                                className="text-[11px]"
+                              >
+                                Verified
+                              </SelectItem>
+                              <SelectItem
+                                value="REJECTED"
+                                className="text-[11px]"
+                              >
+                                Rejected
+                              </SelectItem>
+                              <SelectItem
+                                value="EXPIRED"
+                                className="text-[11px]"
+                              >
+                                Expired
+                              </SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <Button
+                          variant="ghost"
+                          className="w-full h-8 text-[9px] font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+                          onClick={() => {
+                            setDocFilters({
+                              category: "all",
+                              status: "all",
+                              file_type: "all",
+                              expiry_date: "",
+                            });
+                            setKycPage(1);
+                          }}
+                        >
+                          Reset Filters
+                        </Button>
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+                )}
               </div>
 
-              {/* Table Container Placeholder */}
+              {/* Table Container */}
               <div className="bg-background min-h-[400px] transition-colors">
                 {activeTab === "kyc" && (
                   <KYCTable
                     currentPage={kycPage}
                     onPageChange={setKycPage}
-                    searchTerm={kycSearch}
+                    searchTerm={globalSearch}
                     filters={docFilters}
                     onEdit={(doc) => {
                       setEditDoc(doc);
@@ -330,6 +505,11 @@ export default function DocumentsMain() {
                       setDocToDelete(doc);
                     }}
                     onViewReview={(doc) => {
+                      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+                      const publicUrl =
+                        doc.file_url ||
+                        `${supabaseUrl}/storage/v1/object/public/documents/${doc.file_path}`;
+
                       const mappedDoc = {
                         id: doc.document_id,
                         customerName: doc.users?.full_name || "Unknown",
@@ -341,7 +521,7 @@ export default function DocumentsMain() {
                           new Date(doc.created_at),
                           "MMM dd, yyyy HH:mm",
                         ),
-                        imageUrl: doc.file_url,
+                        imageUrl: publicUrl,
                         status: doc.status.toUpperCase(),
                         expiryDate: doc.expiry_date
                           ? format(new Date(doc.expiry_date), "MMM dd, yyyy")
@@ -356,6 +536,7 @@ export default function DocumentsMain() {
                 )}
                 {activeTab === "contracts" && (
                   <ContractsTable
+                    searchTerm={globalSearch}
                     onRemind={(row) =>
                       setReminderCtx({
                         id: row.contract_id,
@@ -393,6 +574,7 @@ export default function DocumentsMain() {
                 )}
                 {activeTab === "inspections" && (
                   <InspectionsTable
+                    searchTerm={globalSearch}
                     onViewReport={(row) => setActiveInspection(row)}
                   />
                 )}
@@ -426,7 +608,7 @@ export default function DocumentsMain() {
         initialData={editDoc}
         onClose={() => {
           setIsUploadOpen(false);
-          setEditDoc(null); // Clear on close
+          setEditDoc(null);
         }}
       />
 
@@ -456,9 +638,7 @@ export default function DocumentsMain() {
             try {
               await deleteDoc(id);
               setViewDoc(null);
-            } catch {
-              // If it fails, keeps the modal open
-            }
+            } catch {}
           }
         }}
         onSaveNote={async (id, note) => {
@@ -491,13 +671,18 @@ export default function DocumentsMain() {
         blueprintUrl={activeInspection?.images?.blueprint_bg}
       />
 
-      {/* WIRED DELETE DIALOG */}
+      {/* WIRED DELETE DIALOG WITH FIX */}
       <DeleteDialog
         isOpen={!!docToDelete}
         onClose={() => setDocToDelete(null)}
         onConfirm={async () => {
           if (docToDelete?.document_id) {
-            await deleteDoc(docToDelete.document_id);
+            try {
+              await deleteDoc(docToDelete.document_id);
+              setDocToDelete(null); // <-- FIXED: Auto-closes dialog upon success
+            } catch (error) {
+              console.error("Deletion failed", error);
+            }
           }
         }}
         isDeleting={isPending}
