@@ -12,6 +12,7 @@ import {
   AlertCircle,
   Clock,
   Camera,
+  Loader2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useRouter } from "next/navigation";
@@ -20,6 +21,7 @@ import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import Image from "next/image";
+import imageCompression from "browser-image-compression";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -44,6 +46,12 @@ type ProfileFormValues = z.infer<typeof ProfileSchema>;
 export default function CustomerProfilePage() {
   const router = useRouter();
   const [isEditing, setIsEditing] = useState(false);
+
+  // Track the name of the document currently being uploaded
+  const [uploadingDocMeta, setUploadingDocMeta] = useState<{
+    category: string;
+    name: string;
+  } | null>(null);
 
   const {
     profile,
@@ -91,9 +99,26 @@ export default function CustomerProfilePage() {
     submitData.append("phone", data.phone_number || "");
     submitData.append("address", data.address || "");
 
-    // If there's a new profile picture selected, append it
+    // If there's a new profile picture selected, compress and append it
     if (profilePicRef.current?.files?.[0]) {
-      submitData.append("profile_picture", profilePicRef.current.files[0]);
+      let picFile = profilePicRef.current.files[0];
+
+      if (picFile.type.startsWith("image/")) {
+        try {
+          const compressedBlob = await imageCompression(picFile, {
+            maxSizeMB: 0.8,
+            maxWidthOrHeight: 1920,
+            useWebWorker: true,
+          });
+          picFile = new File([compressedBlob], picFile.name, {
+            type: compressedBlob.type,
+            lastModified: Date.now(),
+          });
+        } catch (err) {
+          console.warn("Profile pic compression failed, using original.");
+        }
+      }
+      submitData.append("profile_picture", picFile);
     }
 
     await updateProfile(submitData);
@@ -103,12 +128,10 @@ export default function CustomerProfilePage() {
   const handleProfilePicSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      // Create a local preview immediately
       if (previewPicUrl && !previewPicUrl.startsWith("http")) {
         URL.revokeObjectURL(previewPicUrl);
       }
       setPreviewPicUrl(URL.createObjectURL(file));
-      // Force form into editing mode so the user remembers to save
       setIsEditing(true);
     }
   };
@@ -117,22 +140,39 @@ export default function CustomerProfilePage() {
     e: React.ChangeEvent<HTMLInputElement>,
     category: "license_id" | "valid_id",
   ) => {
-    const file = e.target.files?.[0];
+    let file = e.target.files?.[0];
     if (!file) return;
 
-    const uploadData = new FormData();
-    uploadData.append("file", file);
-    uploadData.append("category", category);
-
+    setUploadingDocMeta({ category, name: file.name });
     const toastId = toast.loading(
-      `Uploading ${category === "license_id" ? "License" : "ID"}...`,
+      `Compressing & Uploading ${category === "license_id" ? "License" : "ID"}...`,
     );
 
     try {
+      // --- CLIENT-SIDE COMPRESSION ---
+      if (file.type.startsWith("image/")) {
+        const compressedBlob = await imageCompression(file, {
+          maxSizeMB: 0.8,
+          maxWidthOrHeight: 1920,
+          useWebWorker: true,
+        });
+        file = new File([compressedBlob], file.name, {
+          type: compressedBlob.type,
+          lastModified: Date.now(),
+        });
+      }
+
+      const uploadData = new FormData();
+      uploadData.append("file", file);
+      uploadData.append("category", category);
+
       await uploadDocument(uploadData);
-      toast.dismiss(toastId);
-    } catch {
-      toast.dismiss(toastId);
+      toast.success("Document uploaded successfully!", { id: toastId });
+    } catch (err: any) {
+      toast.error(err.message || "Failed to upload document", { id: toastId });
+    } finally {
+      setUploadingDocMeta(null);
+      e.target.value = ""; // Reset input
     }
   };
 
@@ -432,11 +472,11 @@ export default function CustomerProfilePage() {
               <div className="space-y-3">
                 {/* Driver's License */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 bg-black/40 border border-white/5 rounded-xl gap-4 transition-all hover:border-white/10">
-                  <div className="flex items-start gap-3">
+                  <div className="flex items-start gap-3 w-full sm:w-auto">
                     <div className="p-2.5 bg-white/5 rounded-lg border border-white/10 shrink-0">
                       <Car className="w-4 h-4 text-gray-400" />
                     </div>
-                    <div>
+                    <div className="min-w-0">
                       <h4 className="text-[10px] font-bold text-white uppercase tracking-widest mb-1.5">
                         Professional Driver&apos;s License
                       </h4>
@@ -461,19 +501,39 @@ export default function CustomerProfilePage() {
                     licenseStatus === "REJECTED" ||
                     licenseStatus === "PENDING" ||
                     licenseStatus === "unverified") && (
-                    <div className="relative w-full sm:w-auto shrink-0">
-                      <Input
-                        type="file"
-                        accept="image/*,.pdf"
-                        disabled={isUploadingDoc}
-                        onChange={(e) => handleFileUpload(e, "license_id")}
-                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                      />
+                    <div className="relative w-full sm:w-[130px] shrink-0">
+                      {/* Hide input entirely if this specific component is uploading to prevent UI bleed */}
+                      {uploadingDocMeta?.category !== "license_id" && (
+                        <Input
+                          type="file"
+                          accept="image/*,.pdf"
+                          disabled={isUploadingDoc}
+                          onChange={(e) => handleFileUpload(e, "license_id")}
+                          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10 text-transparent file:hidden"
+                        />
+                      )}
                       <Button
                         variant="outline"
-                        className="w-full sm:w-auto rounded-lg h-8 px-4 font-bold text-[9px] uppercase tracking-widest bg-white/5 border-white/10 text-white hover:bg-[#64c5c3] hover:text-black hover:border-transparent transition-all"
+                        className={cn(
+                          "w-full rounded-lg h-8 px-3 font-bold text-[9px] uppercase tracking-widest transition-all overflow-hidden flex items-center justify-center gap-1.5",
+                          uploadingDocMeta?.category === "license_id"
+                            ? "bg-white/10 border-white/20 text-white/50 cursor-not-allowed"
+                            : "bg-white/5 border-white/10 text-white hover:bg-[#64c5c3] hover:text-black hover:border-transparent",
+                        )}
                       >
-                        <UploadCloud className="w-3.5 h-3.5 mr-1.5" /> Upload
+                        {uploadingDocMeta?.category === "license_id" ? (
+                          <>
+                            <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />
+                            <span className="truncate max-w-[70px]">
+                              {uploadingDocMeta.name}
+                            </span>
+                          </>
+                        ) : (
+                          <>
+                            <UploadCloud className="w-3.5 h-3.5 shrink-0" />{" "}
+                            Upload
+                          </>
+                        )}
                       </Button>
                     </div>
                   )}
@@ -481,11 +541,11 @@ export default function CustomerProfilePage() {
 
                 {/* Valid ID */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 bg-black/40 border border-white/5 rounded-xl gap-4 transition-all hover:border-white/10">
-                  <div className="flex items-start gap-3">
+                  <div className="flex items-start gap-3 w-full sm:w-auto">
                     <div className="p-2.5 bg-white/5 rounded-lg border border-white/10 shrink-0">
                       <FileText className="w-4 h-4 text-gray-400" />
                     </div>
-                    <div>
+                    <div className="min-w-0">
                       <h4 className="text-[10px] font-bold text-white uppercase tracking-widest mb-1.5">
                         Secondary Valid ID
                       </h4>
@@ -510,19 +570,39 @@ export default function CustomerProfilePage() {
                     validIdStatus === "REJECTED" ||
                     validIdStatus === "PENDING" ||
                     validIdStatus === "unverified") && (
-                    <div className="relative w-full sm:w-auto shrink-0">
-                      <Input
-                        type="file"
-                        accept="image/*,.pdf"
-                        disabled={isUploadingDoc}
-                        onChange={(e) => handleFileUpload(e, "valid_id")}
-                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                      />
+                    <div className="relative w-full sm:w-[130px] shrink-0">
+                      {/* Hide input entirely if this specific component is uploading to prevent UI bleed */}
+                      {uploadingDocMeta?.category !== "valid_id" && (
+                        <Input
+                          type="file"
+                          accept="image/*,.pdf"
+                          disabled={isUploadingDoc}
+                          onChange={(e) => handleFileUpload(e, "valid_id")}
+                          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10 text-transparent file:hidden"
+                        />
+                      )}
                       <Button
                         variant="outline"
-                        className="w-full sm:w-auto rounded-lg h-8 px-4 font-bold text-[9px] uppercase tracking-widest bg-white/5 border-white/10 text-white hover:bg-[#64c5c3] hover:text-black hover:border-transparent transition-all"
+                        className={cn(
+                          "w-full rounded-lg h-8 px-3 font-bold text-[9px] uppercase tracking-widest transition-all overflow-hidden flex items-center justify-center gap-1.5",
+                          uploadingDocMeta?.category === "valid_id"
+                            ? "bg-white/10 border-white/20 text-white/50 cursor-not-allowed"
+                            : "bg-white/5 border-white/10 text-white hover:bg-[#64c5c3] hover:text-black hover:border-transparent",
+                        )}
                       >
-                        <UploadCloud className="w-3.5 h-3.5 mr-1.5" /> Upload
+                        {uploadingDocMeta?.category === "valid_id" ? (
+                          <>
+                            <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />
+                            <span className="truncate max-w-[70px]">
+                              {uploadingDocMeta.name}
+                            </span>
+                          </>
+                        ) : (
+                          <>
+                            <UploadCloud className="w-3.5 h-3.5 shrink-0" />{" "}
+                            Upload
+                          </>
+                        )}
                       </Button>
                     </div>
                   )}

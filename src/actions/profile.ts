@@ -80,18 +80,46 @@ export async function uploadCustomerDocument(formData: FormData) {
 
   if (!uploadResult) throw new Error("Failed to upload document to storage.");
 
-  // Create the record in documents table
-  const { error: docError } = await supabase.from("documents").insert({
-    user_id: user.id,
-    category: category,
-    file_name: file.name,
-    file_path: uploadResult.path,
-    file_type: file.type || "application/octet-stream",
-    status: "PENDING",
-    created_at: new Date().toISOString(),
-  });
+  // --- NEW LOGIC: Check for existing document ---
+  const { data: existingDoc } = await supabase
+    .from("documents")
+    .select("document_id, file_path")
+    .eq("user_id", user.id)
+    .eq("category", category)
+    .single();
 
-  if (docError) throw docError;
+  if (existingDoc) {
+    // 1. Delete the old file from storage to save space
+    if (existingDoc.file_path) {
+      await supabase.storage.from("documents").remove([existingDoc.file_path]);
+    }
+
+    // 2. Update the existing record instead of creating a new one
+    const { error: updateError } = await supabase
+      .from("documents")
+      .update({
+        file_name: file.name,
+        file_path: uploadResult.path,
+        file_type: file.type || "application/octet-stream",
+        status: "PENDING", // Resets status so admin can review the new file
+      })
+      .eq("document_id", existingDoc.document_id);
+
+    if (updateError) throw updateError;
+  } else {
+    // Insert new record if one doesn't exist yet
+    const { error: docError } = await supabase.from("documents").insert({
+      user_id: user.id,
+      category: category,
+      file_name: file.name,
+      file_path: uploadResult.path,
+      file_type: file.type || "application/octet-stream",
+      status: "PENDING",
+      created_at: new Date().toISOString(),
+    });
+
+    if (docError) throw docError;
+  }
 
   revalidatePath("/customer/profile");
   return { success: true, message: "Document submitted for verification!" };
