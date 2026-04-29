@@ -316,35 +316,48 @@ export function PartnerForm({
                                         ? "Loading..."
                                         : "No applicants found."}
                                     </CommandEmpty>
-                                    <CommandGroup>
-                                      {availableUsers?.map((user) => (
-                                        <CommandItem
-                                          key={user.user_id}
-                                          value={user.full_name}
-                                          onSelect={() =>
-                                            onSelectUser(user.user_id)
-                                          }
-                                          className="text-[11px] font-semibold cursor-pointer rounded-lg aria-selected:bg-secondary transition-colors px-3 py-2"
-                                        >
-                                          <Check
-                                            className={cn(
-                                              "mr-2 h-3.5 w-3.5",
-                                              user.user_id === field.value
-                                                ? "opacity-100 text-primary"
-                                                : "opacity-0",
-                                            )}
-                                          />
-                                          <div className="flex flex-col">
-                                            <span className="text-foreground">
-                                              {user.full_name}
-                                            </span>
-                                            <span className="text-[9px] font-mono text-muted-foreground mt-0.5">
-                                              {user.email}
-                                            </span>
-                                          </div>
-                                        </CommandItem>
-                                      ))}
-                                    </CommandGroup>
+
+                                    {/* STRICT CHECK: Only render the group if users exist */}
+                                    {availableUsers &&
+                                      availableUsers.length > 0 && (
+                                        <CommandGroup>
+                                          {availableUsers.map((user) => (
+                                            <CommandItem
+                                              key={user.user_id}
+                                              // THE FIX: Provide a safe fallback string so it never passes null
+                                              value={
+                                                user.full_name ||
+                                                user.email ||
+                                                user.user_id
+                                              }
+                                              onSelect={() =>
+                                                onSelectUser(user.user_id)
+                                              }
+                                              className="text-[11px] font-semibold cursor-pointer rounded-lg aria-selected:bg-secondary transition-colors px-3 py-2"
+                                            >
+                                              <Check
+                                                className={cn(
+                                                  "mr-2 h-3.5 w-3.5",
+                                                  // Changed to form.watch() to ensure the checkmark updates reliably inside the popover
+                                                  user.user_id ===
+                                                    form.watch("user_id")
+                                                    ? "opacity-100 text-primary"
+                                                    : "opacity-0",
+                                                )}
+                                              />
+                                              <div className="flex flex-col">
+                                                <span className="text-foreground">
+                                                  {user.full_name ||
+                                                    "Unnamed User"}
+                                                </span>
+                                                <span className="text-[9px] font-mono text-muted-foreground mt-0.5">
+                                                  {user.email || "No email"}
+                                                </span>
+                                              </div>
+                                            </CommandItem>
+                                          ))}
+                                        </CommandGroup>
+                                      )}
                                   </CommandList>
                                 </Command>
                               </PopoverContent>
