@@ -514,7 +514,6 @@ export default function CustomerBookingPage({
                   </div>
                   <Switch
                     checked={withDriver}
-                    disabled
                     className="data-[state=checked]:bg-[#64c5c3] shrink-0 opacity-50 cursor-not-allowed"
                   />
                 </div>
