@@ -50,16 +50,13 @@ export const useDashboard = () => {
     staleTime: 60 * 1000,
   });
 
-  // 3. Availability Checker Mutation (Triggered by button click)
-  // No invalidation needed here because it's just a search, not an update!
+  // Availability Checker Mutation
   const checkAvailabilityMutation = useMutation({
-    mutationFn: async (params: { category: string; date: Date }) => {
-      const res = await checkFleetAvailability({
+    mutationFn: async (params: { category: string; date: string }) => {
+      return await checkFleetAvailability({
         category: params.category,
-        date: params.date.toISOString(),
+        date: params.date,
       });
-      if (!res.success) throw new Error(res.message);
-      return res.data;
     },
     onError: (error: Error) => {
       toast.error(error.message || "Failed to check availability");

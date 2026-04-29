@@ -12,12 +12,11 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useDashboard } from "../../../hooks/use-dashboard"; // Adjust path as needed
+import { useDashboard } from "../../../hooks/use-dashboard";
 import * as echarts from "echarts";
 import { cn } from "@/lib/utils";
 import { useTheme } from "next-themes";
 
-// Theme-aware styles for alerts using opacity backgrounds for dark mode compatibility
 const themeStyles = {
   red: "bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/20",
   orange:
@@ -72,7 +71,7 @@ export default function ActionCenter() {
       },
       title: {
         text: "Status",
-        left: "25%", // Shifted left to prevent overlap
+        left: "25%",
         top: "center",
         textAlign: "center",
         textVerticalAlign: "middle",
@@ -84,9 +83,9 @@ export default function ActionCenter() {
         },
       },
       legend: {
-        type: "scroll", // Added scroll so it doesn't overflow in tight spaces
+        type: "scroll",
         orient: "vertical",
-        right: "0%", // Pushed to the right edge
+        right: "0%",
         top: "middle",
         icon: "circle",
         itemWidth: 8,
@@ -98,26 +97,26 @@ export default function ActionCenter() {
           fontWeight: 500,
           fontFamily: "var(--font-sans)",
         },
-        pageIconColor: "#64c5c3", // Theme color for pagination arrows if they appear
+        pageIconColor: "#64c5c3",
         pageTextStyle: { color: axisColor },
       },
       color: [
-        "#f59e0b", // Pending (Amber)
-        "#34d399", // Confirmed (Emerald)
-        "#64c5c3", // Ongoing (MC Ormoc Primary Teal)
-        "#cbd5e1", // Completed (Slate)
-        "#f97316", // Late Arrival (Orange)
-        "#ef4444", // Overdue Return (Red)
-        "#b91c1c", // Conflict
-        "#64748b", // Maintenance (Slate dark)
+        "#f59e0b", // Pending
+        "#34d399", // Confirmed
+        "#64c5c3", // Ongoing
+        "#cbd5e1", // Completed
+        "#f97316", // Late Arrival
+        "#ef4444", // Overdue Return
+        "#b91c1c", // No Show
+        "#64748b", // Maintenance
         "#f1f5f9", // Cancelled
       ],
       series: [
         {
           name: "Daily Status",
           type: "pie",
-          radius: ["50%", "75%"], // Thinner ring
-          center: ["25%", "50%"], // Shifted left to match title
+          radius: ["50%", "75%"],
+          center: ["25%", "50%"],
           padAngle: 3,
           itemStyle: {
             borderRadius: 4,
@@ -134,7 +133,7 @@ export default function ActionCenter() {
             { value: summary.dailyStatus.completed, name: "Completed" },
             { value: summary.dailyStatus.lateArrival, name: "Late Arrival" },
             { value: summary.dailyStatus.overdue, name: "Overdue Return" },
-            { value: 0, name: "Conflict" },
+            { value: summary.dailyStatus.noShow, name: "No Show" },
             { value: summary.dailyStatus.maintenance, name: "Maintenance" },
             { value: summary.dailyStatus.cancelled, name: "Cancelled" },
           ],
@@ -220,7 +219,8 @@ export default function ActionCenter() {
             Action center
           </h3>
         </div>
-        <div className="p-1.5 space-y-0.5 overflow-y-auto custom-scrollbar flex-1">
+        {/* FIX: Set a strict fixed height here so it never resizes */}
+        <div className="p-1.5 space-y-0.5 overflow-y-auto custom-scrollbar h-[220px]">
           {activeAlerts.length === 0 ? (
             <div className="p-4 text-center text-[9px] font-bold text-muted-foreground uppercase tracking-widest mt-2">
               No pending actions.

@@ -76,8 +76,8 @@ export default function GeneratePayoutModal({
     try {
       await generatePayout({
         ownerId: selectedOwner,
-        startDate: new Date(startDate),
-        endDate: new Date(endDate),
+        startDate: startDate, // Pass the raw YYYY-MM-DD string from the <Input>
+        endDate: endDate, // Pass the raw YYYY-MM-DD string from the <Input>
       });
       onClose();
     } catch (error) {

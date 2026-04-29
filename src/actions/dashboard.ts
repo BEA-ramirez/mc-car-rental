@@ -90,15 +90,11 @@ const searchSchema = z.object({
 export async function checkFleetAvailability(input: {
   category: string;
   date: string;
-}): Promise<ActionResponse> {
+}) {
   const supabase = await createClient();
-  const parsed = searchSchema.safeParse(input);
-
-  if (!parsed.success)
-    return { success: false, message: "Invalid search parameters." };
 
   try {
-    // Step 1: Find cars that match the category (if not "any")
+    // Step 1: Find cars that match the category
     let carQuery = supabase
       .from("cars")
       .select(
@@ -109,19 +105,18 @@ export async function checkFleetAvailability(input: {
       )
       .eq("is_archived", false);
 
-    if (parsed.data.category !== "any") {
-      // Assuming 'body_type' maps to SUV, Sedan, Van
+    if (input.category !== "any") {
       carQuery = carQuery.ilike(
         "car_specifications.body_type",
-        `%${parsed.data.category}%`,
+        `%${input.category}%`,
       );
     }
 
     const { data: cars, error: carErr } = await carQuery;
     if (carErr) throw new Error(carErr.message);
 
-    // Step 2: Get overlapping bookings for the selected date
-    const targetDate = new Date(parsed.data.date);
+    // Step 2: Get overlapping BOOKINGS for the selected date
+    const targetDate = new Date(input.date);
     const startOfDay = new Date(targetDate.setHours(0, 0, 0, 0)).toISOString();
     const endOfDay = new Date(
       targetDate.setHours(23, 59, 59, 999),
@@ -130,24 +125,45 @@ export async function checkFleetAvailability(input: {
     const { data: bookings, error: bkgErr } = await supabase
       .from("bookings")
       .select("car_id")
-      .in("booking_status", ["CONFIRMED", "ONGOING"])
+      // FIX: Added case-insensitivity and "PENDING" to ensure total safety
+      .in("booking_status", [
+        "CONFIRMED",
+        "ONGOING",
+        "PENDING",
+        "confirmed",
+        "ongoing",
+        "pending",
+      ])
       .lte("start_date", endOfDay)
-      .gte("end_date", startOfDay);
+      .gte("end_date", startOfDay)
+      .eq("is_archived", false);
 
     if (bkgErr) throw new Error(bkgErr.message);
 
-    // Step 3: Filter out booked cars
-    const bookedCarIds = new Set(bookings.map((b) => b.car_id));
-    const availableCars = cars.filter((c) => !bookedCarIds.has(c.car_id));
+    // Step 3: FIX - Get overlapping MAINTENANCE LOGS for the selected date
+    const { data: maintenance, error: maintErr } = await supabase
+      .from("maintenance_logs")
+      .select("car_id")
+      .in("status", ["SCHEDULED", "IN_PROGRESS", "scheduled", "in_progress"])
+      .lte("start_date", endOfDay)
+      .gte("end_date", startOfDay);
 
-    return {
-      success: true,
-      message: "Availability checked",
-      data: availableCars,
-    };
+    if (maintErr) throw new Error(maintErr.message);
+
+    // Step 4: Filter out booked OR broken down cars
+    const unavailableCarIds = new Set([
+      ...(bookings || []).map((b) => b.car_id),
+      ...(maintenance || []).map((m) => m.car_id),
+    ]);
+
+    const availableCars = (cars || []).filter(
+      (c) => !unavailableCarIds.has(c.car_id),
+    );
+
+    return availableCars; // Return raw data directly if unwrapped in hook
   } catch (error) {
     console.error("Error checking availability:", error);
-    return { success: false, message: "Failed to check fleet availability." };
+    throw error;
   }
 }
 
@@ -169,7 +185,7 @@ export async function getChartAnalytics(
   }
 }
 
-export async function getQuickInsightsData(): Promise<ActionResponse> {
+export async function getQuickInsightsData() {
   const supabase = await createClient();
   try {
     const { data, error } = await supabase.rpc("get_quick_insights");
@@ -177,32 +193,27 @@ export async function getQuickInsightsData(): Promise<ActionResponse> {
 
     // Apply UI classes for Inventory based on percentage
     const inventory = (data.inventory || []).map((inv: any) => {
-      let indicatorClass = "[&>div]:bg-emerald-500"; // Safe (Green)
-      if (inv.percentage >= 100)
-        indicatorClass = "[&>div]:bg-red-500"; // Sold Out (Red)
-      else if (inv.percentage > 75)
-        indicatorClass = "[&>div]:bg-amber-500"; // High (Amber)
-      else if (inv.percentage > 50) indicatorClass = "[&>div]:bg-blue-500"; // Normal (Blue)
-
+      let indicatorClass = "[&>div]:bg-emerald-500";
+      if (inv.percentage >= 100) indicatorClass = "[&>div]:bg-red-500";
+      else if (inv.percentage > 75) indicatorClass = "[&>div]:bg-amber-500";
+      else if (inv.percentage > 50) indicatorClass = "[&>div]:bg-blue-500";
       return { ...inv, indicatorClass };
     });
 
-    // Apply UI classes and format time for Logs
+    // Apply UI classes and format time for NEW Master Logs
     const logs = (data.logs || []).map((log: any) => {
       let dotClass = "bg-slate-500 ring-slate-100";
-      const type = log.title.toUpperCase();
+      const entity = (log.entity_type || "").toUpperCase();
+      const action = (log.action_type || "").toUpperCase();
 
-      if (type.includes("PAYMENT")) dotClass = "bg-purple-500 ring-purple-100";
-      else if (type.includes("BOOKING") || type.includes("CREATE"))
-        dotClass = "bg-blue-500 ring-blue-100";
-      else if (type.includes("DRIVER") || type.includes("COMPLETE"))
-        dotClass = "bg-emerald-500 ring-emerald-100";
-      else if (
-        type.includes("INCIDENT") ||
-        type.includes("MAINTENANCE") ||
-        type.includes("CANCEL")
-      )
-        dotClass = "bg-red-500 ring-red-100";
+      if (entity.includes("FINANCIAL") || entity.includes("PAYOUT"))
+        dotClass = "bg-purple-500 ring-purple-100 dark:ring-purple-900";
+      else if (entity.includes("BOOKING"))
+        dotClass = "bg-blue-500 ring-blue-100 dark:ring-blue-900";
+      else if (entity.includes("DRIVER") || entity.includes("USER"))
+        dotClass = "bg-emerald-500 ring-emerald-100 dark:ring-emerald-900";
+      else if (entity.includes("MAINTENANCE") || action === "DELETE")
+        dotClass = "bg-red-500 ring-red-100 dark:ring-red-900";
 
       const time = new Intl.DateTimeFormat("en-US", {
         hour: "numeric",
@@ -212,11 +223,7 @@ export async function getQuickInsightsData(): Promise<ActionResponse> {
       return { ...log, time, dotClass };
     });
 
-    return {
-      success: true,
-      message: "Insights fetched",
-      data: { inventory, logs },
-    };
+    return { success: true, data: { inventory, logs } };
   } catch (error) {
     console.error("Error fetching quick insights:", error);
     return { success: false, message: "Failed to load insights." };

@@ -26,7 +26,7 @@ import {
 } from "lucide-react";
 import { DateRange } from "react-day-picker";
 
-import { cn, formatDisplayId } from "@/lib/utils"; // <-- IMPORTED HERE
+import { cn, formatDisplayId } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -63,7 +63,6 @@ import { generateExcelReport } from "@/utils/export-excel";
 import * as echarts from "echarts";
 
 export default function ReportsMain() {
-  // --- STATE ---
   const [date, setDate] = useState<DateRange | undefined>({
     from: subDays(new Date(), 30),
     to: new Date(),
@@ -75,14 +74,12 @@ export default function ReportsMain() {
     "idle",
   );
 
-  // Add these right below your existing state variables
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilters, setStatusFilters] = useState({
     completed: true,
     pending: true,
   });
 
-  // --- DATA FETCHING ---
   const { data: reportData, isLoading } = useReportsDashboard(
     date?.from || new Date(),
     date?.to || new Date(),
@@ -93,14 +90,11 @@ export default function ReportsMain() {
     if (!reportData) return null;
 
     const query = searchQuery.toLowerCase().trim();
-
-    // Helper function for global search
     const matchesSearch = (str: string | undefined | null) =>
       str ? str.toLowerCase().includes(query) : false;
 
     return {
-      ...reportData, // Keep the KPIs untouched
-
+      ...reportData,
       unit_economics: reportData.unit_economics?.filter(
         (item: any) =>
           !query ||
@@ -108,7 +102,6 @@ export default function ReportsMain() {
           matchesSearch(item.plate) ||
           matchesSearch(item.owner),
       ),
-
       partners: reportData.partners?.filter(
         (item: any) =>
           !query ||
@@ -116,7 +109,6 @@ export default function ReportsMain() {
           matchesSearch(item.business) ||
           matchesSearch(item.id),
       ),
-
       master_ledger: reportData.master_ledger?.filter((item: any) => {
         const searchMatch =
           !query ||
@@ -127,12 +119,8 @@ export default function ReportsMain() {
           (statusFilters.completed &&
             item.status.toUpperCase() === "COMPLETED") ||
           (statusFilters.pending && item.status.toUpperCase() === "PENDING");
-
-        // If the status is something else entirely, let it through, or strictly filter it.
-        // Usually, ledgers only have completed/pending.
         return searchMatch && statusMatch;
       }),
-
       bookings: reportData.bookings?.filter((item: any) => {
         const searchMatch =
           !query ||
@@ -146,12 +134,10 @@ export default function ReportsMain() {
             ["PENDING", "UNPAID"].includes(item.status.toUpperCase()));
         return searchMatch && statusMatch;
       }),
-
       customers: reportData.customers?.filter(
         (item: any) =>
           !query || matchesSearch(item.name) || matchesSearch(item.id),
       ),
-
       drivers: reportData.drivers?.filter(
         (item: any) =>
           !query ||
@@ -168,11 +154,9 @@ export default function ReportsMain() {
   // --- ECHARTS LOGIC ---
   useEffect(() => {
     if (chartRef.current && reportData) {
-      // 1. Initialize Chart
       const myChart = echarts.init(chartRef.current);
       chartInstanceRef.current = myChart;
 
-      // 2. Data for Donut Chart (Revenue Split)
       const pieData = [
         {
           value: reportData.kpis?.platform_profit || 0,
@@ -182,21 +166,19 @@ export default function ReportsMain() {
         { value: reportData.kpis?.maintenance_costs || 0, name: "Maintenance" },
       ].filter((d) => d.value > 0);
 
-      // Default if no data
       if (pieData.length === 0) pieData.push({ value: 1, name: "No Revenue" });
 
-      // 3. Data for Bar Chart (Top 5 Assets by Yield)
+      // FIX: Sort assets by NET (Platform Profit), not Gross!
       const sortedCars = [...(reportData.unit_economics || [])]
-        .sort((a, b) => (b.gross || 0) - (a.gross || 0))
+        .sort((a, b) => (b.net || 0) - (a.net || 0))
         .slice(0, 5)
         .reverse();
 
       const carNames = sortedCars.map(
         (c) => `${c.vehicle.split(" ")[0]} [${c.plate}]`,
       );
-      const carGross = sortedCars.map((c) => c.gross || 0);
+      const carNet = sortedCars.map((c) => c.net || 0);
 
-      // 4. Define ECharts Option (Dual-Canvas Layout)
       const option = {
         backgroundColor: "#ffffff",
         title: [
@@ -212,7 +194,7 @@ export default function ReportsMain() {
             },
           },
           {
-            text: "Top 5 Assets by Gross Yield",
+            text: "Top 5 Assets by Platform Net Yield",
             left: "70%",
             top: "5%",
             textAlign: "center",
@@ -258,11 +240,7 @@ export default function ReportsMain() {
             radius: ["45%", "75%"],
             center: ["20%", "55%"],
             avoidLabelOverlap: false,
-            itemStyle: {
-              borderRadius: 5,
-              borderColor: "#fff",
-              borderWidth: 2,
-            },
+            itemStyle: { borderRadius: 5, borderColor: "#fff", borderWidth: 2 },
             label: {
               show: true,
               position: "outside",
@@ -274,13 +252,10 @@ export default function ReportsMain() {
             data: pieData,
           },
           {
-            name: "Gross Yield",
+            name: "Platform Net Yield",
             type: "bar",
-            data: carGross.length > 0 ? carGross : [0],
-            itemStyle: {
-              color: "#0f172a",
-              borderRadius: [0, 4, 4, 0],
-            },
+            data: carNet.length > 0 ? carNet : [0],
+            itemStyle: { color: "#0f172a", borderRadius: [0, 4, 4, 0] },
             label: {
               show: true,
               position: "right",
@@ -302,7 +277,6 @@ export default function ReportsMain() {
     }
   }, [reportData]);
 
-  // --- HANDLERS ---
   const handleTabChange = (val: string) => {
     setActiveTab(val);
     setExpandedRow(null);
@@ -311,10 +285,8 @@ export default function ReportsMain() {
   const handleExportPDF = async () => {
     if (!reportData || !date?.from || !date?.to) return;
     setExportState("pdf");
-
     try {
       let chartImageURI = undefined;
-
       if (chartInstanceRef.current) {
         chartImageURI = chartInstanceRef.current.getDataURL({
           type: "png",
@@ -322,7 +294,6 @@ export default function ReportsMain() {
           backgroundColor: "#ffffff",
         });
       }
-
       const { generatePDFReport } = await import("@/utils/export-pdf");
       await generatePDFReport(reportData, date.from, date.to, chartImageURI);
     } catch (error) {
@@ -334,7 +305,6 @@ export default function ReportsMain() {
 
   const handleExportExcel = async () => {
     if (!reportData || !date?.from || !date?.to) return;
-
     setExportState("excel");
     try {
       await generateExcelReport(reportData, date.from, date.to);
@@ -347,7 +317,6 @@ export default function ReportsMain() {
 
   return (
     <div className="flex flex-col h-full bg-background font-sans relative transition-colors duration-300">
-      {/* --- UNINTERRUPTIBLE LOADING OVERLAY --- */}
       {exportState !== "idle" && (
         <div className="absolute inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="bg-card p-6 rounded-2xl shadow-2xl flex flex-col items-center max-w-sm w-full border border-border animate-in zoom-in-95 duration-300">
@@ -368,7 +337,6 @@ export default function ReportsMain() {
         </div>
       )}
 
-      {/* --- FORMAL HEADER & EXPORT ENGINE --- */}
       <div className="flex items-center justify-between px-5 pt-4 shrink-0 ">
         <div className="flex items-center gap-3"></div>
         <div className="flex items-center gap-2">
@@ -394,7 +362,6 @@ export default function ReportsMain() {
 
       <ScrollArea className="flex-1 custom-scrollbar">
         <div className="max-w-[1400px] mx-auto p-4 md:p-5 space-y-5">
-          {/* --- THE COMMAND BAR --- */}
           <div className="bg-card border border-border rounded-xl p-2 flex flex-col md:flex-row md:items-center justify-between shadow-sm transition-colors gap-2 md:gap-0">
             <div className="flex items-center gap-2 w-full md:w-auto">
               <Popover>
@@ -504,7 +471,6 @@ export default function ReportsMain() {
                             Completed / Active
                           </span>
                         </label>
-
                         <label className="flex items-center gap-2 p-2.5 border border-border bg-card rounded-xl cursor-pointer hover:border-primary transition-colors">
                           <input
                             type="checkbox"
@@ -540,7 +506,6 @@ export default function ReportsMain() {
             </div>
           </div>
 
-          {/* --- LOADING SKELETON --- */}
           {isLoading && (
             <div className="flex flex-col items-center justify-center py-20 space-y-4">
               <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
@@ -550,7 +515,6 @@ export default function ReportsMain() {
             </div>
           )}
 
-          {/* --- MAIN DASHBOARD CONTENT --- */}
           {!isLoading && reportData && (
             <>
               {/* --- EXECUTIVE SUMMARY (KPIs) --- */}
@@ -619,7 +583,7 @@ export default function ReportsMain() {
                   </span>
                   <div className="mt-2 flex items-center gap-1.5 z-10">
                     <span className="text-[9px] font-medium text-blue-600/80 dark:text-blue-400/80 uppercase tracking-widest">
-                      Pending settlement
+                      Pending & Settled
                     </span>
                   </div>
                 </div>
@@ -674,16 +638,17 @@ export default function ReportsMain() {
                   </Tabs>
                 </div>
 
-                {/* TAB 1: UNIT ECONOMICS */}
+                {/* TAB 1: UNIT ECONOMICS - REBUILT TO SHOW TRUE PLATFORM YIELD */}
                 {activeTab === "unit_economics" && (
                   <div className="flex-1 bg-background">
-                    <div className="grid grid-cols-[2fr_1.5fr_0.5fr_1fr_1fr_1fr_0.3fr] p-2.5 px-4 border-b border-border bg-secondary/50 text-[9px] font-bold text-muted-foreground uppercase tracking-widest">
+                    <div className="grid grid-cols-[1.5fr_1.5fr_0.5fr_1fr_1fr_1fr_1fr_0.3fr] p-2.5 px-4 border-b border-border bg-secondary/50 text-[9px] font-bold text-muted-foreground uppercase tracking-widest">
                       <div>Asset / Plate No.</div>
                       <div>Fleet Partner</div>
                       <div className="text-center">Trips</div>
                       <div className="text-right">Gross Rev</div>
-                      <div className="text-right">Maint. Deduct</div>
-                      <div className="text-right">Net Yield</div>
+                      <div className="text-right">Owner Cut</div>
+                      <div className="text-right">Maint.</div>
+                      <div className="text-right">Platform Yield</div>
                       <div></div>
                     </div>
                     <div className="divide-y divide-border">
@@ -700,7 +665,7 @@ export default function ReportsMain() {
                             <CollapsibleTrigger asChild>
                               <div
                                 className={cn(
-                                  "grid grid-cols-[2fr_1.5fr_0.5fr_1fr_1fr_1fr_0.3fr] p-2.5 px-4 items-center cursor-pointer hover:bg-secondary/30",
+                                  "grid grid-cols-[1.5fr_1.5fr_0.5fr_1fr_1fr_1fr_1fr_0.3fr] p-2.5 px-4 items-center cursor-pointer hover:bg-secondary/30",
                                   expandedRow === car.car_id &&
                                     "bg-secondary/30",
                                 )}
@@ -727,6 +692,9 @@ export default function ReportsMain() {
                                 <div className="text-right text-[11px] font-bold font-mono">
                                   ₱ {car.gross.toLocaleString()}
                                 </div>
+                                <div className="text-right text-[11px] font-bold text-muted-foreground font-mono">
+                                  - ₱ {car.owner_cut.toLocaleString()}
+                                </div>
                                 <div className="text-right text-[11px] font-bold text-destructive font-mono">
                                   {car.maint < 0
                                     ? `- ₱ ${Math.abs(car.maint).toLocaleString()}`
@@ -738,19 +706,11 @@ export default function ReportsMain() {
                                       "text-[11px] font-bold font-mono",
                                       car.net < 0
                                         ? "text-destructive"
-                                        : "text-foreground",
+                                        : "text-emerald-600 dark:text-emerald-400",
                                     )}
                                   >
                                     ₱ {car.net.toLocaleString()}
                                   </span>
-                                  {car.status === "Loss" && (
-                                    <Badge
-                                      variant="outline"
-                                      className="text-[8px] h-4 px-1 mt-1 bg-destructive/10 text-destructive border-destructive/20 uppercase tracking-widest"
-                                    >
-                                      LOSS
-                                    </Badge>
-                                  )}
                                 </div>
                                 <div className="flex justify-end pr-2 text-muted-foreground">
                                   {expandedRow === car.car_id ? (
@@ -839,213 +799,6 @@ export default function ReportsMain() {
                 )}
 
                 {/* TAB 2: PARTNER SETTLEMENTS */}
-                {activeTab === "bookings" && (
-                  <div className="flex-1 bg-background">
-                    <div className="grid grid-cols-[1fr_1.5fr_1.5fr_1fr_1fr_1fr_0.3fr] p-2.5 px-4 border-b border-border bg-secondary/50 text-[9px] font-bold text-muted-foreground uppercase tracking-widest">
-                      <div>Booking Ref</div>
-                      <div>Customer</div>
-                      <div>Asset & Dates</div>
-                      <div>Status</div>
-                      <div className="text-right">Total Billed</div>
-                      <div className="text-right">Balance Due</div>
-                      <div></div>
-                    </div>
-                    <div className="divide-y divide-border">
-                      {filteredData.bookings?.length > 0 ? (
-                        filteredData.bookings.map((bkg: any) => (
-                          <Collapsible
-                            key={bkg.id}
-                            open={expandedRow === bkg.id}
-                            onOpenChange={(isOpen) =>
-                              setExpandedRow(isOpen ? bkg.id : null)
-                            }
-                            className="group"
-                          >
-                            <CollapsibleTrigger asChild>
-                              <div
-                                className={cn(
-                                  "grid grid-cols-[1fr_1.5fr_1.5fr_1fr_1fr_1fr_0.3fr] p-2.5 px-4 items-center cursor-pointer hover:bg-secondary/30",
-                                  expandedRow === bkg.id && "bg-secondary/30",
-                                )}
-                              >
-                                <span className="text-[11px] font-bold text-foreground font-mono">
-                                  {bkg.id}
-                                </span>
-                                <span className="text-[11px] font-bold text-foreground">
-                                  {bkg.customer}
-                                </span>
-                                <div className="flex flex-col">
-                                  <span className="text-[11px] font-bold text-foreground truncate">
-                                    {bkg.vehicle}
-                                  </span>
-                                  <span className="text-[9px] font-medium uppercase tracking-widest text-muted-foreground mt-0.5">
-                                    {bkg.dates}
-                                  </span>
-                                </div>
-                                <div>
-                                  <Badge
-                                    variant="outline"
-                                    className="text-[8px] font-bold h-4 px-1.5 uppercase tracking-widest bg-secondary text-muted-foreground border-border rounded"
-                                  >
-                                    {bkg.status}
-                                  </Badge>
-                                </div>
-                                <span className="text-right text-[11px] font-bold text-foreground font-mono">
-                                  ₱ {bkg.total.toLocaleString()}
-                                </span>
-                                <span
-                                  className={cn(
-                                    "text-right text-[11px] font-bold font-mono",
-                                    bkg.due > 0
-                                      ? "text-amber-600 dark:text-amber-400"
-                                      : "text-emerald-600 dark:text-emerald-400",
-                                  )}
-                                >
-                                  ₱ {bkg.due.toLocaleString()}
-                                </span>
-                                <div className="flex justify-end pr-2 text-muted-foreground">
-                                  {expandedRow === bkg.id ? (
-                                    <ChevronDown className="w-4 h-4" />
-                                  ) : (
-                                    <ChevronRight className="w-4 h-4" />
-                                  )}
-                                </div>
-                              </div>
-                            </CollapsibleTrigger>
-                            <CollapsibleContent className="bg-secondary/30 border-t border-border">
-                              <div className="p-5 px-8 grid grid-cols-1 md:grid-cols-3 gap-6">
-                                {/* Itinerary */}
-                                <div className="space-y-3">
-                                  <h5 className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest border-b border-border pb-1">
-                                    Trip Itinerary
-                                  </h5>
-                                  <div className="flex gap-2">
-                                    <MapPin className="w-4 h-4 text-emerald-500 mt-0.5 shrink-0" />
-                                    <div className="flex flex-col">
-                                      <span className="text-[10px] font-bold text-foreground uppercase tracking-widest">
-                                        {bkg.pickup_type} Pickup
-                                      </span>
-                                      <span
-                                        className="text-[11px] font-medium text-muted-foreground truncate"
-                                        title={bkg.pickup_location}
-                                      >
-                                        {bkg.pickup_location}
-                                      </span>
-                                      <span className="text-[10px] font-mono text-muted-foreground mt-0.5">
-                                        {bkg.full_start}
-                                      </span>
-                                    </div>
-                                  </div>
-                                  <div className="flex gap-2">
-                                    <MapPin className="w-4 h-4 text-destructive mt-0.5 shrink-0" />
-                                    <div className="flex flex-col">
-                                      <span className="text-[10px] font-bold text-foreground uppercase tracking-widest">
-                                        {bkg.dropoff_type} Dropoff
-                                      </span>
-                                      <span
-                                        className="text-[11px] font-medium text-muted-foreground truncate"
-                                        title={bkg.dropoff_location}
-                                      >
-                                        {bkg.dropoff_location}
-                                      </span>
-                                      <span className="text-[10px] font-mono text-muted-foreground mt-0.5">
-                                        {bkg.full_end}
-                                      </span>
-                                    </div>
-                                  </div>
-                                </div>
-
-                                {/* Financials */}
-                                <div className="space-y-3">
-                                  <h5 className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest border-b border-border pb-1">
-                                    Financial Snapshot
-                                  </h5>
-                                  <div className="grid grid-cols-2 gap-2 text-[11px]">
-                                    <span className="text-muted-foreground font-medium">
-                                      Base Rate Locked:
-                                    </span>
-                                    <span className="font-mono font-bold text-foreground">
-                                      ₱{" "}
-                                      {bkg.base_rate_snapshot?.toLocaleString() ||
-                                        "0"}
-                                    </span>
-
-                                    <span className="text-muted-foreground font-medium">
-                                      Security Deposit:
-                                    </span>
-                                    <span className="font-mono font-bold text-foreground">
-                                      ₱{" "}
-                                      {bkg.security_deposit?.toLocaleString() ||
-                                        "0"}
-                                    </span>
-
-                                    <span className="text-muted-foreground font-medium">
-                                      Payment Status:
-                                    </span>
-                                    <span className="font-bold uppercase tracking-widest text-[9px]">
-                                      {bkg.payment_status}
-                                    </span>
-                                  </div>
-                                </div>
-
-                                {/* Operations */}
-                                <div className="space-y-3">
-                                  <h5 className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest border-b border-border pb-1">
-                                    Operations & Settlement
-                                  </h5>
-                                  <div className="flex flex-col gap-3">
-                                    <div className="flex items-center gap-2">
-                                      <ShipWheel className="w-4 h-4 text-blue-500 shrink-0" />
-                                      <div className="flex flex-col">
-                                        <span className="text-[10px] font-bold text-foreground uppercase tracking-widest">
-                                          Driver Assignment
-                                        </span>
-                                        <span className="text-[11px] font-medium text-muted-foreground">
-                                          {bkg.is_with_driver
-                                            ? bkg.driver_name
-                                            : "Self-Drive (No Driver)"}
-                                        </span>
-                                      </div>
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                      <Banknote className="w-4 h-4 text-emerald-600 shrink-0" />
-                                      <div className="flex flex-col">
-                                        <span className="text-[10px] font-bold text-foreground uppercase tracking-widest">
-                                          Owner Payout Link
-                                        </span>
-                                        <span className="text-[11px] font-medium text-muted-foreground flex items-center gap-2">
-                                          Status:{" "}
-                                          <Badge
-                                            variant="outline"
-                                            className="text-[8px] h-4 px-1"
-                                          >
-                                            {bkg.owner_payout_status}
-                                          </Badge>
-                                        </span>
-                                        <span className="text-[10px] font-mono text-muted-foreground mt-0.5">
-                                          Ref: {bkg.payout_ref}
-                                        </span>
-                                      </div>
-                                    </div>
-                                  </div>
-                                </div>
-                              </div>
-                            </CollapsibleContent>
-                          </Collapsible>
-                        ))
-                      ) : (
-                        <div className="p-10 flex flex-col items-center justify-center text-muted-foreground">
-                          <FolderOpen className="w-8 h-8 mb-2 opacity-20" />
-                          <p className="text-[10px] font-bold uppercase tracking-widest">
-                            No bookings created in this date range.
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                {/* TAB 2: PARTNER SETTLEMENTS */}
                 {activeTab === "partners" && (
                   <div className="flex-1 bg-background transition-colors">
                     <div className="grid grid-cols-[1.5fr_1fr_1fr_1fr_1fr_1fr_0.3fr] p-2.5 px-4 border-b border-border bg-secondary/50 text-[9px] font-bold text-muted-foreground uppercase tracking-widest transition-colors">
@@ -1115,17 +868,6 @@ export default function ReportsMain() {
                                   >
                                     ₱ {prt.net_payout.toLocaleString()}
                                   </span>
-                                  <Badge
-                                    variant="outline"
-                                    className={cn(
-                                      "text-[8px] h-4 px-1.5 mt-1 uppercase tracking-widest border",
-                                      prt.status === "Settled"
-                                        ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
-                                        : "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20",
-                                    )}
-                                  >
-                                    {prt.status}
-                                  </Badge>
                                 </div>
                                 <div className="flex justify-end pr-2 text-muted-foreground">
                                   {expandedRow === prt.id ? (
@@ -1268,8 +1010,7 @@ export default function ReportsMain() {
                               </Badge>
                             </div>
                             <div className="flex items-center gap-1.5 text-[10px] font-medium text-muted-foreground uppercase tracking-widest">
-                              <CreditCard className="w-3 h-3" />
-                              {txn.method}
+                              <CreditCard className="w-3 h-3" /> {txn.method}
                             </div>
                             <div
                               className={cn(
@@ -1289,6 +1030,231 @@ export default function ReportsMain() {
                           <FolderOpen className="w-8 h-8 mb-2 opacity-20" />
                           <p className="text-[10px] font-bold uppercase tracking-widest">
                             No financial transactions recorded in this period.
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* TAB 4: BOOKING VOLUME */}
+                {activeTab === "bookings" && (
+                  <div className="flex-1 bg-background">
+                    <div className="grid grid-cols-[1fr_1.5fr_1.5fr_1fr_1fr_1fr_0.3fr] p-2.5 px-4 border-b border-border bg-secondary/50 text-[9px] font-bold text-muted-foreground uppercase tracking-widest">
+                      <div>Booking Ref</div>
+                      <div>Customer</div>
+                      <div>Asset & Dates</div>
+                      <div>Status</div>
+                      <div className="text-right">Total Billed</div>
+                      <div className="text-right">Balance Due</div>
+                      <div></div>
+                    </div>
+                    <div className="divide-y divide-border">
+                      {filteredData.bookings?.length > 0 ? (
+                        filteredData.bookings.map((bkg: any) => (
+                          <Collapsible
+                            key={bkg.id}
+                            open={expandedRow === bkg.id}
+                            onOpenChange={(isOpen) =>
+                              setExpandedRow(isOpen ? bkg.id : null)
+                            }
+                            className="group"
+                          >
+                            <CollapsibleTrigger asChild>
+                              <div
+                                className={cn(
+                                  "grid grid-cols-[1fr_1.5fr_1.5fr_1fr_1fr_1fr_0.3fr] p-2.5 px-4 items-center cursor-pointer hover:bg-secondary/30",
+                                  expandedRow === bkg.id && "bg-secondary/30",
+                                )}
+                              >
+                                <span className="text-[11px] font-bold text-foreground font-mono">
+                                  {bkg.id}
+                                </span>
+                                <span className="text-[11px] font-bold text-foreground">
+                                  {bkg.customer}
+                                </span>
+                                <div className="flex flex-col">
+                                  <span className="text-[11px] font-bold text-foreground truncate">
+                                    {bkg.vehicle}
+                                  </span>
+                                  <span className="text-[9px] font-medium uppercase tracking-widest text-muted-foreground mt-0.5">
+                                    {bkg.dates}
+                                  </span>
+                                </div>
+                                <div>
+                                  <Badge
+                                    variant="outline"
+                                    className="text-[8px] font-bold h-4 px-1.5 uppercase tracking-widest bg-secondary text-muted-foreground border-border rounded"
+                                  >
+                                    {bkg.status}
+                                  </Badge>
+                                </div>
+                                <span className="text-right text-[11px] font-bold text-foreground font-mono">
+                                  ₱ {bkg.total.toLocaleString()}
+                                </span>
+                                <span
+                                  className={cn(
+                                    "text-right text-[11px] font-bold font-mono",
+                                    bkg.due > 0
+                                      ? "text-amber-600 dark:text-amber-400"
+                                      : "text-emerald-600 dark:text-emerald-400",
+                                  )}
+                                >
+                                  ₱ {bkg.due.toLocaleString()}
+                                </span>
+                                <div className="flex justify-end pr-2 text-muted-foreground">
+                                  {expandedRow === bkg.id ? (
+                                    <ChevronDown className="w-4 h-4" />
+                                  ) : (
+                                    <ChevronRight className="w-4 h-4" />
+                                  )}
+                                </div>
+                              </div>
+                            </CollapsibleTrigger>
+                            <CollapsibleContent className="bg-secondary/30 border-t border-border">
+                              <div className="p-5 px-8 grid grid-cols-1 md:grid-cols-3 gap-6">
+                                {/* Itinerary */}
+                                <div className="space-y-3">
+                                  <h5 className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest border-b border-border pb-1">
+                                    Trip Itinerary
+                                  </h5>
+                                  <div className="flex gap-2">
+                                    <MapPin className="w-4 h-4 text-emerald-500 mt-0.5 shrink-0" />
+                                    <div className="flex flex-col">
+                                      <span className="text-[10px] font-bold text-foreground uppercase tracking-widest">
+                                        {bkg.pickup_type} Pickup
+                                      </span>
+                                      <span
+                                        className="text-[11px] font-medium text-muted-foreground truncate"
+                                        title={bkg.pickup_location}
+                                      >
+                                        {bkg.pickup_location}
+                                      </span>
+                                      <span className="text-[10px] font-mono text-muted-foreground mt-0.5">
+                                        {bkg.full_start}
+                                      </span>
+                                    </div>
+                                  </div>
+                                  <div className="flex gap-2">
+                                    <MapPin className="w-4 h-4 text-destructive mt-0.5 shrink-0" />
+                                    <div className="flex flex-col">
+                                      <span className="text-[10px] font-bold text-foreground uppercase tracking-widest">
+                                        {bkg.dropoff_type} Dropoff
+                                      </span>
+                                      <span
+                                        className="text-[11px] font-medium text-muted-foreground truncate"
+                                        title={bkg.dropoff_location}
+                                      >
+                                        {bkg.dropoff_location}
+                                      </span>
+                                      <span className="text-[10px] font-mono text-muted-foreground mt-0.5">
+                                        {bkg.full_end}
+                                      </span>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {/* Financials (Added 12/24H Snapshot Display) */}
+                                <div className="space-y-3">
+                                  <h5 className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest border-b border-border pb-1">
+                                    Financial Snapshot
+                                  </h5>
+                                  <div className="grid grid-cols-2 gap-2 text-[11px]">
+                                    <span className="text-muted-foreground font-medium">
+                                      12H Rate Locked:
+                                    </span>
+                                    <span className="font-mono font-bold text-foreground">
+                                      ₱{" "}
+                                      {bkg.rate_snapshot_12h?.toLocaleString() ||
+                                        "0"}
+                                    </span>
+
+                                    <span className="text-muted-foreground font-medium">
+                                      24H Rate Locked:
+                                    </span>
+                                    <span className="font-mono font-bold text-foreground">
+                                      ₱{" "}
+                                      {bkg.rate_snapshot_24h?.toLocaleString() ||
+                                        "0"}
+                                    </span>
+
+                                    <span className="text-muted-foreground font-medium">
+                                      Base Computed:
+                                    </span>
+                                    <span className="font-mono font-bold text-foreground">
+                                      ₱{" "}
+                                      {bkg.base_rate_snapshot?.toLocaleString() ||
+                                        "0"}
+                                    </span>
+
+                                    <span className="text-muted-foreground font-medium">
+                                      Security Deposit:
+                                    </span>
+                                    <span className="font-mono font-bold text-foreground">
+                                      ₱{" "}
+                                      {bkg.security_deposit?.toLocaleString() ||
+                                        "0"}
+                                    </span>
+
+                                    <span className="text-muted-foreground font-medium">
+                                      Payment Status:
+                                    </span>
+                                    <span className="font-bold uppercase tracking-widest text-[9px]">
+                                      {bkg.payment_status}
+                                    </span>
+                                  </div>
+                                </div>
+
+                                {/* Operations */}
+                                <div className="space-y-3">
+                                  <h5 className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest border-b border-border pb-1">
+                                    Operations & Settlement
+                                  </h5>
+                                  <div className="flex flex-col gap-3">
+                                    <div className="flex items-center gap-2">
+                                      <ShipWheel className="w-4 h-4 text-blue-500 shrink-0" />
+                                      <div className="flex flex-col">
+                                        <span className="text-[10px] font-bold text-foreground uppercase tracking-widest">
+                                          Driver Assignment
+                                        </span>
+                                        <span className="text-[11px] font-medium text-muted-foreground">
+                                          {bkg.is_with_driver
+                                            ? bkg.driver_name
+                                            : "Self-Drive (No Driver)"}
+                                        </span>
+                                      </div>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                      <Banknote className="w-4 h-4 text-emerald-600 shrink-0" />
+                                      <div className="flex flex-col">
+                                        <span className="text-[10px] font-bold text-foreground uppercase tracking-widest">
+                                          Owner Payout Link
+                                        </span>
+                                        <span className="text-[11px] font-medium text-muted-foreground flex items-center gap-2">
+                                          Status:{" "}
+                                          <Badge
+                                            variant="outline"
+                                            className="text-[8px] h-4 px-1"
+                                          >
+                                            {bkg.owner_payout_status}
+                                          </Badge>
+                                        </span>
+                                        <span className="text-[10px] font-mono text-muted-foreground mt-0.5">
+                                          Ref: {bkg.payout_ref}
+                                        </span>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            </CollapsibleContent>
+                          </Collapsible>
+                        ))
+                      ) : (
+                        <div className="p-10 flex flex-col items-center justify-center text-muted-foreground">
+                          <FolderOpen className="w-8 h-8 mb-2 opacity-20" />
+                          <p className="text-[10px] font-bold uppercase tracking-widest">
+                            No bookings created in this date range.
                           </p>
                         </div>
                       )}
@@ -1552,7 +1518,6 @@ export default function ReportsMain() {
           )}
         </div>
       </ScrollArea>
-      {/* --- HIDDEN ECHART FOR PDF EXPORT CAPTURE --- */}
       {reportData && (
         <div
           className="absolute -left-[9999px] top-0 p-4 bg-white"

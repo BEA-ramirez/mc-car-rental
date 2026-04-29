@@ -102,9 +102,10 @@ export async function generatePDFReport(
     reportData.unit_economics?.map((car: any) => [
       `${car.vehicle}\n${car.plate}`,
       `${car.owner}\n(${car.share}% Share)`,
-      `Day: P ${car.rate_day || 0}\n12H: P ${car.rate_12h || 0}`, // Added Base Rates
+      `Day: P ${car.rate_day || 0}\n12H: P ${car.rate_12h || 0}`,
       car.trips?.toString() || "0",
       `P ${car.gross?.toLocaleString() || 0}`,
+      `-P ${Math.abs(car.owner_cut || 0).toLocaleString()}`, // <-- ADDED OWNER CUT
       car.maint < 0 ? `-P ${Math.abs(car.maint).toLocaleString()}` : "P 0",
       `P ${car.net?.toLocaleString() || 0}`,
     ]) || [];
@@ -118,19 +119,21 @@ export async function generatePDFReport(
         "Configured Rates",
         "Trips",
         "Gross Rev",
+        "Owner Cut", // <-- ADDED
         "Maint. Deduct",
-        "Net Yield",
+        "Platform Yield", // <-- RENAMED
       ],
     ],
     body: unitRows,
     theme: "grid",
-    headStyles: { fillColor: [15, 23, 42], textColor: 255, fontSize: 8 },
-    bodyStyles: { fontSize: 8, textColor: [50, 50, 50] },
+    headStyles: { fillColor: [15, 23, 42], textColor: 255, fontSize: 7 }, // Reduced font size slightly to fit 8 cols
+    bodyStyles: { fontSize: 7, textColor: [50, 50, 50] },
     alternateRowStyles: { fillColor: [248, 250, 252] },
     columnStyles: {
       4: { halign: "right" },
-      5: { halign: "right", textColor: [220, 38, 38] },
-      6: { halign: "right", fontStyle: "bold" },
+      5: { halign: "right", textColor: [220, 38, 38] }, // Red for Owner Cut
+      6: { halign: "right", textColor: [220, 38, 38] }, // Red for Maint
+      7: { halign: "right", fontStyle: "bold" },
     },
   });
 
@@ -144,11 +147,12 @@ export async function generatePDFReport(
 
   const partnerRows =
     reportData.partners?.map((prt: any) => [
-      `${prt.name}\n${formatDisplayId(prt.id, "PRT")}`, // Fixed ID
+      `${prt.name}\n${formatDisplayId(prt.id, "PRT")}`,
       prt.business,
       `${prt.active_cars} Cars / ${prt.total_trips} Trips`,
       `P ${prt.gross?.toLocaleString() || 0}`,
       `-P ${Math.abs(prt.platform_cut || 0).toLocaleString()}`,
+      prt.maint < 0 ? `-P ${Math.abs(prt.maint).toLocaleString()}` : "P 0", // <-- ADDED MISSING MAINT
       `P ${prt.net_payout?.toLocaleString() || 0}`,
     ]) || [];
 
@@ -161,6 +165,7 @@ export async function generatePDFReport(
         "Activity",
         "Gross Fleet Rev",
         "Platform Cut",
+        "Maint. Deduct", // <-- ADDED
         "Net Payout",
       ],
     ],
@@ -171,12 +176,13 @@ export async function generatePDFReport(
     columnStyles: {
       3: { halign: "right" },
       4: { halign: "right", textColor: [220, 38, 38] },
-      5: { halign: "right", fontStyle: "bold", textColor: [37, 99, 235] },
+      5: { halign: "right", textColor: [220, 38, 38] }, // Red for Maint
+      6: { halign: "right", fontStyle: "bold", textColor: [37, 99, 235] },
     },
   });
 
   // ==========================================
-  // PAGE 4: MASTER LEDGER (NEW)
+  // PAGE 4: MASTER LEDGER
   // ==========================================
   doc.addPage();
   doc.setFontSize(14);
@@ -209,7 +215,7 @@ export async function generatePDFReport(
   });
 
   // ==========================================
-  // PAGE 5: BOOKING MANIFEST (NEW)
+  // PAGE 5: BOOKING MANIFEST
   // ==========================================
   doc.addPage();
   doc.setFontSize(14);
@@ -221,7 +227,8 @@ export async function generatePDFReport(
       `${bkg.id}\n${bkg.status.toUpperCase()}`,
       `${bkg.customer}\n${bkg.is_with_driver ? "w/ Driver" : "Self-Drive"}`,
       bkg.vehicle,
-      bkg.dates.replace(" - ", "\n"), // Splits dates into two lines for fit
+      bkg.dates.replace(" - ", "\n"),
+      `24H: P ${bkg.rate_snapshot_24h || 0}\n12H: P ${bkg.rate_snapshot_12h || 0}`, // <-- ADDED RATES LOCKED
       `P ${bkg.total.toLocaleString()}`,
       `P ${bkg.due.toLocaleString()}`,
     ]) || [];
@@ -230,10 +237,11 @@ export async function generatePDFReport(
     startY: 25,
     head: [
       [
-        "Booking Ref & Status",
+        "Ref & Status",
         "Customer",
         "Asset / Vehicle",
         "Rental Dates",
+        "Rates Locked", // <-- ADDED
         "Total Billed",
         "Balance Due",
       ],
@@ -244,7 +252,8 @@ export async function generatePDFReport(
     bodyStyles: { fontSize: 8 },
     columnStyles: {
       4: { halign: "right" },
-      5: { halign: "right", fontStyle: "bold", textColor: [220, 38, 38] },
+      5: { halign: "right" },
+      6: { halign: "right", fontStyle: "bold", textColor: [220, 38, 38] },
     },
   });
 
@@ -259,7 +268,7 @@ export async function generatePDFReport(
   const customerRows =
     reportData.customers?.map((cus: any) => [
       cus.name,
-      formatDisplayId(cus.id, "CUS"), // Fixed ID
+      formatDisplayId(cus.id, "CUS"),
       cus.bookings?.toString() || "0",
       `P ${cus.ltv?.toLocaleString() || 0}`,
       cus.flags?.length > 0 ? cus.flags.join(", ") : "Clean Record",
@@ -297,7 +306,7 @@ export async function generatePDFReport(
 
   const driverRows =
     reportData.drivers?.map((drv: any) => [
-      `${drv.name}\n${drv.display_id || formatDisplayId(drv.id, "DRV")}`, // Fixed ID
+      `${drv.name}\n${drv.display_id || formatDisplayId(drv.id, "DRV")}`,
       drv.shifts?.toString() || "0",
       drv.status,
       drv.vehicle || "None",

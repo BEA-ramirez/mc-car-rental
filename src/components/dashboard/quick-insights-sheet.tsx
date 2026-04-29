@@ -12,6 +12,7 @@ import {
   X,
   Loader2,
   CarFront,
+  FolderOpen,
 } from "lucide-react";
 import {
   Sheet,
@@ -35,7 +36,9 @@ import {
 } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { useDashboard, useQuickInsights } from "../../../hooks/use-dashboard";
+import { useBookingSettings } from "../../../hooks/use-settings";
 import { cn } from "@/lib/utils";
 
 export default function QuickInsightsSheet({
@@ -52,15 +55,20 @@ export default function QuickInsightsSheet({
   >("idle");
   const [availableCars, setAvailableCars] = useState<any[]>([]);
 
-  // Call the hooks
   const { checkAvailability } = useDashboard();
   const { data: insights, isLoading: isInsightsLoading } = useQuickInsights();
+
+  // NEW: Fetch dynamic vehicle types from system settings
+  const { data: settings, isLoading: isSettingsLoading } = useBookingSettings();
 
   const handleSearch = async () => {
     if (!date) return;
     setSearchState("loading");
     try {
-      const results = await checkAvailability({ category, date });
+      const results = await checkAvailability({
+        category,
+        date: date.toISOString(),
+      });
       setAvailableCars(results);
       setSearchState("results");
     } catch (error) {
@@ -72,13 +80,14 @@ export default function QuickInsightsSheet({
   const handleClear = () => {
     setSearchState("idle");
     setDate(new Date());
+    setCategory("any"); // Reset category on clear
   };
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side="right"
-        className="w-full sm:w-[400px] p-0 flex flex-col bg-background border-l border-border font-sans transition-colors duration-300"
+        className="w-full sm:w-[400px] p-0 flex flex-col h-[100dvh] max-h-[100dvh] bg-background border-l border-border font-sans transition-colors duration-300"
       >
         <SheetHeader className="p-4 border-b border-border bg-card shrink-0 text-left transition-colors duration-300">
           <SheetTitle className="text-[13px] font-bold flex items-center justify-between text-foreground w-full uppercase tracking-wider">
@@ -90,7 +99,7 @@ export default function QuickInsightsSheet({
 
         <div className="flex-1 overflow-y-auto custom-scrollbar min-h-0">
           <div className="p-4 space-y-6">
-            {/* TOOL 1: QUICK AVAILABILITY CHECK (Always Visible) */}
+            {/* TOOL 1: QUICK AVAILABILITY CHECK */}
             <div className="space-y-3">
               <div className="flex items-center justify-between mb-2">
                 <h3 className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-1.5">
@@ -115,17 +124,26 @@ export default function QuickInsightsSheet({
                     : "border-border",
                 )}
               >
-                <Select defaultValue="any" onValueChange={setCategory}>
-                  <SelectTrigger className="h-9 text-[11px] font-semibold shadow-none rounded-lg bg-secondary border-border focus:ring-primary text-foreground">
-                    <SelectValue placeholder="Vehicle category" />
-                  </SelectTrigger>
-                  <SelectContent className="text-[11px] font-medium bg-popover border-border">
-                    <SelectItem value="any">Any Category</SelectItem>
-                    <SelectItem value="SUV">SUV</SelectItem>
-                    <SelectItem value="Sedan">Sedan</SelectItem>
-                    <SelectItem value="Van">Van / MPV</SelectItem>
-                  </SelectContent>
-                </Select>
+                {/* DYNAMIC CATEGORY SELECTOR */}
+                {isSettingsLoading ? (
+                  <Skeleton className="h-9 w-full rounded-lg bg-muted" />
+                ) : (
+                  <Select value={category} onValueChange={setCategory}>
+                    <SelectTrigger className="h-9 w-full text-[11px] font-semibold shadow-none rounded-lg bg-secondary border-border focus:ring-primary text-foreground">
+                      <SelectValue placeholder="Vehicle category" />
+                    </SelectTrigger>
+                    <SelectContent className="text-[11px] font-medium bg-popover border-border">
+                      <SelectItem value="any">Any Category</SelectItem>
+                      {settings?.vehicleTypes
+                        ?.filter((vt: any) => vt.isActive)
+                        .map((vt: any) => (
+                          <SelectItem key={vt.id} value={vt.label}>
+                            {vt.label}
+                          </SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+                )}
 
                 <Popover>
                   <PopoverTrigger asChild>
@@ -151,7 +169,7 @@ export default function QuickInsightsSheet({
 
                 <Button
                   onClick={handleSearch}
-                  disabled={searchState === "loading"}
+                  disabled={searchState === "loading" || isSettingsLoading}
                   className="w-full h-9 text-[11px] font-bold uppercase tracking-wider rounded-lg bg-primary text-primary-foreground hover:opacity-90 shadow-sm mt-1 transition-opacity"
                 >
                   {searchState === "loading" ? (
@@ -167,7 +185,6 @@ export default function QuickInsightsSheet({
             {searchState === "idle" && (
               <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
                 {isInsightsLoading || !insights ? (
-                  // Skeleton Loading State
                   <div className="space-y-6">
                     <div className="space-y-3">
                       <Skeleton className="h-3 w-32 bg-muted mt-4" />
@@ -185,32 +202,46 @@ export default function QuickInsightsSheet({
                       <h3 className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-1.5 mb-2 border-t border-border pt-5">
                         <Car className="w-3.5 h-3.5" /> Live inventory (Today)
                       </h3>
-                      <div className="bg-card border border-border p-4 rounded-xl shadow-sm space-y-4">
-                        {insights.inventory.map((inv: any, i: number) => (
-                          <div key={i} className="space-y-1.5">
-                            <div className="flex justify-between text-[10px] font-semibold">
-                              <span className="text-foreground">
-                                {inv.label}
-                              </span>
-                              <span
-                                className={cn(
-                                  "text-muted-foreground",
-                                  inv.percentage >= 100 &&
-                                    "text-destructive font-bold",
-                                )}
-                              >
-                                {inv.percentage}% Booked
-                              </span>
-                            </div>
-                            <Progress
-                              value={inv.percentage}
-                              className={cn(
-                                "h-1.5 bg-secondary",
-                                inv.indicatorClass,
-                              )}
-                            />
+                      <div className="bg-card border border-border p-4 rounded-xl shadow-sm">
+                        {insights.inventory?.length === 0 ? (
+                          <div className="flex flex-col items-center justify-center h-[168px] text-muted-foreground">
+                            <FolderOpen className="w-8 h-8 mb-2 opacity-20" />
+                            <span className="text-[10px] font-bold uppercase tracking-widest">
+                              No active fleet data.
+                            </span>
                           </div>
-                        ))}
+                        ) : (
+                          // FIX: Fixed height and scrollable area for inventory
+                          <ScrollArea className="h-[200px] pr-3">
+                            <div className="space-y-4">
+                              {insights.inventory.map((inv: any, i: number) => (
+                                <div key={i} className="space-y-1.5">
+                                  <div className="flex justify-between text-[10px] font-semibold">
+                                    <span className="text-foreground">
+                                      {inv.label}
+                                    </span>
+                                    <span
+                                      className={cn(
+                                        "text-muted-foreground",
+                                        inv.percentage >= 100 &&
+                                          "text-destructive font-bold",
+                                      )}
+                                    >
+                                      {inv.percentage}% Booked
+                                    </span>
+                                  </div>
+                                  <Progress
+                                    value={inv.percentage}
+                                    className={cn(
+                                      "h-1.5 bg-secondary",
+                                      inv.indicatorClass,
+                                    )}
+                                  />
+                                </div>
+                              ))}
+                            </div>
+                          </ScrollArea>
+                        )}
                       </div>
                     </div>
 
@@ -294,6 +325,11 @@ export default function QuickInsightsSheet({
                 </div>
 
                 <div className="space-y-2.5">
+                  {availableCars.length === 0 && (
+                    <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest text-center py-4 border border-dashed border-border rounded-xl">
+                      No vehicles available for this date.
+                    </div>
+                  )}
                   {availableCars.map((car) => (
                     <div
                       key={car.car_id}
@@ -310,16 +346,6 @@ export default function QuickInsightsSheet({
                         <div className="flex items-center gap-2 mt-1">
                           <span className="text-[9px] font-mono text-muted-foreground uppercase bg-secondary px-1.5 py-0.5 rounded leading-tight">
                             {car.plate_number}
-                          </span>
-                          <span
-                            className={cn(
-                              "text-[9px] font-semibold flex items-center gap-1",
-                              car.availability_status === "Available"
-                                ? "text-emerald-500"
-                                : "text-amber-500",
-                            )}
-                          >
-                            • {car.availability_status}
                           </span>
                         </div>
                       </div>

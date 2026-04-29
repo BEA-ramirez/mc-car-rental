@@ -30,7 +30,7 @@ import { useFinancials, usePayoutDetails } from "../../../hooks/use-financials";
 type PayoutBreakdownModalProps = {
   isOpen: boolean;
   onClose: () => void;
-  payout: any | null; // This is the lightweight row data passed from the table
+  payout: any | null;
 };
 
 export default function PayoutBreakdownModal({
@@ -40,7 +40,6 @@ export default function PayoutBreakdownModal({
 }: PayoutBreakdownModalProps) {
   const payoutId = payout?.payout_id;
 
-  // This hook calls our new get_payout_breakdown RPC
   const { data: details, isLoading } = usePayoutDetails(payoutId);
   const { markAsPaid, isMarkingPaid } = useFinancials();
 
@@ -56,7 +55,6 @@ export default function PayoutBreakdownModal({
     }
   };
 
-  // Safely extract the full RPC payload
   const fullPayout = details?.payout || payout;
   const bookings = details?.bookings || [];
   const maintenance = details?.maintenance || [];
@@ -186,24 +184,25 @@ export default function PayoutBreakdownModal({
                         </span>
                         <span className="text-[11px] font-bold text-foreground font-mono">
                           ₱{" "}
-                          {Number(
-                            fullPayout.total_revenue || 0,
+                          {(
+                            Number(fullPayout.total_revenue) || 0
                           ).toLocaleString()}
                         </span>
                       </div>
                       <div className="flex justify-between items-center">
                         <span className="text-[11px] font-semibold text-muted-foreground">
+                          {/* FIXED THE FALSY ZERO BUG HERE */}
                           Company Share (
-                          {fullPayout.car_owner?.revenue_share_percentage
-                            ? 100 -
-                              fullPayout.car_owner.revenue_share_percentage
-                            : 0}
+                          {100 -
+                            (Number(
+                              fullPayout.car_owner?.revenue_share_percentage,
+                            ) || 0)}
                           %)
                         </span>
                         <span className="text-[11px] font-bold text-destructive font-mono">
                           - ₱{" "}
-                          {Number(
-                            fullPayout.commission_deducted || 0,
+                          {(
+                            Number(fullPayout.commission_deducted) || 0
                           ).toLocaleString()}
                         </span>
                       </div>
@@ -231,7 +230,7 @@ export default function PayoutBreakdownModal({
                     Net Payout
                   </span>
                   <span className="text-xl font-black text-foreground tracking-tight font-mono">
-                    ₱ {Number(fullPayout.net_payout).toLocaleString()}
+                    ₱ {(Number(fullPayout.net_payout) || 0).toLocaleString()}
                   </span>
                 </div>
               </div>
@@ -290,7 +289,8 @@ export default function PayoutBreakdownModal({
                                 </span>
                               </div>
                               <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 font-mono">
-                                +₱ {Number(b.total_price).toLocaleString()}
+                                +₱{" "}
+                                {(Number(b.total_price) || 0).toLocaleString()}
                               </span>
                             </div>
                           ))
@@ -324,7 +324,7 @@ export default function PayoutBreakdownModal({
                                 </span>
                               </div>
                               <span className="text-[11px] font-bold text-destructive font-mono">
-                                -₱ {Number(m.cost).toLocaleString()}
+                                -₱ {(Number(m.cost) || 0).toLocaleString()}
                               </span>
                             </div>
                           ))}

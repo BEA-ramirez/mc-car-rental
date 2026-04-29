@@ -62,8 +62,8 @@ export const useFinancials = () => {
       endDate,
     }: {
       ownerId: string;
-      startDate: Date;
-      endDate: Date;
+      startDate: string; // <-- string
+      endDate: string;
     }) => {
       const res = await generateOwnerPayout(ownerId, startDate, endDate);
       if (!res.success)

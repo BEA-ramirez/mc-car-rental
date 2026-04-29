@@ -1,5 +1,6 @@
 "use server";
 
+import { createAdminClient } from "@/utils/supabase/admin"; // <-- Use Admin Client
 import { createClient } from "@/utils/supabase/server";
 import { revalidatePath } from "next/cache";
 
@@ -9,30 +10,56 @@ export type ActionState = {
   payoutId?: string;
 };
 
+export async function getPayoutBreakdown(payoutId: string) {
+  const supabaseAdmin = createAdminClient();
+
+  const { data, error } = await supabaseAdmin.rpc("get_payout_breakdown", {
+    p_payout_id: payoutId,
+  });
+
+  if (error) {
+    console.error("Failed to fetch breakdown:", error);
+    throw new Error(error.message);
+  }
+
+  return data;
+}
+
+export async function markPayoutAsPaid(payoutId: string): Promise<ActionState> {
+  const supabaseAdmin = createAdminClient();
+
+  const { error } = await supabaseAdmin.rpc("mark_payout_paid", {
+    p_payout_id: payoutId,
+  });
+
+  if (error) return { success: false, message: error.message };
+
+  revalidatePath("/admin/financials/expenses");
+  return {
+    success: true,
+    message: "Payout marked as Paid and Ledger updated.",
+  };
+}
+
 export async function generateOwnerPayout(
   ownerId: string,
-  startDate: Date,
-  endDate: Date,
+  startDateString: string, // <-- Accept raw string
+  endDateString: string, // <-- Accept raw string
 ): Promise<ActionState> {
-  const supabase = await createClient();
+  const supabaseAdmin = createAdminClient(); // <-- Bypass RLS
 
   try {
-    // Format dates to YYYY-MM-DD for PostgreSQL Date type compatibility
-    const formattedStart = startDate.toISOString().split("T")[0];
-    const formattedEnd = endDate.toISOString().split("T")[0];
-
-    const { data: payoutId, error } = await supabase.rpc(
+    const { data: payoutId, error } = await supabaseAdmin.rpc(
       "generate_owner_payout",
       {
         p_owner_id: ownerId,
-        p_start_date: formattedStart,
-        p_end_date: formattedEnd,
+        p_start_date: startDateString,
+        p_end_date: endDateString,
       },
     );
 
     if (error) {
       console.error("RPC Error:", error);
-      // Catch our custom safety net exception gracefully
       if (error.message.includes("No unsettled")) {
         return {
           success: false,
@@ -43,7 +70,6 @@ export async function generateOwnerPayout(
       return { success: false, message: error.message };
     }
 
-    // Revalidate the expenses page so the new master ledger record shows up instantly
     revalidatePath("/admin/financials/expenses");
 
     return {
@@ -167,38 +193,6 @@ export async function logManualExpense(input: {
     success: true,
     message: "Expense logged successfully to the ledger.",
   };
-}
-
-export async function markPayoutAsPaid(payoutId: string): Promise<ActionState> {
-  const supabase = await createClient();
-
-  const { error } = await supabase.rpc("mark_payout_paid", {
-    p_payout_id: payoutId,
-  });
-
-  if (error) return { success: false, message: error.message };
-
-  revalidatePath("/admin/financials/expenses");
-  return {
-    success: true,
-    message: "Payout marked as Paid and Ledger updated.",
-  };
-}
-
-export async function getPayoutBreakdown(payoutId: string) {
-  const supabase = await createClient();
-
-  const { data, error } = await supabase.rpc("get_payout_breakdown", {
-    p_payout_id: payoutId,
-  });
-
-  if (error) {
-    console.error("Failed to fetch breakdown:", error);
-    throw new Error(error.message);
-  }
-
-  // The RPC returns { payout, bookings, maintenance } perfectly formatted
-  return data;
 }
 
 export async function voidOwnerPayoutAction(payoutId: string) {

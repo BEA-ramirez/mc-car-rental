@@ -28,6 +28,11 @@ export default function KpiCards() {
     );
   }
 
+  // Safely calculate true utilization (Deployed Cars / Total Cars)
+  const total = summary.kpis.totalCars || 0;
+  const deployed = summary.kpis.deployedCars || 0;
+  const utilizationPct = total > 0 ? Math.round((deployed / total) * 100) : 0;
+
   const kpis = [
     {
       title: "MTD Revenue",
@@ -46,8 +51,8 @@ export default function KpiCards() {
     },
     {
       title: "Fleet Utilization",
-      value: `${Math.round(((summary.kpis.totalCars - summary.kpis.availableCars) / summary.kpis.totalCars) * 100)}%`,
-      trend: `${summary.kpis.totalCars - summary.kpis.availableCars} of ${summary.kpis.totalCars} active`,
+      value: `${utilizationPct}%`,
+      trend: `${deployed} of ${total} active on road`, // Show deployed instead of total - available
       icon: TrendingUp,
       badgeClass:
         "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20",
@@ -77,7 +82,6 @@ export default function KpiCards() {
             </div>
           </div>
 
-          {/* Reduced text size here */}
           <span className="text-lg sm:text-xl font-bold tracking-tight text-foreground">
             {kpi.value}
           </span>

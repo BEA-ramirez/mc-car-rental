@@ -7,7 +7,5 @@ export const metadata = {
 };
 
 export default function ReportsPage() {
-  // We return the component directly because ReportsMain handles
-  // its own height (h-[calc(100vh-80px)]) and background styling.
   return <ReportsMain />;
 }

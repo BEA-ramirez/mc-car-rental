@@ -73,7 +73,7 @@ export default function CalendarPage() {
 
   // --- MAIN RENDER ---
   return (
-    <div className="h-[calc(100vh-100px)] p-4 sm:p-6 bg-slate-50/50 dark:bg-background">
+    <div className="h-[calc(100vh-50px)] p-4 sm:p-6 bg-slate-50/50 dark:bg-background">
       <OperationsCalendar bookings={transformedBookings} />
     </div>
   );

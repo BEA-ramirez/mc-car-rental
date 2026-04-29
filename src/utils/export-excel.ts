@@ -104,8 +104,9 @@ export async function generateExcelReport(
     { header: "Configured Rates", key: "rates", width: 25 },
     { header: "Trips", key: "trips", width: 12 },
     { header: "Gross Rev", key: "gross", width: 18 },
+    { header: "Owner Cut", key: "owner_cut", width: 18 }, // <-- ADDED
     { header: "Maint. Deduct", key: "maint", width: 18 },
-    { header: "Net Yield", key: "net", width: 18 },
+    { header: "Platform Net Yield", key: "net", width: 20 }, // <-- RENAMED
   ];
   styleHeaderRow(unitSheet.getRow(1));
 
@@ -117,6 +118,7 @@ export async function generateExcelReport(
         rates: `Day: ₱${car.rate_day || 0} | 12H: ₱${car.rate_12h || 0}`,
         trips: car.trips,
         gross: car.gross,
+        owner_cut: -Math.abs(car.owner_cut || 0), // Explicitly negative
         maint: car.maint,
         net: car.net,
       });
@@ -136,7 +138,8 @@ export async function generateExcelReport(
       }
       unitSheet.addRow([]);
     });
-    ["E", "F", "G"].forEach(
+    // E = Gross, F = Owner Cut, G = Maint, H = Net
+    ["E", "F", "G", "H"].forEach(
       (col) => (unitSheet.getColumn(col).numFmt = currencyFormat),
     );
   }
@@ -233,7 +236,9 @@ export async function generateExcelReport(
     { header: "Booking Status", key: "status", width: 15 },
     { header: "Payment Status", key: "pay_status", width: 15 },
     { header: "Owner Payout Ref", key: "payout_ref", width: 20 },
-    { header: "Base Rate Locked", key: "base_rate", width: 18 },
+    { header: "12H Rate Locked", key: "rate_12h", width: 18 }, // <-- ADDED
+    { header: "24H Rate Locked", key: "rate_24h", width: 18 }, // <-- ADDED
+    { header: "Base Computed", key: "base_rate", width: 18 },
     { header: "Security Deposit", key: "deposit", width: 18 },
     { header: "Total Billed", key: "total", width: 18 },
     { header: "Balance Due", key: "due", width: 18 },
@@ -254,6 +259,8 @@ export async function generateExcelReport(
         status: bkg.status.toUpperCase(),
         pay_status: bkg.payment_status.toUpperCase(),
         payout_ref: `${bkg.payout_ref} (${bkg.owner_payout_status})`,
+        rate_12h: bkg.rate_snapshot_12h || 0, // <-- ADDED
+        rate_24h: bkg.rate_snapshot_24h || 0, // <-- ADDED
         base_rate: bkg.base_rate_snapshot,
         deposit: bkg.security_deposit,
         total: bkg.total,
@@ -264,8 +271,8 @@ export async function generateExcelReport(
         row.getCell("due").font = { color: { argb: "FFDC2626" }, bold: true };
       }
     });
-    // Apply currency formatting to the financial columns
-    ["L", "M", "N", "O"].forEach(
+    // Apply currency formatting to the financial columns (L through Q)
+    ["L", "M", "N", "O", "P", "Q"].forEach(
       (col) => (bookingsSheet.getColumn(col).numFmt = currencyFormat),
     );
   }

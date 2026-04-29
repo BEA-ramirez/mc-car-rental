@@ -21,7 +21,7 @@ import { cn } from "@/lib/utils";
 const getStatusBadge = (status: string) => {
   switch (status) {
     case "Ongoing":
-      return "bg-primary/10 text-primary border-primary/20"; // Signature Teal
+      return "bg-primary/10 text-primary border-primary/20";
     case "Pending":
       return "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20";
     case "Confirmed":
@@ -37,13 +37,14 @@ const getStatusBadge = (status: string) => {
   }
 };
 
+// FIX: Added robust safety fallback for missing names to prevent crashes
 const getInitials = (name: string) => {
-  return name
-    .split(" ")
-    .map((n) => n[0])
-    .join("")
-    .substring(0, 2)
-    .toUpperCase();
+  if (!name) return "UK";
+  const parts = name.trim().split(" ");
+  if (parts.length >= 2) {
+    return (parts[0][0] + parts[1][0]).toUpperCase();
+  }
+  return name.substring(0, 2).toUpperCase();
 };
 
 export default function LiveBookingsTable() {
@@ -59,18 +60,18 @@ export default function LiveBookingsTable() {
     );
   }
 
-  // 3. Empty State Fallback
   if (!recentBookings || recentBookings.length === 0) {
     return (
-      <div className="w-full p-8 text-center text-muted-foreground text-[11px] font-medium">
+      // Enforced fixed height on empty state too so the layout doesn't collapse
+      <div className="w-full h-[350px] flex items-center justify-center text-muted-foreground text-[11px] font-medium">
         No recent bookings found.
       </div>
     );
   }
 
   return (
-    // Fixed max-height with custom scrollbar.
-    <div className="w-full max-h-[350px] overflow-y-auto custom-scrollbar relative">
+    // FIX: Changed max-h-[350px] to fixed h-[350px]
+    <div className="w-full h-[350px] overflow-y-auto custom-scrollbar relative">
       <Table className="w-full text-left border-collapse">
         <TableHeader className="sticky top-0 z-10 bg-secondary/80 backdrop-blur-md shadow-[0_1px_0_0_hsl(var(--border))]">
           <TableRow className="hover:bg-transparent border-none">
@@ -118,10 +119,10 @@ export default function LiveBookingsTable() {
                   </Avatar>
                   <div className="flex flex-col">
                     <span className="text-[11px] font-semibold text-foreground leading-none mb-1">
-                      {b.customer}
+                      {b.customer || "Unknown"}
                     </span>
                     <span className="text-[9px] text-muted-foreground font-medium leading-none">
-                      {b.phone}
+                      {b.phone || "No Phone"}
                     </span>
                   </div>
                 </div>
@@ -143,14 +144,16 @@ export default function LiveBookingsTable() {
               <TableCell className="px-4 py-2">
                 <div className="flex flex-col">
                   <span className="text-[10px] font-semibold text-foreground leading-none mb-1">
-                    {format(b.start, "MMM dd")}{" "}
+                    {/* FIX: SAFELY PARSED ISO STRINGS INTO DATE OBJECTS */}
+                    {format(new Date(b.start), "MMM dd")}{" "}
                     <span className="text-muted-foreground/50 font-normal mx-0.5">
                       →
                     </span>{" "}
-                    {format(b.end, "MMM dd")}
+                    {format(new Date(b.end), "MMM dd")}
                   </span>
                   <span className="text-[9px] text-muted-foreground font-medium leading-none">
-                    {format(b.start, "h:mm a")} - {format(b.end, "h:mm a")}
+                    {format(new Date(b.start), "h:mm a")} -{" "}
+                    {format(new Date(b.end), "h:mm a")}
                   </span>
                 </div>
               </TableCell>
@@ -158,7 +161,8 @@ export default function LiveBookingsTable() {
               {/* AMOUNT */}
               <TableCell className="px-4 py-2 text-right">
                 <span className="text-[11px] font-bold font-mono text-foreground">
-                  ₱{b.amount.toLocaleString()}
+                  {/* FIX: SAFELY CAST TO NUMBER TO PREVENT toLocaleString() FAILURES */}
+                  ₱{(Number(b.amount) || 0).toLocaleString()}
                 </span>
               </TableCell>
 
