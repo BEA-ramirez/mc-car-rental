@@ -63,6 +63,12 @@ import {
 const DOC_TYPES = [
   { value: "license_id", label: "Driver's License" },
   { value: "valid_id", label: "Valid ID" },
+  { value: "business_permit", label: "Business Permit" }, // Added some common partner docs
+  {
+    value: "certificate_of_registration",
+    label: "Certificate of Registration (CR)",
+  },
+  { value: "official_receipt", label: "Official Receipt (OR)" },
   { value: "other", label: "Other / Misc" },
 ];
 
@@ -93,17 +99,18 @@ type UploadModalProps = {
   isOpen: boolean;
   onClose: () => void;
   initialData?: any | null;
+  prefilledUserId?: string; // <-- ADDED PREFILLED PROP
 };
 
 export default function UploadModal({
   isOpen,
   onClose,
   initialData,
+  prefilledUserId,
 }: UploadModalProps) {
   const { users } = useDropdownData();
   const { uploadDoc, updateDoc, isPending } = useDocumentMutations();
 
-  console.log("initial data", initialData);
   const isEdit = !!initialData;
   const [comboboxOpen, setComboboxOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -112,7 +119,7 @@ export default function UploadModal({
     resolver: zodResolver(uploadDocSchema),
     defaultValues: {
       documentId: "",
-      customerId: "",
+      customerId: prefilledUserId || "",
       docCategory: "",
       status: "PENDING",
       internal_notes: "",
@@ -140,7 +147,7 @@ export default function UploadModal({
       } else {
         form.reset({
           documentId: "",
-          customerId: "",
+          customerId: prefilledUserId || "", // <-- USE PREFILLED ID ON RESET
           docCategory: "",
           status: "PENDING",
           internal_notes: "",
@@ -148,7 +155,7 @@ export default function UploadModal({
         });
       }
     }
-  }, [isOpen, initialData, form]);
+  }, [isOpen, initialData, prefilledUserId, form]);
 
   // HANDLERS
   const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
@@ -234,7 +241,7 @@ export default function UploadModal({
                 render={({ field }) => (
                   <FormItem className="flex flex-col space-y-0">
                     <FormLabel className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest mb-1.5 flex items-center gap-1.5">
-                      <User className="w-3 h-3" /> Link to Customer{" "}
+                      <User className="w-3 h-3" /> Link to User{" "}
                       <span className="text-destructive">*</span>
                     </FormLabel>
                     <Popover
@@ -247,12 +254,17 @@ export default function UploadModal({
                           <Button
                             variant="outline"
                             role="combobox"
-                            disabled={users.isLoading}
+                            // If the user ID is prefilled or we are editing, lock the combobox
+                            disabled={
+                              users.isLoading || !!prefilledUserId || isEdit
+                            }
                             className={cn(
                               "w-full justify-between h-8 text-[11px] rounded-lg bg-secondary border-border shadow-none focus:ring-1 focus:ring-primary hover:bg-card transition-colors",
                               !field.value && "text-muted-foreground",
                               form.formState.errors.customerId &&
                                 "border-destructive/50 ring-1 ring-destructive/20",
+                              (!!prefilledUserId || isEdit) &&
+                                "opacity-80 cursor-not-allowed",
                             )}
                           >
                             <span className="truncate font-semibold">
@@ -261,61 +273,71 @@ export default function UploadModal({
                                 : field.value
                                   ? users.data?.find(
                                       (u: any) => u.user_id === field.value,
-                                    )?.full_name
+                                    )?.full_name || "Assigned User"
                                   : "Search user..."}
                             </span>
-                            <ChevronsUpDown className="ml-2 h-3 w-3 shrink-0 opacity-50" />
+                            {/* Hide the chevrons if the field is locked */}
+                            {!prefilledUserId && !isEdit && (
+                              <ChevronsUpDown className="ml-2 h-3 w-3 shrink-0 opacity-50" />
+                            )}
                           </Button>
                         </FormControl>
                       </PopoverTrigger>
-                      <PopoverContent
-                        className="w-[418px] p-0 border-border rounded-xl shadow-xl bg-popover"
-                        align="start"
-                      >
-                        <Command>
-                          <CommandInput
-                            placeholder="Search name or email..."
-                            className="h-9 text-[11px] font-medium bg-transparent"
-                          />
-                          <CommandList className="max-h-[200px] overflow-y-auto custom-scrollbar">
-                            <CommandEmpty className="text-[10px] py-4 text-center font-semibold text-muted-foreground">
-                              No customer found.
-                            </CommandEmpty>
-                            <CommandGroup>
-                              {users.data?.map((user: any) => (
-                                <CommandItem
-                                  key={user.user_id}
-                                  value={user.full_name || ""}
-                                  onSelect={() => {
-                                    form.setValue("customerId", user.user_id, {
-                                      shouldValidate: true,
-                                    });
-                                    setComboboxOpen(false);
-                                  }}
-                                  className="py-2 cursor-pointer transition-colors focus:bg-secondary"
-                                >
-                                  <Check
-                                    className={cn(
-                                      "mr-2 h-3.5 w-3.5",
-                                      user.user_id === field.value
-                                        ? "opacity-100 text-primary"
-                                        : "opacity-0",
-                                    )}
-                                  />
-                                  <div className="flex flex-col overflow-hidden">
-                                    <span className="font-bold text-[11px] text-foreground truncate">
-                                      {user.full_name}
-                                    </span>
-                                    <span className="text-[9px] font-medium text-muted-foreground truncate">
-                                      {user.email}
-                                    </span>
-                                  </div>
-                                </CommandItem>
-                              ))}
-                            </CommandGroup>
-                          </CommandList>
-                        </Command>
-                      </PopoverContent>
+                      {/* Only render content if it's not locked */}
+                      {!prefilledUserId && !isEdit && (
+                        <PopoverContent
+                          className="w-[418px] p-0 border-border rounded-xl shadow-xl bg-popover"
+                          align="start"
+                        >
+                          <Command>
+                            <CommandInput
+                              placeholder="Search name or email..."
+                              className="h-9 text-[11px] font-medium bg-transparent"
+                            />
+                            <CommandList className="max-h-[200px] overflow-y-auto custom-scrollbar">
+                              <CommandEmpty className="text-[10px] py-4 text-center font-semibold text-muted-foreground">
+                                No user found.
+                              </CommandEmpty>
+                              <CommandGroup>
+                                {users.data?.map((user: any) => (
+                                  <CommandItem
+                                    key={user.user_id}
+                                    value={user.full_name || ""}
+                                    onSelect={() => {
+                                      form.setValue(
+                                        "customerId",
+                                        user.user_id,
+                                        {
+                                          shouldValidate: true,
+                                        },
+                                      );
+                                      setComboboxOpen(false);
+                                    }}
+                                    className="py-2 cursor-pointer transition-colors focus:bg-secondary"
+                                  >
+                                    <Check
+                                      className={cn(
+                                        "mr-2 h-3.5 w-3.5",
+                                        user.user_id === field.value
+                                          ? "opacity-100 text-primary"
+                                          : "opacity-0",
+                                      )}
+                                    />
+                                    <div className="flex flex-col overflow-hidden">
+                                      <span className="font-bold text-[11px] text-foreground truncate">
+                                        {user.full_name}
+                                      </span>
+                                      <span className="text-[9px] font-medium text-muted-foreground truncate">
+                                        {user.email}
+                                      </span>
+                                    </div>
+                                  </CommandItem>
+                                ))}
+                              </CommandGroup>
+                            </CommandList>
+                          </Command>
+                        </PopoverContent>
+                      )}
                     </Popover>
                     <FormMessage className="text-[9px] text-destructive font-bold mt-1.5" />
                   </FormItem>

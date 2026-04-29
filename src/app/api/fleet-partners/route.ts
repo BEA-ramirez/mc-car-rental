@@ -10,7 +10,8 @@ export async function GET() {
         `*, partner_is_archived: is_archived,
          users!inner(*, user_is_archived: is_archived)`,
       )
-      .eq("users.role", "car_owner") // <-- THE FIX: Only fetch official partners
+      .eq("users.role", "car_owner")
+      .eq("is_archived", false)
       .order("created_at", { ascending: false });
 
     if (error) {

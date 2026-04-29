@@ -30,7 +30,6 @@ import { PartnerForm } from "./partner-form";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import { toTitleCase, getInitials } from "@/actions/helper/format-text";
-import { Button } from "@/components/ui/button";
 import {
   Popover,
   PopoverContent,
@@ -213,7 +212,7 @@ export default function ActivePartners() {
       </header>
 
       {/* --- MAIN CONTENT GRID --- */}
-      <main className="flex-1 overflow-y-auto p-4 sm:px-6 custom-scrollbar bg-background">
+      <main className="flex-1 overflow-y-auto p-2 py-4 sm:px-2 custom-scrollbar bg-background">
         <div className="max-w-[1600px] mx-auto flex flex-col gap-4 pb-8">
           {selectedPartner ? (
             <>

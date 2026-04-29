@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import { FleetPartnerType } from "@/lib/schemas/car-owner";
 import { toTitleCase } from "@/actions/helper/format-text";
 import {
@@ -22,6 +22,9 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useFleetPartners } from "../../../hooks/use-fleetPartners";
+import GeneratePayoutModal from "../expenses/payout-modal";
+import { DeleteDialog } from "../delete-dialog";
+import MessageModal from "../clients/message-modal";
 
 export default function PartnerHeader({
   selectedPartner,
@@ -30,22 +33,27 @@ export default function PartnerHeader({
   selectedPartner: FleetPartnerType | null;
   onEdit: () => void;
 }) {
-  const { deletePartner } = useFleetPartners();
+  const { deletePartner, isDeleting } = useFleetPartners();
+
+  // --- MODAL STATES ---
+  const [isPayoutModalOpen, setIsPayoutModalOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isMessageModalOpen, setIsMessageModalOpen] = useState(false);
 
   if (!selectedPartner) return null;
 
-  const handleDelete = () => {
-    if (
-      confirm(
-        `Are you sure you want to archive ${selectedPartner.business_name}?`,
-      )
-    ) {
-      deletePartner({
-        carOwnerId: selectedPartner.car_owner_id,
-        userId: selectedPartner.users.user_id || "",
-      });
-    }
+  const handleConfirmDelete = () => {
+    deletePartner({
+      carOwnerId: selectedPartner.car_owner_id,
+      userId: selectedPartner.users.user_id || "",
+    });
+    setIsDeleteDialogOpen(false);
   };
+
+  // Helper to safely format the recipient's name
+  const recipientName =
+    `${selectedPartner.users?.first_name || ""} ${selectedPartner.users?.last_name || ""}`.trim() ||
+    selectedPartner.business_name;
 
   return (
     <div className="flex flex-col gap-3 w-full transition-colors duration-300">
@@ -66,7 +74,7 @@ export default function PartnerHeader({
           </div>
         </div>
 
-        {/* Action Buttons (Matched to AdminCarDetailsPage style) */}
+        {/* Action Buttons  */}
         <div className="flex items-center gap-1.5 shrink-0">
           <button
             onClick={onEdit}
@@ -75,7 +83,9 @@ export default function PartnerHeader({
             <Edit2 className="w-3.5 h-3.5" /> Edit
           </button>
 
+          {/* TRIGGER MESSAGE MODAL */}
           <button
+            onClick={() => setIsMessageModalOpen(true)}
             className="p-1.5 border border-border rounded bg-secondary hover:border-primary/50 text-muted-foreground transition-colors"
             title="Message Partner"
           >
@@ -92,12 +102,18 @@ export default function PartnerHeader({
               align="end"
               className="w-40 rounded-lg shadow-xl border-border bg-popover p-1 transition-colors"
             >
-              <DropdownMenuItem className="text-[11px] font-medium cursor-pointer text-muted-foreground focus:bg-secondary focus:text-foreground rounded transition-colors py-1.5">
+              {/* TRIGGER PAYOUT MODAL */}
+              <DropdownMenuItem
+                onClick={() => setIsPayoutModalOpen(true)}
+                className="text-[11px] font-medium cursor-pointer text-muted-foreground focus:bg-secondary focus:text-foreground rounded transition-colors py-1.5"
+              >
                 <Calendar className="w-3.5 h-3.5 mr-2" /> Schedule payout
               </DropdownMenuItem>
+
+              {/* TRIGGER DELETE DIALOG */}
               <DropdownMenuItem
                 className="text-[11px] font-medium cursor-pointer text-destructive focus:bg-destructive/10 focus:text-destructive rounded transition-colors py-1.5"
-                onClick={handleDelete}
+                onClick={() => setIsDeleteDialogOpen(true)}
               >
                 <Trash2 className="w-3.5 h-3.5 mr-2" /> Archive partner
               </DropdownMenuItem>
@@ -157,6 +173,31 @@ export default function PartnerHeader({
           </div>
         </div>
       </div>
+
+      {/* --- MODALS --- */}
+      <GeneratePayoutModal
+        isOpen={isPayoutModalOpen}
+        onClose={() => setIsPayoutModalOpen(false)}
+        prefilledOwnerId={selectedPartner.car_owner_id}
+      />
+
+      <DeleteDialog
+        isOpen={isDeleteDialogOpen}
+        onClose={() => setIsDeleteDialogOpen(false)}
+        onConfirm={handleConfirmDelete}
+        isDeleting={!!isDeleting}
+        title="Archive Fleet Partner?"
+        description={`Are you sure you want to archive ${selectedPartner.business_name}? They will be removed from the active fleet management list.`}
+      />
+
+      {/* MESSAGE MODAL */}
+      <MessageModal
+        isOpen={isMessageModalOpen}
+        onClose={() => setIsMessageModalOpen(false)}
+        userId={selectedPartner.users?.user_id || ""}
+        recipientName={recipientName}
+        recipientEmail={selectedPartner.users?.email || ""}
+      />
     </div>
   );
 }

@@ -55,8 +55,9 @@ export const useFleetPartners = () => {
       }
       return result;
     },
-    onSuccess: () => {
-      toast.success("Fleet partner deleted successfully");
+    onSuccess: (result) => {
+      // Use the message returned from the server action for accuracy
+      toast.success(result.message || "Fleet partner deleted successfully");
 
       // --- THE DELETE RIPPLES ---
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.partners.all });
@@ -64,7 +65,8 @@ export const useFleetPartners = () => {
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.users.clients() }); // Role resets
       queryClient.invalidateQueries({
         queryKey: QUERY_KEYS.partners.unassigned,
-      }); // Cars might be orphaned
+      });
+      queryClient.invalidateQueries({ queryKey: ["admin-units"] });
     },
     onError: (error: Error) => {
       toast.error(error.message);
@@ -74,6 +76,7 @@ export const useFleetPartners = () => {
   return {
     ...query,
     deletePartner: deleteMutation.mutate,
+    isDeleting: deleteMutation.isPending,
     refresh: () =>
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.partners.all }),
   };

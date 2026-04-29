@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import { format } from "date-fns";
 import { FleetPartnerType } from "@/lib/schemas/car-owner";
 import { Badge } from "@/components/ui/badge";
@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { usePartnerDocuments } from "../../../hooks/use-fleetPartners";
+import UploadModal from "../documents/upload-modal";
 
 interface PartnerDocsProps {
   selectedPartner: FleetPartnerType | null;
@@ -26,6 +27,9 @@ export default function PartnerDocs({ selectedPartner }: PartnerDocsProps) {
   const { data: documents, isLoading } = usePartnerDocuments(
     selectedPartner?.car_owner_id,
   );
+
+  // --- MODAL STATE ---
+  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
 
   if (!selectedPartner) return null;
 
@@ -52,6 +56,7 @@ export default function PartnerDocs({ selectedPartner }: PartnerDocsProps) {
         <Button
           variant="outline"
           size="sm"
+          onClick={() => setIsUploadModalOpen(true)} // <-- TRIGGER UPLOAD MODAL
           className="h-8 text-[9px] font-bold uppercase tracking-widest rounded-lg border-border shadow-none bg-background text-foreground hover:bg-secondary transition-colors"
         >
           Upload Document
@@ -227,6 +232,15 @@ export default function PartnerDocs({ selectedPartner }: PartnerDocsProps) {
           </div>
         )}
       </div>
+
+      {/* --- ADD UPLOAD MODAL HERE --- */}
+      <UploadModal
+        isOpen={isUploadModalOpen}
+        onClose={() => setIsUploadModalOpen(false)}
+        prefilledUserId={
+          selectedPartner.user_id || selectedPartner.users?.user_id
+        }
+      />
     </div>
   );
 }
