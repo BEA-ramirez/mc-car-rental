@@ -448,23 +448,43 @@ export async function rejectDriverAction(driverId: string, reason: string) {
 export async function deleteDriverAction(driverId: string) {
   try {
     const supabase = await createClient();
+    const supabaseAdmin = createAdminClient();
 
-    // Call the RPC function
-    const { error } = await supabase.rpc("delete_driver_v1", {
+    // Call the RPC function. It now returns the underlying user_id.
+    const { data: userId, error } = await supabase.rpc("delete_driver_v1", {
       p_driver_id: driverId,
     });
 
+    // Catch our specific PostgreSQL exceptions (e.g., "Has active bookings")
     if (error) {
       console.error("RPC Error (Delete Driver):", error);
-      return { success: false, message: "Failed to delete driver." };
+      return {
+        success: false,
+        message: error.message || "Failed to delete driver.",
+      };
+    }
+
+    // Sync the Supabase Auth Metadata to finalize the demotion
+    if (userId) {
+      const { error: authError } =
+        await supabaseAdmin.auth.admin.updateUserById(userId, {
+          app_metadata: { role: "customer" },
+          user_metadata: { role: "customer" },
+        });
+
+      if (authError) {
+        console.error("Failed to update auth metadata:", authError);
+        // Note: The driver is removed from the public tables, but the auth sync failed.
+        // It's rare, but good to log.
+      }
     }
 
     return { success: true, message: "Driver removed successfully." };
-  } catch (error) {
+  } catch (error: any) {
     console.error("Delete Driver Error:", error);
     return {
       success: false,
-      message: "Failed to delete driver. Please try again.",
+      message: error.message || "Failed to delete driver. Please try again.",
     };
   }
 }
