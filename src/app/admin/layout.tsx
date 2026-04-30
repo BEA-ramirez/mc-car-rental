@@ -26,6 +26,7 @@ import CarCatalogueModal from "@/components/dashboard/car-catalogue";
 import NotificationsPopover from "@/components/topbar/notifications-popover";
 import SettingsDialog from "@/components/settings/settings-dialog";
 import LogoutDialog from "@/components/auth/logout-dialog";
+import { NotificationListener } from "@/components/notification-listener";
 
 export default function AdminLayout({
   children,
@@ -162,6 +163,7 @@ export default function AdminLayout({
         <main className="flex-1 overflow-y-auto bg-transparent custom-scrollbar">
           {children}
         </main>
+        <NotificationListener />
 
         {/* --- GLOBAL MODALS --- */}
         <SettingsDialog

@@ -58,12 +58,21 @@ export const useBookings = () => {
     id?: string,
   ) => {
     // 1. Sync all Booking Tables & Dashboards
-    queryClient.invalidateQueries({ queryKey: ["scheduler-data"] });
+    queryClient.invalidateQueries({
+      queryKey: QUERY_KEYS.bookings.scheduler(),
+    }); // Updated to wildcard
     queryClient.invalidateQueries({ queryKey: QUERY_KEYS.bookings.all });
     queryClient.invalidateQueries({ queryKey: QUERY_KEYS.dashboard.summary });
     queryClient.invalidateQueries({
       queryKey: QUERY_KEYS.dashboard.recentBookings,
     });
+
+    // FIX: Always sync the pending payments queue when bookings change
+    // This ensures badges instantly update when new reservations hit the system
+    queryClient.invalidateQueries({
+      queryKey: QUERY_KEYS.financials.pendingPayments,
+    });
+
     if (id) {
       queryClient.invalidateQueries({
         queryKey: QUERY_KEYS.bookings.details(id),
@@ -152,9 +161,11 @@ export const useBookings = () => {
       if (!res.success) throw new Error(res.message || "Failed");
       return res;
     },
-    onSuccess: () => {
+    onSuccess: (data, variables) => {
+      // The master invalidator now covers pending payments,
+      // but we still need to clear the specific car's unavailable dates
       queryClient.invalidateQueries({
-        queryKey: QUERY_KEYS.financials.pendingPayments,
+        queryKey: QUERY_KEYS.fleet.unavailableDates(variables.car_id),
       });
       invalidateBookingRipples();
       toast.success("Booking created successfully!");
@@ -169,11 +180,8 @@ export const useBookings = () => {
       return res;
     },
     onSuccess: () => {
-      // Instantly sync the admin verification queue!
-      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.bookings.all });
-      queryClient.invalidateQueries({
-        queryKey: QUERY_KEYS.financials.pendingPayments,
-      });
+      // We can just use the master invalidator here too for cleaner code!
+      invalidateBookingRipples();
       toast.success("Payment submitted successfully!");
     },
   });
@@ -259,7 +267,6 @@ export const useCustomerBookings = () => {
 
 export const useCarUnavailableDates = (carId: string | undefined) => {
   return useQuery({
-    // Needs a fallback empty string if carId is undefined for TS
     queryKey: QUERY_KEYS.fleet.unavailableDates(carId || ""),
     queryFn: async () => {
       if (!carId) return [];
@@ -298,7 +305,6 @@ export const useBookingDetails = (bookingId: string | null | undefined) => {
       try {
         const res = await getBookingDetailsAction(bookingId!);
 
-        // This triggers if the try-catch in the server action caught an RLS/DB error
         if (!res.success) {
           throw new Error(
             res.message || "Unknown error fetching booking details.",
@@ -308,12 +314,10 @@ export const useBookingDetails = (bookingId: string | null | undefined) => {
         return res.data;
       } catch (error: any) {
         console.error("Hook Error:", error);
-        // Re-throw so TanStack Query knows it failed
         throw error;
       }
     },
     enabled: !!bookingId,
-    // Optional: add retry logic to prevent immediate failures on flaky connections
     retry: 1,
   });
 };

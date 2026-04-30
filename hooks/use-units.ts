@@ -69,7 +69,6 @@ export const useUnits = (unitId?: string) => {
     enabled: !!unitId, // only fetch if id exists
   });
 
-  // save mutation
   // --- SAVE MUTATION ---
   const saveUnitMutation = useMutation({
     mutationFn: saveUnit,
@@ -82,6 +81,16 @@ export const useUnits = (unitId?: string) => {
 
         // Invalidate the legacy fleet list
         queryClient.invalidateQueries({ queryKey: QUERY_KEYS.fleet.all });
+
+        // --- NEW: Invalidate Customer Fleet & Scheduler ---
+        // Wipes all filters/pages of the customer fleet view
+        queryClient.invalidateQueries({
+          queryKey: ["customer-fleet-infinite"],
+        });
+        // Wipes all months of the scheduler timeline
+        queryClient.invalidateQueries({
+          queryKey: QUERY_KEYS.bookings.scheduler(),
+        });
 
         // 2. Extract the carId (either from the returned data or the variables we sent)
         const carId = data.car_id || variables.car_id;
@@ -121,6 +130,16 @@ export const useUnits = (unitId?: string) => {
         // Invalidate the legacy fleet list
         queryClient.invalidateQueries({ queryKey: QUERY_KEYS.fleet.all });
 
+        // --- NEW: Invalidate Customer Fleet & Scheduler ---
+        // Ensures deleted cars disappear from the customer view
+        queryClient.invalidateQueries({
+          queryKey: ["customer-fleet-infinite"],
+        });
+        // Ensures deleted cars disappear from the admin timeline
+        queryClient.invalidateQueries({
+          queryKey: QUERY_KEYS.bookings.scheduler(),
+        });
+
         // 2. Wipe the specific unit from cache to prevent ghost data
         const carId =
           typeof variables === "string" ? variables : (variables as any).car_id;
@@ -141,9 +160,9 @@ export const useUnits = (unitId?: string) => {
     isUnitsLoading: query.isLoading || query.isFetching,
     unit: unitQuery.data,
     isLoadingUnit: unitQuery.isLoading,
-    saveUnit: saveUnitMutation.mutate,
+    saveUnit: saveUnitMutation.mutateAsync,
     isSaving: saveUnitMutation.isPending,
-    deleteUnit: deleteUnitMutation.mutate,
+    deleteUnit: deleteUnitMutation.mutateAsync,
     isDeleting: deleteUnitMutation.isPending,
     searchSpecifications,
     searchFeatures,
@@ -168,7 +187,7 @@ export function useUnitsAdmin(filters: {
   type: string;
   ownerId: string;
 }) {
-  const queryClient = useQueryClient(); // <-- 1. Get the query client
+  const queryClient = useQueryClient();
 
   const query = useInfiniteQuery({
     queryKey: ["admin-units", filters],
@@ -185,10 +204,7 @@ export function useUnitsAdmin(filters: {
     getNextPageParam: (lastPage) => lastPage.nextCursor,
   });
 
-  // --- 2. Create the refresh function ---
   const refreshUnits = async () => {
-    // This invalidates ANY query that starts with "admin-units",
-    // forcing it to refetch the fresh data from the server immediately.
     await queryClient.invalidateQueries({ queryKey: ["admin-units"] });
   };
 
@@ -196,6 +212,6 @@ export function useUnitsAdmin(filters: {
     ...query,
     units: query.data?.pages.flatMap((page) => page.data) || [],
     isUnitsLoading: query.isLoading,
-    refreshUnits, // <-- 3. Export it so your buttons can use it!
+    refreshUnits,
   };
 }

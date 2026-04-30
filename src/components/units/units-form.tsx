@@ -187,14 +187,8 @@ export function UnitsForm({ open, onOpenChange, initialData }: UnitsFormProp) {
     try {
       await saveUnit(data as unknown as CompleteCarType);
       onOpenChange(false);
-      toast.success(
-        initialData
-          ? "Unit updated successfully!"
-          : "Unit created successfully!",
-      );
     } catch (error) {
       console.error(error);
-      toast.error("An error occurred while saving the unit.");
     }
   };
 

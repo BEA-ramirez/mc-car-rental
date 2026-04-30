@@ -215,7 +215,7 @@ export default function TimelineScheduler({
     };
   }, [ghostBooking]);
 
-  const [, setIsMounted] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
   const [now, setNow] = useState(new Date());
 
   useEffect(() => {
@@ -780,7 +780,7 @@ export default function TimelineScheduler({
 
           <div className="relative flex flex-col">
             {/* CURRENT TIME INDICATOR */}
-            {nowOffset >= 0 && nowOffset <= totalWidth && (
+            {isMounted && nowOffset >= 0 && nowOffset <= totalWidth && (
               <div
                 className="absolute top-0 bottom-0 w-[2px] bg-red-500 z-20 pointer-events-none"
                 style={{ left: `${SIDEBAR_WIDTH + nowOffset}px` }}

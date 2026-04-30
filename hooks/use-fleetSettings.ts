@@ -43,6 +43,11 @@ export const useFleetSettings = () => {
     queryClient.invalidateQueries({ queryKey: QUERY_KEYS.fleet.features() });
     queryClient.invalidateQueries({ queryKey: QUERY_KEYS.fleet.all });
     queryClient.invalidateQueries({ queryKey: QUERY_KEYS.fleet.detailBase });
+
+    // --- NEW: Wipe global fleet views ---
+    queryClient.invalidateQueries({ queryKey: ["admin-units"] });
+    queryClient.invalidateQueries({ queryKey: ["customer-fleet-infinite"] });
+    queryClient.invalidateQueries({ queryKey: ["car-details"] });
   };
 
   const invalidateSpecificationRipples = () => {
@@ -51,6 +56,11 @@ export const useFleetSettings = () => {
     });
     queryClient.invalidateQueries({ queryKey: QUERY_KEYS.fleet.all });
     queryClient.invalidateQueries({ queryKey: QUERY_KEYS.fleet.detailBase });
+
+    // --- NEW: Wipe global fleet views ---
+    queryClient.invalidateQueries({ queryKey: ["admin-units"] });
+    queryClient.invalidateQueries({ queryKey: ["customer-fleet-infinite"] });
+    queryClient.invalidateQueries({ queryKey: ["car-details"] });
   };
 
   const featureMutation = useMutation({
