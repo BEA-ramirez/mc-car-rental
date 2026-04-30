@@ -2,7 +2,7 @@ import { z } from "zod";
 
 // --- Enums ---
 export const TRANSMISSION_TYPES = ["Automatic", "Manual", "CVT"];
-export const FUEL_TYPES = ["Gasoline", "Diesel", "Electric", "Hybrid"];
+export const FUEL_TYPES = ["Gasoline", "Diesel", "Unleaded", "Hybrid"];
 export const BODY_TYPES = [
   "Sedan",
   "SUV",
