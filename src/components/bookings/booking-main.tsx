@@ -102,10 +102,12 @@ export default function BookingMain() {
   const events = data?.events || [];
 
   const [isFormOpen, setIsFormOpen] = useState(false);
+
+  // FIX 1: Updated the prefill state to hold raw Start and End dates
   const [formPrefill, setFormPrefill] = useState<{
     carId?: string;
     startDate?: Date;
-    duration?: number;
+    endDate?: Date;
   } | null>(null);
 
   // --- GHOST & PROPOSAL STATE ---
@@ -173,9 +175,12 @@ export default function BookingMain() {
   const handleOpenNewBooking = (
     carId?: string,
     startDate?: Date,
-    duration?: number,
+    endDate?: Date, // FIX 2: Accept exact end date
   ) => {
-    setFormPrefill({ carId, startDate, duration });
+    // If no end date is provided (e.g. clicking "New Booking" button), default to 24 hours later
+    const safeEndDate =
+      endDate || (startDate ? addDays(startDate, 1) : undefined);
+    setFormPrefill({ carId, startDate, endDate: safeEndDate });
     setIsFormOpen(true);
   };
 
@@ -184,9 +189,8 @@ export default function BookingMain() {
     start: Date,
     end: Date,
   ) => {
-    const diffHours = differenceInHours(end, start);
-    const durationDays = Math.max(1, Math.ceil(diffHours / 24));
-    handleOpenNewBooking(resourceId, start, durationDays);
+    // FIX 3: Stop doing math here. Just pass the raw dates to the form!
+    handleOpenNewBooking(resourceId, start, end);
   };
 
   const handleSelectRequest = (req: SchedulerEvent) => {
@@ -895,18 +899,9 @@ export default function BookingMain() {
               initialStartDate={
                 editTarget ? new Date(editTarget.start) : formPrefill?.startDate
               }
-              initialDuration={
-                editTarget
-                  ? Math.max(
-                      1,
-                      Math.ceil(
-                        differenceInHours(
-                          new Date(editTarget.end),
-                          new Date(editTarget.start),
-                        ) / 24,
-                      ),
-                    )
-                  : formPrefill?.duration
+              // FIX 4: Pass the exact end date to the AdminBookingForm if we have one!
+              initialEndDate={
+                editTarget ? new Date(editTarget.end) : formPrefill?.endDate
               }
               onSuccess={() => {
                 setIsFormOpen(false);

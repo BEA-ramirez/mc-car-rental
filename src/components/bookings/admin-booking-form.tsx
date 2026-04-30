@@ -95,14 +95,34 @@ type LocationFieldProps = {
   setMapOpen: (open: boolean) => void;
 };
 
+// FIX 1: Updated Props to accept initialEndDate
 type AdminBookingFormProps = {
   bookingId?: string;
   initialCarId?: string;
   initialUserId?: string;
   initialStartDate?: Date;
-  initialDuration?: number;
+  initialEndDate?: Date;
   onSuccess?: () => void;
   onCancel?: () => void;
+};
+
+// --- HELPER: BLOCK SNAPPING LOGIC ---
+// This forces any random hour duration into a strict 12h or 24h block
+const snapHoursToBlock = (hours: number, has12hRate: boolean) => {
+  if (hours <= 0) return has12hRate ? 12 : 24;
+
+  const fullDays = Math.floor(hours / 24);
+  const remainder = hours % 24;
+
+  if (remainder === 0) return hours; // Already a perfect 24h multiple
+
+  // If it has a 12h rate and the remainder is 12 hours or less, snap to 12.
+  if (has12hRate && remainder <= 12) {
+    return fullDays * 24 + 12;
+  }
+
+  // Otherwise (e.g. 14 hours), snap to the next full 24-hour day.
+  return (fullDays + 1) * 24;
 };
 
 // --- EXTRACTED COMPONENTS ---
@@ -125,7 +145,6 @@ const LocationField = ({
 
   return (
     <div className="border border-border rounded-xl bg-card overflow-hidden shadow-sm transition-all hover:border-primary/50 group cursor-default">
-      {/* CRITICAL FIX: Hidden inputs ensure React Hook Form tracks and submits the coordinates and type! */}
       <input type="hidden" {...control.register(modeField)} />
       <input type="hidden" {...control.register(coordsField)} />
 
@@ -302,7 +321,7 @@ export default function AdminBookingForm({
   initialCarId,
   initialUserId,
   initialStartDate,
-  initialDuration,
+  initialEndDate, // Now accepts exact end date
   onSuccess,
   onCancel,
 }: AdminBookingFormProps) {
@@ -343,6 +362,26 @@ export default function AdminBookingForm({
     ? `${hubs[0].lat},${hubs[0].lng}`
     : undefined;
 
+  // FIX 2: Calculate snapped hours immediately on mount
+  const initialCar = units.find((c) => c.car_id === initialCarId);
+  const initialHas12h = Number(initialCar?.rental_rate_per_12h || 0) > 0;
+
+  let initialDiffHours = 24;
+  if (initialStartDate && initialEndDate) {
+    // Get raw dragged difference in hours, round up slightly for safety
+    initialDiffHours = Math.max(
+      1,
+      Math.ceil(
+        (initialEndDate.getTime() - initialStartDate.getTime()) /
+          (1000 * 60 * 60),
+      ),
+    );
+  }
+  // Immediately snap it! 8h -> 12h, 14h -> 24h, etc.
+  const startingHours = bookingId
+    ? initialDiffHours
+    : snapHoursToBlock(initialDiffHours, initialHas12h);
+
   const form = useForm({
     resolver: zodResolver(AdminCreateBookingSchema),
     defaultValues: {
@@ -361,7 +400,7 @@ export default function AdminBookingForm({
       additional_charges: [],
       car_id: initialCarId || "",
       start_date: initialStartDate || undefined,
-      booking_hours: initialDuration || 24,
+      booking_hours: startingHours, // Safely pre-snapped
     },
   });
 
@@ -401,6 +440,15 @@ export default function AdminBookingForm({
 
   const exactStart = wStart ? parse(startTime, "HH:mm", wStart) : null;
   const exactEnd = exactStart ? addHours(exactStart, wHours || 24) : null;
+
+  // FIX 3: If the admin switches to a car that doesn't support 12H rates, re-snap the current hours!
+  useEffect(() => {
+    if (wHours % 24 === 12 && !has12hRate && !bookingId) {
+      setValue("booking_hours", snapHoursToBlock(wHours, has12hRate), {
+        shouldValidate: true,
+      });
+    }
+  }, [wCarId, has12hRate, wHours, setValue, bookingId]);
 
   useEffect(() => {
     setPartialDayWarning(null);
@@ -498,13 +546,17 @@ export default function AdminBookingForm({
     return false;
   };
 
+  // FIX 4: Real-time snapping when admin manually edits the hours field
   const handleHoursChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     let val = parseInt(e.target.value);
-    if (isNaN(val)) val = hourStep;
-    const snappedValue = Math.max(
-      hourStep,
-      Math.round(val / hourStep) * hourStep,
-    );
+    if (isNaN(val)) return; // Allow empty typing
+    setValue("booking_hours", val, { shouldValidate: true });
+  };
+
+  const handleHoursBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+    let val = parseInt(e.target.value);
+    if (isNaN(val) || val <= 0) val = hourStep;
+    const snappedValue = snapHoursToBlock(val, has12hRate);
     setValue("booking_hours", snappedValue, { shouldValidate: true });
   };
 
@@ -517,6 +569,7 @@ export default function AdminBookingForm({
   };
 
   // --- PRICING ENGINE ---
+  // Since wHours is perfectly snapped, this calculation naturally generates the exact invoice!
   const fullDays = Math.floor((wHours || 24) / 24);
   const remainingHalfDays = (wHours || 24) % 24 === 12 ? 1 : 0;
 
@@ -615,7 +668,7 @@ export default function AdminBookingForm({
           user_id: booking.user_id,
           car_id: booking.car_id,
           start_date: startDate,
-          booking_hours: diffHours,
+          booking_hours: diffHours, // Pre-existing bookings should already be perfectly snapped
 
           pickup_type: booking.pickup_type as "hub" | "custom",
           pickup_location: booking.pickup_location,
@@ -1070,7 +1123,7 @@ export default function AdminBookingForm({
                             step={hourStep}
                             {...field}
                             onChange={handleHoursChange}
-                            onBlur={handleHoursChange}
+                            onBlur={handleHoursBlur}
                             className="h-9 text-[11px] font-semibold bg-secondary border-border hover:bg-background focus-visible:ring-primary rounded-lg shadow-sm transition-colors pr-10"
                           />
                           <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[9px] font-bold text-muted-foreground">
