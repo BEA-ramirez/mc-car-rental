@@ -69,14 +69,14 @@ const SETTINGS_TABS = [
         id: "payment_methods",
         label: "Payment Methods",
         icon: Wallet,
-        description: "Configure GCash, BDO, and Cash.",
+        description: "Configure active payment channels for your customers.",
       },
-      {
-        id: "tax_settings",
-        label: "Tax Configuration",
-        icon: ReceiptCent,
-        description: "VAT and BIR registration details.",
-      },
+      // {
+      //   id: "tax_settings",
+      //   label: "Tax Configuration",
+      //   icon: ReceiptCent,
+      //   description: "VAT and BIR registration details.",
+      // },
     ],
   },
   {
@@ -271,7 +271,7 @@ export default function SettingsDialog({
                     {/* Financials */}
                     {activeTab === "booking_fees" && <BookingFeesForm />}
                     {activeTab === "payment_methods" && <PaymentMethodsForm />}
-                    {activeTab === "tax_settings" && <TaxSettingsForm />}
+                    {/* {activeTab === "tax_settings" && <TaxSettingsForm />} */}
 
                     {/* Operations */}
                     {activeTab === "service_area" && <ServiceAreaEditor />}

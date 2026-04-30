@@ -14,35 +14,27 @@ import {
   MousePointerClick,
 } from "lucide-react";
 import { toast } from "sonner";
-import {
-  getBusinessHubs,
-  saveBusinessHubs,
-  BusinessHub,
-} from "@/actions/settings";
+import { BusinessHub } from "@/actions/settings";
 import { cn } from "@/lib/utils";
 import { APIProvider, Map, AdvancedMarker } from "@vis.gl/react-google-maps";
+import { useBookingSettings } from "../../../hooks/use-settings";
 
 export default function BusinessHubsManager() {
+  const { data, isLoading, saveBusinessHubs, isSavingHubs } =
+    useBookingSettings();
+
+  // local state so the user can drag pins and type BEFORE saving
   const [hubs, setHubs] = useState<BusinessHub[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isSaving, setIsSaving] = useState(false);
 
   // Default center for the map (Ormoc City)
   const defaultCenter = { lat: 11.005, lng: 124.6075 };
 
+  // Sync the hook's cached data into our editable local state whenever it loads/updates
   useEffect(() => {
-    const loadData = async () => {
-      try {
-        const data = await getBusinessHubs();
-        if (data) setHubs(data);
-      } catch {
-        toast.error("Failed to load business hubs.");
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    loadData();
-  }, []);
+    if (data?.hubs) {
+      setHubs(data.hubs);
+    }
+  }, [data?.hubs]);
 
   const handleAddHub = () => {
     // Add new hub slightly offset from the default center so they don't stack perfectly
@@ -82,15 +74,10 @@ export default function BusinessHubsManager() {
       toast.error("All hubs must have a valid name.");
       return;
     }
-
-    setIsSaving(true);
     try {
       await saveBusinessHubs(hubs);
-      toast.success("Business hubs updated successfully!");
-    } catch {
-      toast.error("Failed to save business hubs.");
-    } finally {
-      setIsSaving(false);
+    } catch (error) {
+      console.error("Save failed:", error);
     }
   };
 
@@ -363,9 +350,9 @@ export default function BusinessHubsManager() {
         <Button
           className="h-8 px-5 text-[10px] font-bold uppercase tracking-widest bg-primary hover:opacity-90 text-primary-foreground rounded-lg shadow-sm transition-opacity"
           onClick={handleSave}
-          disabled={isSaving}
+          disabled={isSavingHubs}
         >
-          {isSaving ? (
+          {isSavingHubs ? (
             <Loader2 className="w-3.5 h-3.5 mr-2 animate-spin" />
           ) : (
             <Save className="w-3.5 h-3.5 mr-2" />

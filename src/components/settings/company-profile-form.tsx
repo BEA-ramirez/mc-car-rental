@@ -13,11 +13,8 @@ import {
   Globe,
 } from "lucide-react";
 import { toast } from "sonner";
-import {
-  getCompanyProfile,
-  saveCompanyProfile,
-  CompanyProfile,
-} from "@/actions/settings";
+import { CompanyProfile } from "@/actions/settings";
+import { useBookingSettings } from "../../../hooks/use-settings";
 
 const DEFAULT_PROFILE: CompanyProfile = {
   name: "",
@@ -28,23 +25,18 @@ const DEFAULT_PROFILE: CompanyProfile = {
 };
 
 export default function CompanyProfileForm() {
-  const [profile, setProfile] = useState<CompanyProfile>(DEFAULT_PROFILE);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isSaving, setIsSaving] = useState(false);
+  // 1. Pull everything from our master hook
+  const { data, isLoading, saveCompanyProfile, isSavingCompanyProfile } =
+    useBookingSettings();
 
+  const [profile, setProfile] = useState<CompanyProfile>(DEFAULT_PROFILE);
+
+  // 2. Sync the hook's cached data into our local state when it loads
   useEffect(() => {
-    const loadData = async () => {
-      try {
-        const data = await getCompanyProfile();
-        if (data) setProfile(data);
-      } catch {
-        toast.error("Failed to load company profile.");
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    loadData();
-  }, []);
+    if (data?.companyProfile) {
+      setProfile(data.companyProfile);
+    }
+  }, [data?.companyProfile]);
 
   const handleChange = (field: keyof CompanyProfile, value: string) => {
     setProfile((prev) => ({ ...prev, [field]: value }));
@@ -56,14 +48,11 @@ export default function CompanyProfileForm() {
       return;
     }
 
-    setIsSaving(true);
+    // 3. Call the hook's mutation! It handles the loading state and toasts automatically.
     try {
       await saveCompanyProfile(profile);
-      toast.success("Company profile updated successfully!");
-    } catch {
-      toast.error("Failed to save company profile.");
-    } finally {
-      setIsSaving(false);
+    } catch (error) {
+      console.error("Save failed:", error);
     }
   };
 
@@ -165,11 +154,12 @@ export default function CompanyProfileForm() {
       {/* Footer Actions */}
       <div className="bg-card border-t border-border p-3 shrink-0 flex justify-end transition-colors">
         <Button
+          type="button" // Prevent accidental form submissions
           className="h-8 px-5 text-[10px] font-bold uppercase tracking-widest bg-primary hover:opacity-90 text-primary-foreground rounded-lg shadow-sm transition-opacity"
           onClick={handleSave}
-          disabled={isSaving}
+          disabled={isSavingCompanyProfile}
         >
-          {isSaving ? (
+          {isSavingCompanyProfile ? (
             <Loader2 className="w-3.5 h-3.5 mr-2 animate-spin" />
           ) : (
             <Save className="w-3.5 h-3.5 mr-2" />

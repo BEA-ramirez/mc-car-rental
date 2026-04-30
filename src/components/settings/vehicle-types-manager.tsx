@@ -13,41 +13,33 @@ import {
   GripVertical,
 } from "lucide-react";
 import { toast } from "sonner";
-import { getSystemSettings, updateSystemSetting } from "@/actions/settings";
+import { useBookingSettings } from "../../../hooks/use-settings";
 
 // Helper to generate quick unique IDs
 const generateId = () => Math.random().toString(36).substring(2, 9);
 
 export default function VehicleTypesManager() {
+  // 1. Pull everything from our master hook
+  const { data, isLoading, saveVehicleTypes, isSavingVehicleTypes } =
+    useBookingSettings();
+
   const [types, setTypes] = useState<any[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isSaving, setIsSaving] = useState(false);
 
-  // Load existing types on mount
+  // 2. Sync the hook's cached data into our local state when it loads
   useEffect(() => {
-    const loadTypes = async () => {
-      try {
-        const data = await getSystemSettings(["vehicle_types"]);
-        const existingTypes = data.vehicle_types || [];
-
-        // If empty, start them off with common defaults
-        setTypes(
-          existingTypes.length > 0
-            ? existingTypes
-            : [
-                { id: generateId(), label: "Sedan", isActive: true },
-                { id: generateId(), label: "SUV", isActive: true },
-                { id: generateId(), label: "Van", isActive: true },
-              ],
-        );
-      } catch {
-        toast.error("Failed to load vehicle types.");
-      } finally {
-        setIsLoading(false);
+    if (data?.vehicleTypes) {
+      if (data.vehicleTypes.length > 0) {
+        setTypes(data.vehicleTypes);
+      } else {
+        // If empty in the database, start them off with common defaults
+        setTypes([
+          { id: generateId(), label: "Sedan", isActive: true },
+          { id: generateId(), label: "SUV", isActive: true },
+          { id: generateId(), label: "Van", isActive: true },
+        ]);
       }
-    };
-    loadTypes();
-  }, []);
+    }
+  }, [data?.vehicleTypes]);
 
   // --- ACTIONS ---
   const addType = () => {
@@ -78,17 +70,12 @@ export default function VehicleTypesManager() {
       return;
     }
 
-    setIsSaving(true);
+    // 3. Call the hook's mutation! It handles the loading state and toasts automatically.
     try {
-      const res = await updateSystemSetting("vehicle_types", cleanedTypes);
-      if (!res.success) throw new Error(res.message);
-
-      setTypes(cleanedTypes); // Update UI with cleaned version
-      toast.success("Vehicle types saved successfully!");
-    } catch (error: any) {
-      toast.error(error.message || "Failed to save vehicle types.");
-    } finally {
-      setIsSaving(false);
+      await saveVehicleTypes(cleanedTypes);
+      setTypes(cleanedTypes); // Update UI with the cleaned version
+    } catch (error) {
+      console.error("Save failed:", error);
     }
   };
 
@@ -101,27 +88,15 @@ export default function VehicleTypesManager() {
 
   return (
     <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden flex flex-col max-w-3xl transition-colors">
-      {/* Header */}
-      <div className="px-4 py-3 border-b border-border bg-secondary/30 flex justify-between items-center shrink-0 transition-colors">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center shadow-sm">
-            <CarFront className="w-4 h-4 text-primary" />
-          </div>
-          <div className="flex flex-col text-left">
-            <h2 className="text-sm font-bold text-foreground tracking-tight leading-none mb-1 uppercase">
-              Vehicle Classifications
-            </h2>
-            <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-widest leading-none">
-              Define the categories used for filtering cars
-            </p>
-          </div>
-        </div>
+      <div className="px-4 pb-3 border-b border-border bg-background flex justify-between items-center shrink-0 transition-colors">
+        <div></div>
         <Button
+          type="button" // Prevent accidental form submissions
           className="h-8 px-4 text-[10px] font-bold uppercase tracking-widest bg-primary hover:opacity-90 text-primary-foreground rounded-lg shadow-sm transition-opacity"
           onClick={handleSave}
-          disabled={isSaving}
+          disabled={isSavingVehicleTypes}
         >
-          {isSaving ? (
+          {isSavingVehicleTypes ? (
             <Loader2 className="w-3.5 h-3.5 mr-2 animate-spin" />
           ) : (
             <Save className="w-3.5 h-3.5 mr-2" />
@@ -166,6 +141,7 @@ export default function VehicleTypesManager() {
             </div>
 
             <Button
+              type="button" // Prevent accidental form submissions
               variant="ghost"
               size="icon"
               className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 shrink-0 rounded-md transition-colors"
@@ -178,6 +154,7 @@ export default function VehicleTypesManager() {
 
         <div className="pt-2">
           <Button
+            type="button" // Prevent accidental form submissions
             variant="outline"
             className="w-full border-dashed border-2 border-border text-muted-foreground hover:text-foreground hover:border-primary/50 hover:bg-secondary h-10 text-[10px] font-bold uppercase tracking-widest rounded-lg transition-colors shadow-none"
             onClick={addType}

@@ -14,31 +14,32 @@ import {
   UploadCloud,
 } from "lucide-react";
 import { toast } from "sonner";
-import {
-  getInspectionTemplate,
-  saveInspectionTemplate,
-  InspectionCategory,
-} from "@/actions/settings";
+import { InspectionCategory } from "@/actions/settings";
 import { useFileUpload } from "../../../hooks/use-file-upload";
+import { useBookingSettings } from "../../../hooks/use-settings";
 import Image from "next/image";
 
 // Helper to generate quick unique IDs
 const generateId = () => Math.random().toString(36).substring(2, 9);
 
 export default function InspectionTemplateBuilder() {
+  // 1. Pull from the master hook
+  const {
+    data,
+    isLoading,
+    saveInspectionTemplate,
+    isSavingInspectionTemplate,
+  } = useBookingSettings();
+
   const [categories, setCategories] = useState<InspectionCategory[]>([]);
   const [blueprintUrl, setBlueprintUrl] = useState<string>("");
-
-  const [isLoading, setIsLoading] = useState(true);
-  const [isSaving, setIsSaving] = useState(false);
 
   // --- USE YOUR CUSTOM FILE UPLOAD HOOK ---
   const { isUploading, fileInputRef, handleFileSelect, triggerFileDialog } =
     useFileUpload({
-      bucket: "documents", // Target bucket
-      folder: "system_assets", // Dedicated folder for system-wide images
+      bucket: "documents",
+      folder: "system_assets",
       onUploadComplete: (uploads) => {
-        // The hook returns an array of uploaded files, we grab the first one
         if (uploads.length > 0) {
           setBlueprintUrl(uploads[0].url);
           toast.success("Blueprint image successfully uploaded.");
@@ -46,39 +47,38 @@ export default function InspectionTemplateBuilder() {
       },
     });
 
-  // Load existing template on mount
+  // 2. Sync the hook's cached data into local state
   useEffect(() => {
-    const loadTemplate = async () => {
-      try {
-        const data = await getInspectionTemplate();
+    if (data?.inspectionTemplate) {
+      const templateData = data.inspectionTemplate as any; // Typecast for the migration check
 
-        // Handle migration: If old data is an Array, convert to new Object format
-        if (Array.isArray(data)) {
-          setCategories(data);
-          setBlueprintUrl("/default-car-outline.png"); // Fallback
-        } else if (data && data.categories) {
-          // New format
-          setCategories(data.categories);
-          setBlueprintUrl(data.blueprint_url || "/default-car-outline.png");
-        } else {
-          // Completely empty state
-          setCategories([
-            {
-              id: generateId(),
-              name: "Exterior",
-              items: [{ id: generateId(), label: "Front Bumper" }],
-            },
-          ]);
-          setBlueprintUrl("/default-car-outline.png");
-        }
-      } catch {
-        toast.error("Failed to load template.");
-      } finally {
-        setIsLoading(false);
+      // Handle migration: If old data is an Array, convert to new Object format
+      if (Array.isArray(templateData) && templateData.length > 0) {
+        setCategories(templateData);
+        setBlueprintUrl("/default-car-outline.png"); // Fallback
+      } else if (
+        templateData &&
+        templateData.categories &&
+        templateData.categories.length > 0
+      ) {
+        // New format
+        setCategories(templateData.categories);
+        setBlueprintUrl(
+          templateData.blueprint_url || "/default-car-outline.png",
+        );
+      } else {
+        // Completely empty state (first time setup)
+        setCategories([
+          {
+            id: generateId(),
+            name: "Exterior",
+            items: [{ id: generateId(), label: "Front Bumper" }],
+          },
+        ]);
+        setBlueprintUrl("/default-car-outline.png");
       }
-    };
-    loadTemplate();
-  }, []);
+    }
+  }, [data?.inspectionTemplate]);
 
   // --- CATEGORY ACTIONS ---
   const addCategory = () => {
@@ -151,21 +151,17 @@ export default function InspectionTemplateBuilder() {
       return;
     }
 
-    // NEW DATA SHAPE
     const masterTemplatePayload = {
       blueprint_url: blueprintUrl,
       categories: cleanedCategories,
     };
 
-    setIsSaving(true);
+    // 3. Call the hook's mutation!
     try {
       await saveInspectionTemplate(masterTemplatePayload);
-      setCategories(cleanedCategories);
-      toast.success("Inspection template saved successfully!");
-    } catch {
-      toast.error("Failed to save template.");
-    } finally {
-      setIsSaving(false);
+      setCategories(cleanedCategories); // Update UI with cleaned payload
+    } catch (error) {
+      console.error("Save failed:", error);
     }
   };
 
@@ -203,11 +199,12 @@ export default function InspectionTemplateBuilder() {
           </div>
         </div>
         <Button
+          type="button"
           className="h-8 px-4 text-[10px] font-bold uppercase tracking-widest bg-primary hover:opacity-90 text-primary-foreground rounded-lg shadow-sm transition-opacity"
           onClick={handleSave}
-          disabled={isSaving || isUploading}
+          disabled={isSavingInspectionTemplate || isUploading}
         >
-          {isSaving ? (
+          {isSavingInspectionTemplate ? (
             <Loader2 className="w-3.5 h-3.5 mr-2 animate-spin" />
           ) : (
             <Save className="w-3.5 h-3.5 mr-2" />
@@ -238,10 +235,14 @@ export default function InspectionTemplateBuilder() {
                 <Image
                   src={blueprintUrl}
                   alt="Inspection Blueprint"
-                  className="w-full max-w-[400px] h-auto object-contain opacity-90"
+                  width={400} // Added explicit dimensions for Next/Image
+                  height={250}
+                  style={{ width: "100%", height: "auto" }}
+                  className="max-w-[400px] h-auto object-contain opacity-90"
                 />
                 <div className="absolute inset-0 bg-background/60 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                   <Button
+                    type="button"
                     variant="secondary"
                     size="sm"
                     onClick={triggerFileDialog}
@@ -262,6 +263,7 @@ export default function InspectionTemplateBuilder() {
                   inspectors to draw damage markups on.
                 </p>
                 <Button
+                  type="button"
                   variant="outline"
                   size="sm"
                   onClick={triggerFileDialog}
@@ -300,6 +302,7 @@ export default function InspectionTemplateBuilder() {
                     className="h-8 text-[11px] font-bold bg-secondary border-border focus-visible:ring-1 focus-visible:ring-primary rounded-lg transition-colors text-foreground shadow-none"
                   />
                   <Button
+                    type="button"
                     variant="ghost"
                     size="icon"
                     className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 shrink-0 rounded-lg transition-colors"
@@ -326,6 +329,7 @@ export default function InspectionTemplateBuilder() {
                         className="h-7 text-[11px] font-medium border-transparent hover:border-border focus-visible:border-border focus-visible:ring-1 focus-visible:ring-primary bg-transparent hover:bg-secondary transition-colors text-foreground shadow-none px-2 rounded-md"
                       />
                       <Button
+                        type="button"
                         variant="ghost"
                         size="icon"
                         className="h-7 w-7 text-muted-foreground/50 opacity-0 group-hover:opacity-100 hover:text-destructive hover:bg-destructive/10 shrink-0 transition-all rounded-md"
@@ -337,6 +341,7 @@ export default function InspectionTemplateBuilder() {
                   ))}
 
                   <Button
+                    type="button"
                     variant="ghost"
                     size="sm"
                     className="h-7 px-2 text-[10px] font-bold uppercase tracking-widest text-primary hover:text-primary hover:bg-primary/10 mt-1 rounded-md transition-colors"
@@ -349,6 +354,7 @@ export default function InspectionTemplateBuilder() {
             ))}
 
             <Button
+              type="button"
               variant="outline"
               className="w-full border-dashed border-2 border-border text-muted-foreground hover:text-foreground hover:border-primary/50 hover:bg-secondary h-10 text-[10px] font-bold uppercase tracking-widest rounded-xl transition-colors shadow-none"
               onClick={addCategory}

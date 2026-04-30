@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea"; // (Optional) If you prefer textarea, but we'll use Input for compactness
+import { Textarea } from "@/components/ui/textarea"; // (Optional)
 import {
   Save,
   Loader2,
@@ -20,6 +20,7 @@ import { PaymentMethods } from "@/actions/settings";
 import { useBookingSettings } from "../../../hooks/use-settings";
 import { useFileUpload } from "../../../hooks/use-file-upload";
 import Image from "next/image";
+import { toast } from "sonner"; // Make sure toast is imported
 
 const DEFAULT_METHODS: PaymentMethods = {
   bank: {
@@ -81,7 +82,7 @@ export default function PaymentMethodsForm() {
 
   const handleChange = (
     key: string,
-    field: "account_name" | "account_number" | "qr_code_url" | "instructions", // <-- ADDED instructions
+    field: "account_name" | "account_number" | "qr_code_url" | "instructions",
     value: string,
   ) => {
     setMethods((prev) => ({
@@ -115,10 +116,18 @@ export default function PaymentMethodsForm() {
     const updated = { ...methods };
     delete updated[key];
     setMethods(updated);
+
+    // Optional but highly recommended: Give non-blocking feedback!
+    toast.info("Method removed. Click 'Save' to apply changes.");
   };
 
   const handleSave = async () => {
-    await savePaymentMethods(methods);
+    // The hook natively handles success/error toasts
+    try {
+      await savePaymentMethods(methods);
+    } catch (error) {
+      console.error(error);
+    }
   };
 
   if (isLoading)
@@ -154,7 +163,7 @@ export default function PaymentMethodsForm() {
   );
 
   return (
-    <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden flex flex-col max-w-3xl transition-colors">
+    <div className="bg-card shadow-sm overflow-hidden flex flex-col max-w-3xl transition-colors">
       {/* Hidden File Input used by the hook */}
       <Input
         type="file"
@@ -165,25 +174,8 @@ export default function PaymentMethodsForm() {
         disabled={isUploading || isSavingPayments} // <-- Locked during saves
       />
 
-      {/* Header */}
-      <div className="px-4 py-3 border-b border-border bg-secondary/30 flex justify-between items-center shrink-0 transition-colors">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center shadow-sm">
-            <Wallet className="w-4 h-4 text-primary" />
-          </div>
-          <div className="flex flex-col text-left">
-            <h2 className="text-sm font-bold text-foreground tracking-tight leading-none mb-1 uppercase">
-              Payment & Receiving Accounts
-            </h2>
-            <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-widest leading-none">
-              Configure active payment channels for your customers
-            </p>
-          </div>
-        </div>
-      </div>
-
       {/* Form Body - Dynamic Mapping */}
-      <div className="p-4 space-y-3 bg-background transition-colors">
+      <div className="pt-4 space-y-3 bg-background transition-colors">
         {Object.entries(methods).map(([key, details]) => {
           const isCash = key === "cash";
           const isWallet = key.includes("gcash") || key.includes("maya");
@@ -354,7 +346,7 @@ export default function PaymentMethodsForm() {
         })}
 
         {/* ADD NEW METHOD BAR */}
-        <div className="mt-4 flex items-center gap-2 pt-2 border-t border-border">
+        <div className="mt-4  flex items-center gap-2 pt-2 border-t border-border">
           <Input
             placeholder="Add new method (e.g. Maya, UnionBank)"
             value={newMethodName}
@@ -375,7 +367,7 @@ export default function PaymentMethodsForm() {
       </div>
 
       {/* Footer Actions */}
-      <div className="bg-card border-t border-border p-3 shrink-0 flex justify-end transition-colors">
+      <div className="bg-background p-3 shrink-0 flex justify-end transition-colors">
         <Button
           className="h-8 px-5 text-[10px] font-bold uppercase tracking-widest bg-primary hover:opacity-90 text-primary-foreground rounded-lg shadow-sm transition-opacity disabled:opacity-50"
           onClick={handleSave}

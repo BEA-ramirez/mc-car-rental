@@ -7,8 +7,6 @@ import {
   useMap,
   useMapsLibrary,
 } from "@vis.gl/react-google-maps";
-// Make sure this path matches where your actions actually live!
-import { getServiceArea, saveServiceArea } from "@/actions/settings";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -18,6 +16,7 @@ import {
   MousePointerClick,
   Info,
 } from "lucide-react";
+import { useBookingSettings } from "../../../hooks/use-settings";
 
 // --- DRAWING MANAGER & POLYGON INITIALIZER ---
 function DrawingManager({
@@ -33,8 +32,6 @@ function DrawingManager({
     useState<google.maps.drawing.DrawingManager | null>(null);
   const hasInitialized = useRef(false);
 
-  console.log("manager", manager);
-
   const polygonsRef = useRef<google.maps.Polygon[]>([]);
 
   const updateParent = useCallback(() => {
@@ -48,13 +45,9 @@ function DrawingManager({
       return coords;
     });
 
-    // Call your prop
     onPolygonsChange(allCoords);
-
-    // Tell React to only recreate this if the onPolygonsChange prop changes
   }, [onPolygonsChange]);
 
-  // 2. Wrap attachPolygonListeners in useCallback
   const attachPolygonListeners = useCallback(
     (poly: google.maps.Polygon) => {
       poly.addListener("contextmenu", () => {
@@ -68,8 +61,6 @@ function DrawingManager({
       poly.getPath().addListener("insert_at", updateParent);
       poly.getPath().addListener("remove_at", updateParent);
       poly.addListener("dragend", updateParent);
-
-      // This depends on the cached updateParent we just made above!
     },
     [updateParent],
   );
@@ -87,7 +78,7 @@ function DrawingManager({
       polygonOptions: {
         editable: true,
         draggable: true,
-        fillColor: "#3b82f6", // Kept specific colors for map elements as Tailwind classes don't apply inside Google Maps canvas
+        fillColor: "#3b82f6",
         fillOpacity: 0.3,
         strokeWeight: 2,
         strokeColor: "#2563eb",
@@ -125,7 +116,6 @@ function DrawingManager({
       hasInitialized.current = true;
     }
 
-    // Listen for NEW shapes being drawn
     const listener = google.maps.event.addListener(
       newManager,
       "overlaycomplete",
@@ -149,25 +139,20 @@ function DrawingManager({
 
 // --- MAIN UI COMPONENT ---
 export default function ServiceAreaEditor() {
+  // 1. Destructure from the master hook
+  const { data, isLoading, saveServiceArea, isSavingServiceArea } =
+    useBookingSettings();
+
   const [initialPolygons, setInitialPolygons] = useState<any[][]>([]);
   const [currentPolygons, setCurrentPolygons] = useState<any[][]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isSaving, setIsSaving] = useState(false);
 
+  // 2. Sync the hook's cached data into local state
   useEffect(() => {
-    const loadData = async () => {
-      try {
-        const savedAreas = await getServiceArea();
-        setInitialPolygons(savedAreas);
-        setCurrentPolygons(savedAreas);
-      } catch {
-        toast.error("Failed to load service areas.");
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    loadData();
-  }, []);
+    if (data?.serviceArea) {
+      setInitialPolygons(data.serviceArea);
+      setCurrentPolygons(data.serviceArea);
+    }
+  }, [data?.serviceArea]);
 
   const handleSave = async () => {
     if (currentPolygons.length === 0) {
@@ -175,16 +160,12 @@ export default function ServiceAreaEditor() {
       return;
     }
 
-    setIsSaving(true);
-    const result = await saveServiceArea(currentPolygons as any);
-    setIsSaving(false);
-
-    if (result.error) {
-      toast.error(result.error);
-    } else {
-      toast.success(
-        `Successfully saved ${currentPolygons.length} service boundaries!`,
-      );
+    // 3. Just call the hook's mutation!
+    // The hook handles the sonner toasts natively.
+    try {
+      await saveServiceArea(currentPolygons);
+    } catch (error) {
+      console.error("Save failed:", error);
     }
   };
 
@@ -196,31 +177,14 @@ export default function ServiceAreaEditor() {
     );
 
   return (
-    <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden flex flex-col max-w-4xl transition-colors">
-      {/* Header */}
-      <div className="px-4 py-3 border-b border-border bg-secondary/30 flex justify-between items-center shrink-0 transition-colors">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center shadow-sm">
-            <MapIcon className="w-4 h-4 text-primary" />
-          </div>
-          <div className="flex flex-col text-left">
-            <h2 className="text-sm font-bold text-foreground tracking-tight leading-none mb-1 uppercase">
-              Service Area Boundaries
-            </h2>
-            <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-widest leading-none">
-              Define delivery polygons via Google Maps
-            </p>
-          </div>
-        </div>
-        <div className="bg-primary/10 text-primary px-2.5 py-1.5 rounded-lg border border-primary/20 flex items-center gap-1.5 shadow-sm">
-          <Info className="w-3.5 h-3.5" />
-          <span className="text-[9px] font-bold uppercase tracking-widest">
-            {currentPolygons.length} Active Zones
-          </span>
-        </div>
+    <div className="bg-background shadow-sm overflow-hidden flex flex-col max-w-4xl transition-colors">
+      <div className="bg-primary/10 mb-4 w-35 text-primary px-2.5 py-1.5 rounded-lg border border-primary/20 flex items-center gap-1.5 shadow-sm">
+        <Info className="w-3.5 h-3.5" />
+        <span className="text-[9px] font-bold uppercase tracking-widest">
+          {currentPolygons.length} Active Zones
+        </span>
       </div>
-
-      <div className="p-4 bg-background space-y-4 transition-colors">
+      <div className="bg-background space-y-4 transition-colors">
         {/* Helper Banner */}
         <div className="flex items-center gap-2.5 bg-secondary/50 border border-border px-3 py-2 rounded-lg transition-colors">
           <MousePointerClick className="w-4 h-4 text-muted-foreground shrink-0" />
@@ -257,18 +221,20 @@ export default function ServiceAreaEditor() {
       </div>
 
       {/* Footer Actions */}
-      <div className="bg-card border-t border-border p-3 shrink-0 flex justify-end transition-colors">
+      <div className="bg-background p-3 shrink-0 flex justify-end transition-colors">
         <Button
           className="h-8 px-5 text-[10px] font-bold uppercase tracking-widest bg-primary hover:opacity-90 text-primary-foreground rounded-lg shadow-sm transition-opacity"
           onClick={handleSave}
-          disabled={isSaving}
+          disabled={isSavingServiceArea} // 4. Using the hook's pending state
         >
-          {isSaving ? (
+          {isSavingServiceArea ? (
             <Loader2 className="w-3.5 h-3.5 mr-2 animate-spin" />
           ) : (
             <Save className="w-3.5 h-3.5 mr-2" />
           )}
-          {isSaving ? "Saving..." : `Save ${currentPolygons.length} Boundaries`}
+          {isSavingServiceArea
+            ? "Saving..."
+            : `Save ${currentPolygons.length} Boundaries`}
         </Button>
       </div>
     </div>
