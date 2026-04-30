@@ -27,13 +27,25 @@ import { QUERY_KEYS } from "@/lib/query-keys";
 export function useScheduler(currentDate: Date) {
   const queryClient = useQueryClient();
   const baseQueryKey = QUERY_KEYS.bookings.scheduler();
+
+  // The exact month view the user is currently looking at
   const currentQueryKey = QUERY_KEYS.bookings.scheduler(
     format(currentDate, "yyyy-MM"),
   );
 
   const invalidateAllRelatedQueries = (id?: string) => {
-    queryClient.invalidateQueries({ queryKey: currentQueryKey }); // The exact month view
-    queryClient.invalidateQueries({ queryKey: baseQueryKey }); // The base scheduler
+    // 1. Invalidate the month the user is actively viewing
+    queryClient.invalidateQueries({ queryKey: currentQueryKey });
+
+    // FIX: Explicitly invalidate the REAL-WORLD current month.
+    // Actions like Handover/Return update dates to now(), which might fall outside the currentQueryKey!
+    const realWorldCurrentMonthKey = QUERY_KEYS.bookings.scheduler(
+      format(new Date(), "yyyy-MM"),
+    );
+    queryClient.invalidateQueries({ queryKey: realWorldCurrentMonthKey });
+
+    // 2. Invalidate everything else
+    queryClient.invalidateQueries({ queryKey: baseQueryKey });
     queryClient.invalidateQueries({ queryKey: QUERY_KEYS.bookings.all });
     queryClient.invalidateQueries({ queryKey: QUERY_KEYS.dashboard.summary });
     queryClient.invalidateQueries({
@@ -42,11 +54,13 @@ export function useScheduler(currentDate: Date) {
     queryClient.invalidateQueries({
       queryKey: QUERY_KEYS.financials.incomesDashboard,
     });
+
     if (id) {
       queryClient.invalidateQueries({
         queryKey: QUERY_KEYS.bookings.details(id),
       });
     }
+
     queryClient.invalidateQueries({ queryKey: ["pendingPayments"] });
   };
 
@@ -67,17 +81,12 @@ export function useScheduler(currentDate: Date) {
         throw new Error(result.message || "Failed to update booking status");
       return result;
     },
-    //runs instantly before the server is called
     onMutate: async (variables) => {
-      // Cancel any outgoing refetches (so they don't overwrite our optimistic update)
       await queryClient.cancelQueries({ queryKey: baseQueryKey });
-
-      // snapshot the current data in case we need to roll back
       const previousData = queryClient.getQueryData(currentQueryKey);
 
-      // update the react query cache with the new status directly
       queryClient.setQueryData(currentQueryKey, (oldData: any) => {
-        if (!oldData) return oldData; // if no data, do nothing
+        if (!oldData) return oldData;
         return {
           ...oldData,
           events: oldData.events.map((event: SchedulerEvent) =>
@@ -87,13 +96,11 @@ export function useScheduler(currentDate: Date) {
           ),
         };
       });
-      // return the snapshot as context for potential rollback in case of error
       return { previousData };
     },
     onSuccess: (data, variables) => {
       toast.success("Booking marked as " + variables.status);
     },
-    // if server fails, rollback the cache to the snapshot
     onError: (error: Error, variables, context) => {
       if (context?.previousData) {
         queryClient.setQueryData(currentQueryKey, context.previousData);
@@ -103,9 +110,8 @@ export function useScheduler(currentDate: Date) {
       );
       console.error(error);
     },
-    // regardless of success/fail: ensure we are synced with the database
-    onSettled: () => {
-      invalidateAllRelatedQueries();
+    onSettled: (data, error, variables) => {
+      invalidateAllRelatedQueries(variables.id);
     },
   });
 
@@ -134,7 +140,7 @@ export function useScheduler(currentDate: Date) {
           ...oldData,
           events: oldData.events.map((event: SchedulerEvent) =>
             event.id === variables.id
-              ? { ...event, end: variables.newEndDate } // Make sure this is "end", not "end_date" based on your SchedulerEvent type
+              ? { ...event, end: variables.newEndDate }
               : event,
           ),
         };
@@ -142,11 +148,10 @@ export function useScheduler(currentDate: Date) {
       return { previousData };
     },
     onSuccess: (data) => {
-      // Check for the driver conflict!
       if (data.driverConflict) {
         toast.warning(
           "Booking extended, but the assigned driver has a scheduling conflict. Please reassign a new driver for the extended duration.",
-          { duration: 6000 }, // Keep it on screen a bit longer so they read it
+          { duration: 6000 },
         );
       } else {
         toast.success("Booking dates updated successfully");
@@ -159,8 +164,8 @@ export function useScheduler(currentDate: Date) {
       toast.error(`Failed to update dates: ${error.message}`);
       console.error(error);
     },
-    onSettled: () => {
-      invalidateAllRelatedQueries();
+    onSettled: (data, error, variables) => {
+      invalidateAllRelatedQueries(variables.id);
     },
   });
 
@@ -204,8 +209,8 @@ export function useScheduler(currentDate: Date) {
       toast.error(`Failed to update buffer duration: ${error.message}`);
       console.error(error);
     },
-    onSettled: () => {
-      invalidateAllRelatedQueries();
+    onSettled: (data, error, variables) => {
+      invalidateAllRelatedQueries(variables.id);
     },
   });
 
@@ -266,8 +271,8 @@ export function useScheduler(currentDate: Date) {
       toast.error(`Failed to process early return: ${error.message}`);
       console.error(error);
     },
-    onSettled: () => {
-      invalidateAllRelatedQueries();
+    onSettled: (data, error, variables) => {
+      invalidateAllRelatedQueries(variables.id);
     },
   });
 
@@ -289,7 +294,6 @@ export function useScheduler(currentDate: Date) {
     onMutate: async (variables) => {
       await queryClient.cancelQueries({ queryKey: baseQueryKey });
       const previousData = queryClient.getQueryData(currentQueryKey);
-      // Create a temporary ID for the UI until the server responds with the real one
       const tempId = `temp-maint-${Date.now()}`;
       queryClient.setQueryData(currentQueryKey, (oldData: any) => {
         if (!oldData) return oldData;
@@ -337,12 +341,10 @@ export function useScheduler(currentDate: Date) {
       const previousData = queryClient.getQueryData(currentQueryKey);
       queryClient.setQueryData(currentQueryKey, (oldData: any) => {
         if (!oldData) return oldData;
-        // find the original event
         const originalEvent = oldData.events.find(
           (e: SchedulerEvent) => e.id === variables.id,
         );
         if (!originalEvent) return oldData;
-        //create new part 2 event
         const part2: SchedulerEvent = {
           ...originalEvent,
           id: `temp-split-${Date.now()}`,
@@ -350,7 +352,6 @@ export function useScheduler(currentDate: Date) {
           title: `${originalEvent.title} (Part 2)`,
           status: "PENDING",
         };
-        // update the array: modify part 1 and part 2
         return {
           ...oldData,
           events: [
@@ -375,8 +376,8 @@ export function useScheduler(currentDate: Date) {
       toast.error(`Failed to split booking: ${err.message}`);
       console.error(err);
     },
-    onSettled: () => {
-      invalidateAllRelatedQueries();
+    onSettled: (data, error, variables) => {
+      invalidateAllRelatedQueries(variables.id);
     },
   });
 
@@ -385,18 +386,18 @@ export function useScheduler(currentDate: Date) {
       id,
       newCarId,
       newPrice,
+      isOverride,
     }: {
       id: string;
       newCarId: string;
       newPrice: number;
+      isOverride: boolean;
     }) => {
-      const result = await reassignBooking(id, newCarId, newPrice);
+      const result = await reassignBooking(id, newCarId, newPrice, isOverride);
       if (!result.success)
         throw new Error(result.message || "Failed to reassign");
       return result;
     },
-
-    // OPTIMISTIC UPDATE
     onMutate: async (variables) => {
       await queryClient.cancelQueries({ queryKey: currentQueryKey });
       const previousData = queryClient.getQueryData(currentQueryKey);
@@ -409,9 +410,9 @@ export function useScheduler(currentDate: Date) {
             evt.id === variables.id
               ? {
                   ...evt,
-                  resourceId: variables.newCarId, // Move to the new row!
-                  amount: variables.newPrice, // Update the price!
-                  status: "CONFIRMED", // Lock it in!
+                  resourceId: variables.newCarId,
+                  amount: variables.newPrice,
+                  status: "CONFIRMED",
                 }
               : evt,
           ),
@@ -462,36 +463,30 @@ export function useScheduler(currentDate: Date) {
       }
       toast.error(`Failed to delete: ${err.message}`);
     },
-    onSettled: () => {
-      invalidateAllRelatedQueries();
+    onSettled: (data, error, variables) => {
+      invalidateAllRelatedQueries(variables.id);
     },
   });
 
-  const invalidateQueries = () => {
-    queryClient.invalidateQueries({ queryKey: QUERY_KEYS.bookings.all });
-    queryClient.invalidateQueries({ queryKey: QUERY_KEYS.dashboard.summary });
-  };
-
-  // 1. Validate Handover (Checks Contract, Inspection, and Payment)
+  // 1. Validate Handover
   const checkHandover = async (bookingId: string) => {
     const res = await validateHandoverRequirements(bookingId);
     if (!res.success) throw new Error(res.message);
-    return res.data; // { isContractSigned, hasPreTrip, isPaid, isReady }
+    return res.data;
   };
 
   // 2. Validate Return
   const checkReturn = async (bookingId: string) => {
     const res = await validateReturnRequirements(bookingId);
     if (!res.success) throw new Error(res.message);
-    return res.data; // { hasPostTrip, isReady }
+    return res.data;
   };
 
   // 3. Execute Handover (CONFIRMED -> ONGOING)
   const handoverMutation = useMutation({
     mutationFn: (bookingId: string) => executeHandoverAction(bookingId),
-    onSuccess: (res) => {
+    onSuccess: (res, bookingId) => {
       if (res.success) {
-        // Intercept the driver conflict warning
         if (res.driverConflict) {
           toast.warning(
             "Vehicle released, but the time shift caused a driver scheduling conflict. Please review the driver's schedule.",
@@ -500,8 +495,8 @@ export function useScheduler(currentDate: Date) {
         } else {
           toast.success(res.message);
         }
-
-        invalidateAllRelatedQueries();
+        // Passes the booking ID to the master invalidator
+        invalidateAllRelatedQueries(bookingId);
       } else {
         toast.error(res.message);
       }
@@ -513,11 +508,10 @@ export function useScheduler(currentDate: Date) {
   // 4. Execute Return (ONGOING -> COMPLETED)
   const returnMutation = useMutation({
     mutationFn: (bookingId: string) => executeReturnAction(bookingId),
-    onSuccess: (res) => {
+    onSuccess: (res, bookingId) => {
       if (res.success) {
         toast.success(res.message);
-        // Ensure this triggers the master refresh!
-        invalidateAllRelatedQueries();
+        invalidateAllRelatedQueries(bookingId);
       } else {
         toast.error(res.message);
       }
@@ -529,10 +523,11 @@ export function useScheduler(currentDate: Date) {
   // 5. Execute No-Show
   const noShowMutation = useMutation({
     mutationFn: (bookingId: string) => executeNoShowAction(bookingId),
-    onSuccess: (res) => {
+    onSuccess: (res, bookingId) => {
       if (res.success) {
         toast.success(res.message);
-        invalidateQueries();
+        // FIX: Now uses the robust invalidateAllRelatedQueries instead of invalidateQueries
+        invalidateAllRelatedQueries(bookingId);
       } else {
         toast.error(res.message);
       }
@@ -541,10 +536,22 @@ export function useScheduler(currentDate: Date) {
       toast.error(error.message || "Failed to process no-show."),
   });
 
+  const refreshScheduler = async () => {
+    // We invalidate the queries to trigger a background refetch
+    invalidateAllRelatedQueries();
+
+    // We explicitly refetch the active query so we can await its completion
+    // This allows you to show a loading spinner on your refresh button!
+    await queryClient.refetchQueries({ queryKey: currentQueryKey });
+    toast.success("Timeline synchronized");
+  };
+
   return {
     ...query,
     checkHandover,
     checkReturn,
+    refreshScheduler,
+    isRefreshing: query.isFetching && !query.isLoading,
     executeHandover: handoverMutation.mutateAsync,
     isExecutingHandover: handoverMutation.isPending,
     executeReturn: returnMutation.mutateAsync,
@@ -552,7 +559,7 @@ export function useScheduler(currentDate: Date) {
     executeNoShow: noShowMutation.mutateAsync,
     isExecutingNoShow: noShowMutation.isPending,
     updateStatus: updateStatusMutation.mutate,
-    isUpdatingStatus: updateStatusMutation.isPending, //loading state
+    isUpdatingStatus: updateStatusMutation.isPending,
     updateDates: updateDatesMutation.mutate,
     isUpdatingDates: updateDatesMutation.isPending,
     updateBuffer: updateBufferMutation.mutate,

@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import TimelineScheduler, {
   SchedulerEvent,
 } from "@/components/scheduler/timeline-scheduler";
-import { differenceInHours, addDays, addHours } from "date-fns";
+import { addDays, addHours } from "date-fns";
 import PendingRequestsSidebar from "./pending-request-sidebar";
 import ProposalDialog from "@/components/bookings/proposal-dialog";
 import ResizeDialog from "@/components/bookings/resize-dialog";
@@ -26,6 +26,7 @@ import {
   ShieldAlert,
   CheckCircle2,
   X,
+  RefreshCw,
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import {
@@ -65,7 +66,7 @@ type ViewTab = "timeline" | "list" | "payments";
 export default function BookingMain() {
   const router = useRouter();
   const [date, setDate] = useState(new Date());
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const { payments } = usePendingPayments();
   const { units = [] } = useUnits();
 
@@ -96,14 +97,14 @@ export default function BookingMain() {
     isExecutingReturn,
     executeNoShow,
     isExecutingNoShow,
+    refreshScheduler,
+    isRefreshing,
   } = useScheduler(date);
 
   const resources = data?.resources || [];
   const events = data?.events || [];
 
   const [isFormOpen, setIsFormOpen] = useState(false);
-
-  // FIX 1: Updated the prefill state to hold raw Start and End dates
   const [formPrefill, setFormPrefill] = useState<{
     carId?: string;
     startDate?: Date;
@@ -175,9 +176,8 @@ export default function BookingMain() {
   const handleOpenNewBooking = (
     carId?: string,
     startDate?: Date,
-    endDate?: Date, // FIX 2: Accept exact end date
+    endDate?: Date,
   ) => {
-    // If no end date is provided (e.g. clicking "New Booking" button), default to 24 hours later
     const safeEndDate =
       endDate || (startDate ? addDays(startDate, 1) : undefined);
     setFormPrefill({ carId, startDate, endDate: safeEndDate });
@@ -189,7 +189,6 @@ export default function BookingMain() {
     start: Date,
     end: Date,
   ) => {
-    // FIX 3: Stop doing math here. Just pass the raw dates to the form!
     handleOpenNewBooking(resourceId, start, end);
   };
 
@@ -224,25 +223,37 @@ export default function BookingMain() {
   };
 
   const handleApproveClick = (req: SchedulerEvent) => {
+    // Find the booking that is currently occupying this time slot
     const conflictingBooking = events.find(
       (e) =>
         e.resourceId === req.resourceId &&
         e.id !== req.id &&
-        e.status === "CONFIRMED" &&
+        e.status !== "CANCELLED" &&
+        e.status !== "NO_SHOW" &&
         req.start < e.end &&
         req.end > e.start,
     );
 
     if (conflictingBooking) {
       if (isOverrideMode) {
+        // --- THE OVERRIDE FIX ---
+        // 1. Kick the old conflicting booking back to the pending queue
+        updateStatus({ id: conflictingBooking.id, status: "PENDING" });
+
+        // 2. Lock in the new VIP booking
         updateStatus({ id: req.id, status: "CONFIRMED" });
+
+        // 3. Clear UI states
         setSelectedPendingId(null);
         setGhostBooking(null);
+        toast.success(
+          "Override successful. Conflicting booking moved to Queue.",
+        );
       } else if (ghostBooking && ghostBooking.resourceId !== req.resourceId) {
         setIsProposalOpen(true);
       } else {
-        alert(
-          "Cannot approve: Time slot is occupied. Enable Override to force.",
+        toast.error(
+          "Time slot is occupied. Enable Override to force this booking.",
         );
       }
     } else {
@@ -262,6 +273,7 @@ export default function BookingMain() {
       id: originalBooking.id,
       newCarId: ghostBooking.resourceId,
       newPrice: agreedPrice,
+      isOverride: isOverrideMode,
     });
     setIsProposalOpen(false);
     setSelectedPendingId(null);
@@ -386,6 +398,17 @@ export default function BookingMain() {
 
         {/* Right Side: Integrated Toolbar */}
         <div className="flex flex-wrap items-center gap-2">
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={refreshScheduler}
+            disabled={isRefreshing}
+            title="Sync timeline"
+          >
+            <RefreshCw
+              className={cn("w-4 h-4", isRefreshing && "animate-spin")}
+            />
+          </Button>
           <Button
             size="sm"
             onClick={() => handleOpenNewBooking()}
@@ -899,7 +922,6 @@ export default function BookingMain() {
               initialStartDate={
                 editTarget ? new Date(editTarget.start) : formPrefill?.startDate
               }
-              // FIX 4: Pass the exact end date to the AdminBookingForm if we have one!
               initialEndDate={
                 editTarget ? new Date(editTarget.end) : formPrefill?.endDate
               }

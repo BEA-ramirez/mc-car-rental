@@ -25,7 +25,7 @@ export const QUERY_KEYS = {
 
   // --- BOOKINGS & SCHEDULER ---
   bookings: {
-    all: ["bookings"] as const, // Invalidating this hits ALL booking lists (admin, customer, details)
+    all: ["bookings"] as const,
     list: (page?: number, limit?: number, status?: string) =>
       ["bookings", page, limit, status] as const,
     customerList: ["customer-bookings"] as const,
@@ -33,7 +33,11 @@ export const QUERY_KEYS = {
     detailsBase: ["booking-details"] as const,
     folioBase: ["booking-folio"] as const,
     folio: (id: string) => ["booking-folio", id] as const,
-    scheduler: (month?: string) => ["scheduler-data", month] as const,
+    scheduler: (month?: string) =>
+      month
+        ? (["scheduler-data", month] as const)
+        : (["scheduler-data"] as const),
+
     workflowDocs: (id: string) => ["booking-docs", id] as const,
   },
 

@@ -673,6 +673,7 @@ export async function reassignBooking(
   bookingId: string,
   newCarId: string,
   newPrice: number,
+  isOverride: boolean = false, // <-- Added parameter
 ) {
   const supabase = await createClient();
 
@@ -681,6 +682,7 @@ export async function reassignBooking(
       p_booking_id: bookingId,
       p_new_car_id: newCarId,
       p_new_price: newPrice,
+      p_is_override: isOverride, // <-- Pass to RPC
     });
 
     if (error) throw error;

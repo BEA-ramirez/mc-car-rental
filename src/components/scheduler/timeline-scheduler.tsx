@@ -11,7 +11,6 @@ import {
   startOfWeek,
   startOfMonth,
   endOfMonth,
-  differenceInMinutes,
   setHours,
   eachDayOfInterval,
   addHours,
@@ -166,6 +165,11 @@ interface SubHeader {
   width: number;
 }
 
+// FIX: Helper function to get perfectly smooth fractional minutes (prevents 1-pixel rounding gaps)
+const exactMinutesBetween = (dateLeft: Date, dateRight: Date) => {
+  return (dateLeft.getTime() - dateRight.getTime()) / 60000;
+};
+
 export default function TimelineScheduler({
   resources,
   events: rawEvents,
@@ -189,7 +193,6 @@ export default function TimelineScheduler({
   onReturnClick,
   onNoShowClick,
 }: TimelineSchedulerProps) {
-  // CRITICAL FIX: Defaulted to 'month' instead of 'day'
   const [view, setView] = useState<ViewType>("month");
   const [currentDate, setCurrentDate] = useState(new Date());
   const [clickOffsets, setClickOffsets] = useState<Record<string, number>>({});
@@ -214,11 +217,17 @@ export default function TimelineScheduler({
 
   const [, setIsMounted] = useState(false);
   const [now, setNow] = useState(new Date());
+
   useEffect(() => {
     setIsMounted(true);
     const interval = setInterval(() => setNow(new Date()), 60000);
     return () => clearInterval(interval);
   }, []);
+
+  // FIX: Force the red line to instantly catch up to the exact second whenever the backend data refreshes
+  useEffect(() => {
+    setNow(new Date());
+  }, [rawEvents]);
 
   useEffect(() => {
     if (parsedGhostBooking && parsedGhostBooking.start) {
@@ -332,7 +341,8 @@ export default function TimelineScheduler({
     }
 
     const totalWidth = subHeaders.reduce((acc, h) => acc + h.width, 0);
-    const calculatedNowOffset = differenceInMinutes(now, start) * pxPerMin;
+    // FIX: Exact offset calculation
+    const calculatedNowOffset = exactMinutesBetween(now, start) * pxPerMin;
 
     return {
       timelineStart: start,
@@ -375,7 +385,6 @@ export default function TimelineScheduler({
         if (resizeMode === "event") {
           if (!originalEndRef.current) return;
 
-          // CRITICAL FIX: Math now calculates snaps based on 1 Hour instead of 1 Day (24 Hours)
           const pxPerHour = pxPerMinute * 60;
           const hoursDragged = Math.round(deltaX / pxPerHour);
 
@@ -501,15 +510,19 @@ export default function TimelineScheduler({
     const start = event.start as Date;
     const end = overrideEnd || (event.end as Date);
     const safeEnd = end <= start ? addDays(start, 1) : end;
-    const diffStart = Math.max(0, differenceInMinutes(start, timelineStart));
+
+    // FIX: Exact fractional calculation
+    const diffStart = Math.max(0, exactMinutesBetween(start, timelineStart));
     const effectiveEnd = safeEnd > timelineEnd ? timelineEnd : safeEnd;
+
     const diffDuration = Math.max(
       15,
-      differenceInMinutes(
+      exactMinutesBetween(
         effectiveEnd,
         start < timelineStart ? timelineStart : start,
       ),
     );
+
     return {
       left: `${diffStart * pxPerMinute}px`,
       width: `${diffDuration * pxPerMinute}px`,
@@ -526,11 +539,15 @@ export default function TimelineScheduler({
     const bufferStart = overrideEnd || (event.end as Date);
     const bufferEnd = addMinutes(bufferStart, bufferMins);
     if (bufferEnd < timelineStart || bufferStart > timelineEnd) return null;
+
     const effectiveStart =
       bufferStart < timelineStart ? timelineStart : bufferStart;
     const effectiveEnd = bufferEnd > timelineEnd ? timelineEnd : bufferEnd;
-    const diffStart = differenceInMinutes(effectiveStart, timelineStart);
-    const duration = differenceInMinutes(effectiveEnd, effectiveStart);
+
+    // FIX: Exact fractional calculation
+    const diffStart = exactMinutesBetween(effectiveStart, timelineStart);
+    const duration = exactMinutesBetween(effectiveEnd, effectiveStart);
+
     if (duration <= 0) return null;
     return {
       left: `${diffStart * pxPerMinute}px`,
@@ -917,7 +934,6 @@ export default function TimelineScheduler({
                             }
                           }}
                         >
-                          {/* PERFORMANCE FIX: Use Memoized Background Grid */}
                           {BackgroundGridLines}
                         </div>
                       </ContextMenuTrigger>
