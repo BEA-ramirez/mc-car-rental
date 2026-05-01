@@ -223,7 +223,7 @@ export function SignupForm({
         </div>
 
         {/* --- GOOGLE BUTTON --- */}
-        <div className="relative z-10 border border-black">
+        <div className="relative z-10">
           <Button
             type="button"
             variant="outline"

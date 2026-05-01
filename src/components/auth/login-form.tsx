@@ -10,7 +10,7 @@ import {
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { login, LoginState } from "@/actions/login";
-import { createClient } from "@/utils/supabase/client"; // Make sure this path matches your client utility
+import { createClient } from "@/utils/supabase/client";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -79,25 +79,33 @@ export function LoginForm({
     }
   }, [state, isPending, router]);
 
-  // Handle Google OAuth Login
+  // --- GOOGLE OAUTH HANDLER ---
   const handleGoogleLogin = async () => {
     setIsGoogleLoading(true);
     const supabase = createClient();
 
-    // Get the current domain dynamically
-    const origin = typeof window !== "undefined" ? window.location.origin : "";
+    // 1. Get the base URL reliably
+    const baseUrl =
+      process.env.NEXT_PUBLIC_SITE_URL ||
+      (typeof window !== "undefined"
+        ? window.location.origin
+        : "http://localhost:3000");
+
+    // 2. Construct the exact callback URL
+    const callbackUrl = new URL("/auth/callback", baseUrl);
+    callbackUrl.searchParams.set("next", "/customer/fleet");
 
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        // Automatically redirects them to the fleet page after successful login
-        redirectTo: `${origin}/auth/callback?next=/customer/fleet`,
+        redirectTo: callbackUrl.toString(), // Passes the perfectly constructed URL
       },
     });
 
     if (error) {
       console.error("Google login error:", error.message);
       setIsGoogleLoading(false);
+      toast.error("Failed to connect to Google.");
     }
   };
 
