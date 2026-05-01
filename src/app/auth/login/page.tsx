@@ -41,7 +41,7 @@ export default function LoginPage() {
       >
         <Link href="/" className="flex items-center gap-2 cursor-pointer group">
           <span className="text-xl md:text-2xl font-black tracking-tighter text-white group-hover:text-[#64c5c3] transition-colors duration-300">
-            SEFFNE TRANSPORT SERVICES INC.
+            MC ORMOC
           </span>
         </Link>
         <Link

@@ -56,7 +56,7 @@ export default function LandingPage() {
             className="object-contain"
           />
           <div className="text-xl md:text-2xl font-black tracking-tighter uppercase">
-            Seffne
+            MC Ormoc
           </div>
         </div>
 
@@ -600,7 +600,7 @@ export default function LandingPage() {
       {/* FOOTER */}
       <footer className="border-t border-white/5 bg-black py-10 sm:py-16 px-6 text-center text-gray-500 text-sm">
         <h2 className="text-4xl sm:text-6xl md:text-8xl font-black text-white/5 uppercase tracking-tighter mb-4 sm:mb-8">
-          Seffne
+          MC Ormoc
         </h2>
         <p className="text-[10px] sm:text-xs font-bold uppercase tracking-widest text-gray-600">
           © {new Date().getFullYear()} Seffne Transport Services Inc. All rights
