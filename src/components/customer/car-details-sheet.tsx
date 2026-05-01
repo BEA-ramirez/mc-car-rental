@@ -92,6 +92,7 @@ export default function CarDetailsSheet({
 
   // Verification States
   const [isVerifying, setIsVerifying] = useState(false);
+  const [isRedirecting, setIsRedirecting] = useState(false);
   const [missingFields, setMissingFields] = useState<string[]>([]);
   const [showVerificationWarning, setShowVerificationWarning] = useState(false);
 
@@ -208,6 +209,7 @@ export default function CarDetailsSheet({
   const handleProceedToBooking = async () => {
     if (!car || !exactStart || !exactEnd || dateError) return;
 
+    // PHASE 1: Verify the profile
     setIsVerifying(true);
 
     try {
@@ -220,15 +222,19 @@ export default function CarDetailsSheet({
         return;
       }
 
+      setIsVerifying(false);
+      setIsRedirecting(true);
+
       const fromStr = exactStart.toISOString();
       const toStr = exactEnd.toISOString();
+
       router.push(
         `/customer/book/${car.id}?from=${fromStr}&to=${toStr}&driver=${withDriver}&hours=${bookingHours}`,
       );
-      onClose();
     } catch (error) {
       console.error("Verification error:", error);
       setIsVerifying(false);
+      setIsRedirecting(false);
     }
   };
 
@@ -728,7 +734,8 @@ export default function CarDetailsSheet({
                         bookingHours < hourStep ||
                         isDatesLoading ||
                         !!dateError ||
-                        isVerifying
+                        isVerifying ||
+                        isRedirecting // <-- Added to disabled conditions
                       }
                       className="w-full bg-[#64c5c3] text-black hover:bg-[#52a3a1] rounded-xl font-bold text-sm h-14 transition-all duration-300 group disabled:opacity-40 disabled:hover:bg-[#64c5c3] disabled:cursor-not-allowed shadow-[0_0_20px_rgba(100,197,195,0.2)] shrink-0"
                     >
@@ -736,6 +743,11 @@ export default function CarDetailsSheet({
                         <>
                           <Loader2 className="w-4 h-4 mr-2 animate-spin" />{" "}
                           Verifying Profile...
+                        </>
+                      ) : isRedirecting ? (
+                        <>
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />{" "}
+                          Redirecting to Checkout...
                         </>
                       ) : !exactStart ? (
                         "Select Start Date"

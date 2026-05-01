@@ -831,9 +831,11 @@ export default function CustomerBookingPage({
             <DialogTitle className="text-xl md:text-2xl font-black uppercase tracking-tighter text-white">
               Secure Vehicle
             </DialogTitle>
-            <DialogDescription className="text-[10px] font-bold uppercase tracking-widest text-[#64c5c3] mt-1.5">
-              <h3>Platform Total: ₱{platformTotalValue.toLocaleString()}</h3>
-              <h3>Downpayment: ₱{MINIMUM_DOWNPAYMENT.toLocaleString()}</h3>
+            <DialogDescription className="text-[10px] font-bold uppercase tracking-widest text-[#64c5c3] mt-1.5 flex flex-col gap-1 items-center">
+              <span>
+                Platform Total: ₱{platformTotalValue.toLocaleString()}
+              </span>
+              <span>Downpayment: ₱{MINIMUM_DOWNPAYMENT.toLocaleString()}</span>
             </DialogDescription>
           </DialogHeader>
 

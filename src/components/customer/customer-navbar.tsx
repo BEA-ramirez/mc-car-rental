@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { usePathname } from "next/navigation"; // <-- 1. Import usePathname
 import {
   User,
   CalendarDays,
@@ -22,12 +23,14 @@ import {
 } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import LogoutDialog from "@/components/auth/logout-dialog";
-import { useNotifications } from "../../../hooks/use-notifications"; // Adjust path if needed
+import { useNotifications } from "../../../hooks/use-notifications";
 
 export default function CustomerNavbar() {
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
 
-  // --- FETCH REAL NOTIFICATIONS ---
+  // <-- 2. Get the current route
+  const pathname = usePathname();
+
   const {
     data: notifications = [],
     markAsRead,
@@ -35,6 +38,11 @@ export default function CustomerNavbar() {
   } = useNotifications();
 
   const unreadCount = notifications.filter((n: any) => !n.is_read).length;
+
+  // <-- 3. If we are on the checkout page, return null so the custom header can shine!
+  if (pathname?.includes("/customer/book/")) {
+    return null;
+  }
 
   return (
     <>
@@ -76,10 +84,9 @@ export default function CustomerNavbar() {
               <PopoverContent
                 align="end"
                 sideOffset={12}
-                // Notice the "!" before the width classes. This forces it to override shadcn's default w-72.
                 className="!w-[280px] sm:!w-96 p-0 rounded-2xl border-white/10 bg-[#0a1118]/95 backdrop-blur-2xl shadow-2xl overflow-hidden z-[100]"
               >
-                {/* Header - Very tight mobile padding (p-2.5) */}
+                {/* Header */}
                 <div className="bg-white/5 border-b border-white/5 p-2.5 sm:p-4 flex items-center justify-between">
                   <div className="flex items-center gap-2 sm:gap-3">
                     <h3 className="text-[13px] font-semibold text-white sm:text-sm sm:font-bold sm:uppercase sm:tracking-wider">
@@ -113,7 +120,6 @@ export default function CustomerNavbar() {
                               markAsRead(notif.notification_id);
                           }}
                           className={cn(
-                            // Tighter item padding and gap on mobile
                             "p-3 sm:p-5 border-b border-white/5 flex gap-2.5 sm:gap-4 hover:bg-white/5 transition-colors cursor-pointer",
                             !notif.is_read
                               ? "bg-[#64c5c3]/10"
@@ -125,7 +131,7 @@ export default function CustomerNavbar() {
                             notif.type === "payment" ? (
                               <CheckCircle2
                                 className={cn(
-                                  "w-3.5 h-3.5 sm:w-5 sm:h-5", // Extra small icon for mobile
+                                  "w-3.5 h-3.5 sm:w-5 sm:h-5",
                                   !notif.is_read
                                     ? "text-[#64c5c3]"
                                     : "text-gray-500",
@@ -134,7 +140,7 @@ export default function CustomerNavbar() {
                             ) : (
                               <ShieldCheck
                                 className={cn(
-                                  "w-3.5 h-3.5 sm:w-5 sm:h-5", // Extra small icon for mobile
+                                  "w-3.5 h-3.5 sm:w-5 sm:h-5",
                                   !notif.is_read
                                     ? "text-blue-400"
                                     : "text-gray-500",
