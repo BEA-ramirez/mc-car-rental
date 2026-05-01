@@ -78,6 +78,9 @@ export const useUnits = (unitId?: string) => {
 
         // 1. Broadly invalidate ALL admin-units queries (ignores specific filters/pages)
         queryClient.invalidateQueries({ queryKey: ["admin-units"] });
+        queryClient.invalidateQueries({
+          queryKey: ["customer-fleet-infinite"],
+        });
 
         // Invalidate the legacy fleet list
         queryClient.invalidateQueries({ queryKey: QUERY_KEYS.fleet.all });
@@ -129,6 +132,9 @@ export const useUnits = (unitId?: string) => {
 
         // Invalidate the legacy fleet list
         queryClient.invalidateQueries({ queryKey: QUERY_KEYS.fleet.all });
+        queryClient.invalidateQueries({
+          queryKey: ["customer-fleet-infinite"],
+        });
 
         // --- NEW: Invalidate Customer Fleet & Scheduler ---
         // Ensures deleted cars disappear from the customer view
