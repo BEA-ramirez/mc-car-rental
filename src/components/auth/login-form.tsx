@@ -84,21 +84,14 @@ export function LoginForm({
     setIsGoogleLoading(true);
     const supabase = createClient();
 
-    // 1. Get the base URL reliably
-    const baseUrl =
-      process.env.NEXT_PUBLIC_SITE_URL ||
-      (typeof window !== "undefined"
-        ? window.location.origin
-        : "http://localhost:3000");
-
-    // 2. Construct the exact callback URL
-    const callbackUrl = new URL("/auth/callback", baseUrl);
-    callbackUrl.searchParams.set("next", "/customer/fleet");
+    // Get the current domain dynamically (Exactly like your Signup form!)
+    const origin = typeof window !== "undefined" ? window.location.origin : "";
 
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: callbackUrl.toString(), // Passes the perfectly constructed URL
+        // Automatically redirects them to the fleet page after successful login
+        redirectTo: `${origin}/auth/callback?next=/customer/fleet`,
       },
     });
 
