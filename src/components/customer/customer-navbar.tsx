@@ -58,11 +58,11 @@ export default function CustomerNavbar() {
               className="object-contain sm:w-[60px] sm:h-[60px]"
             />
             <Link
-              href="/"
+              href="/customer/fleet"
               className="flex items-center gap-2 cursor-pointer group"
             >
               <span className="text-base sm:text-2xl font-black tracking-tighter text-white group-hover:text-[#64c5c3] transition-colors duration-300">
-                Seffne
+                MC ORMOC
               </span>
             </Link>
           </div>

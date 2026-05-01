@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import {
@@ -26,7 +26,6 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-// UPDATED: Imported Dialog components instead of Sheet
 import {
   Dialog,
   DialogContent,
@@ -55,7 +54,6 @@ export default function CustomerFleetPage() {
   const [selectedCar, setSelectedCar] = useState<any | null>(null);
   const [isDetailsSheetOpen, setIsDetailsSheetOpen] = useState(false);
 
-  // UPDATED: State name to reflect modal instead of sheet
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
 
@@ -78,48 +76,58 @@ export default function CustomerFleetPage() {
     markAllAsRead,
   } = useNotifications();
 
-  const unreadCount = notifications.filter((n: any) => !n.is_read).length;
+  // OPTIMIZATION: Memoize simple counts to prevent recalculation on every render
+  const unreadCount = useMemo(
+    () => notifications.filter((n: any) => !n.is_read).length,
+    [notifications],
+  );
 
-  const activeFiltersCount = Object.entries(filters).filter(([key, value]) => {
-    if (key === "search" && value !== "") return true;
-    if (key === "type" && value !== "All") return true;
-    if (key === "transmission" && value !== "Any") return true;
-    if (key === "minSeating" && value !== null) return true;
-    if (key === "maxPrice" && value !== null) return true;
-    return false;
-  }).length;
+  const activeFiltersCount = useMemo(() => {
+    return Object.entries(filters).filter(([key, value]) => {
+      if (key === "search" && value !== "") return true;
+      if (key === "type" && value !== "All") return true;
+      if (key === "transmission" && value !== "Any") return true;
+      if (key === "minSeating" && value !== null) return true;
+      if (key === "maxPrice" && value !== null) return true;
+      return false;
+    }).length;
+  }, [filters]);
 
-  const allCars = data?.pages.flatMap((page) => page.data) || [];
+  // OPTIMIZATION: Memoize the heavy array mapping and sorting!
+  // This prevents the page from re-calculating the entire grid when a modal opens.
+  const formattedCars = useMemo(() => {
+    const allCars = data?.pages.flatMap((page) => page.data) || [];
 
-  const formattedCars = allCars.map((unit: any) => {
-    const sortedImages = [...(unit.images || [])].sort((a: any, b: any) => {
-      if (a.is_primary && !b.is_primary) return -1;
-      if (!a.is_primary && b.is_primary) return 1;
-      return 0;
+    return allCars.map((unit: any) => {
+      const sortedImages = [...(unit.images || [])].sort((a: any, b: any) => {
+        if (a.is_primary && !b.is_primary) return -1;
+        if (!a.is_primary && b.is_primary) return 1;
+        return 0;
+      });
+
+      const imageUrls =
+        sortedImages.length > 0
+          ? sortedImages.map((img: any) => img.image_url)
+          : ["https://placehold.co/1200x800?text=No+Image"];
+
+      return {
+        id: unit.car_id,
+        brand: unit.brand,
+        model: unit.model,
+        year: unit.year,
+        type: unit.specifications?.body_type || "Vehicle",
+        transmission: unit.specifications?.transmission || "Auto/Manual",
+        seats: unit.specifications?.passenger_capacity || 5,
+        fuel: unit.specifications?.fuel_type || "Fuel",
+        price: Number(unit.rental_rate_per_day) || 0,
+        images: imageUrls,
+        features: unit.features || [],
+        color: unit.color || "Unknown",
+        rental_rate_per_12h: unit.rental_rate_per_12h || 0,
+        rental_rate_per_day: unit.rental_rate_per_day || 0,
+      };
     });
-
-    const imageUrls =
-      sortedImages.length > 0
-        ? sortedImages.map((img: any) => img.image_url)
-        : ["https://placehold.co/1200x800?text=No+Image"];
-
-    return {
-      id: unit.car_id,
-      brand: unit.brand,
-      model: unit.model,
-      year: unit.year,
-      type: unit.specifications?.body_type || "Vehicle",
-      transmission: unit.specifications?.transmission || "Auto/Manual",
-      seats: unit.specifications?.passenger_capacity || 5,
-      fuel: unit.specifications?.fuel_type || "Fuel",
-      price: Number(unit.rental_rate_per_day) || 0,
-      images: imageUrls,
-      features: unit.features || [],
-      color: unit.color || "Unknown",
-      rental_rate_per_12h: unit.rental_rate_per_12h || 0,
-      rental_rate_per_day: unit.rental_rate_per_day || 0,
-    };
-  });
+  }, [data]);
 
   useEffect(() => {
     if (inView && hasNextPage && !isFetchingNextPage) {
@@ -148,11 +156,11 @@ export default function CustomerFleetPage() {
               className="object-contain sm:w-[60px] sm:h-[60px]"
             />
             <Link
-              href="/"
+              href="/customer/fleet"
               className="flex items-center gap-2 cursor-pointer group"
             >
               <span className="text-base sm:text-2xl font-black tracking-tighter text-white group-hover:text-[#64c5c3] transition-colors duration-300">
-                SEFFNE
+                MC ORMOC
               </span>
             </Link>
           </div>
@@ -393,7 +401,6 @@ export default function CustomerFleetPage() {
             <FleetFilters filters={filters} setFilters={setFilters} />
           </div>
 
-          {/* UPDATED: Mobile Filter Button (Floating at bottom as a Dialog Popup) */}
           <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 lg:hidden">
             <Dialog
               open={isFilterModalOpen}
@@ -410,7 +417,6 @@ export default function CustomerFleetPage() {
                   )}
                 </Button>
               </DialogTrigger>
-              {/* Note the bg-transparent, border-none, and p-0 so the FleetFilter component acts as the visual container! */}
               <DialogContent className="w-[90vw] max-w-md bg-transparent border-none p-0 shadow-none">
                 <DialogTitle className="sr-only">Filter Vehicles</DialogTitle>
                 <div className="max-h-[85vh] overflow-y-auto custom-scrollbar">
@@ -454,17 +460,16 @@ export default function CustomerFleetPage() {
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-6">
                   {formattedCars.length > 0 ? (
                     formattedCars.map((car: any) => (
-                      <motion.div
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
+                      /* OPTIMIZATION: Swapped Framer Motion out for a lightweight hardware-accelerated CSS animation */
+                      <div
                         key={car.id}
-                        className="h-full"
+                        className="h-full animate-in fade-in slide-in-from-bottom-4 duration-500 fill-mode-both"
                       >
                         <CarCard
                           car={car}
                           onViewDetails={() => handleViewDetails(car)}
                         />
-                      </motion.div>
+                      </div>
                     ))
                   ) : (
                     <div className="col-span-full text-center py-16 sm:py-24 border border-white/5 rounded-2xl bg-[#0a1118]">
@@ -482,7 +487,7 @@ export default function CustomerFleetPage() {
                   {isFetchingNextPage && (
                     <Loader2 className="w-8 h-8 animate-spin text-[#64c5c3]" />
                   )}
-                  {!hasNextPage && allCars.length > 0 && (
+                  {!hasNextPage && formattedCars.length > 0 && (
                     <p className="text-sm font-medium text-white/40 sm:text-[10px] sm:font-bold sm:text-white/30 sm:uppercase sm:tracking-widest">
                       End of Inventory
                     </p>

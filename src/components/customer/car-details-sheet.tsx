@@ -40,7 +40,7 @@ import { checkCustomerProfileStatus } from "@/actions/verify-profile";
 
 function SpecPill({ icon: Icon, label }: { icon: any; label: string }) {
   return (
-    <div className="flex items-center gap-2 bg-white/5 border border-white/10 px-3 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest text-gray-300 shadow-sm">
+    <div className="flex items-center gap-2 bg-white/5 border border-white/10 px-3 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest text-gray-300 shadow-sm shrink-0">
       <Icon className="w-3.5 h-3.5 text-[#64c5c3] shrink-0" /> {label}
     </div>
   );
@@ -119,12 +119,11 @@ export default function CarDetailsSheet({
     setDateError(null);
 
     if (unavailableRanges?.length > 0) {
-      // 1. Partial Day Warning (Analyzes specific hours available on the selected day)
+      // 1. Partial Day Warning
       if (startDate) {
         const targetStart = startOfDay(startDate);
         const targetEnd = addHours(targetStart, 24);
 
-        // Find bookings that intersect with this specific day
         const dayBookings = unavailableRanges.filter((range: any) => {
           const bStart = new Date(range.unavailable_from);
           const bEnd = new Date(range.unavailable_to);
@@ -137,7 +136,6 @@ export default function CarDetailsSheet({
               const bStart = new Date(b.unavailable_from);
               const bEnd = new Date(b.unavailable_to);
 
-              // If it covers the whole day, the grey-out logic handles it
               if (bStart <= targetStart && bEnd >= targetEnd) return null;
 
               if (
@@ -169,7 +167,7 @@ export default function CarDetailsSheet({
         }
       }
 
-      // 2. Strict Overlap Validation (Prevents Checkout)
+      // 2. Strict Overlap Validation
       if (exactStart && exactEnd) {
         const hasOverlap = unavailableRanges.some((range: any) => {
           const bookedStart = new Date(range.unavailable_from);
@@ -209,7 +207,6 @@ export default function CarDetailsSheet({
   const handleProceedToBooking = async () => {
     if (!car || !exactStart || !exactEnd || dateError) return;
 
-    // PHASE 1: Verify the profile
     setIsVerifying(true);
 
     try {
@@ -238,7 +235,6 @@ export default function CarDetailsSheet({
     }
   };
 
-  // Grey out days ONLY if the entire 24h block is covered by bookings
   const isDateDisabled = (targetDate: Date) => {
     if (startOfDay(targetDate) < startOfDay(new Date())) return true;
 
@@ -249,7 +245,6 @@ export default function CarDetailsSheet({
       return unavailableRanges.some((range: any) => {
         const bookedStart = new Date(range.unavailable_from);
         const bookedEnd = new Date(range.unavailable_to);
-        // If a booking starts before/at 00:00 and ends after/at 23:59, the whole day is dead.
         return bookedStart <= targetStart && bookedEnd >= targetEnd;
       });
     }
@@ -277,7 +272,7 @@ export default function CarDetailsSheet({
           <>
             {showVerificationWarning && (
               <div className="absolute inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/80 backdrop-blur-md animate-in fade-in">
-                <div className="w-full max-w-md bg-[#0a1118]/95 backdrop-blur-xl border border-red-500/20 shadow-[0_0_40px_rgba(239,68,68,0.15)] rounded-3xl p-6 sm:p-8 flex flex-col items-center text-center">
+                <div className="w-full max-w-md bg-[#0a1118] border border-red-500/20 shadow-[0_0_40px_rgba(239,68,68,0.15)] rounded-3xl p-6 sm:p-8 flex flex-col items-center text-center">
                   <div className="w-14 h-14 bg-red-500/10 rounded-full flex items-center justify-center mb-5 border border-red-500/20">
                     <ShieldCheck className="w-7 h-7 text-red-400" />
                   </div>
@@ -323,13 +318,15 @@ export default function CarDetailsSheet({
               </div>
             )}
 
-            <div className="flex-1 overflow-y-auto custom-scrollbar relative">
+            {/* FIX 1: Added overflow-x-hidden to completely ban horizontal scroll */}
+            <div className="flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar relative">
               <div className="grid grid-cols-1 lg:grid-cols-12 min-h-full gap-0 relative">
                 {/* --- LEFT COL: CAR VISUALS --- */}
-                <div className="lg:col-span-7 p-6 md:p-10 flex flex-col h-full border-r border-white/5 relative">
-                  <div className="absolute top-0 left-0 w-[400px] h-[400px] bg-[#64c5c3]/5 rounded-full blur-[100px] pointer-events-none -z-10" />
+                <div className="lg:col-span-7 p-5 sm:p-6 md:p-10 flex flex-col h-full border-r border-white/5 relative">
+                  {/* FIX 2: Hidden on mobile so the GPU doesn't struggle to render massive blurs while scrolling */}
+                  <div className="hidden lg:block absolute top-0 left-0 w-[400px] h-[400px] bg-[#64c5c3]/5 rounded-full blur-[100px] pointer-events-none -z-10" />
 
-                  <div className="flex items-center justify-between mb-8 relative z-10">
+                  <div className="flex items-center justify-between mb-6 sm:mb-8 relative z-10">
                     <SheetClose asChild>
                       <button className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-gray-400 hover:text-[#64c5c3] transition-colors bg-white/5 hover:bg-white/10 px-4 py-2 rounded-full border border-white/5">
                         <X className="w-4 h-4" /> Close
@@ -337,7 +334,7 @@ export default function CarDetailsSheet({
                     </SheetClose>
                   </div>
 
-                  <div className="space-y-4 mb-10 relative z-10">
+                  <div className="space-y-4 mb-8 sm:mb-10 relative z-10">
                     <div className="relative aspect-[16/10] w-full rounded-2xl overflow-hidden border border-white/10 bg-[#0a1118] flex items-center justify-center group shadow-2xl">
                       <Image
                         src={
@@ -380,7 +377,7 @@ export default function CarDetailsSheet({
                       </div>
                     )}
                   </div>
-                  <div className="flex items-start justify-between shrink-0">
+                  <div className="flex items-start justify-between shrink-0 flex-wrap gap-4">
                     <div className=" relative z-10">
                       <p className="text-[11px] font-bold text-[#64c5c3] uppercase tracking-widest mb-2">
                         {car.brand}
@@ -389,7 +386,7 @@ export default function CarDetailsSheet({
                         {car.model}
                       </h1>
                     </div>
-                    <div className="text-right">
+                    <div className="text-left sm:text-right w-full sm:w-auto">
                       <p className="text-3xl font-black text-white tracking-tighter">
                         ₱{car24hRate.toLocaleString()}{" "}
                         <span className="text-sm font-medium text-gray-400 uppercase tracking-widest">
@@ -403,12 +400,12 @@ export default function CarDetailsSheet({
                       )}
                     </div>
                   </div>
-                  <p className="text-sm mb-6 text-gray-400 font-medium leading-relaxed max-w-2xl">
+                  <p className="text-sm mb-6 text-gray-400 font-medium leading-relaxed max-w-2xl mt-4 sm:mt-0">
                     Experience superior comfort and reliable capability.
                     Meticulously maintained for your safety and enjoyment.
                   </p>
 
-                  <div className="flex flex-wrap gap-2.5 mb-10 relative z-10">
+                  <div className="flex flex-wrap gap-2.5 mb-8 sm:mb-10 relative z-10">
                     <SpecPill
                       icon={Palette}
                       label={`${car.color || "Standard"}`}
@@ -439,9 +436,9 @@ export default function CarDetailsSheet({
                   )}
 
                   <div className="mt-auto pt-6 relative z-10">
-                    <div className="bg-[#64c5c3]/5 border border-[#64c5c3]/20 rounded-2xl p-6">
-                      <div className="flex items-center gap-2 mb-5 text-[#64c5c3]">
-                        <AlertCircle className="w-5 h-5" />
+                    <div className="bg-[#64c5c3]/5 border border-[#64c5c3]/20 rounded-2xl p-5 sm:p-6">
+                      <div className="flex items-center gap-2 mb-4 sm:mb-5 text-[#64c5c3]">
+                        <AlertCircle className="w-5 h-5 shrink-0" />
                         <span className="text-sm font-semibold">
                           Important Booking Policies
                         </span>
@@ -456,7 +453,7 @@ export default function CarDetailsSheet({
                             <p className="text-sm font-semibold text-white mb-1">
                               Fixed Reservation Downpayment
                             </p>
-                            <p className="text-sm text-gray-400 leading-relaxed font-medium">
+                            <p className="text-xs sm:text-sm text-gray-400 leading-relaxed font-medium">
                               A flat rate of{" "}
                               <span className="text-[#64c5c3]">
                                 ₱{fixedDownpayment}
@@ -465,9 +462,7 @@ export default function CarDetailsSheet({
                               <span className="text-white">
                                 strictly non-refundable
                               </span>{" "}
-                              as it instantly locks the unit and covers the
-                              opportunity cost of turning away other customers.
-                              It will be{" "}
+                              as it instantly locks the unit. It will be{" "}
                               <span className="text-white">fully deducted</span>{" "}
                               from your final balance.
                             </p>
@@ -479,9 +474,10 @@ export default function CarDetailsSheet({
                 </div>
 
                 {/* --- RIGHT COL: SCHEDULER & PRICING --- */}
-                <div className="lg:col-span-5 p-6 md:p-10 bg-[#0a1118]/80 backdrop-blur-2xl flex flex-col justify-start h-full">
+                {/* FIX 3: Solid background on mobile, glass blur only on desktop */}
+                <div className="lg:col-span-5 p-5 sm:p-6 md:p-10 bg-[#0a1118] lg:bg-[#0a1118]/80 lg:backdrop-blur-2xl flex flex-col justify-start h-full border-t lg:border-t-0 lg:border-l border-white/5">
                   {/* SCHEDULER */}
-                  <div className="mb-3 space-y-4 shrink-0">
+                  <div className="mb-3 space-y-4 shrink-0 overflow-x-hidden">
                     <Label className="text-sm font-semibold text-white flex items-center justify-between mb-3">
                       <div className="flex items-center gap-2">
                         <CalendarDays className="w-4 h-4 text-[#64c5c3]" />{" "}
@@ -489,60 +485,63 @@ export default function CarDetailsSheet({
                       </div>
                     </Label>
 
-                    <div className="bg-black/40 border border-white/10 rounded-2xl p-4 flex flex-col items-center shadow-inner relative">
-                      <div className="w-fit">
-                        <Calendar
-                          mode="range"
-                          defaultMonth={new Date()}
-                          selected={{
-                            from: exactStart || startDate,
-                            to: exactEnd || startDate,
-                          }}
-                          onSelect={(range, selectedDay) =>
-                            setStartDate(selectedDay)
-                          }
-                          disabled={isDateDisabled}
-                          showOutsideDays={true}
-                          className={cn(
-                            "text-white font-medium transition-opacity",
-                            isDatesLoading
-                              ? "opacity-50 pointer-events-none"
-                              : "opacity-100",
-                          )}
-                          classNames={{
-                            months: "w-fit",
-                            month: "w-fit",
-                            table: "w-fit border-collapse",
-                            head_row: "grid grid-cols-7 gap-1 mt-2",
-                            head_cell:
-                              "w-9 h-9 text-[10px] font-bold text-gray-500 uppercase tracking-widest text-center flex items-center justify-center",
-                            row: "grid grid-cols-7 gap-1 mt-2",
-                            cell: "w-9 h-9 text-center relative p-0 focus-within:relative focus-within:z-20 flex items-center justify-center",
-                            day: "h-9 w-9 p-0 font-normal hover:bg-white/10 rounded-lg cursor-pointer flex items-center justify-center transition-colors",
-                            day_selected:
-                              "bg-[#64c5c3] text-black hover:bg-[#52a3a1] font-bold rounded-lg",
-                            day_today:
-                              "bg-white/5 text-[#64c5c3] border border-[#64c5c3]/30 rounded-lg",
-                            day_range_middle:
-                              "bg-[#64c5c3]/20 text-white rounded-none hover:bg-[#64c5c3]/30",
-                            day_disabled:
-                              "text-gray-700 opacity-50 cursor-not-allowed bg-black/50 line-through decoration-gray-600/50",
-                            day_outside:
-                              "text-gray-600 opacity-50 aria-selected:bg-transparent aria-selected:text-gray-600",
-                          }}
-                        />
+                    <div className="bg-black/40 border border-white/10 rounded-2xl p-4 flex flex-col shadow-inner relative w-full overflow-hidden">
+                      {/* FIX 4: Calendar wrapper strictly contains horizontal overflow */}
+                      <div className="w-full overflow-x-auto flex justify-center custom-scrollbar pb-2">
+                        <div className="min-w-fit">
+                          <Calendar
+                            mode="range"
+                            defaultMonth={new Date()}
+                            selected={{
+                              from: exactStart || startDate,
+                              to: exactEnd || startDate,
+                            }}
+                            onSelect={(range, selectedDay) =>
+                              setStartDate(selectedDay)
+                            }
+                            disabled={isDateDisabled}
+                            showOutsideDays={true}
+                            className={cn(
+                              "text-white font-medium transition-opacity",
+                              isDatesLoading
+                                ? "opacity-50 pointer-events-none"
+                                : "opacity-100",
+                            )}
+                            classNames={{
+                              months: "w-fit",
+                              month: "w-fit",
+                              table: "w-fit border-collapse",
+                              head_row: "grid grid-cols-7 gap-1 mt-2",
+                              head_cell:
+                                "w-9 h-9 text-[10px] font-bold text-gray-500 uppercase tracking-widest text-center flex items-center justify-center",
+                              row: "grid grid-cols-7 gap-1 mt-2",
+                              cell: "w-9 h-9 text-center relative p-0 focus-within:relative focus-within:z-20 flex items-center justify-center",
+                              day: "h-9 w-9 p-0 font-normal hover:bg-white/10 rounded-lg cursor-pointer flex items-center justify-center transition-colors",
+                              day_selected:
+                                "bg-[#64c5c3] text-black hover:bg-[#52a3a1] font-bold rounded-lg",
+                              day_today:
+                                "bg-white/5 text-[#64c5c3] border border-[#64c5c3]/30 rounded-lg",
+                              day_range_middle:
+                                "bg-[#64c5c3]/20 text-white rounded-none hover:bg-[#64c5c3]/30",
+                              day_disabled:
+                                "text-gray-700 opacity-50 cursor-not-allowed bg-black/50 line-through decoration-gray-600/50",
+                              day_outside:
+                                "text-gray-600 opacity-50 aria-selected:bg-transparent aria-selected:text-gray-600",
+                            }}
+                          />
+                        </div>
                       </div>
 
                       <div className="flex items-center gap-1.5 mt-4 pt-3 border-t border-white/5 w-full justify-center">
                         <Info className="w-3.5 h-3.5 text-gray-500 shrink-0" />
-                        <span className="text-[10px] font-medium text-gray-500 uppercase tracking-widest text-center">
+                        <span className="text-[9px] sm:text-[10px] font-medium text-gray-500 uppercase tracking-widest text-center">
                           Select a start date. Fully booked dates are greyed
                           out.
                         </span>
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-3 mt-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4">
                       <div className="space-y-2">
                         <Label className="text-[10px] text-gray-400 uppercase tracking-widest font-bold">
                           Start Time
@@ -622,21 +621,25 @@ export default function CarDetailsSheet({
                           Schedule Confirmation
                         </p>
                         <div className="flex justify-between text-xs text-white font-medium">
-                          <span className="text-gray-400">Pickup:</span>
-                          <span>
+                          <span className="text-gray-400 shrink-0">
+                            Pickup:
+                          </span>
+                          <span className="text-right">
                             {format(exactStart, "MMM dd, yyyy - hh:mm a")}
                           </span>
                         </div>
                         <div className="flex justify-between text-xs text-white font-medium">
-                          <span className="text-gray-400">Return:</span>
-                          <span>
+                          <span className="text-gray-400 shrink-0">
+                            Return:
+                          </span>
+                          <span className="text-right">
                             {format(exactEnd, "MMM dd, yyyy - hh:mm a")}
                           </span>
                         </div>
                       </div>
                     )}
 
-                    {/* DRIVER SWITCH (Moved here) */}
+                    {/* DRIVER SWITCH */}
                     <div className="flex items-center justify-between bg-black/40 border border-white/10 p-4 rounded-xl mt-4 transition-colors hover:border-[#64c5c3]/30">
                       <Label
                         htmlFor="with-driver"
@@ -658,7 +661,7 @@ export default function CarDetailsSheet({
                     </div>
                   </div>
 
-                  <div className="space-y-6 pt-3 border-t border-white/10 mt-auto shrink-0">
+                  <div className="space-y-6 pt-3 mt-auto shrink-0">
                     {/* --- THE RECEIPT BREAKDOWN --- */}
                     <div className="space-y-2 mb-4 bg-white/5 rounded-xl p-4 border border-white/10">
                       <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2">
@@ -692,7 +695,7 @@ export default function CarDetailsSheet({
                       </div>
 
                       {withDriver && (
-                        <div className="flex justify-between text-sm font-medium text-yellow-500/80 pt-2">
+                        <div className="flex justify-between text-sm font-medium text-yellow-500/80 pt-2 border-t border-white/10 border-dashed mt-2">
                           <span>Driver Fee (Paid separately)</span>
                           <span className="font-semibold">
                             ₱{driverCost.toLocaleString()}
@@ -701,12 +704,12 @@ export default function CarDetailsSheet({
                       )}
                     </div>
 
-                    <div className="bg-[#050B10]/50 border border-white/10 rounded-xl p-5 mb-6">
+                    <div className="bg-[#050B10]/50 border border-white/10 rounded-xl p-4 sm:p-5 mb-6">
                       <div className="flex items-end justify-between mb-4 border-b border-white/5 pb-4">
                         <p className="text-sm font-medium text-gray-400">
                           Platform Total
                         </p>
-                        <p className="text-2xl font-bold text-white tracking-tight">
+                        <p className="text-xl sm:text-2xl font-bold text-white tracking-tight">
                           ₱{platformTotalValue.toLocaleString()}
                         </p>
                       </div>
@@ -714,7 +717,7 @@ export default function CarDetailsSheet({
                         <p className="text-sm font-semibold text-[#64c5c3]">
                           Required to Book Now
                         </p>
-                        <p className="text-xl font-bold text-[#64c5c3] tracking-tight">
+                        <p className="text-lg sm:text-xl font-bold text-[#64c5c3] tracking-tight">
                           ₱{fixedDownpayment.toLocaleString()}
                         </p>
                       </div>
@@ -735,7 +738,7 @@ export default function CarDetailsSheet({
                         isDatesLoading ||
                         !!dateError ||
                         isVerifying ||
-                        isRedirecting // <-- Added to disabled conditions
+                        isRedirecting
                       }
                       className="w-full bg-[#64c5c3] text-black hover:bg-[#52a3a1] rounded-xl font-bold text-sm h-14 transition-all duration-300 group disabled:opacity-40 disabled:hover:bg-[#64c5c3] disabled:cursor-not-allowed shadow-[0_0_20px_rgba(100,197,195,0.2)] shrink-0"
                     >
@@ -747,7 +750,7 @@ export default function CarDetailsSheet({
                       ) : isRedirecting ? (
                         <>
                           <Loader2 className="w-4 h-4 mr-2 animate-spin" />{" "}
-                          Redirecting to Checkout...
+                          Redirecting...
                         </>
                       ) : !exactStart ? (
                         "Select Start Date"
