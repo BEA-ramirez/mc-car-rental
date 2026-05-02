@@ -2,7 +2,7 @@ import { useState, useRef } from "react";
 import { getCurrentUserId } from "@/actions/auth";
 import { uploadFile } from "@/actions/helper/upload-file";
 import { toast } from "sonner";
-import imageCompression from "browser-image-compression"; // <-- NEW IMPORT
+import imageCompression from "browser-image-compression";
 
 interface UseFileUploadOptions {
   bucket: string;

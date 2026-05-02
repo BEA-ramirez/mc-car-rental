@@ -1,40 +1,40 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { toast } from "sonner";
 import { createClient } from "@/utils/supabase/client";
 
 export function NotificationListener() {
-  const [audio, setAudio] = useState<HTMLAudioElement | null>(null);
+  //Use a ref for audio so it doesn't trigger unnecessary re-renders
+  // or disconnect the Supabase Realtime channel.
+  const audioRef = useRef<HTMLAudioElement | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
   useEffect(() => {
     let isMounted = true;
     const supabase = createClient();
 
-    // Initialize audio only on the client side
-    setAudio(new Audio("/ding.wav"));
+    // Initialize audio safely on the client side
+    if (typeof window !== "undefined") {
+      audioRef.current = new Audio("/ding.wav");
+    }
 
-    // Ask the user for desktop notification permissions on load
     if ("Notification" in window && Notification.permission === "default") {
       Notification.requestPermission();
     }
 
-    // Fetch the current user securely on the client side
     supabase.auth.getUser().then(({ data }) => {
-      // The isMounted check prevents the "state update on unmounted component" warning!
       if (isMounted && data?.user) {
         setCurrentUserId(data.user.id);
       }
     });
 
     return () => {
-      isMounted = false; // Cleanup to prevent memory leaks
+      isMounted = false;
     };
   }, []);
 
   useEffect(() => {
-    // Wait until we have successfully fetched the user ID
     if (!currentUserId) return;
 
     const supabase = createClient();
@@ -50,44 +50,48 @@ export function NotificationListener() {
           filter: `user_id=eq.${currentUserId}`,
         },
         (payload) => {
+          console.log("Realtime Notification Received!", payload);
           const notification = payload.new;
 
-          // 1. Play the "Ding!"
-          if (audio) {
-            audio
+          // Reset the audio track before playing so it can fire multiple times!
+          if (audioRef.current) {
+            audioRef.current.currentTime = 0;
+            audioRef.current
               .play()
               .catch((e) =>
-                console.log(
-                  "Audio blocked by browser policy until interaction",
+                console.warn(
+                  "Audio blocked by browser. Admin must click anywhere on the screen first before sounds can autoplay.",
                 ),
               );
           }
 
-          // 2. Fire the Sonner Toast inside the app
+          // Fire the Sonner Toast
           toast.success(notification.title, {
             description: notification.message,
           });
 
-          // 3. Fire the Native Desktop Notification (Only if tab is hidden)
+          // Fire the Native Desktop Notification (Only if tab is hidden)
           if (
             "Notification" in window &&
-            Notification.permission === "granted"
+            Notification.permission === "granted" &&
+            document.hidden
           ) {
-            if (document.hidden) {
-              new Notification(notification.title, {
-                body: notification.message,
-                icon: "/favicon.ico",
-              });
-            }
+            new Notification(notification.title, {
+              body: notification.message,
+              icon: "/favicon.ico",
+            });
           }
         },
       )
-      .subscribe();
+      .subscribe((status) => {
+        // Log the status so you can verify it connects successfully
+        console.log("Realtime Subscription Status:", status);
+      });
 
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [audio, currentUserId]);
+  }, [currentUserId]); // audio is no longer a dependency!
 
-  return null; // Invisible component
+  return null;
 }

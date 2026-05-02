@@ -61,6 +61,9 @@ export const useBookings = () => {
     queryClient.invalidateQueries({
       queryKey: QUERY_KEYS.bookings.scheduler(),
     }); // Updated to wildcard
+    queryClient.invalidateQueries({
+      queryKey: QUERY_KEYS.financials.pendingPayments,
+    });
     queryClient.invalidateQueries({ queryKey: QUERY_KEYS.bookings.all });
     queryClient.invalidateQueries({ queryKey: QUERY_KEYS.dashboard.summary });
     queryClient.invalidateQueries({
@@ -181,7 +184,7 @@ export const useBookings = () => {
     },
     onSuccess: () => {
       // We can just use the master invalidator here too for cleaner code!
-      invalidateBookingRipples();
+      invalidateBookingRipples(true);
       toast.success("Payment submitted successfully!");
     },
   });

@@ -7,7 +7,7 @@ export function usePendingPayments() {
   const queryClient = useQueryClient();
 
   const {
-    data: payments = [], // Default to empty array
+    data: payments = [],
     isLoading,
     refetch: refresh,
   } = useQuery({
@@ -17,6 +17,10 @@ export function usePendingPayments() {
       if (!result.success) throw new Error("Failed to fetch pending payments");
       return result.data || [];
     },
+    // FIX 1: Polling. This forces the admin dashboard to check for new
+    // pending payments every 10 seconds automatically.
+    // Now, if you are just "waiting", new payments will magically pop up!
+    refetchInterval: 10000,
   });
 
   const { mutateAsync: verifyMutation, isPending: isProcessing } = useMutation({
@@ -33,7 +37,6 @@ export function usePendingPayments() {
       updatedAmount?: string | number;
       updatedRef?: string;
     }) => {
-      // Pass the new override parameters down to the server action
       const result = await verifyPayment(
         paymentId,
         action,
@@ -48,17 +51,24 @@ export function usePendingPayments() {
     onSuccess: (data, variables) => {
       toast.success(data.result.message);
 
-      // 1. Instant UI Update: Remove from the EXACT key used in useQuery
+      // 1. Instant UI Update: Remove from the exact key
       queryClient.setQueryData(
         QUERY_KEYS.financials.pendingPayments,
         (oldData: any[]) =>
           oldData?.filter((p) => p.payment_id !== variables.paymentId) || [],
       );
 
-      // Background Sync: Force React Query to re-fetch the other tabs
+      // 2. Background Sync
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.bookings.all });
       queryClient.invalidateQueries({
         queryKey: QUERY_KEYS.financials.pendingPayments,
+      });
+
+      // FIX 2: Explicitly invalidate the scheduler!
+      // Because your QUERY_KEYS.bookings.scheduler is a function, we must invoke it `()`
+      // without arguments to invalidate all scheduler months.
+      queryClient.invalidateQueries({
+        queryKey: QUERY_KEYS.bookings.scheduler(),
       });
     },
     onError: (error) => {
@@ -66,7 +76,6 @@ export function usePendingPayments() {
     },
   });
 
-  // Wrapper function to keep the exact same API signature for your UI component
   const handleVerify = async (
     paymentId: string,
     action: "approve" | "reject",
