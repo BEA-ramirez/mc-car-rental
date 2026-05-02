@@ -201,6 +201,22 @@ export default function CustomerBookingPage({
     }
   }, [realHubs, pickupLocation, dropoffLocation]);
 
+  // --- PREVENT BACK NAVIGATION TO CHECKOUT ---
+  useEffect(() => {
+    if (isSuccess) {
+      // Push a dummy state into the history stack
+      window.history.pushState(null, "", window.location.href);
+
+      const handleBackButton = () => {
+        // If they press the physical back button, boot them to the fleet page
+        router.replace("/customer/fleet");
+      };
+
+      window.addEventListener("popstate", handleBackButton);
+      return () => window.removeEventListener("popstate", handleBackButton);
+    }
+  }, [isSuccess, router]);
+
   // Exact Time Calculation
   const exactStart = startDate ? parse(startTime, "HH:mm", startDate) : null;
   const exactEnd = exactStart ? addHours(exactStart, bookingHours) : null;
@@ -432,7 +448,7 @@ export default function CustomerBookingPage({
           </div>
 
           <Button
-            onClick={() => router.push("/customer/my-bookings")}
+            onClick={() => router.replace("/customer/my-bookings")}
             className="w-full bg-[#64c5c3] text-black hover:bg-[#52a3a1] rounded-xl h-14 font-black text-[11px] uppercase tracking-widest transition-all duration-300 shadow-[0_0_15px_rgba(100,197,195,0.2)] group"
           >
             View My Itinerary
