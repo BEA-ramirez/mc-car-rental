@@ -19,6 +19,9 @@ import {
   CreditCard,
 } from "lucide-react";
 
+import { toast } from "sonner";
+import imageCompression from "browser-image-compression";
+
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
@@ -96,7 +99,6 @@ export default function CustomerBookingPage({
   const activePaymentMethods = useMemo(() => {
     if (!settings?.payments) return [];
 
-    // Convert the payments object to an array, filter out 'cash' and disabled ones
     return Object.entries(settings.payments)
       .filter(
         ([key, details]: [string, any]) => details.enabled && key !== "cash",
@@ -127,7 +129,7 @@ export default function CustomerBookingPage({
       brand: unit.brand,
       model: unit.model,
       price24h: rate24h,
-      price12h: rawRate12h > 0 ? rawRate12h : rate24h, // Fallback if missing
+      price12h: rawRate12h > 0 ? rawRate12h : rate24h,
       has12hRate: rawRate12h > 0,
       image:
         sortedImages.length > 0
@@ -161,12 +163,11 @@ export default function CustomerBookingPage({
 
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
   const [receiptRef, setReceiptRef] = useState("");
-  const [receiptAmount, setReceiptAmount] = useState(MINIMUM_DOWNPAYMENT); // Initialize with minimum
+  const [receiptAmount, setReceiptAmount] = useState(MINIMUM_DOWNPAYMENT);
 
   const handleReceiptScan = (file: File, ref: string, amount: string) => {
     setReceiptFile(file);
     setReceiptRef(ref);
-    // Parse the amount from the scanner (it could be full payment or custom downpayment)
     const scannedVal = Number(amount);
     if (!isNaN(scannedVal) && scannedVal > 0) {
       setReceiptAmount(scannedVal);
@@ -201,27 +202,20 @@ export default function CustomerBookingPage({
     }
   }, [realHubs, pickupLocation, dropoffLocation]);
 
-  // --- PREVENT BACK NAVIGATION TO CHECKOUT ---
   useEffect(() => {
     if (isSuccess) {
-      // Push a dummy state into the history stack
       window.history.pushState(null, "", window.location.href);
-
       const handleBackButton = () => {
-        // If they press the physical back button, boot them to the fleet page
         router.replace("/customer/fleet");
       };
-
       window.addEventListener("popstate", handleBackButton);
       return () => window.removeEventListener("popstate", handleBackButton);
     }
   }, [isSuccess, router]);
 
-  // Exact Time Calculation
   const exactStart = startDate ? parse(startTime, "HH:mm", startDate) : null;
   const exactEnd = exactStart ? addHours(exactStart, bookingHours) : null;
 
-  // --- PRICING ENGINE ---
   const fullDays = Math.floor(bookingHours / 24);
   const remainingHalfDays = bookingHours % 24 === 12 ? 1 : 0;
 
@@ -233,10 +227,9 @@ export default function CustomerBookingPage({
     ? (fullDays * 2 + remainingHalfDays) * realFees.driver_rate_per_12h
     : 0;
 
-  const platformTotalValue = baseRentalCost; // Strict exclusion of driver fee
+  const platformTotalValue = baseRentalCost;
   const balanceDue = platformTotalValue - receiptAmount;
 
-  // Detect if a custom location was selected to display TBD notice
   const requiresLogisticsFee =
     pickupType === "custom" || dropoffType === "custom";
 
@@ -286,16 +279,15 @@ export default function CustomerBookingPage({
     if (!exactStart || !exactEnd || !car || !agreedToTerms) return;
 
     if (!receiptFile) {
-      alert("Please upload your payment receipt to secure the booking.");
+      toast.error("Please upload your payment receipt to secure the booking.");
       return;
     }
 
-    // THE FIX: Validate the amount entered in the Receipt Scanner
     if (
       receiptAmount < MINIMUM_DOWNPAYMENT ||
       receiptAmount > platformTotalValue
     ) {
-      alert(
+      toast.error(
         `Invalid payment. Amount must be between ₱${MINIMUM_DOWNPAYMENT} and ₱${platformTotalValue}.`,
       );
       return;
@@ -304,6 +296,30 @@ export default function CustomerBookingPage({
     setIsUploading(true);
 
     try {
+      let fileToUpload = receiptFile;
+
+      // --- ADDED: CLIENT-SIDE COMPRESSION ---
+      if (fileToUpload.type.startsWith("image/")) {
+        const options = {
+          maxSizeMB: 0.8, // Strict 800kb limit to easily pass the Next.js 1MB Server Action limit
+          maxWidthOrHeight: 1920,
+          useWebWorker: true,
+        };
+        try {
+          toast.info("Optimizing receipt image...");
+          const compressedBlob = await imageCompression(fileToUpload, options);
+          fileToUpload = new File([compressedBlob], fileToUpload.name, {
+            type: compressedBlob.type,
+            lastModified: Date.now(),
+          });
+        } catch (compressErr) {
+          console.warn(
+            "Compression failed, attempting original file.",
+            compressErr,
+          );
+        }
+      }
+
       const supabase = createClient();
       const {
         data: { user },
@@ -315,7 +331,7 @@ export default function CustomerBookingPage({
       }
 
       const uploadResult = await uploadFile(
-        receiptFile,
+        fileToUpload, // We now pass the compressed file
         "documents",
         "receipts",
         user.id,
@@ -336,14 +352,9 @@ export default function CustomerBookingPage({
         pickup_price: 0,
         dropoff_price: 0,
         is_with_driver: withDriver,
-
-        // Send explicit hours to prevent server miscalculation
         booking_hours: bookingHours,
-
-        // Send the exact rates the user agreed to
         carDailyRate: car.price24h,
         car12HourRate: car.price12h,
-
         base_rate_snapshot: platformTotalValue,
         grand_total: platformTotalValue,
         security_deposit: 0,
@@ -352,7 +363,7 @@ export default function CustomerBookingPage({
         booking_status: "PENDING",
         payment_status: "UNPAID",
         payment_details: {
-          amount: receiptAmount, // From the ReceiptScanner component
+          amount: receiptAmount,
           transaction_reference: receiptRef,
           status: "PENDING",
           receipt_url: uploadResult.url,
@@ -362,7 +373,21 @@ export default function CustomerBookingPage({
       await submitCustomerBooking(bookingPayload);
       setIsPaymentModalOpen(false);
       setIsSuccess(true);
-    } catch {
+    } catch (error: any) {
+      console.error("Submission Error:", error);
+
+      // --- FIXED: Explicitly catch the Next.js payload limits to show a Toast Error ---
+      if (
+        error.message?.includes("Body exceeded 1 MB") ||
+        error.message?.includes("payload too large") ||
+        error.message?.includes("fetch failed") // Generic error when 413 is thrown
+      ) {
+        toast.error("File is too large. Next.js 1MB limit reached.");
+      } else {
+        toast.error(
+          error.message || "An unexpected error occurred during submission.",
+        );
+      }
     } finally {
       setIsUploading(false);
     }
@@ -972,7 +997,7 @@ export default function CustomerBookingPage({
               className="w-full bg-[#64c5c3] text-black hover:bg-[#52a3a1] h-12 md:h-14 rounded-xl font-black text-[10px] md:text-xs uppercase tracking-widest shadow-[0_0_20px_rgba(100,197,195,0.2)] transition-all duration-500 disabled:opacity-40 disabled:bg-[#64c5c3] disabled:cursor-not-allowed"
             >
               {isUploading
-                ? "Uploading Receipt..."
+                ? "Processing Receipt..."
                 : isSubmittingCustomerBooking
                   ? "Processing..."
                   : "Confirm & Lock Booking"}
