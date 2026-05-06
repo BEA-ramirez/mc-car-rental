@@ -268,6 +268,7 @@ export const useCustomerBookings = () => {
   });
 };
 
+// Fetches unavailable dates to disable them on the calendar UI
 export const useCarUnavailableDates = (carId: string | undefined) => {
   return useQuery({
     queryKey: QUERY_KEYS.fleet.unavailableDates(carId || ""),
@@ -276,7 +277,7 @@ export const useCarUnavailableDates = (carId: string | undefined) => {
       return await getCarUnavailableDatesAction(carId);
     },
     enabled: !!carId,
-    staleTime: 30 * 1000,
+    staleTime: 30 * 1000, // Caches data for 30 seconds to optimize performance
   });
 };
 

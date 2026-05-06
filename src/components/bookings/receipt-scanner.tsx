@@ -17,11 +17,13 @@ import Image from "next/image";
 interface ReceiptScannerProps {
   onScanComplete: (file: File, referenceNumber: string, amount: string) => void;
   expectedAmount: number;
+  maxAmount: number;
 }
 
 export default function ReceiptScanner({
   onScanComplete,
   expectedAmount,
+  maxAmount,
 }: ReceiptScannerProps) {
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -34,6 +36,10 @@ export default function ReceiptScanner({
   const [scanStatus, setScanStatus] = useState<
     "idle" | "success" | "partial" | "failed"
   >("idle");
+
+  const scannedNum = Number(scannedAmount);
+  const isAmountValid = scannedNum >= expectedAmount && scannedNum <= maxAmount;
+  const isOverpaid = scannedNum > maxAmount;
 
   const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -175,7 +181,7 @@ export default function ReceiptScanner({
       {!isScanning && scanStatus !== "idle" && (
         <div className="mt-5 space-y-4">
           {/* Status Messages */}
-          {scanStatus === "success" && isAmountMatching && (
+          {scanStatus === "success" && isAmountValid && (
             <div className="flex items-center gap-2 text-emerald-400 bg-emerald-500/10 p-3 rounded-xl border border-emerald-500/20">
               <CheckCircle2 className="w-4 h-4 shrink-0" />
               <p className="text-[10px] font-bold uppercase tracking-widest">
@@ -183,16 +189,17 @@ export default function ReceiptScanner({
               </p>
             </div>
           )}
-          {scanStatus === "success" && !isAmountMatching && (
+          {scanStatus === "success" && !isAmountValid && (
             <div className="flex items-start gap-2 text-red-400 bg-red-500/10 p-3 rounded-xl border border-red-500/20">
               <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
               <p className="text-[10px] font-medium leading-relaxed">
                 <strong className="uppercase tracking-widest">
-                  Amount mismatch!
+                  Invalid Amount Detected!
                 </strong>
                 <br />
-                Detected ₱{scannedAmount} but total is ₱{expectedAmount}. Please
-                verify manually.
+                {isOverpaid
+                  ? `Detected ₱${scannedAmount}. You cannot pay more than your total bill of ₱${maxAmount}.`
+                  : `Detected ₱${scannedAmount}. The minimum required downpayment is ₱${expectedAmount}.`}
               </p>
             </div>
           )}

@@ -291,8 +291,13 @@ export default function CustomerBookingPage({
     }
 
     // THE FIX: Validate the amount entered in the Receipt Scanner
-    if (receiptAmount < MINIMUM_DOWNPAYMENT) {
-      alert(`Minimum downpayment of ₱${MINIMUM_DOWNPAYMENT} is required.`);
+    if (
+      receiptAmount < MINIMUM_DOWNPAYMENT ||
+      receiptAmount > platformTotalValue
+    ) {
+      alert(
+        `Invalid payment. Amount must be between ₱${MINIMUM_DOWNPAYMENT} and ₱${platformTotalValue}.`,
+      );
       return;
     }
 
@@ -922,6 +927,7 @@ export default function CustomerBookingPage({
               <ReceiptScanner
                 onScanComplete={handleReceiptScan}
                 expectedAmount={MINIMUM_DOWNPAYMENT}
+                maxAmount={platformTotalValue}
               />
             </div>
           </div>
@@ -960,7 +966,8 @@ export default function CustomerBookingPage({
                 isUploading ||
                 !agreedToTerms ||
                 !receiptFile ||
-                receiptAmount < MINIMUM_DOWNPAYMENT
+                receiptAmount < MINIMUM_DOWNPAYMENT ||
+                receiptAmount > platformTotalValue // Disable if they overpay
               }
               className="w-full bg-[#64c5c3] text-black hover:bg-[#52a3a1] h-12 md:h-14 rounded-xl font-black text-[10px] md:text-xs uppercase tracking-widest shadow-[0_0_20px_rgba(100,197,195,0.2)] transition-all duration-500 disabled:opacity-40 disabled:bg-[#64c5c3] disabled:cursor-not-allowed"
             >
