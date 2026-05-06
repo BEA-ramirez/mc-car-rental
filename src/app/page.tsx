@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
@@ -11,7 +12,7 @@ import {
   Sheet,
   SheetContent,
   SheetTrigger,
-  SheetTitle, // <-- Added this import
+  SheetTitle,
 } from "@/components/ui/sheet";
 import {
   ShieldCheck,
@@ -22,12 +23,100 @@ import {
   Phone,
   MapPin,
   Menu,
+  Car,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Image from "next/image";
+import { toast } from "sonner";
+import { submitContactForm } from "@/actions/helper/mail";
+import { useCustomerFleet } from "../../hooks/use-customer-fleet";
+import { useBookingSettings } from "../../hooks/use-settings";
 
 export default function LandingPage() {
   const router = useRouter();
+
+  // --- CONTACT FORM STATE ---
+  const [contactForm, setContactForm] = useState({
+    firstName: "",
+    lastName: "",
+    email: "",
+    message: "",
+  });
+  const [isSendingMessage, setIsSendingMessage] = useState(false);
+
+  const handleContactSubmit = async () => {
+    // Basic validation
+    if (
+      !contactForm.firstName ||
+      !contactForm.lastName ||
+      !contactForm.email ||
+      !contactForm.message
+    ) {
+      toast.error("Please fill out all fields before sending.");
+      return;
+    }
+
+    setIsSendingMessage(true);
+    try {
+      const res = await submitContactForm(
+        contactForm.firstName,
+        contactForm.lastName,
+        contactForm.email,
+        contactForm.message,
+      );
+
+      if (res.success) {
+        toast.success(res.message);
+        // Clear the form upon success
+        setContactForm({ firstName: "", lastName: "", email: "", message: "" });
+      } else {
+        toast.error(res.message);
+      }
+    } catch (error) {
+      toast.error("An unexpected error occurred.");
+    } finally {
+      setIsSendingMessage(false);
+    }
+  };
+
+  const [activeFilter, setActiveFilter] = useState("All Vehicles");
+
+  const { data: settings } = useBookingSettings();
+
+  // Construct dynamic filters based on the settings, or use fallbacks
+  const filterCategories = useMemo(() => {
+    const types = settings?.vehicleTypes || [];
+    // Ensure handle array of strings or objects gracefully
+    const typeNames = types
+      .map((t: any) => (typeof t === "string" ? t : t.name))
+      .filter(Boolean);
+
+    if (typeNames.length === 0)
+      return ["All Vehicles", "Sedan", "Hatchback", "SUV", "MPV", "Van"];
+    return ["All Vehicles", ...typeNames];
+  }, [settings]);
+
+  // Construct the exact FilterState object your backend expects
+  const fleetFilters = useMemo(
+    () => ({
+      search: "",
+      type: activeFilter === "All Vehicles" ? "All" : activeFilter,
+      transmission: "Any",
+      minSeating: null,
+      maxPrice: null,
+    }),
+    [activeFilter],
+  );
+
+  // Fetch the actual cars from the backend
+  const { data: fleetData, isLoading: isFleetLoading } =
+    useCustomerFleet(fleetFilters);
+
+  // Flatten the infinite query pages and grab up to 6 cars to match your UI layout
+  const realCars = useMemo(() => {
+    if (!fleetData) return [];
+    return fleetData.pages.flatMap((page: any) => page.data).slice(0, 6);
+  }, [fleetData]);
 
   const staggerContainer = {
     hidden: { opacity: 0 },
@@ -48,7 +137,7 @@ export default function LandingPage() {
       <nav className="fixed top-0 w-full z-50 bg-[#050B10]/80 backdrop-blur-xl border-b border-white/5 py-4 px-4 sm:px-6 md:px-12 flex justify-between items-center transition-all duration-300">
         <div className="flex items-center gap-2">
           <Image
-            src="/mc-ormoc-logo.png" /* Change this to your exact filename */
+            src="/mc-ormoc-logo.png"
             alt="Company Logo"
             width={60}
             height={60}
@@ -109,7 +198,6 @@ export default function LandingPage() {
               side="right"
               className="bg-[#050B10] border-l border-white/10 p-6 flex flex-col justify-between w-[85vw] sm:w-80"
             >
-              {/* Fix: Added hidden title for screen readers */}
               <SheetTitle className="sr-only">Navigation Menu</SheetTitle>
 
               <div className="flex flex-col gap-8 mt-12">
@@ -160,7 +248,6 @@ export default function LandingPage() {
 
       {/* HERO SECTION */}
       <section className="relative min-h-screen flex items-center pt-24 pb-12 overflow-hidden">
-        {/* Background Image */}
         <div className="absolute inset-0 z-0">
           <Image
             src="https://images.unsplash.com/photo-1549399542-7e3f8b79c341?q=80&w=2000"
@@ -238,7 +325,7 @@ export default function LandingPage() {
                 src="https://images.unsplash.com/photo-1609521263047-f8f205293f24?q=80&w=400"
                 className="w-full h-24 sm:h-32 object-cover rounded-xl mb-2 sm:mb-3"
                 alt="Hatchback"
-                width={400} // 👇 ADDED
+                width={400}
                 height={300}
               />
               <div className="px-2 flex-1 flex flex-col justify-end pb-2">
@@ -414,7 +501,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* CARS GRID */}
+      {/* --- CARS GRID (REAL DATA) --- */}
       <section className="py-16 sm:py-24 px-4 sm:px-6 md:px-12 max-w-7xl mx-auto border-t border-white/5">
         <div className="text-center mb-10 sm:mb-16">
           <p className="text-[#64c5c3] font-bold tracking-widest text-[10px] sm:text-xs mb-3 sm:mb-4">
@@ -425,18 +512,13 @@ export default function LandingPage() {
           </h2>
 
           <div className="flex justify-center gap-2 sm:gap-4 mt-6 sm:mt-8 flex-wrap">
-            {[
-              "All Vehicles",
-              "Sedans",
-              "Hatchbacks",
-              "MPVs / SUVs",
-              "Vans",
-            ].map((filter, i) => (
+            {filterCategories.map((filter: string, i: number) => (
               <button
                 key={i}
+                onClick={() => setActiveFilter(filter)}
                 className={cn(
                   "px-4 sm:px-6 py-2 rounded-full text-[10px] sm:text-xs font-bold uppercase tracking-widest transition-all",
-                  i === 0
+                  activeFilter === filter
                     ? "bg-[#64c5c3] text-black shadow-[0_0_15px_rgba(100,197,195,0.3)]"
                     : "bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white border border-white/5",
                 )}
@@ -447,74 +529,75 @@ export default function LandingPage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {[
-            {
-              name: "Toyota Fortuner",
-              type: "SUV",
-              img: "https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?q=80&w=800",
-            },
-            {
-              name: "Toyota Innova",
-              type: "MPV",
-              img: "https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?q=80&w=800",
-            },
-            {
-              name: "Toyota Vios",
-              type: "Sedan",
-              img: "https://images.unsplash.com/photo-1493238792000-8113da705763?q=80&w=800",
-            },
-            {
-              name: "Toyota Avanza",
-              type: "MPV",
-              img: "https://images.unsplash.com/photo-1550355291-bbee04a92027?q=80&w=800",
-            },
-            {
-              name: "Mitsubishi Mirage",
-              type: "Hatchback",
-              img: "https://images.unsplash.com/photo-1609521263047-f8f205293f24?q=80&w=800",
-            },
-            {
-              name: "Nissan Urvan",
-              type: "Van",
-              img: "https://images.unsplash.com/photo-1520031441872-265e4ff70366?q=80&w=800",
-            },
-          ].map((car, i) => (
-            <motion.div key={i} whileHover={{ y: -8 }} className="group">
-              <div className="rounded-3xl overflow-hidden bg-[#0a1118] border border-white/5 h-full flex flex-col shadow-lg">
-                <div className="relative h-48 sm:h-60 overflow-hidden bg-black">
-                  <div className="absolute inset-0 bg-black/30 group-hover:bg-transparent transition-colors z-10" />
-                  <Image
-                    src={car.img}
-                    alt={car.name}
-                    fill
-                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 opacity-80 group-hover:opacity-100"
-                  />
-                  <div className="absolute top-4 right-4 z-20 bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-full text-[9px] font-bold text-white border border-white/10 uppercase tracking-widest">
-                    {car.type}
+        {isFleetLoading ? (
+          <div className="flex justify-center items-center py-24">
+            <div className="w-8 h-8 border-4 border-white/10 border-t-[#64c5c3] rounded-full animate-spin"></div>
+          </div>
+        ) : realCars.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-24 text-gray-500">
+            <Car className="w-12 h-12 mb-4 opacity-20" />
+            <p className="text-xs uppercase tracking-widest font-bold">
+              No vehicles found for this category.
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {realCars.map((car: any) => {
+              // Locate primary image or fallback
+              const primaryImg =
+                car.images?.find((img: any) => img.is_primary)?.image_url ||
+                car.images?.[0]?.image_url ||
+                "https://placehold.co/800x600?text=No+Image";
+
+              // Format names and types safely
+              const carName = `${car.brand} ${car.model}`;
+              const carType = car.specifications?.body_type || "Vehicle";
+
+              return (
+                <motion.div
+                  key={car.car_id}
+                  whileHover={{ y: -8 }}
+                  className="group"
+                >
+                  <div className="rounded-3xl overflow-hidden bg-[#0a1118] border border-white/5 h-full flex flex-col shadow-lg">
+                    <div className="relative h-48 sm:h-60 overflow-hidden bg-black">
+                      <div className="absolute inset-0 bg-black/30 group-hover:bg-transparent transition-colors z-10" />
+                      <Image
+                        src={primaryImg}
+                        alt={carName}
+                        fill
+                        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 opacity-80 group-hover:opacity-100"
+                      />
+                      <div className="absolute top-4 right-4 z-20 bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-full text-[9px] font-bold text-white border border-white/10 uppercase tracking-widest">
+                        {carType}
+                      </div>
+                      <div className="absolute inset-0 bg-gradient-to-t from-[#0a1118] via-transparent to-transparent z-10" />
+                    </div>
+                    <div className="p-6 flex-grow flex flex-col justify-between relative z-20 -mt-8">
+                      <div className="mb-6">
+                        <h3 className="text-xl sm:text-2xl font-black uppercase mb-1 text-white leading-tight truncate">
+                          {carName}
+                        </h3>
+                        <p className="text-xs text-gray-400 font-medium">
+                          Available for self-drive or with chauffeur
+                        </p>
+                      </div>
+                      <Button
+                        onClick={() =>
+                          router.push(`/customer/fleet?car=${car.car_id}`)
+                        }
+                        className="w-full bg-white/5 hover:bg-[#64c5c3] text-white hover:text-black border border-white/10 transition-all rounded-xl h-12 text-[10px] font-bold uppercase tracking-widest"
+                      >
+                        Check Availability
+                      </Button>
+                    </div>
                   </div>
-                  <div className="absolute inset-0 bg-gradient-to-t from-[#0a1118] via-transparent to-transparent z-10" />
-                </div>
-                <div className="p-6 flex-grow flex flex-col justify-between relative z-20 -mt-8">
-                  <div className="mb-6">
-                    <h3 className="text-xl sm:text-2xl font-black uppercase mb-1 text-white leading-tight">
-                      {car.name}
-                    </h3>
-                    <p className="text-xs text-gray-400 font-medium">
-                      Available for self-drive or with chauffeur
-                    </p>
-                  </div>
-                  <Button
-                    onClick={() => router.push("/customer/fleet")}
-                    className="w-full bg-white/5 hover:bg-[#64c5c3] text-white hover:text-black border border-white/10 transition-all rounded-xl h-12 text-[10px] font-bold uppercase tracking-widest"
-                  >
-                    Check Availability
-                  </Button>
-                </div>
-              </div>
-            </motion.div>
-          ))}
-        </div>
+                </motion.div>
+              );
+            })}
+          </div>
+        )}
 
         <div className="mt-12 sm:mt-16 flex justify-center">
           <Button
@@ -530,9 +613,9 @@ export default function LandingPage() {
       {/* CONTACT SECTION */}
       <section className="py-16 sm:py-24 px-4 sm:px-6 md:px-12 max-w-7xl mx-auto w-full">
         <div className="flex flex-col lg:flex-row gap-10 lg:gap-12 bg-[#0a1118]/80 backdrop-blur-xl p-5 sm:p-10 md:p-12 rounded-3xl border border-white/5 relative overflow-hidden shadow-2xl">
-          {/* Subtle gradient blob behind form */}
           <div className="absolute top-0 right-0 w-64 h-64 sm:w-96 sm:h-96 bg-[#64c5c3]/10 rounded-full blur-[100px] pointer-events-none" />
 
+          {/* LEFT SIDE: Contact Details */}
           <div className="relative z-10 w-full lg:w-1/2">
             <h2 className="text-3xl sm:text-4xl font-black uppercase mb-3 sm:mb-4 text-white leading-tight">
               Got Questions? <br /> We&apos;re Here To Help!
@@ -571,27 +654,53 @@ export default function LandingPage() {
             </div>
           </div>
 
+          {/* RIGHT SIDE: The Contact Form */}
           <div className="w-full lg:w-1/2 space-y-4 relative z-10 mt-2 lg:mt-0 flex flex-col">
             <div className="flex flex-col sm:flex-row gap-4">
               <Input
                 placeholder="FIRST NAME"
-                className="bg-black/50 border-white/10 h-14 rounded-xl focus-visible:ring-[#64c5c3] text-white placeholder:text-gray-600 text-[10px] sm:text-xs font-bold tracking-widest w-full"
+                value={contactForm.firstName}
+                onChange={(e) =>
+                  setContactForm({ ...contactForm, firstName: e.target.value })
+                }
+                disabled={isSendingMessage}
+                className="bg-black/50 border-white/10 h-14 rounded-xl focus-visible:ring-[#64c5c3] text-white placeholder:text-gray-600 text-[10px] sm:text-xs font-bold tracking-widest w-full disabled:opacity-50"
               />
               <Input
                 placeholder="LAST NAME"
-                className="bg-black/50 border-white/10 h-14 rounded-xl focus-visible:ring-[#64c5c3] text-white placeholder:text-gray-600 text-[10px] sm:text-xs font-bold tracking-widest w-full"
+                value={contactForm.lastName}
+                onChange={(e) =>
+                  setContactForm({ ...contactForm, lastName: e.target.value })
+                }
+                disabled={isSendingMessage}
+                className="bg-black/50 border-white/10 h-14 rounded-xl focus-visible:ring-[#64c5c3] text-white placeholder:text-gray-600 text-[10px] sm:text-xs font-bold tracking-widest w-full disabled:opacity-50"
               />
             </div>
             <Input
               placeholder="EMAIL ADDRESS"
-              className="bg-black/50 border-white/10 h-14 rounded-xl focus-visible:ring-[#64c5c3] text-white placeholder:text-gray-600 text-[10px] sm:text-xs font-bold tracking-widest w-full"
+              type="email"
+              value={contactForm.email}
+              onChange={(e) =>
+                setContactForm({ ...contactForm, email: e.target.value })
+              }
+              disabled={isSendingMessage}
+              className="bg-black/50 border-white/10 h-14 rounded-xl focus-visible:ring-[#64c5c3] text-white placeholder:text-gray-600 text-[10px] sm:text-xs font-bold tracking-widest w-full disabled:opacity-50"
             />
             <Textarea
               placeholder="HOW CAN WE HELP YOU?"
-              className="bg-black/50 border-white/10 min-h-[120px] rounded-xl focus-visible:ring-[#64c5c3] text-white placeholder:text-gray-600 text-[10px] sm:text-xs font-bold tracking-widest resize-none pt-4 w-full"
+              value={contactForm.message}
+              onChange={(e) =>
+                setContactForm({ ...contactForm, message: e.target.value })
+              }
+              disabled={isSendingMessage}
+              className="bg-black/50 border-white/10 min-h-[120px] rounded-xl focus-visible:ring-[#64c5c3] text-white placeholder:text-gray-600 text-[10px] sm:text-xs font-bold tracking-widest resize-none pt-4 w-full disabled:opacity-50"
             />
-            <Button className="w-full bg-[#64c5c3] hover:bg-[#52a3a1] text-black font-black text-[10px] sm:text-xs uppercase tracking-widest h-14 rounded-xl mt-2 transition-all shadow-[0_0_15px_rgba(100,197,195,0.2)] shrink-0">
-              Send Message
+            <Button
+              onClick={handleContactSubmit}
+              disabled={isSendingMessage}
+              className="w-full bg-[#64c5c3] hover:bg-[#52a3a1] text-black font-black text-[10px] sm:text-xs uppercase tracking-widest h-14 rounded-xl mt-2 transition-all shadow-[0_0_15px_rgba(100,197,195,0.2)] shrink-0 disabled:opacity-70"
+            >
+              {isSendingMessage ? "Sending..." : "Send Message"}
             </Button>
           </div>
         </div>

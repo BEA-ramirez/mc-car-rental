@@ -1,3 +1,4 @@
+"use server";
 import nodemailer from "nodemailer";
 
 const transporter = nodemailer.createTransport({
@@ -9,6 +10,48 @@ const transporter = nodemailer.createTransport({
     pass: process.env.SMTP_PASS,
   },
 });
+
+export async function submitContactForm(
+  firstName: string,
+  lastName: string,
+  email: string,
+  message: string,
+) {
+  try {
+    const mailOptions = {
+      from: `"MC Ormoc Website" <${process.env.SMTP_FROM_EMAIL}>`,
+      to: "support.mcormoccarrental@gmail.com", // The business inbox
+      replyTo: email, // <-- THE MAGIC TRICK! Replies go to the customer.
+      subject: `New Website Inquiry: ${firstName} ${lastName}`,
+      html: `
+        <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; background-color: #ffffff; padding: 30px; border: 1px solid #e2e8f0; border-radius: 8px; color: #334155;">
+          <h2 style="color: #64c5c3; border-bottom: 2px solid #f1f5f9; padding-bottom: 15px; margin-top: 0;">New Customer Inquiry</h2>
+          
+          <p style="font-size: 16px;"><strong>Name:</strong> ${firstName} ${lastName}</p>
+          <p style="font-size: 16px;"><strong>Email:</strong> ${email}</p>
+          
+          <div style="background-color: #f8fafc; padding: 20px; border-radius: 6px; border: 1px solid #e2e8f0; margin: 24px 0; font-size: 15px; line-height: 1.6; white-space: pre-wrap; color: #0f172a;">${message}</div>
+          
+          <p style="font-size: 12px; color: #94a3b8; text-align: center; margin-top: 30px;">
+            Reply directly to this email to respond to the customer.
+          </p>
+        </div>
+      `,
+    };
+
+    await transporter.sendMail(mailOptions);
+    return {
+      success: true,
+      message: "Your message has been sent successfully!",
+    };
+  } catch (error) {
+    console.error("Contact Form Error:", error);
+    return {
+      success: false,
+      message: "Failed to send message. Please try again.",
+    };
+  }
+}
 
 export async function sendRejectionEmail(
   email: string,
